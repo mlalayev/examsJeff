@@ -1,12 +1,14 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
+import SessionProvider from '@/components/SessionProvider'
+import Navbar from '@/components/Navbar'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'AI Mentor - IELTS Mock Exam Platform',
-  description: 'Practice IELTS with AI-powered feedback and scoring',
+  title: 'JEFF Exams Portal - IELTS, TOEFL & SAT Mock Exams',
+  description: 'Practice IELTS, TOEFL and SAT with AI-powered feedback and teacher grading',
 }
 
 export default function RootLayout({
@@ -17,9 +19,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <div className="min-h-screen bg-gray-50">
-          {children}
-        </div>
+        <SessionProvider>
+          <Navbar />
+          <div className="min-h-screen bg-gray-50">
+            {children}
+          </div>
+        </SessionProvider>
       </body>
     </html>
   )
