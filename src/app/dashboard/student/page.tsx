@@ -1,11 +1,67 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { BookOpenText, Headphones, PenTool, Mic2, TrendingUp, Clock, Award } from "lucide-react";
+import { BookOpenText, Headphones, PenTool, Mic2, TrendingUp, Clock, Award, Calendar, CalendarClock } from "lucide-react";
+
+interface Booking {
+  id: string;
+  startAt: string;
+  status: string;
+  sections: string[];
+  exam: {
+    id: string;
+    title: string;
+  };
+  teacher: {
+    id: string;
+    name: string | null;
+    email: string;
+  } | null;
+}
 
 export default function StudentDashboard() {
   const { data: session } = useSession();
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchBookings();
+  }, []);
+
+  const fetchBookings = async () => {
+    try {
+      const response = await fetch("/api/bookings?role=student");
+      if (!response.ok) throw new Error("Failed to fetch bookings");
+      const data = await response.json();
+      setBookings(data.bookings);
+    } catch (error) {
+      console.error("Error fetching bookings:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDateTimeBaku = (isoDate: string) => {
+    const date = new Date(isoDate);
+    // Format date in local timezone (Asia/Baku)
+    return date.toLocaleString('en-US', {
+      timeZone: 'Asia/Baku',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const isUpcoming = (startAt: string) => {
+    return new Date(startAt) > new Date();
+  };
+
+  const upcomingBookings = bookings.filter(b => isUpcoming(b.startAt));
+  const pastBookings = bookings.filter(b => !isUpcoming(b.startAt));
 
   const sections = [
     { icon: BookOpenText, name: "Reading", href: "/reading", color: "blue" },
@@ -23,6 +79,59 @@ export default function StudentDashboard() {
         <p className="text-gray-600 mt-2">Ready to practice today?</p>
       </div>
 
+      {/* My Exams Section */}
+      <div className="mb-8">
+        <h2 className="text-xl font-bold text-gray-900 mb-4">My Scheduled Exams</h2>
+        
+        {loading ? (
+          <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
+            <p className="text-gray-500">Loading...</p>
+          </div>
+        ) : upcomingBookings.length === 0 ? (
+          <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
+            <div className="inline-flex p-4 bg-gray-50 rounded-full mb-4">
+              <CalendarClock className="w-8 h-8 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No upcoming exams</h3>
+            <p className="text-gray-500">Your teacher will assign exams to you</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {upcomingBookings.map((booking) => (
+              <div key={booking.id} className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition">
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <h3 className="font-semibold text-gray-900 text-lg">{booking.exam.title}</h3>
+                    <p className="text-sm text-gray-500 mt-1">
+                      By {booking.teacher?.name || booking.teacher?.email || "Teacher"}
+                    </p>
+                  </div>
+                  <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded">
+                    {booking.status}
+                  </span>
+                </div>
+                
+                <div className="flex items-center gap-2 text-sm text-gray-600 mb-3">
+                  <Calendar className="w-4 h-4" />
+                  {formatDateTimeBaku(booking.startAt)}
+                </div>
+                
+                <div className="flex flex-wrap gap-2">
+                  {booking.sections.map((section) => (
+                    <span
+                      key={section}
+                      className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded"
+                    >
+                      {section}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -32,8 +141,10 @@ export default function StudentDashboard() {
             </div>
             <h3 className="font-semibold text-gray-900">Tests Taken</h3>
           </div>
-          <p className="text-3xl font-bold text-gray-900">0</p>
-          <p className="text-sm text-gray-500 mt-1">No tests completed yet</p>
+          <p className="text-3xl font-bold text-gray-900">{pastBookings.length}</p>
+          <p className="text-sm text-gray-500 mt-1">
+            {pastBookings.length === 0 ? "No tests completed yet" : "Completed exams"}
+          </p>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -114,4 +225,3 @@ export default function StudentDashboard() {
     </div>
   );
 }
-

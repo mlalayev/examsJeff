@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, UserPlus, Mail, Loader2, Award, Calendar } from "lucide-react";
+import { ArrowLeft, UserPlus, Mail, Loader2, Award, Calendar, BookOpen } from "lucide-react";
 
 interface Student {
   id: string;
@@ -28,6 +28,13 @@ interface ClassData {
   createdAt: string;
 }
 
+interface Exam {
+  id: string;
+  title: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
 export default function ClassRosterPage() {
   const params = useParams();
   const router = useRouter();
@@ -40,9 +47,23 @@ export default function ClassRosterPage() {
   const [studentEmail, setStudentEmail] = useState("");
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState("");
+  
+  // Assign Exam state
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [exams, setExams] = useState<Exam[]>([]);
+  const [assignData, setAssignData] = useState({
+    examId: "",
+    sections: [] as string[],
+    startDate: "",
+    startTime: "",
+  });
+  const [assigning, setAssigning] = useState(false);
+  const [assignError, setAssignError] = useState("");
 
   useEffect(() => {
     fetchRoster();
+    fetchExams();
   }, [classId]);
 
   const fetchRoster = async () => {
@@ -91,6 +112,84 @@ export default function ClassRosterPage() {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setAdding(false);
+    }
+  };
+
+  const fetchExams = async () => {
+    try {
+      const response = await fetch("/api/exams");
+      if (!response.ok) throw new Error("Failed to fetch exams");
+      const data = await response.json();
+      setExams(data.exams);
+    } catch (error) {
+      console.error("Error fetching exams:", error);
+    }
+  };
+
+  const openAssignModal = (student: Student) => {
+    setSelectedStudent(student);
+    setShowAssignModal(true);
+    setAssignError("");
+    setAssignData({
+      examId: "",
+      sections: [],
+      startDate: "",
+      startTime: "",
+    });
+  };
+
+  const toggleSection = (section: string) => {
+    setAssignData(prev => ({
+      ...prev,
+      sections: prev.sections.includes(section)
+        ? prev.sections.filter(s => s !== section)
+        : [...prev.sections, section]
+    }));
+  };
+
+  const handleAssignExam = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAssignError("");
+    setAssigning(true);
+
+    try {
+      if (!selectedStudent) throw new Error("No student selected");
+      if (!assignData.examId) throw new Error("Please select an exam");
+      if (assignData.sections.length === 0) throw new Error("Please select at least one section");
+      if (!assignData.startDate || !assignData.startTime) throw new Error("Please select date and time");
+
+      // Combine date and time in Asia/Baku timezone, then convert to UTC
+      const bakuDateTime = `${assignData.startDate}T${assignData.startTime}:00`;
+      const localDate = new Date(bakuDateTime);
+      
+      // Convert to UTC ISO string
+      const startAtUTC = localDate.toISOString();
+
+      const response = await fetch("/api/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentId: selectedStudent.id,
+          examId: assignData.examId,
+          sections: assignData.sections,
+          startAt: startAtUTC,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to assign exam");
+      }
+
+      setShowAssignModal(false);
+      setSelectedStudent(null);
+      // Show success message or refresh data
+      alert(`Exam assigned successfully to ${selectedStudent.name || selectedStudent.email}`);
+    } catch (err) {
+      setAssignError(err instanceof Error ? err.message : "An error occurred");
+    } finally {
+      setAssigning(false);
     }
   };
 
@@ -172,6 +271,9 @@ export default function ClassRosterPage() {
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                     Enrolled
                   </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -219,6 +321,15 @@ export default function ClassRosterPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                       {new Date(item.enrolledAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <button
+                        onClick={() => openAssignModal(item.student)}
+                        className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition"
+                      >
+                        <BookOpen className="w-4 h-4" />
+                        Assign Exam
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -284,6 +395,153 @@ export default function ClassRosterPage() {
                     </>
                   ) : (
                     "Add Student"
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Assign Exam Modal */}
+      {showAssignModal && selectedStudent && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Assign Exam</h2>
+            <p className="text-gray-600 mb-6">
+              Assigning to: <span className="font-semibold">{selectedStudent.name || selectedStudent.email}</span>
+            </p>
+            
+            {assignError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-red-800 text-sm">{assignError}</p>
+              </div>
+            )}
+            
+            <form onSubmit={handleAssignExam}>
+              {/* Exam Selection */}
+              <div className="mb-6">
+                <label htmlFor="examId" className="block text-sm font-medium text-gray-700 mb-2">
+                  Select Exam
+                </label>
+                {exams.length === 0 ? (
+                  <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p className="text-sm text-yellow-800 mb-2">
+                      <strong>No exams available!</strong>
+                    </p>
+                    <p className="text-sm text-yellow-700 mb-3">
+                      You need to create exam templates first before you can assign them to students.
+                    </p>
+                    <a
+                      href="/dashboard/teacher/exams"
+                      target="_blank"
+                      className="inline-flex items-center gap-2 px-3 py-2 bg-yellow-600 text-white text-sm rounded-lg hover:bg-yellow-700 transition"
+                    >
+                      <BookOpen className="w-4 h-4" />
+                      Create Exams
+                    </a>
+                  </div>
+                ) : (
+                  <select
+                    id="examId"
+                    required
+                    value={assignData.examId}
+                    onChange={(e) => setAssignData({ ...assignData, examId: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Choose an exam...</option>
+                    {exams.map((exam) => (
+                      <option key={exam.id} value={exam.id}>
+                        {exam.title}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              {/* Section Selection */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Select Sections
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  {["READING", "LISTENING", "WRITING", "SPEAKING"].map((section) => (
+                    <button
+                      key={section}
+                      type="button"
+                      onClick={() => toggleSection(section)}
+                      className={`px-4 py-3 rounded-lg border-2 font-medium transition ${
+                        assignData.sections.includes(section)
+                          ? "border-blue-500 bg-blue-50 text-blue-700"
+                          : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
+                      }`}
+                    >
+                      {section}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Date and Time Selection */}
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div>
+                  <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-2">
+                    Date
+                  </label>
+                  <input
+                    id="startDate"
+                    type="date"
+                    required
+                    value={assignData.startDate}
+                    onChange={(e) => setAssignData({ ...assignData, startDate: e.target.value })}
+                    min={new Date().toISOString().split('T')[0]}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="startTime" className="block text-sm font-medium text-gray-700 mb-2">
+                    Time (Asia/Baku)
+                  </label>
+                  <input
+                    id="startTime"
+                    type="time"
+                    required
+                    value={assignData.startTime}
+                    onChange={(e) => setAssignData({ ...assignData, startTime: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              <p className="text-xs text-gray-500 mb-6">
+                Time will be stored in UTC but displayed in Asia/Baku timezone
+              </p>
+              
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAssignModal(false);
+                    setSelectedStudent(null);
+                    setAssignError("");
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition"
+                  disabled={assigning}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={assigning || exams.length === 0}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {assigning ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Assigning...
+                    </>
+                  ) : (
+                    "Assign Exam"
                   )}
                 </button>
               </div>

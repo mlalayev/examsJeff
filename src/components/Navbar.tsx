@@ -1,11 +1,43 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
-import { GraduationCap, LogOut, User } from "lucide-react";
+import { GraduationCap, LogOut, User, Bell } from "lucide-react";
+
+interface Notification {
+  id: string;
+  title: string;
+  body: string;
+  createdAt: string;
+  sentAt: string | null;
+}
 
 export default function Navbar() {
   const { data: session, status } = useSession();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (session) {
+      fetchNotifications();
+    }
+  }, [session]);
+
+  const fetchNotifications = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/notifications?limit=10");
+      if (!response.ok) throw new Error("Failed to fetch notifications");
+      const data = await response.json();
+      setNotifications(data.notifications);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getDashboardLink = () => {
     if (!session?.user) return null;
@@ -30,6 +62,64 @@ export default function Navbar() {
             <div className="px-4 py-2 text-sm text-gray-500">Loading...</div>
           ) : session ? (
             <>
+              {/* Notifications Bell */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="relative p-2 text-gray-700 hover:text-blue-600 transition"
+                  title="Notifications"
+                >
+                  <Bell className="w-5 h-5" />
+                  {notifications.length > 0 && (
+                    <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
+                  )}
+                </button>
+
+                {/* Notifications Dropdown */}
+                {showNotifications && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-10"
+                      onClick={() => setShowNotifications(false)}
+                    />
+                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-20 max-h-96 overflow-y-auto">
+                      <div className="p-4 border-b border-gray-200">
+                        <h3 className="font-semibold text-gray-900">Notifications</h3>
+                      </div>
+                      {loading ? (
+                        <div className="p-4 text-center text-sm text-gray-500">Loading...</div>
+                      ) : notifications.length === 0 ? (
+                        <div className="p-4 text-center text-sm text-gray-500">
+                          No notifications yet
+                        </div>
+                      ) : (
+                        <div className="divide-y divide-gray-200">
+                          {notifications.map((notification) => (
+                            <div key={notification.id} className="p-4 hover:bg-gray-50 transition">
+                              <p className="font-medium text-sm text-gray-900 mb-1">
+                                {notification.title}
+                              </p>
+                              <p className="text-sm text-gray-600 mb-2">
+                                {notification.body}
+                              </p>
+                              <p className="text-xs text-gray-400">
+                                {new Date(notification.createdAt).toLocaleString('en-US', {
+                                  timeZone: 'Asia/Baku',
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+
               <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 rounded-lg">
                 <User className="w-4 h-4 text-blue-600" />
                 <span className="text-sm font-medium text-gray-900">

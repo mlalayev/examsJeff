@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Users, ClipboardList, TrendingUp, Clock, UserCheck, FileText } from "lucide-react";
+import { Users, ClipboardList, TrendingUp, Clock, UserCheck, FileText, BookOpen } from "lucide-react";
 
 export default function TeacherDashboard() {
   const { data: session } = useSession();
@@ -67,13 +67,16 @@ export default function TeacherDashboard() {
       {/* Quick Actions */}
       <div className="mb-8">
         <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition text-left">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <button 
+            onClick={() => router.push("/dashboard/teacher/exams")}
+            className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition text-left"
+          >
             <div className="inline-flex p-3 bg-blue-50 rounded-lg mb-3">
-              <FileText className="w-6 h-6 text-blue-600" />
+              <BookOpen className="w-6 h-6 text-blue-600" />
             </div>
-            <h3 className="font-semibold text-gray-900 mb-1">Grade Submissions</h3>
-            <p className="text-sm text-gray-500">Review and grade student work</p>
+            <h3 className="font-semibold text-gray-900 mb-1">Manage Exams</h3>
+            <p className="text-sm text-gray-500">Create and view exam templates</p>
           </button>
 
           <button 
@@ -84,7 +87,15 @@ export default function TeacherDashboard() {
               <Users className="w-6 h-6 text-purple-600" />
             </div>
             <h3 className="font-semibold text-gray-900 mb-1">Manage Classes</h3>
-            <p className="text-sm text-gray-500">Create classes and manage your students</p>
+            <p className="text-sm text-gray-500">Create classes and manage students</p>
+          </button>
+
+          <button className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition text-left">
+            <div className="inline-flex p-3 bg-orange-50 rounded-lg mb-3">
+              <FileText className="w-6 h-6 text-orange-600" />
+            </div>
+            <h3 className="font-semibold text-gray-900 mb-1">Grade Submissions</h3>
+            <p className="text-sm text-gray-500">Review and grade student work</p>
           </button>
 
           <button className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition text-left">
@@ -92,7 +103,7 @@ export default function TeacherDashboard() {
               <TrendingUp className="w-6 h-6 text-green-600" />
             </div>
             <h3 className="font-semibold text-gray-900 mb-1">View Analytics</h3>
-            <p className="text-sm text-gray-500">Track student progress and performance</p>
+            <p className="text-sm text-gray-500">Track student progress</p>
           </button>
         </div>
       </div>
