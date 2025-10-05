@@ -3,12 +3,20 @@ import { prisma } from "@/lib/prisma";
 import { requireTeacher } from "@/lib/auth-utils";
 import { z } from "zod";
 
-const createExamSchema = z.object({
-  title: z.string().min(1, "Exam title is required").max(200, "Title is too long"),
-  isActive: z.boolean().optional().default(true),
+const sectionSchema = z.object({
+  type: z.enum(["READING", "LISTENING", "WRITING", "SPEAKING"]),
+  durationMin: z.number().int().min(1).max(300),
+  order: z.number().int().min(0),
 });
 
-// POST /api/exams - Create a new exam
+const createExamSchema = z.object({
+  title: z.string().min(1, "Exam title is required").max(200, "Title is too long"),
+  examType: z.string().optional().default("IELTS"),
+  isActive: z.boolean().optional().default(true),
+  sections: z.array(sectionSchema).optional().default([]),
+});
+
+// POST /api/exams - Create a new exam with sections
 export async function POST(request: Request) {
   try {
     const user = await requireTeacher();
@@ -19,9 +27,20 @@ export async function POST(request: Request) {
     const exam = await prisma.exam.create({
       data: {
         title: validatedData.title,
+        examType: validatedData.examType,
         isActive: validatedData.isActive,
         createdById: (user as any).id,
+        sections: {
+          create: validatedData.sections.map(section => ({
+            type: section.type,
+            durationMin: section.durationMin,
+            order: section.order,
+          }))
+        }
       },
+      include: {
+        sections: true,
+      }
     });
     
     return NextResponse.json({
@@ -75,7 +94,11 @@ export async function GET() {
           }
         },
         _count: {
-          select: { bookings: true }
+          select: { 
+            bookings: true,
+            sections: true,
+            questions: true
+          }
         }
       }
     });

@@ -132,14 +132,17 @@ model Attempt {
 }
 
 model Exam {
-  id          String   @id @default(cuid())
+  id          String        @id @default(cuid())
   title       String
-  isActive    Boolean  @default(true)
+  examType    String        @default("IELTS")
+  isActive    Boolean       @default(true)
   createdById String?
-  createdBy   User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  createdAt   DateTime @default(now())
+  createdBy   User?         @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime      @default(now())
   
   bookings    Booking[]
+  sections    ExamSection[]
+  questions   Question[]
   
   @@map("exams")
 }
@@ -177,4 +180,41 @@ model Notification {
   
   @@index([userId, createdAt])
   @@map("notifications")
+}
+
+model ExamSection {
+  id          String      @id @default(cuid())
+  examId      String
+  exam        Exam        @relation(fields: [examId], references: [id], onDelete: Cascade)
+  type        SectionType
+  durationMin Int
+  order       Int
+  
+  @@map("exam_sections")
+}
+
+model Question {
+  id          String      @id @default(cuid())
+  examId      String
+  exam        Exam        @relation(fields: [examId], references: [id], onDelete: Cascade)
+  sectionType SectionType
+  qtype       String
+  prompt      Json
+  options     Json?
+  answerKey   Json?
+  maxScore    Int         @default(1)
+  order       Int
+  
+  @@map("questions")
+}
+
+model BandMap {
+  id       String      @id @default(cuid())
+  examType String
+  section  SectionType
+  minRaw   Int
+  maxRaw   Int
+  band     Float
+  
+  @@map("band_maps")
 }

@@ -1,0 +1,179 @@
+{
+  "items": [
+    {
+      "sectionType": "READING",
+      "qtype": "multiple_choice",
+      "prompt": {
+        "text": "What is the main idea of the passage?",
+        "passage": "Climate change is one of the most pressing issues of our time..."
+      },
+      "options": {
+        "A": "Climate change is not real",
+        "B": "Climate change is a pressing global issue",
+        "C": "Climate change only affects polar regions",
+        "D": "Climate change can be easily solved"
+      },
+      "answerKey": {
+        "correct": "B"
+      },
+      "maxScore": 1,
+      "order": 1
+    },
+    {
+      "sectionType": "READING",
+      "qtype": "true_false_not_given",
+      "prompt": {
+        "text": "The passage states that renewable energy is the only solution.",
+        "passage": "Climate change is one of the most pressing issues of our time..."
+      },
+      "answerKey": {
+        "correct": "NOT GIVEN"
+      },
+      "maxScore": 1,
+      "order": 2
+    },
+    {
+      "sectionType": "LISTENING",
+      "qtype": "multiple_choice",
+      "prompt": {
+        "text": "What does the speaker recommend?",
+        "audioUrl": "https://example.com/audio/track1.mp3"
+      },
+      "options": {
+        "A": "Taking notes during the lecture",
+        "B": "Reading the textbook first",
+        "C": "Attending study groups",
+        "D": "All of the above"
+      },
+      "answerKey": {
+        "correct": "D"
+      },
+      "maxScore": 1,
+      "order": 3
+    },
+    {
+      "sectionType": "WRITING",
+      "qtype": "essay",
+      "prompt": {
+        "text": "Some people believe that technology has made our lives more complicated. To what extent do you agree or disagree? Give reasons for your answer and include relevant examples.",
+        "wordLimit": 250,
+        "timeLimit": 40
+      },
+      "answerKey": {
+        "rubric": {
+          "taskResponse": "Addresses all parts of the task",
+          "coherence": "Logical organization with clear progression",
+          "lexicalResource": "Wide range of vocabulary",
+          "grammaticalRange": "Wide range of structures with flexibility"
+        }
+      },
+      "maxScore": 9,
+      "order": 4
+    },
+    {
+      "sectionType": "SPEAKING",
+      "qtype": "short_answer",
+      "prompt": {
+        "text": "Describe your hometown. You should say: where it is, what it's famous for, and whether you enjoy living there."
+      },
+      "answerKey": {
+        "criteria": ["Fluency", "Vocabulary", "Grammar", "Pronunciation"]
+      },
+      "maxScore": 9,
+      "order": 5
+    },
+    {
+      "sectionType": "READING",
+      "qtype": "fill_in_blank",
+      "prompt": {
+        "text": "Complete the sentence: The study found that students who _____ regularly performed better on exams.",
+        "passage": "A recent study on student performance..."
+      },
+      "answerKey": {
+        "correct": ["practiced", "studied", "reviewed"]
+      },
+      "maxScore": 1,
+      "order": 6
+    },
+    {
+      "sectionType": "LISTENING",
+      "qtype": "fill_in_blank",
+      "prompt": {
+        "text": "The meeting is scheduled for _____ at _____ PM.",
+        "audioUrl": "https://example.com/audio/track2.mp3"
+      },
+      "answerKey": {
+        "correct": ["Friday", "3"]
+      },
+      "maxScore": 2,
+      "order": 7
+    },
+    {
+      "sectionType": "READING",
+      "qtype": "matching",
+      "prompt": {
+        "text": "Match the scientists with their discoveries:",
+        "passage": "Throughout history, many scientists have made groundbreaking discoveries...",
+        "items": [
+          "Newton",
+          "Einstein",
+          "Darwin",
+          "Curie"
+        ]
+      },
+      "options": {
+        "A": "Theory of Relativity",
+        "B": "Evolution by Natural Selection",
+        "C": "Law of Gravity",
+        "D": "Radioactivity"
+      },
+      "answerKey": {
+        "correct": {
+          "Newton": "C",
+          "Einstein": "A",
+          "Darwin": "B",
+          "Curie": "D"
+        }
+      },
+      "maxScore": 4,
+      "order": 8
+    },
+    {
+      "sectionType": "LISTENING",
+      "qtype": "note_completion",
+      "prompt": {
+        "text": "Complete the notes based on the lecture:",
+        "audioUrl": "https://example.com/audio/lecture1.mp3",
+        "notes": [
+          "Main topic: _____",
+          "Key point 1: _____",
+          "Key point 2: _____"
+        ]
+      },
+      "answerKey": {
+        "correct": [
+          "Environmental Conservation",
+          "Reducing plastic waste",
+          "Promoting renewable energy"
+        ]
+      },
+      "maxScore": 3,
+      "order": 9
+    },
+    {
+      "sectionType": "READING",
+      "qtype": "summary_completion",
+      "prompt": {
+        "text": "Complete the summary using words from the passage:",
+        "passage": "The industrial revolution transformed society...",
+        "wordBank": ["machinery", "factories", "agriculture", "technology", "population"]
+      },
+      "answerKey": {
+        "correct": ["machinery", "factories", "population"]
+      },
+      "maxScore": 3,
+      "order": 10
+    }
+  ]
+}
+

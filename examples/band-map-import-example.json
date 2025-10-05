@@ -1,0 +1,145 @@
+{
+  "items": [
+    {
+      "examType": "IELTS",
+      "section": "READING",
+      "minRaw": 0,
+      "maxRaw": 2,
+      "band": 2.0
+    },
+    {
+      "examType": "IELTS",
+      "section": "READING",
+      "minRaw": 3,
+      "maxRaw": 5,
+      "band": 3.0
+    },
+    {
+      "examType": "IELTS",
+      "section": "READING",
+      "minRaw": 6,
+      "maxRaw": 9,
+      "band": 4.0
+    },
+    {
+      "examType": "IELTS",
+      "section": "READING",
+      "minRaw": 10,
+      "maxRaw": 14,
+      "band": 5.0
+    },
+    {
+      "examType": "IELTS",
+      "section": "READING",
+      "minRaw": 15,
+      "maxRaw": 22,
+      "band": 6.0
+    },
+    {
+      "examType": "IELTS",
+      "section": "READING",
+      "minRaw": 23,
+      "maxRaw": 29,
+      "band": 7.0
+    },
+    {
+      "examType": "IELTS",
+      "section": "READING",
+      "minRaw": 30,
+      "maxRaw": 34,
+      "band": 8.0
+    },
+    {
+      "examType": "IELTS",
+      "section": "READING",
+      "minRaw": 35,
+      "maxRaw": 40,
+      "band": 9.0
+    },
+    {
+      "examType": "IELTS",
+      "section": "LISTENING",
+      "minRaw": 0,
+      "maxRaw": 2,
+      "band": 2.0
+    },
+    {
+      "examType": "IELTS",
+      "section": "LISTENING",
+      "minRaw": 3,
+      "maxRaw": 5,
+      "band": 3.0
+    },
+    {
+      "examType": "IELTS",
+      "section": "LISTENING",
+      "minRaw": 6,
+      "maxRaw": 9,
+      "band": 4.0
+    },
+    {
+      "examType": "IELTS",
+      "section": "LISTENING",
+      "minRaw": 10,
+      "maxRaw": 15,
+      "band": 5.0
+    },
+    {
+      "examType": "IELTS",
+      "section": "LISTENING",
+      "minRaw": 16,
+      "maxRaw": 22,
+      "band": 6.0
+    },
+    {
+      "examType": "IELTS",
+      "section": "LISTENING",
+      "minRaw": 23,
+      "maxRaw": 29,
+      "band": 7.0
+    },
+    {
+      "examType": "IELTS",
+      "section": "LISTENING",
+      "minRaw": 30,
+      "maxRaw": 34,
+      "band": 8.0
+    },
+    {
+      "examType": "IELTS",
+      "section": "LISTENING",
+      "minRaw": 35,
+      "maxRaw": 40,
+      "band": 9.0
+    },
+    {
+      "examType": "TOEFL",
+      "section": "READING",
+      "minRaw": 0,
+      "maxRaw": 5,
+      "band": 3.0
+    },
+    {
+      "examType": "TOEFL",
+      "section": "READING",
+      "minRaw": 6,
+      "maxRaw": 15,
+      "band": 5.0
+    },
+    {
+      "examType": "TOEFL",
+      "section": "READING",
+      "minRaw": 16,
+      "maxRaw": 25,
+      "band": 7.0
+    },
+    {
+      "examType": "TOEFL",
+      "section": "READING",
+      "minRaw": 26,
+      "maxRaw": 30,
+      "band": 9.0
+    }
+  ]
+}
+
