@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Users, ClipboardList, TrendingUp, Clock, UserCheck, FileText, BookOpen } from "lucide-react";
+import { Users, ClipboardList, TrendingUp, Clock, UserCheck, FileText, BookOpen, CheckSquare } from "lucide-react";
 
 export default function TeacherDashboard() {
   const { data: session } = useSession();
@@ -90,12 +90,15 @@ export default function TeacherDashboard() {
             <p className="text-sm text-gray-500">Create classes and manage students</p>
           </button>
 
-          <button className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition text-left">
+          <button 
+            onClick={() => router.push("/dashboard/teacher/grading")}
+            className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition text-left"
+          >
             <div className="inline-flex p-3 bg-orange-50 rounded-lg mb-3">
-              <FileText className="w-6 h-6 text-orange-600" />
+              <CheckSquare className="w-6 h-6 text-orange-600" />
             </div>
             <h3 className="font-semibold text-gray-900 mb-1">Grade Submissions</h3>
-            <p className="text-sm text-gray-500">Review and grade student work</p>
+            <p className="text-sm text-gray-500">Grade Writing & Speaking sections</p>
           </button>
 
           <button className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition text-left">

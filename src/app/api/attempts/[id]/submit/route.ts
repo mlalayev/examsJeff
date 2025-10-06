@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-utils";
+import { scoreAttempt } from "@/lib/scoring";
 
 // POST /api/attempts/[id]/submit - Submit entire attempt
 export async function POST(
@@ -82,10 +83,38 @@ export async function POST(
       }
     });
     
-    return NextResponse.json({
-      message: "Attempt submitted successfully",
-      attempt: updatedAttempt
-    });
+    // Auto-score Reading and Listening sections
+    try {
+      const scoringResult = await scoreAttempt(params.id);
+      console.log('Auto-scoring completed:', scoringResult);
+      
+      // Fetch updated attempt with scores
+      const finalAttempt = await prisma.attempt.findUnique({
+        where: { id: params.id },
+        include: {
+          sections: true,
+          booking: {
+            include: {
+              exam: true
+            }
+          }
+        }
+      });
+      
+      return NextResponse.json({
+        message: "Attempt submitted and scored successfully",
+        attempt: finalAttempt,
+        scoring: scoringResult
+      });
+    } catch (scoringError) {
+      console.error('Auto-scoring error:', scoringError);
+      // Still return success for submission, scoring can be retried
+      return NextResponse.json({
+        message: "Attempt submitted successfully (scoring pending)",
+        attempt: updatedAttempt,
+        scoringError: scoringError instanceof Error ? scoringError.message : 'Unknown error'
+      });
+    }
     
   } catch (error) {
     if (error instanceof Error) {

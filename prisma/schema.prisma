@@ -142,6 +142,7 @@ model AttemptSection {
   rawScore   Int?
   bandScore  Float?
   gradedById String?
+  rubric     Json?
   feedback   String?     @db.Text
   startedAt  DateTime?
   endedAt    DateTime?
