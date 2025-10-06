@@ -47,7 +47,6 @@ model User {
   
   // Student relations
   classEnrollments ClassStudent[]
-  attempts         Attempt[]
   bookingsAsStudent Booking[] @relation("StudentBookings")
   
   // Notifications
@@ -120,15 +119,35 @@ model ClassStudent {
 }
 
 model Attempt {
-  id          String   @id @default(cuid())
-  studentId   String
-  student     User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  examId      String?
-  status      String
+  id          String            @id @default(cuid())
+  bookingId   String            @unique
+  booking     Booking           @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  status      String            @default("IN_PROGRESS")
+  startedAt   DateTime?
+  submittedAt DateTime?
   bandOverall Float?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime          @default(now())
+  
+  sections    AttemptSection[]
   
   @@map("attempts")
+}
+
+model AttemptSection {
+  id         String      @id @default(cuid())
+  attemptId  String
+  attempt    Attempt     @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  type       SectionType
+  answers    Json?
+  rawScore   Int?
+  bandScore  Float?
+  gradedById String?
+  feedback   String?     @db.Text
+  startedAt  DateTime?
+  endedAt    DateTime?
+  status     String      @default("NOT_STARTED")
+  
+  @@map("attempt_sections")
 }
 
 model Exam {
@@ -161,6 +180,8 @@ model Booking {
   reminded24h Boolean       @default(false)
   reminded1h  Boolean       @default(false)
   createdAt   DateTime      @default(now())
+  
+  attempt     Attempt?
   
   @@index([studentId, startAt])
   @@index([teacherId, startAt])
