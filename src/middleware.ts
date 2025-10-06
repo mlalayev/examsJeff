@@ -20,6 +20,13 @@ export default withAuth(
       }
     }
 
+    // Admin dashboard routes
+    if (path.startsWith("/dashboard/admin")) {
+      if (token?.role !== "ADMIN") {
+        return NextResponse.redirect(new URL("/auth/login?error=unauthorized", req.url));
+      }
+    }
+
     return NextResponse.next();
   },
   {
@@ -30,6 +37,6 @@ export default withAuth(
 );
 
 export const config = {
-  matcher: ["/dashboard/student/:path*", "/dashboard/teacher/:path*"],
+  matcher: ["/dashboard/student/:path*", "/dashboard/teacher/:path*", "/dashboard/admin/:path*"],
 };
 

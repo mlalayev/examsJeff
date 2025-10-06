@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Users, ChevronRight, Loader2 } from "lucide-react";
+import { Plus, Users, ChevronRight, Loader2, BarChart3 } from "lucide-react";
 
 interface Class {
   id: string;
@@ -105,14 +105,13 @@ export default function ClassesPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {classes.map((classItem) => (
-            <button
+            <div
               key={classItem.id}
-              onClick={() => router.push(`/dashboard/teacher/classes/${classItem.id}`)}
-              className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition text-left group"
+              className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition"
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 text-lg mb-2 group-hover:text-blue-600 transition">
+                  <h3 className="font-semibold text-gray-900 text-lg mb-2">
                     {classItem.name}
                   </h3>
                   <div className="flex items-center gap-2 text-sm text-gray-500">
@@ -120,12 +119,29 @@ export default function ClassesPage() {
                     {classItem._count.classStudents} {classItem._count.classStudents === 1 ? "student" : "students"}
                   </div>
                 </div>
-                <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition" />
               </div>
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-gray-400 mb-4">
                 Created {new Date(classItem.createdAt).toLocaleDateString()}
               </p>
-            </button>
+              
+              {/* Action Buttons */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => router.push(`/dashboard/teacher/classes/${classItem.id}`)}
+                  className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition flex items-center justify-center gap-2"
+                >
+                  <Users className="w-4 h-4" />
+                  Manage
+                </button>
+                <button
+                  onClick={() => router.push(`/dashboard/teacher/analytics/${classItem.id}`)}
+                  className="flex-1 px-3 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition flex items-center justify-center gap-2"
+                >
+                  <BarChart3 className="w-4 h-4" />
+                  Analytics
+                </button>
+              </div>
+            </div>
           ))}
         </div>
       )}

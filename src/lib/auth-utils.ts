@@ -36,3 +36,14 @@ export async function requireStudent() {
   return user;
 }
 
+export async function requireAdmin() {
+  const user = await requireAuth();
+  const role = (user as any).role;
+  
+  if (role !== "ADMIN") {
+    throw new Error("Forbidden: Admin access required");
+  }
+  
+  return user;
+}
+

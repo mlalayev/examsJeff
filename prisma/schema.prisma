@@ -216,16 +216,18 @@ model ExamSection {
 }
 
 model Question {
-  id          String      @id @default(cuid())
+  id          String         @id @default(cuid())
   examId      String
-  exam        Exam        @relation(fields: [examId], references: [id], onDelete: Cascade)
+  exam        Exam           @relation(fields: [examId], references: [id], onDelete: Cascade)
   sectionType SectionType
   qtype       String
   prompt      Json
   options     Json?
   answerKey   Json?
-  maxScore    Int         @default(1)
+  maxScore    Int            @default(1)
   order       Int
+  
+  tags        QuestionTag[]
   
   @@map("questions")
 }
@@ -239,4 +241,16 @@ model BandMap {
   band     Float
   
   @@map("band_maps")
+}
+
+model QuestionTag {
+  id         String   @id @default(cuid())
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  tag        String
+  createdAt  DateTime @default(now())
+  
+  @@index([tag])
+  @@index([questionId])
+  @@map("question_tags")
 }
