@@ -5,12 +5,12 @@ import { requireBranchAdmin, getScopedBranchId } from "@/lib/auth-utils";
 // GET /api/branch/students/:studentId/payments?year=YYYY - Get student's tuition payments for a year
 export async function GET(
   request: Request,
-  { params }: { params: { studentId: string } }
+  { params }: { params: Promise<{ studentId: string }> }
 ) {
   try {
     const user = await requireBranchAdmin();
     const branchId = getScopedBranchId(user);
-    const { studentId } = params;
+    const { studentId } = await params;
     const { searchParams } = new URL(request.url);
     const year = parseInt(searchParams.get("year") || new Date().getFullYear().toString());
 

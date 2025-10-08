@@ -4,19 +4,19 @@ import { requireBranchAdmin, getScopedBranchId } from "@/lib/auth-utils";
 import { z } from "zod";
 
 const updateProfileSchema = z.object({
-  firstEnrollAt: z.string().optional(),
-  monthlyFee: z.number().optional(),
+  firstEnrollAt: z.string().nullable().optional(),
+  monthlyFee: z.number().nullable().optional(),
 });
 
 // PATCH /api/branch/students/:studentId/profile - Update student profile
 export async function PATCH(
   request: Request,
-  { params }: { params: { studentId: string } }
+  { params }: { params: Promise<{ studentId: string }> }
 ) {
   try {
     const user = await requireBranchAdmin();
     const branchId = getScopedBranchId(user);
-    const { studentId } = params;
+    const { studentId } = await params;
 
     const body = await request.json();
     const validatedData = updateProfileSchema.parse(body);

@@ -87,13 +87,14 @@ export default function PaymentModal({ student, teachers, onClose, onUpdate }: P
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           firstEnrollAt: profileForm.firstEnrollAt || null,
-          monthlyFee: profileForm.monthlyFee || null,
+          monthlyFee: profileForm.monthlyFee ? parseFloat(profileForm.monthlyFee.toString()) : null,
         }),
       });
 
       if (!profileRes.ok) {
         const error = await profileRes.json();
-        toast.error(error.error || "Failed to update profile");
+        console.error("Profile update error:", error);
+        toast.error(error.error || error.details || "Failed to update profile");
         return;
       }
 

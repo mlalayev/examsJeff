@@ -14,12 +14,12 @@ const markPaymentSchema = z.object({
 // POST /api/branch/students/:studentId/payments/mark - Mark payment as paid/unpaid
 export async function POST(
   request: Request,
-  { params }: { params: { studentId: string } }
+  { params }: { params: Promise<{ studentId: string }> }
 ) {
   try {
     const user = await requireBranchAdmin();
     const branchId = getScopedBranchId(user);
-    const { studentId } = params;
+    const { studentId } = await params;
 
     const body = await request.json();
     const validatedData = markPaymentSchema.parse(body);

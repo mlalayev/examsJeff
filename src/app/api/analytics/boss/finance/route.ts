@@ -139,6 +139,68 @@ export async function GET(request: Request) {
       .filter(t => t.kind === "EXPENSE")
       .reduce((sum, t) => sum + Number(t.amount), 0);
 
+    // Get tuition payment statistics
+    const totalPaidPayments = await prisma.tuitionPayment.count({
+      where: { status: "PAID" },
+    });
+    
+    const totalUnpaidPayments = await prisma.tuitionPayment.count({
+      where: { status: "UNPAID" },
+    });
+
+    const totalPaidAmount = await prisma.tuitionPayment.aggregate({
+      where: { status: "PAID" },
+      _sum: { amount: true },
+    });
+
+    // This month's tuition stats
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+
+    const thisMonthPaidCount = await prisma.tuitionPayment.count({
+      where: {
+        year: currentYear,
+        month: currentMonth,
+        status: "PAID",
+      },
+    });
+
+    const thisMonthTotalStudents = await prisma.user.count({
+      where: { role: "STUDENT" },
+    });
+
+    const thisMonthPaidAmount = await prisma.tuitionPayment.aggregate({
+      where: {
+        year: currentYear,
+        month: currentMonth,
+        status: "PAID",
+      },
+      _sum: { amount: true },
+    });
+
+    const thisMonthUnpaidCount = thisMonthTotalStudents - thisMonthPaidCount;
+
+    // Last month's stats for comparison (reuse lastMonthISO from above)
+    const lastMonthYear = lastMonthDate.getFullYear();
+    const lastMonthNum = lastMonthDate.getMonth() + 1;
+
+    const lastMonthPaidCount = await prisma.tuitionPayment.count({
+      where: {
+        year: lastMonthYear,
+        month: lastMonthNum,
+        status: "PAID",
+      },
+    });
+
+    const lastMonthPaidAmount = await prisma.tuitionPayment.aggregate({
+      where: {
+        year: lastMonthYear,
+        month: lastMonthNum,
+        status: "PAID",
+      },
+      _sum: { amount: true },
+    });
+
     return NextResponse.json({
       dateRange: { from: from.toISOString(), to: to.toISOString() },
       summary: {
@@ -149,6 +211,34 @@ export async function GET(request: Request) {
       byBranch,
       byMonth,
       thisMonthVsLast,
+      tuitionPayments: {
+        overall: {
+          totalPaid: totalPaidPayments,
+          totalUnpaid: totalUnpaidPayments,
+          totalPaidAmount: Number(totalPaidAmount._sum.amount || 0),
+        },
+        thisMonth: {
+          year: currentYear,
+          month: currentMonth,
+          paidCount: thisMonthPaidCount,
+          unpaidCount: thisMonthUnpaidCount,
+          totalStudents: thisMonthTotalStudents,
+          paidAmount: Number(thisMonthPaidAmount._sum.amount || 0),
+          paymentRate: thisMonthTotalStudents > 0 
+            ? ((thisMonthPaidCount / thisMonthTotalStudents) * 100).toFixed(1)
+            : "0.0",
+        },
+        lastMonth: {
+          year: lastMonthYear,
+          month: lastMonthNum,
+          paidCount: lastMonthPaidCount,
+          paidAmount: Number(lastMonthPaidAmount._sum.amount || 0),
+        },
+        delta: {
+          countDelta: thisMonthPaidCount - lastMonthPaidCount,
+          amountDelta: Number(thisMonthPaidAmount._sum.amount || 0) - Number(lastMonthPaidAmount._sum.amount || 0),
+        },
+      },
     });
 
   } catch (error) {

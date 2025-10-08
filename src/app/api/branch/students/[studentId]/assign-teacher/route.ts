@@ -10,12 +10,12 @@ const assignTeacherSchema = z.object({
 // PATCH /api/branch/students/:studentId/assign-teacher - Assign teacher to student
 export async function PATCH(
   request: Request,
-  { params }: { params: { studentId: string } }
+  { params }: { params: Promise<{ studentId: string }> }
 ) {
   try {
     const user = await requireBranchAdmin();
     const branchId = getScopedBranchId(user);
-    const { studentId } = params;
+    const { studentId } = await params;
 
     const body = await request.json();
     const validatedData = assignTeacherSchema.parse(body);

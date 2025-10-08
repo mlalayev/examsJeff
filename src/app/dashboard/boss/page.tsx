@@ -8,12 +8,18 @@ interface KPI {
   classes: number;
   bookings: number;
   attempts: number;
+  students: number;
+  paidPayments: number;
+  unpaidPayments: number;
+  thisMonthPaid: number;
+  thisMonthTotal: number;
 }
 
 export default function BossDashboardPage() {
   const [kpis, setKpis] = useState<KPI | null>(null);
   const [recentBookings, setRecentBookings] = useState<any[]>([]);
   const [recentUsers, setRecentUsers] = useState<any[]>([]);
+  const [recentPayments, setRecentPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -24,6 +30,7 @@ export default function BossDashboardPage() {
         setKpis(data.kpis);
         setRecentBookings(data.recentBookings || []);
         setRecentUsers(data.recentUsers || []);
+        setRecentPayments(data.recentPayments || []);
       } finally {
         setLoading(false);
       }
@@ -43,16 +50,42 @@ export default function BossDashboardPage() {
       </div>
 
       {kpis && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-          <KpiCard title="Branches" value={kpis.branches} />
-          <KpiCard title="Users" value={kpis.users} />
-          <KpiCard title="Classes" value={kpis.classes} />
-          <KpiCard title="Bookings" value={kpis.bookings} />
-          <KpiCard title="Attempts" value={kpis.attempts} />
-        </div>
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+            <KpiCard title="Branches" value={kpis.branches} />
+            <KpiCard title="Total Users" value={kpis.users} />
+            <KpiCard title="Students" value={kpis.students} />
+            <KpiCard title="Classes" value={kpis.classes} />
+            <KpiCard title="Attempts" value={kpis.attempts} />
+          </div>
+
+          {/* Payment Stats */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <KpiCard 
+              title="Paid Payments" 
+              value={kpis.paidPayments} 
+              color="green"
+            />
+            <KpiCard 
+              title="Unpaid Payments" 
+              value={kpis.unpaidPayments} 
+              color="red"
+            />
+            <KpiCard 
+              title={`This Month Paid`}
+              value={kpis.thisMonthPaid} 
+              color="blue"
+            />
+            <KpiCard 
+              title="This Month Total" 
+              value={kpis.thisMonthTotal} 
+              color="gray"
+            />
+          </div>
+        </>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         <div>
           <h2 className="text-lg font-semibold mb-3">Recent Bookings</h2>
           <div className="overflow-x-auto border rounded-lg">
@@ -105,15 +138,83 @@ export default function BossDashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Recent Payments */}
+      <div className="mb-8">
+        <h2 className="text-lg font-semibold mb-3">Recent Payments</h2>
+        <div className="overflow-x-auto border rounded-lg bg-white">
+          <table className="min-w-full text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="text-left px-3 py-2">Paid At</th>
+                <th className="text-left px-3 py-2">Student</th>
+                <th className="text-left px-3 py-2">Branch</th>
+                <th className="text-left px-3 py-2">Year/Month</th>
+                <th className="text-left px-3 py-2">Amount</th>
+                <th className="text-left px-3 py-2">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recentPayments.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-3 py-6 text-center text-gray-500">
+                    No payments recorded yet
+                  </td>
+                </tr>
+              ) : (
+                recentPayments.map((p) => (
+                  <tr key={p.id} className="border-t">
+                    <td className="px-3 py-2">
+                      {p.paidAt ? new Date(p.paidAt).toLocaleDateString() : "—"}
+                    </td>
+                    <td className="px-3 py-2">{p.student?.name || p.student?.email}</td>
+                    <td className="px-3 py-2">{p.branch?.name || "—"}</td>
+                    <td className="px-3 py-2">
+                      {p.year}/{p.month.toString().padStart(2, '0')}
+                    </td>
+                    <td className="px-3 py-2">{parseFloat(p.amount).toFixed(2)} AZN</td>
+                    <td className="px-3 py-2">
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        p.status === "PAID" 
+                          ? "bg-green-100 text-green-800" 
+                          : "bg-gray-100 text-gray-800"
+                      }`}>
+                        {p.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }
 
-function KpiCard({ title, value }: { title: string; value: number }) {
+function KpiCard({ title, value, color }: { title: string; value: number; color?: string }) {
+  const colorClasses: Record<string, string> = {
+    green: "border-green-200 bg-green-50",
+    red: "border-red-200 bg-red-50",
+    blue: "border-blue-200 bg-blue-50",
+    gray: "border-gray-200 bg-gray-50",
+  };
+
+  const textColorClasses: Record<string, string> = {
+    green: "text-green-700",
+    red: "text-red-700",
+    blue: "text-blue-700",
+    gray: "text-gray-700",
+  };
+
+  const bgClass = color ? colorClasses[color] : "border-gray-200 bg-white";
+  const textClass = color ? textColorClasses[color] : "text-gray-900";
+
   return (
-    <div className="p-4 border rounded-lg">
-      <div className="text-sm text-gray-500">{title}</div>
-      <div className="text-2xl font-semibold">{value}</div>
+    <div className={`p-4 border rounded-lg ${bgClass}`}>
+      <div className="text-sm text-gray-600">{title}</div>
+      <div className={`text-2xl font-semibold ${textClass}`}>{value}</div>
     </div>
   );
 }
