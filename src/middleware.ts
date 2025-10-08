@@ -37,6 +37,20 @@ export default withAuth(
     }
   }
 
+  // Boss dashboard routes (BOSS only)
+  if (path.startsWith("/dashboard/boss")) {
+    if (token?.role !== "BOSS") {
+      return NextResponse.redirect(new URL("/auth/login?error=unauthorized", req.url));
+    }
+  }
+
+  // Branch Admin dashboard routes (BRANCH_ADMIN only)
+  if (path.startsWith("/dashboard/branch-admin")) {
+    if (token?.role !== "BRANCH_ADMIN") {
+      return NextResponse.redirect(new URL("/auth/login?error=unauthorized", req.url));
+    }
+  }
+
     return NextResponse.next();
   },
   {
@@ -51,6 +65,9 @@ export const config = {
     "/dashboard/student/:path*",
     "/dashboard/teacher/:path*",
     "/dashboard/admin/:path*",
+    "/dashboard/boss/:path*",
+    "/dashboard/branch-admin/:path*",
+    "/pending",
   ],
 };
 

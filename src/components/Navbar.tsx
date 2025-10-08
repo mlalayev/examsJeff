@@ -46,6 +46,8 @@ export default function Navbar() {
     if (role === "STUDENT") return "/dashboard/student";
     if (role === "TEACHER") return "/dashboard/teacher";
     if (role === "ADMIN") return "/dashboard/admin";
+    if (role === "BOSS") return "/dashboard/boss";
+    if (role === "BRANCH_ADMIN") return "/dashboard/branch-admin";
     return null;
   };
 
@@ -141,6 +143,11 @@ export default function Navbar() {
               
               {(session?.user as any)?.approved === false && ((session?.user as any)?.role === 'STUDENT' || (session?.user as any)?.role === 'TEACHER') ? (
                 <Link href="/pending" className="ml-4 text-sm text-amber-600">Pending Approval</Link>
+              ) : null}
+              {(session?.user as any)?.role === 'BRANCH_ADMIN' && (session?.user as any)?.branchName ? (
+                <span className="ml-4 text-sm text-blue-600 font-medium">
+                  Managing Branch: {(session?.user as any)?.branchName}
+                </span>
               ) : null}
               
               <button

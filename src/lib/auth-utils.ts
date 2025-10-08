@@ -48,7 +48,7 @@ export async function requireAdmin() {
   const user = await requireAuth();
   const role = (user as any).role;
   
-  if (role !== "ADMIN") {
+  if (role !== "ADMIN" && role !== "BOSS") {
     throw new Error("Forbidden: Admin access required");
   }
   

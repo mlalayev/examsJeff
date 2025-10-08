@@ -32,6 +32,24 @@ export async function POST(request: Request) {
       );
     }
 
+    // Resolve branch (ensure FK exists; support fallback tokens)
+    let branchId = validatedData.branchId;
+    let branch = await prisma.branch.findUnique({ where: { id: branchId } });
+    if (!branch) {
+      // map known fallback tokens to names
+      const fallbackMap: Record<string, string> = {
+        "fallback-28may": "28 May",
+        "fallback-ahmadli": "Əhmədli",
+      };
+      const maybeName = fallbackMap[branchId] ?? branchId;
+      let byName = await prisma.branch.findFirst({ where: { name: maybeName } });
+      if (!byName) {
+        // create branch on the fly for known names
+        byName = await prisma.branch.create({ data: { name: maybeName } });
+      }
+      branchId = byName.id;
+    }
+
     // Hash password
     const passwordHash = await bcrypt.hash(validatedData.password, 10);
 
@@ -43,7 +61,7 @@ export async function POST(request: Request) {
         passwordHash,
         role: validatedData.role,
         approved: false,
-        branchId: validatedData.branchId,
+        branchId,
       },
       select: {
         id: true,

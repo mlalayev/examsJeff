@@ -17,132 +17,76 @@ export async function GET() {
     }
     
     const now = new Date();
-    
-    // Get upcoming bookings (future exams)
-    const upcomingBookings = await prisma.booking.findMany({
-      where: {
-        studentId: userId,
-        startAt: {
-          gte: now
+
+    const [upcomingBookings, recentAttempts, attemptsLast30Days, totalAttempts, avgBand] = await Promise.all([
+      // Upcoming bookings
+      prisma.booking.findMany({
+        where: {
+          studentId: userId,
+          startAt: { gte: now },
+          status: { in: ["CONFIRMED", "PENDING"] },
         },
-        status: {
-          in: ["CONFIRMED", "PENDING"]
-        }
-      },
-      include: {
-        exam: {
-          select: {
-            id: true,
-            title: true,
-            examType: true,
-          }
+        select: {
+          id: true,
+          startAt: true,
+          sections: true,
+          status: true,
+          exam: { select: { id: true, title: true, examType: true } },
+          teacher: { select: { id: true, name: true, email: true } },
+          attempt: { select: { id: true, status: true } },
         },
-        teacher: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          }
+        orderBy: { startAt: "asc" },
+        take: 5,
+      }),
+
+      // Recent attempts
+      prisma.attempt.findMany({
+        where: {
+          booking: { studentId: userId },
+          status: "SUBMITTED",
         },
-        attempt: {
-          select: {
-            id: true,
-            status: true,
-          }
-        }
-      },
-      orderBy: {
-        startAt: "asc"
-      },
-      take: 5
-    });
-    
-    // Get recent attempts with results
-    const recentAttempts = await prisma.attempt.findMany({
-      where: {
-        booking: {
-          studentId: userId
+        select: {
+          id: true,
+          bandOverall: true,
+          submittedAt: true,
+          booking: { select: { exam: { select: { id: true, title: true, examType: true } } } },
+          sections: { select: { type: true, bandScore: true, rawScore: true } },
         },
-        status: "SUBMITTED"
-      },
-      include: {
-        booking: {
-          include: {
-            exam: {
-              select: {
-                id: true,
-                title: true,
-                examType: true,
-              }
-            }
-          }
+        orderBy: { submittedAt: "desc" },
+        take: 5,
+      }),
+
+      // Attempts for streak in last 30 days
+      prisma.attempt.findMany({
+        where: {
+          booking: { studentId: userId },
+          status: "SUBMITTED",
+          submittedAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
         },
-        sections: {
-          select: {
-            type: true,
-            bandScore: true,
-            rawScore: true,
-          }
-        }
-      },
-      orderBy: {
-        submittedAt: "desc"
-      },
-      take: 5
-    });
-    
-    // Calculate streak (optional - consecutive days with attempts)
-    const attemptsLast30Days = await prisma.attempt.findMany({
-      where: {
-        booking: {
-          studentId: userId
+        select: { submittedAt: true },
+        orderBy: { submittedAt: "desc" },
+      }),
+
+      prisma.attempt.count({
+        where: { booking: { studentId: userId }, status: "SUBMITTED" },
+      }),
+
+      prisma.attempt.aggregate({
+        where: {
+          booking: { studentId: userId },
+          status: "SUBMITTED",
+          bandOverall: { not: null },
         },
-        status: "SUBMITTED",
-        submittedAt: {
-          gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-        }
-      },
-      select: {
-        submittedAt: true
-      },
-      orderBy: {
-        submittedAt: "desc"
-      }
-    });
-    
-    // Simple streak calculation (days with at least one attempt)
+        _avg: { bandOverall: true },
+      }),
+    ]);
+
     const uniqueDays = new Set(
       attemptsLast30Days
         .filter(a => a.submittedAt)
         .map(a => new Date(a.submittedAt!).toDateString())
     );
-    
     const streak = uniqueDays.size;
-    
-    // Get total stats
-    const totalAttempts = await prisma.attempt.count({
-      where: {
-        booking: {
-          studentId: userId
-        },
-        status: "SUBMITTED"
-      }
-    });
-    
-    const avgBand = await prisma.attempt.aggregate({
-      where: {
-        booking: {
-          studentId: userId
-        },
-        status: "SUBMITTED",
-        bandOverall: {
-          not: null
-        }
-      },
-      _avg: {
-        bandOverall: true
-      }
-    });
     
     return NextResponse.json({
       upcomingBookings: upcomingBookings.map(b => ({
