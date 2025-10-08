@@ -66,6 +66,22 @@ export default function BossFinancePage() {
     }
   };
 
+  const clearDemoData = async () => {
+    if (!confirm("Clear all demo finance data? This will only delete seeded transactions, not actual data.")) return;
+    
+    try {
+      const res = await fetch(`/api/admin/finance/clear`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      alert(`Success! Deleted ${data.deletedCount || 0} demo transactions.`);
+      loadFinanceData();
+    } catch (error) {
+      console.error("Failed to clear demo data:", error);
+      alert("Failed to clear demo data");
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       <div className="mb-8 flex justify-between items-center">
@@ -73,12 +89,20 @@ export default function BossFinancePage() {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Finance Analytics</h1>
           <p className="text-gray-600">Multi-branch income, expenses, and net revenue tracking</p>
         </div>
-        <button
-          onClick={() => seedDemoData(6)}
-          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
-        >
-          Seed Demo Data (6 months)
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => seedDemoData(6)}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+          >
+            Seed Demo Data (6 months)
+          </button>
+          <button
+            onClick={clearDemoData}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+          >
+            Clear Demo Data
+          </button>
+        </div>
       </div>
 
       {/* Date Range Filter */}
@@ -298,12 +322,20 @@ export default function BossFinancePage() {
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">No finance data found</h3>
           <p className="text-gray-500 mb-4">No transactions found for the selected period</p>
-          <button
-            onClick={() => seedDemoData(6)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-          >
-            Generate Demo Data
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={() => seedDemoData(6)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+            >
+              Generate Demo Data
+            </button>
+            <button
+              onClick={clearDemoData}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+            >
+              Clear Demo Data
+            </button>
+          </div>
         </div>
       )}
     </div>

@@ -51,7 +51,7 @@ export default function PaymentModal({ student, teachers, onClose, onUpdate }: P
     }
   };
 
-  const togglePaymentStatus = async (month: number, currentStatus: string, amount: number) => {
+  const togglePaymentStatus = async (month: number, currentStatus: string, amount: any) => {
     try {
       const res = await fetch(`/api/branch/students/${student.id}/payments/mark`, {
         method: "POST",
@@ -60,7 +60,7 @@ export default function PaymentModal({ student, teachers, onClose, onUpdate }: P
           year: paymentYear,
           month,
           paid: currentStatus !== "PAID",
-          amount,
+          amount: parseFloat(amount) || 0,
         }),
       });
 
@@ -69,7 +69,8 @@ export default function PaymentModal({ student, teachers, onClose, onUpdate }: P
         await loadTuitionPayments(paymentYear);
       } else {
         const error = await res.json();
-        toast.error(error.error || "Failed to update payment");
+        console.error("Payment mark error:", error);
+        toast.error(error.error || error.details || "Failed to update payment");
       }
     } catch (error) {
       console.error("Failed to toggle payment:", error);
