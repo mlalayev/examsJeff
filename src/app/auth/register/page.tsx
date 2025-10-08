@@ -12,9 +12,21 @@ export default function RegisterPage() {
     email: "",
     password: "",
     role: "STUDENT" as "STUDENT" | "TEACHER",
+    branchId: "",
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [branches, setBranches] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/branches");
+        const data = await res.json();
+        setBranches(data.branches || []);
+      } catch {}
+    })();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,6 +118,27 @@ export default function RegisterPage() {
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
               Password
             </label>
+          <div>
+            <label htmlFor="branch" className="block text-sm font-medium text-gray-700 mb-2">
+              Branch
+            </label>
+            <select
+              id="branch"
+              required
+              value={formData.branchId}
+              onChange={(e) => setFormData({ ...formData, branchId: e.target.value })}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="" disabled>
+                Select branch
+              </option>
+              {branches.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </div>
             <input
               id="password"
               type="password"

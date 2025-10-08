@@ -41,7 +41,9 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           name: user.name,
           role: user.role,
-        };
+          approved: (user as any).approved ?? false,
+          branchId: (user as any).branchId ?? null,
+        } as any;
       }
     })
   ],
@@ -58,6 +60,8 @@ export const authOptions: NextAuthOptions = {
         token.email = user.email;
         token.name = user.name;
         token.role = (user as any).role;
+        (token as any).approved = (user as any).approved ?? false;
+        (token as any).branchId = (user as any).branchId ?? null;
       }
       return token;
     },
@@ -67,6 +71,8 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).email = token.email;
         (session.user as any).name = token.name;
         (session.user as any).role = token.role;
+        (session.user as any).approved = (token as any).approved ?? false;
+        (session.user as any).branchId = (token as any).branchId ?? null;
       }
       return session;
     }

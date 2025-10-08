@@ -6,26 +6,36 @@ export default withAuth(
     const token = req.nextauth.token;
     const path = req.nextUrl.pathname;
 
-    // Student dashboard routes
-    if (path.startsWith("/dashboard/student")) {
-      if (token?.role !== "STUDENT" && token?.role !== "ADMIN") {
-        return NextResponse.redirect(new URL("/auth/login?error=unauthorized", req.url));
-      }
+  // Student dashboard routes (must be approved unless elevated roles)
+  if (path.startsWith("/dashboard/student")) {
+    const approved = (token as any)?.approved ?? false;
+    if (token?.role !== "STUDENT" && token?.role !== "ADMIN" && token?.role !== "BOSS" && token?.role !== "BRANCH_ADMIN") {
+      return NextResponse.redirect(new URL("/auth/login?error=unauthorized", req.url));
     }
+    if (token?.role === "STUDENT" && !approved) {
+      return NextResponse.redirect(new URL("/pending-approval", req.url));
+    }
+  }
 
-    // Teacher dashboard routes
-    if (path.startsWith("/dashboard/teacher")) {
-      if (token?.role !== "TEACHER" && token?.role !== "ADMIN") {
-        return NextResponse.redirect(new URL("/auth/login?error=unauthorized", req.url));
-      }
+  // Teacher dashboard routes (must be approved unless elevated roles)
+  if (path.startsWith("/dashboard/teacher")) {
+    const approved = (token as any)?.approved ?? false;
+    const allowed = ["TEACHER", "ADMIN", "BOSS", "BRANCH_ADMIN"]; 
+    if (!token?.role || !allowed.includes(token.role as any)) {
+      return NextResponse.redirect(new URL("/auth/login?error=unauthorized", req.url));
     }
+    if (token?.role === "TEACHER" && !approved) {
+      return NextResponse.redirect(new URL("/pending-approval", req.url));
+    }
+  }
 
-    // Admin dashboard routes
-    if (path.startsWith("/dashboard/admin")) {
-      if (token?.role !== "ADMIN") {
-        return NextResponse.redirect(new URL("/auth/login?error=unauthorized", req.url));
-      }
+  // Admin dashboard routes (BOSS or ADMIN)
+  if (path.startsWith("/dashboard/admin")) {
+    const allowed = ["ADMIN", "BOSS"];
+    if (!token?.role || !allowed.includes(token.role as any)) {
+      return NextResponse.redirect(new URL("/auth/login?error=unauthorized", req.url));
     }
+  }
 
     return NextResponse.next();
   },
@@ -37,6 +47,10 @@ export default withAuth(
 );
 
 export const config = {
-  matcher: ["/dashboard/student/:path*", "/dashboard/teacher/:path*", "/dashboard/admin/:path*"],
+  matcher: [
+    "/dashboard/student/:path*",
+    "/dashboard/teacher/:path*",
+    "/dashboard/admin/:path*",
+  ],
 };
 

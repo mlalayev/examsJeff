@@ -17,7 +17,7 @@ export async function requireAuth() {
 export async function requireTeacher() {
   const user = await requireAuth();
   const role = (user as any).role;
-  
+  // BOSS and BRANCH_ADMIN have teacher-level privileges
   if (role !== "TEACHER" && role !== "ADMIN") {
     throw new Error("Forbidden: Teacher access required");
   }
@@ -28,7 +28,7 @@ export async function requireTeacher() {
 export async function requireStudent() {
   const user = await requireAuth();
   const role = (user as any).role;
-  
+  // BOSS and BRANCH_ADMIN have student-level privileges (read-only contexts typically)
   if (role !== "STUDENT" && role !== "ADMIN") {
     throw new Error("Forbidden: Student access required");
   }
@@ -45,5 +45,31 @@ export async function requireAdmin() {
   }
   
   return user;
+}
+
+export async function requireBoss() {
+  const user = await requireAuth();
+  const role = (user as any).role;
+  if (role !== "BOSS") {
+    throw new Error("Forbidden: Boss access required");
+  }
+  return user;
+}
+
+export async function requireBranchAdmin() {
+  const user = await requireAuth();
+  const role = (user as any).role;
+  if (role !== "BRANCH_ADMIN") {
+    throw new Error("Forbidden: Branch admin access required");
+  }
+  return user;
+}
+
+export function assertSameBranchOrBoss(current: any, targetBranchId: string | null | undefined) {
+  const role = (current as any).role;
+  const currentBranchId = (current as any).branchId ?? null;
+  if (role === "BOSS") return;
+  if (role === "BRANCH_ADMIN" && currentBranchId && targetBranchId && currentBranchId === targetBranchId) return;
+  throw new Error("Forbidden: Cross-branch access");
 }
 

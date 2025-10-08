@@ -5,11 +5,13 @@ import { requireAdmin } from "@/lib/auth-utils";
 // GET /api/admin/users?role=...&search=...
 export async function GET(request: Request) {
   try {
-    await requireAdmin();
+    const current = await requireAdmin();
     
     const { searchParams } = new URL(request.url);
     const roleFilter = searchParams.get("role");
     const search = searchParams.get("search");
+    const currentRole = (current as any).role as string;
+    const currentBranchId = (current as any).branchId as string | null | undefined;
     
     const users = await prisma.user.findMany({
       where: {
@@ -19,13 +21,19 @@ export async function GET(request: Request) {
             { name: { contains: search, mode: "insensitive" } },
             { email: { contains: search, mode: "insensitive" } }
           ]
-        })
+        }),
+        // If admin is BRANCH_ADMIN, scope to same branch only
+        ...(currentRole === "BRANCH_ADMIN" && currentBranchId
+          ? { branchId: currentBranchId }
+          : {})
       },
       select: {
         id: true,
         name: true,
         email: true,
         role: true,
+        approved: true,
+        branchId: true,
         createdAt: true,
         _count: {
           select: {

@@ -4,7 +4,7 @@ import { requireAdmin } from "@/lib/auth-utils";
 import { z } from "zod";
 
 const roleSchema = z.object({
-  role: z.enum(["STUDENT", "TEACHER", "ADMIN"])
+  role: z.enum(["STUDENT", "TEACHER", "ADMIN", "BOSS", "BRANCH_ADMIN"])
 });
 
 // PATCH /api/admin/users/[id]/role
@@ -13,10 +13,15 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    await requireAdmin();
+    const current = await requireAdmin();
     const body = await request.json();
     
     const { role } = roleSchema.parse(body);
+    // Prevent non-BOSS from assigning BOSS
+    const currentRole = (current as any).role as string;
+    if (role === "BOSS" && currentRole !== "BOSS") {
+      return NextResponse.json({ error: "Only BOSS can assign BOSS" }, { status: 403 });
+    }
     
     const user = await prisma.user.update({
       where: { id: params.id },

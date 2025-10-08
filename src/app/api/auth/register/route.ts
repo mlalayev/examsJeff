@@ -10,6 +10,7 @@ const registerSchema = z.object({
   role: z.enum(["STUDENT", "TEACHER"], {
     errorMap: () => ({ message: "Role must be STUDENT or TEACHER" })
   }),
+  branchId: z.string().min(1, "Branch is required"),
 });
 
 export async function POST(request: Request) {
@@ -41,12 +42,16 @@ export async function POST(request: Request) {
         email: validatedData.email,
         passwordHash,
         role: validatedData.role,
+        approved: false,
+        branchId: validatedData.branchId,
       },
       select: {
         id: true,
         name: true,
         email: true,
         role: true,
+        approved: true,
+        branchId: true,
         createdAt: true,
       }
     });

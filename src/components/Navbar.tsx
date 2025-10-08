@@ -139,6 +139,10 @@ export default function Navbar() {
                 </Link>
               )}
               
+              {(session?.user as any)?.approved === false && ((session?.user as any)?.role === 'STUDENT' || (session?.user as any)?.role === 'TEACHER') ? (
+                <Link href="/pending-approval" className="ml-4 text-sm text-amber-600">Pending Approval</Link>
+              ) : null}
+              
               <button
                 onClick={() => signOut({ callbackUrl: "/" })}
                 className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-red-600 transition"
