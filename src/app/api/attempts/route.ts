@@ -4,76 +4,71 @@ import { requireAuth } from "@/lib/auth-utils";
 import { z } from "zod";
 
 const createAttemptSchema = z.object({
-  bookingId: z.string().min(1, "Booking ID is required"),
+  assignmentId: z.string().min(1, "Assignment ID is required"),
 });
 
 // POST /api/attempts - Create attempt from booking
 export async function POST(request: Request) {
   try {
     const user = await requireAuth();
+    if ((user as any).role === "STUDENT" && !(user as any).approved) {
+      return NextResponse.json({ error: "Approval required" }, { status: 403 });
+    }
     const body = await request.json();
     
-    const validatedData = createAttemptSchema.parse(body);
-    
-    // Verify booking exists and belongs to this user
-    const booking = await prisma.booking.findUnique({
-      where: { id: validatedData.bookingId },
+    const { assignmentId } = createAttemptSchema.parse(body);
+
+    // Verify assignment exists and belongs to this user
+    const assignment = await prisma.assignment.findUnique({
+      where: { id: assignmentId },
       include: {
-        exam: {
-          include: {
-            sections: true
-          }
-        },
-        attempt: true
+        unitExam: { include: { exam: { include: { sections: true } } } },
+        attempt: true,
       }
     });
-    
-    if (!booking) {
-      return NextResponse.json(
-        { error: "Booking not found" },
-        { status: 404 }
-      );
+
+    if (!assignment) {
+      return NextResponse.json({ error: "Assignment not found" }, { status: 404 });
     }
-    
-    if (booking.studentId !== (user as any).id) {
-      return NextResponse.json(
-        { error: "This booking does not belong to you" },
-        { status: 403 }
-      );
+
+    if (assignment.studentId !== (user as any).id) {
+      return NextResponse.json({ error: "Not your assignment" }, { status: 403 });
     }
-    
+
+    // Window check
+    const now = new Date();
+    if (assignment.startAt && assignment.startAt > now) {
+      return NextResponse.json({ error: "Assignment not started yet" }, { status: 403 });
+    }
+    if (assignment.dueAt && assignment.dueAt < now) {
+      return NextResponse.json({ error: "Assignment window has passed" }, { status: 403 });
+    }
+
     // Check if attempt already exists
-    if (booking.attempt) {
+    if (assignment.attempt) {
       return NextResponse.json(
-        { error: "Attempt already exists for this booking", attempt: booking.attempt },
+        { error: "Attempt already exists for this assignment", attempt: assignment.attempt },
         { status: 400 }
       );
     }
-    
-    // Create attempt with sections based on booking.sections
+
+    // Create attempt with sections based on UnitExam.exam.sections
     const attempt = await prisma.attempt.create({
       data: {
-        bookingId: booking.id,
+        assignmentId: assignment.id,
+        branchId: (user as any).branchId ?? null,
         status: "IN_PROGRESS",
         startedAt: new Date(),
         sections: {
-          create: booking.sections.map(sectionType => ({
-            type: sectionType,
+          create: assignment.unitExam.exam.sections.map(section => ({
+            type: section.type,
             status: "NOT_STARTED"
           }))
         }
       },
       include: {
         sections: true,
-        booking: {
-          include: {
-            exam: {
-              include: {
-                sections: true
-              }
-            }
-          }
-        }
+        assignment: true,
       }
     });
     
@@ -108,37 +103,28 @@ export async function POST(request: Request) {
 export async function GET(request: Request) {
   try {
     const user = await requireAuth();
+    if ((user as any).role === "STUDENT" && !(user as any).approved) {
+      return NextResponse.json({ error: "Approval required" }, { status: 403 });
+    }
     const { searchParams } = new URL(request.url);
-    const bookingId = searchParams.get("bookingId");
+    const assignmentId = searchParams.get("assignmentId");
     
-    if (!bookingId) {
+    if (!assignmentId) {
       return NextResponse.json(
-        { error: "bookingId query parameter is required" },
+        { error: "assignmentId query parameter is required" },
         { status: 400 }
       );
     }
     
     const attempt = await prisma.attempt.findUnique({
-      where: { bookingId },
+      where: { assignmentId },
       include: {
         sections: {
           orderBy: {
             type: "asc"
           }
         },
-        booking: {
-          include: {
-            exam: {
-              include: {
-                sections: {
-                  orderBy: {
-                    order: "asc"
-                  }
-                }
-              }
-            }
-          }
-        }
+        assignment: true,
       }
     });
     
@@ -150,7 +136,7 @@ export async function GET(request: Request) {
     }
     
     // Verify ownership
-    if (attempt.booking.studentId !== (user as any).id) {
+    if (attempt.assignment?.studentId !== (user as any).id) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 403 }

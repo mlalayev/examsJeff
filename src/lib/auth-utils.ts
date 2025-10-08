@@ -17,9 +17,13 @@ export async function requireAuth() {
 export async function requireTeacher() {
   const user = await requireAuth();
   const role = (user as any).role;
+  const approved = (user as any).approved ?? false;
   // BOSS and BRANCH_ADMIN have teacher-level privileges
-  if (role !== "TEACHER" && role !== "ADMIN") {
+  if (role !== "TEACHER" && role !== "ADMIN" && role !== "BOSS" && role !== "BRANCH_ADMIN") {
     throw new Error("Forbidden: Teacher access required");
+  }
+  if (role === "TEACHER" && !approved) {
+    throw new Error("Forbidden: Approval required");
   }
   
   return user;
@@ -28,9 +32,13 @@ export async function requireTeacher() {
 export async function requireStudent() {
   const user = await requireAuth();
   const role = (user as any).role;
+  const approved = (user as any).approved ?? false;
   // BOSS and BRANCH_ADMIN have student-level privileges (read-only contexts typically)
-  if (role !== "STUDENT" && role !== "ADMIN") {
+  if (role !== "STUDENT" && role !== "ADMIN" && role !== "BOSS" && role !== "BRANCH_ADMIN") {
     throw new Error("Forbidden: Student access required");
+  }
+  if (role === "STUDENT" && !approved) {
+    throw new Error("Forbidden: Approval required");
   }
   
   return user;

@@ -15,6 +15,9 @@ const createBookingSchema = z.object({
 export async function POST(request: Request) {
   try {
     const user = await requireTeacher();
+    if ((user as any).role === "TEACHER" && !(user as any).approved) {
+      return NextResponse.json({ error: "Approval required" }, { status: 403 });
+    }
     const body = await request.json();
     
     const validatedData = createBookingSchema.parse(body);
@@ -110,6 +113,7 @@ export async function POST(request: Request) {
         sections: validatedData.sections,
         startAt,
         status: validatedData.status,
+        branchId: (user as any).branchId ?? null,
       },
       include: {
         student: {
@@ -202,11 +206,12 @@ export async function GET(request: Request) {
           startAt: "asc"
         }
       });
-    } else if (role === "teacher" || userRole === "TEACHER") {
+    } else if (role === "teacher" || userRole === "TEACHER" || userRole === "BRANCH_ADMIN") {
       // Teacher sees bookings they created
       bookings = await prisma.booking.findMany({
         where: {
-          teacherId: userId,
+          ...(userRole === "TEACHER" ? { teacherId: userId } : {}),
+          ...(userRole === "BRANCH_ADMIN" ? { branchId: (user as any).branchId ?? undefined } : {}),
         },
         include: {
           student: {
@@ -255,6 +260,15 @@ export async function GET(request: Request) {
         orderBy: {
           startAt: "asc"
         }
+      });
+    } else if (userRole === "BOSS") {
+      bookings = await prisma.booking.findMany({
+        include: {
+          student: { select: { id: true, name: true, email: true } },
+          exam: { select: { id: true, title: true } },
+          teacher: { select: { id: true, name: true, email: true } }
+        },
+        orderBy: { startAt: "asc" }
       });
     } else {
       return NextResponse.json(

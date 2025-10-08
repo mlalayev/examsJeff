@@ -7,13 +7,16 @@ export async function GET() {
   try {
     const user = await requireTeacher();
     const teacherId = (user as any).id;
+    const branchId = (user as any).branchId ?? null;
+    const role = (user as any).role as string;
     
     const now = new Date();
     
     // Count classes
     const classesCount = await prisma.class.count({
       where: {
-        teacherId
+        teacherId,
+        ...(role === "BRANCH_ADMIN" ? { branchId: branchId ?? undefined } : {}),
       }
     });
     
@@ -21,7 +24,8 @@ export async function GET() {
     const studentsCount = await prisma.classStudent.count({
       where: {
         class: {
-          teacherId
+          teacherId,
+          ...(role === "BRANCH_ADMIN" ? { branchId: branchId ?? undefined } : {}),
         }
       }
     });
@@ -30,6 +34,7 @@ export async function GET() {
     const upcomingBookings = await prisma.booking.findMany({
       where: {
         teacherId,
+        ...(role === "BRANCH_ADMIN" ? { branchId: branchId ?? undefined } : {}),
         startAt: {
           gte: now
         }
@@ -72,7 +77,8 @@ export async function GET() {
         attempt: {
           status: "SUBMITTED",
           booking: {
-            teacherId
+            teacherId,
+            ...(role === "BRANCH_ADMIN" ? { branchId: branchId ?? undefined } : {}),
           }
         }
       }
@@ -88,7 +94,8 @@ export async function GET() {
         attempt: {
           status: "SUBMITTED",
           booking: {
-            teacherId
+            teacherId,
+            ...(role === "BRANCH_ADMIN" ? { branchId: branchId ?? undefined } : {}),
           }
         }
       },
@@ -133,7 +140,8 @@ export async function GET() {
         gradedById: teacherId,
         attempt: {
           booking: {
-            teacherId
+            teacherId,
+            ...(role === "BRANCH_ADMIN" ? { branchId: branchId ?? undefined } : {}),
           }
         }
       }
@@ -155,7 +163,8 @@ export async function GET() {
             not: null
           },
           booking: {
-            teacherId
+            teacherId,
+            ...(role === "BRANCH_ADMIN" ? { branchId: branchId ?? undefined } : {}),
           }
         }
       },

@@ -11,6 +11,9 @@ const createClassSchema = z.object({
 export async function POST(request: Request) {
   try {
     const user = await requireTeacher();
+    if ((user as any).role === "TEACHER" && !(user as any).approved) {
+      return NextResponse.json({ error: "Approval required" }, { status: 403 });
+    }
     const body = await request.json();
     
     const validatedData = createClassSchema.parse(body);
@@ -19,6 +22,7 @@ export async function POST(request: Request) {
       data: {
         name: validatedData.name,
         teacherId: (user as any).id,
+        branchId: (user as any).branchId ?? null,
       },
       include: {
         _count: {
@@ -61,10 +65,14 @@ export async function POST(request: Request) {
 export async function GET() {
   try {
     const user = await requireTeacher();
+    if ((user as any).role === "TEACHER" && !(user as any).approved) {
+      return NextResponse.json({ error: "Approval required" }, { status: 403 });
+    }
     
     const classes = await prisma.class.findMany({
       where: {
         teacherId: (user as any).id,
+        // Branch scoping implicitly applied by teacherId; if we later allow BRANCH_ADMIN listing, add branchId filter there
       },
       include: {
         _count: {

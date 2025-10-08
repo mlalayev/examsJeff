@@ -16,6 +16,7 @@ export async function GET(
       where: {
         id: classId,
         teacherId: (user as any).id,
+        branchId: (user as any).branchId ?? undefined,
       },
       include: {
         classStudents: {

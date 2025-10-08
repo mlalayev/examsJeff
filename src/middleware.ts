@@ -13,7 +13,7 @@ export default withAuth(
       return NextResponse.redirect(new URL("/auth/login?error=unauthorized", req.url));
     }
     if (token?.role === "STUDENT" && !approved) {
-      return NextResponse.redirect(new URL("/pending-approval", req.url));
+      return NextResponse.redirect(new URL("/pending", req.url));
     }
   }
 
@@ -25,7 +25,7 @@ export default withAuth(
       return NextResponse.redirect(new URL("/auth/login?error=unauthorized", req.url));
     }
     if (token?.role === "TEACHER" && !approved) {
-      return NextResponse.redirect(new URL("/pending-approval", req.url));
+      return NextResponse.redirect(new URL("/pending", req.url));
     }
   }
 

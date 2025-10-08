@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
@@ -118,6 +118,18 @@ export default function RegisterPage() {
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
               Password
             </label>
+            <input
+              id="password"
+              type="password"
+              required
+              value={formData.password}
+              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="••••••••"
+              minLength={6}
+            />
+          </div>
+
           <div>
             <label htmlFor="branch" className="block text-sm font-medium text-gray-700 mb-2">
               Branch
@@ -132,23 +144,19 @@ export default function RegisterPage() {
               <option value="" disabled>
                 Select branch
               </option>
-              {branches.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
+              {branches.length > 0 ? (
+                branches.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))
+              ) : (
+                <>
+                  <option value="fallback-28may">28 May</option>
+                  <option value="fallback-ahmadli">Əhmədli</option>
+                </>
+              )}
             </select>
-          </div>
-            <input
-              id="password"
-              type="password"
-              required
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="••••••••"
-              minLength={6}
-            />
           </div>
 
           <div>

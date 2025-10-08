@@ -53,6 +53,8 @@ model User {
   // Student relations
   classEnrollments ClassStudent[]
   bookingsAsStudent Booking[] @relation("StudentBookings")
+  assignmentsAsStudent Assignment[] @relation("AssignmentStudent")
+  assignmentsAsTeacher Assignment[] @relation("AssignmentTeacher")
   
   // Notifications
   notifications    Notification[]
@@ -66,6 +68,10 @@ model Branch {
   createdAt DateTime @default(now())
 
   users     User[]
+  classes   Class[]
+  bookings  Booking[]
+  attempts  Attempt[]
+  assignments Assignment[]
 
   @@map("branches")
 }
@@ -114,9 +120,12 @@ model Class {
   name      String
   teacherId String
   teacher   User     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  branchId  String?
+  branch    Branch?  @relation(fields: [branchId], references: [id], onDelete: Restrict)
   createdAt DateTime @default(now())
   
   classStudents ClassStudent[]
+  assignments  Assignment[]
   
   @@map("classes")
 }
@@ -135,8 +144,12 @@ model ClassStudent {
 
 model Attempt {
   id          String            @id @default(cuid())
-  bookingId   String            @unique
-  booking     Booking           @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  bookingId   String?   @unique
+  booking     Booking?          @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  assignmentId String?          @unique
+  assignment   Assignment?      @relation(fields: [assignmentId], references: [id], onDelete: SetNull)
+  branchId    String?
+  branch      Branch?           @relation(fields: [branchId], references: [id], onDelete: Restrict)
   status      String            @default("IN_PROGRESS")
   startedAt   DateTime?
   submittedAt DateTime?
@@ -178,6 +191,7 @@ model Exam {
   bookings    Booking[]
   sections    ExamSection[]
   questions   Question[]
+  unitExams   UnitExam[]
   
   @@map("exams")
 }
@@ -190,6 +204,8 @@ model Booking {
   teacher     User?         @relation("TeacherBookings", fields: [teacherId], references: [id], onDelete: SetNull)
   examId      String
   exam        Exam          @relation(fields: [examId], references: [id], onDelete: Cascade)
+  branchId    String?
+  branch      Branch?       @relation(fields: [branchId], references: [id], onDelete: Restrict)
   sections    SectionType[]
   startAt     DateTime
   status      String        @default("CONFIRMED")
@@ -268,4 +284,78 @@ model QuestionTag {
   @@index([tag])
   @@index([questionId])
   @@map("question_tags")
+}
+
+// General English catalog
+model Track {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  kind      String   @default("GENERAL_ENGLISH")
+  createdAt DateTime @default(now())
+
+  books     Book[]
+
+  @@map("tracks")
+}
+
+model Book {
+  id        String   @id @default(cuid())
+  title     String
+  trackId   String?
+  track     Track?   @relation(fields: [trackId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+
+  units     Unit[]
+
+  @@map("books")
+}
+
+model Unit {
+  id        String   @id @default(cuid())
+  bookId    String
+  book      Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  title     String
+  order     Int
+  createdAt DateTime @default(now())
+
+  unitExams UnitExam[]
+
+  @@map("units")
+}
+
+model UnitExam {
+  id        String   @id @default(cuid())
+  unitId    String
+  unit      Unit     @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  examId    String
+  exam      Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  assignments Assignment[]
+
+  @@map("unit_exams")
+}
+
+model Assignment {
+  id         String    @id @default(cuid())
+  unitExamId String
+  unitExam   UnitExam  @relation(fields: [unitExamId], references: [id], onDelete: Cascade)
+  studentId  String
+  student    User      @relation("AssignmentStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  teacherId  String?
+  teacher    User?     @relation("AssignmentTeacher", fields: [teacherId], references: [id], onDelete: SetNull)
+  classId    String?
+  class      Class?    @relation(fields: [classId], references: [id], onDelete: SetNull)
+  branchId   String?
+  branch     Branch?   @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  startAt    DateTime?
+  dueAt      DateTime?
+  status     String    @default("ASSIGNED")
+  createdAt  DateTime  @default(now())
+
+  attempt    Attempt?
+
+  @@index([studentId, startAt])
+  @@index([teacherId, startAt])
+  @@map("assignments")
 }
