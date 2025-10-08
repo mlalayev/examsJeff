@@ -39,6 +39,7 @@ export default function BossDashboardPage() {
       <div className="flex gap-3 mb-6">
         <a href="/dashboard/boss/branches" className="px-4 py-2 bg-blue-600 text-white rounded">Manage Branches</a>
         <a href="/dashboard/boss/users" className="px-4 py-2 bg-indigo-600 text-white rounded">Manage Users</a>
+        <a href="/dashboard/boss/finance" className="px-4 py-2 bg-emerald-600 text-white rounded">Finance Analytics</a>
       </div>
 
       {kpis && (

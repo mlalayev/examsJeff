@@ -45,7 +45,14 @@ export default function BranchAdminDashboardPage() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Branch Admin Dashboard</h1>
+        <div className="flex items-center gap-3 mb-2">
+          <h1 className="text-3xl font-bold text-gray-900">Branch Admin Dashboard</h1>
+          {overview?.branchName && (
+            <span className="bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full">
+              Managing: {overview.branchName}
+            </span>
+          )}
+        </div>
         <p className="text-gray-600">Manage your branch's students, teachers, and classes</p>
       </div>
 
@@ -154,23 +161,6 @@ export default function BranchAdminDashboardPage() {
               <div>
                 <h3 className="font-semibold text-gray-900">Pending Approvals</h3>
                 <p className="text-sm text-gray-600">Review and approve new users</p>
-              </div>
-            </div>
-          </Link>
-
-          <Link
-            href="/dashboard/branch-admin/revenue"
-            className="bg-emerald-50 hover:bg-emerald-100 p-6 rounded-lg border border-emerald-200 transition-colors"
-          >
-            <div className="flex items-center">
-              <div className="bg-emerald-500 text-white p-3 rounded-lg mr-4">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">Revenue Analytics</h3>
-                <p className="text-sm text-gray-600">Track income and expenses</p>
               </div>
             </div>
           </Link>

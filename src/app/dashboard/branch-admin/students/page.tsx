@@ -1,21 +1,27 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Toaster } from "react-hot-toast";
+import PaymentModal from "@/components/PaymentModal";
 
 export default function BranchAdminStudentsPage() {
   const [students, setStudents] = useState<any[]>([]);
   const [enrollments, setEnrollments] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
+  const [teachers, setTeachers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("students");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [showOverdue, setShowOverdue] = useState(false);
+  const [overdueYear, setOverdueYear] = useState(new Date().getFullYear());
+  const [overdueMonth, setOverdueMonth] = useState(new Date().getMonth() + 1);
   const [showEnrollmentModal, setShowEnrollmentModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [showStudentPaymentModal, setShowStudentPaymentModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
-  const [selectedStudentPayments, setSelectedStudentPayments] = useState<any[]>([]);
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+
 
   const [newEnrollment, setNewEnrollment] = useState({
     studentId: "",
@@ -44,19 +50,33 @@ export default function BranchAdminStudentsPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [studentsRes, enrollmentsRes, paymentsRes] = await Promise.all([
-        fetch("/api/branch-admin/students"),
+      // Build students query params
+      const params = new URLSearchParams();
+      if (searchTerm) params.append("search", searchTerm);
+      if (dateFrom) params.append("from", dateFrom);
+      if (dateTo) params.append("to", dateTo);
+      if (showOverdue) {
+        params.append("overdue", "true");
+        params.append("overdueYear", overdueYear.toString());
+        params.append("overdueMonth", overdueMonth.toString());
+      }
+
+      const [studentsRes, enrollmentsRes, paymentsRes, teachersRes] = await Promise.all([
+        fetch(`/api/branch/students?${params}`),
         fetch("/api/branch-admin/enrollments"),
         fetch("/api/branch-admin/payments"),
+        fetch("/api/branch/teachers"),
       ]);
       
       const studentsData = await studentsRes.json();
       const enrollmentsData = await enrollmentsRes.json();
       const paymentsData = await paymentsRes.json();
-      
+      const teachersData = await teachersRes.json();
+
       setStudents(studentsData.students || []);
       setEnrollments(enrollmentsData.enrollments || []);
       setPayments(paymentsData.payments || []);
+      setTeachers(teachersData.teachers || []);
     } catch (error) {
       console.error("Failed to load data:", error);
     } finally {
@@ -199,46 +219,9 @@ export default function BranchAdminStudentsPage() {
     setShowPaymentModal(true);
   };
 
-  const openStudentPaymentModal = async (student: any) => {
+  const openProfileModal = (student: any) => {
     setSelectedStudent(student);
-    try {
-      const res = await fetch(`/api/branch-admin/student-payments?studentId=${student.id}`);
-      const data = await res.json();
-      setSelectedStudentPayments(data.payments || []);
-      setShowStudentPaymentModal(true);
-    } catch (error) {
-      console.error("Failed to load student payments:", error);
-      alert("Failed to load student payments");
-    }
-  };
-
-  const markPaymentAsPaid = async (paymentId: string, year: number, month: number) => {
-    try {
-      const res = await fetch("/api/branch-admin/payments", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          paymentId: paymentId,
-          status: "PAID",
-          paymentMethod: "CASH", // Default method
-          notes: `Paid for ${year}-${month.toString().padStart(2, '0')}`,
-        }),
-      });
-      
-      if (res.ok) {
-        await loadData(); // Reload all data
-        // Reload student payments
-        const studentRes = await fetch(`/api/branch-admin/student-payments?studentId=${selectedStudent.id}`);
-        const studentData = await studentRes.json();
-        setSelectedStudentPayments(studentData.payments || []);
-      } else {
-        const error = await res.json();
-        alert(error.error || "Failed to mark payment as paid");
-      }
-    } catch (error) {
-      console.error("Failed to mark payment as paid:", error);
-      alert("Failed to mark payment as paid");
-    }
+    setShowProfileModal(true);
   };
 
   useEffect(() => {
@@ -274,6 +257,7 @@ export default function BranchAdminStudentsPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
+      <Toaster position="top-right" />
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Student Management</h1>
         <p className="text-gray-600">Comprehensive student, enrollment, and payment management</p>
@@ -318,14 +302,110 @@ export default function BranchAdminStudentsPage() {
       </div>
 
       {/* Search */}
-      <div className="mb-6">
-        <input
-          type="text"
-          placeholder="Search by name, email, or course..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        />
+      {/* Filters */}
+      <div className="mb-6 bg-white p-4 rounded-lg shadow">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Search */}
+          <div className="lg:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Search by Name or Email
+            </label>
+            <input
+              type="text"
+              placeholder="Search students..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* Date From */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Registered From
+            </label>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* Date To */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Registered To
+            </label>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        </div>
+
+        {/* Overdue Filter */}
+        <div className="mt-4 pt-4 border-t">
+          <div className="flex items-center gap-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showOverdue}
+                onChange={(e) => setShowOverdue(e.target.checked)}
+                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <span className="text-sm font-medium text-gray-700">Show only overdue payments</span>
+            </label>
+
+            {showOverdue && (
+              <div className="flex items-center gap-2">
+                <select
+                  value={overdueYear}
+                  onChange={(e) => setOverdueYear(parseInt(e.target.value))}
+                  className="px-3 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                >
+                  {Array.from({ length: 3 }, (_, i) => new Date().getFullYear() - 1 + i).map(year => (
+                    <option key={year} value={year}>{year}</option>
+                  ))}
+                </select>
+                <select
+                  value={overdueMonth}
+                  onChange={(e) => setOverdueMonth(parseInt(e.target.value))}
+                  className="px-3 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                >
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
+                    <option key={month} value={month}>
+                      {new Date(2024, month - 1).toLocaleString('default', { month: 'long' })}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Apply Filters Button */}
+        <div className="mt-4 flex justify-end gap-3">
+          <button
+            onClick={() => {
+              setSearchTerm("");
+              setDateFrom("");
+              setDateTo("");
+              setShowOverdue(false);
+            }}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            Clear Filters
+          </button>
+          <button
+            onClick={loadData}
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Apply Filters
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -346,14 +426,16 @@ export default function BranchAdminStudentsPage() {
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">First Enroll</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Monthly Fee</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teacher</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                 {filteredStudents.map((student) => (
-                  <tr key={student.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => student.approved && openStudentPaymentModal(student)}>
+                  <tr key={student.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10">
@@ -365,14 +447,24 @@ export default function BranchAdminStudentsPage() {
                         </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">{student.name || "—"}</div>
-                          {student.approved && (
-                            <div className="text-xs text-gray-500">Click to manage payments</div>
-                          )}
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">{student.email}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {student.studentProfile?.firstEnrollAt 
+                        ? new Date(student.studentProfile.firstEnrollAt).toLocaleDateString()
+                        : "—"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {student.studentProfile?.monthlyFee 
+                        ? `${student.studentProfile.monthlyFee} AZN`
+                        : "—"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {student.studentProfile?.teacher?.name || "—"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
@@ -381,32 +473,31 @@ export default function BranchAdminStudentsPage() {
                         {student.approved ? 'Approved' : 'Pending'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(student.createdAt).toLocaleDateString()}
-                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex gap-2">
                         {!student.approved && (
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              approveStudent(student.id);
-                            }}
+                            onClick={() => approveStudent(student.id)}
                             className="text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded-md transition-colors"
                           >
                             Approve
                           </button>
                         )}
                         {student.approved && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openEnrollmentModal(student);
-                            }}
-                            className="text-green-600 hover:text-green-900 bg-green-50 hover:bg-green-100 px-3 py-1 rounded-md transition-colors"
-                          >
-                            Enroll
-                          </button>
+                          <>
+                            <button
+                              onClick={() => openProfileModal(student)}
+                              className="text-purple-600 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-3 py-1 rounded-md transition-colors"
+                            >
+                              Edit Profile
+                            </button>
+                            <button
+                              onClick={() => openEnrollmentModal(student)}
+                              className="text-green-600 hover:text-green-900 bg-green-50 hover:bg-green-100 px-3 py-1 rounded-md transition-colors"
+                            >
+                              Enroll
+                            </button>
+                          </>
                         )}
                       </div>
                     </td>
@@ -735,173 +826,16 @@ export default function BranchAdminStudentsPage() {
         </div>
       )}
 
-      {/* Student Payment Modal */}
-      {showStudentPaymentModal && selectedStudent && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white w-full max-w-4xl rounded-xl shadow-xl p-6 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-semibold">Payment Management - {selectedStudent.name}</h3>
-              <button
-                onClick={() => setShowStudentPaymentModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Year and Month Selector */}
-            <div className="mb-6 flex gap-4 items-center">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Year</label>
-                <select
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(Number(e.target.value))}
-                  className="border rounded px-3 py-2"
-                >
-                  {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map(year => (
-                    <option key={year} value={year}>{year}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Month</label>
-                <select
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                  className="border rounded px-3 py-2"
-                >
-                  {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
-                    <option key={month} value={month}>
-                      {new Date(2024, month - 1).toLocaleString('default', { month: 'long' })}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Payment Calendar */}
-            <div className="grid grid-cols-7 gap-2 mb-6">
-              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                <div key={day} className="text-center text-sm font-medium text-gray-500 py-2">
-                  {day}
-                </div>
-              ))}
-              {Array.from({ length: new Date(selectedYear, selectedMonth, 0).getDate() }, (_, i) => i + 1).map(day => {
-                const currentDate = new Date(selectedYear, selectedMonth - 1, day);
-                const dayOfWeek = currentDate.getDay();
-                const isToday = currentDate.toDateString() === new Date().toDateString();
-                
-                // Find payment for this day
-                const dayPayment = selectedStudentPayments.find(payment => {
-                  const paymentDate = new Date(payment.dueDate);
-                  return paymentDate.getDate() === day && 
-                         paymentDate.getMonth() === selectedMonth - 1 && 
-                         paymentDate.getFullYear() === selectedYear;
-                });
-
-                return (
-                  <div
-                    key={day}
-                    className={`p-2 text-center text-sm border rounded cursor-pointer transition-colors ${
-                      dayOfWeek === 0 || dayOfWeek === 6 
-                        ? 'bg-gray-50 text-gray-400' 
-                        : 'hover:bg-gray-50'
-                    } ${
-                      isToday ? 'bg-blue-100 border-blue-300' : ''
-                    } ${
-                      dayPayment 
-                        ? dayPayment.status === 'PAID' 
-                          ? 'bg-green-100 border-green-300 text-green-800' 
-                          : dayPayment.status === 'OVERDUE'
-                          ? 'bg-red-100 border-red-300 text-red-800'
-                          : 'bg-yellow-100 border-yellow-300 text-yellow-800'
-                        : ''
-                    }`}
-                    onClick={() => {
-                      if (dayPayment && dayPayment.status !== 'PAID') {
-                        markPaymentAsPaid(dayPayment.id, selectedYear, selectedMonth);
-                      }
-                    }}
-                  >
-                    <div className="font-medium">{day}</div>
-                    {dayPayment && (
-                      <div className="text-xs mt-1">
-                        <div className="font-medium">${dayPayment.amount}</div>
-                        <div className={`text-xs ${
-                          dayPayment.status === 'PAID' ? 'text-green-600' :
-                          dayPayment.status === 'OVERDUE' ? 'text-red-600' :
-                          'text-yellow-600'
-                        }`}>
-                          {dayPayment.status}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Payment Summary */}
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h4 className="font-semibold mb-3">Payment Summary for {selectedYear}-{selectedMonth.toString().padStart(2, '0')}</h4>
-              <div className="grid grid-cols-3 gap-4 text-sm">
-                <div>
-                  <div className="text-gray-600">Total Payments</div>
-                  <div className="font-semibold">
-                    ${selectedStudentPayments
-                      .filter(p => {
-                        const paymentDate = new Date(p.dueDate);
-                        return paymentDate.getMonth() === selectedMonth - 1 && 
-                               paymentDate.getFullYear() === selectedYear;
-                      })
-                      .reduce((sum, p) => sum + Number(p.amount), 0)
-                      .toFixed(2)}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-gray-600">Paid</div>
-                  <div className="font-semibold text-green-600">
-                    ${selectedStudentPayments
-                      .filter(p => {
-                        const paymentDate = new Date(p.dueDate);
-                        return paymentDate.getMonth() === selectedMonth - 1 && 
-                               paymentDate.getFullYear() === selectedYear &&
-                               p.status === 'PAID';
-                      })
-                      .reduce((sum, p) => sum + Number(p.amount), 0)
-                      .toFixed(2)}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-gray-600">Pending</div>
-                  <div className="font-semibold text-yellow-600">
-                    ${selectedStudentPayments
-                      .filter(p => {
-                        const paymentDate = new Date(p.dueDate);
-                        return paymentDate.getMonth() === selectedMonth - 1 && 
-                               paymentDate.getFullYear() === selectedYear &&
-                               p.status === 'PENDING';
-                      })
-                      .reduce((sum, p) => sum + Number(p.amount), 0)
-                      .toFixed(2)}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 mt-6">
-              <button
-                onClick={() => setShowStudentPaymentModal(false)}
-                className="px-4 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Payment Modal */}
+      {showProfileModal && selectedStudent && (
+        <PaymentModal
+          student={selectedStudent}
+          teachers={teachers}
+          onClose={() => setShowProfileModal(false)}
+          onUpdate={() => loadData()}
+        />
       )}
+
     </div>
   );
 }

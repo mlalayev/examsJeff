@@ -28,6 +28,11 @@ enum SectionType {
   SPEAKING
 }
 
+enum PaymentStatus {
+  PAID
+  UNPAID
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String?
@@ -63,6 +68,13 @@ model User {
   enrollments      StudentEnrollment[] @relation("StudentEnrollments")
   payments         PaymentSchedule[]  @relation("StudentPayments")
   
+  // Student Profile relations
+  studentProfile   StudentProfile?     @relation("StudentProfileUser")
+  studentsTeaching StudentProfile[]    @relation("TeacherOfStudent")
+  
+  // Tuition Payment relations
+  tuitionPayments  TuitionPayment[]    @relation("StudentTuitionPayments")
+  
   @@map("users")
 }
 
@@ -78,6 +90,9 @@ model Branch {
   assignments Assignment[]
   enrollments StudentEnrollment[]
   payments  PaymentSchedule[]
+  financeTxns FinanceTxn[]
+  studentProfiles StudentProfile[]
+  tuitionPayments TuitionPayment[]
 
   @@map("branches")
 }
@@ -409,4 +424,61 @@ model PaymentSchedule {
   @@index([branchId, dueDate])
   @@index([status, dueDate])
   @@map("payment_schedules")
+}
+
+model FinanceTxn {
+  id          String    @id @default(cuid())
+  branchId    String?
+  branch      Branch?   @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  kind        String    // "INCOME" | "EXPENSE"
+  category    String    // "TUITION" | "EXAM" | "MATERIAL" | "RENT" | "SALARY" | "OTHER"
+  amount      Decimal   @db.Decimal(10, 2)
+  currency    String    @default("AZN")
+  occurredAt  DateTime
+  meta        Json?
+  createdAt   DateTime  @default(now())
+
+  @@index([branchId, occurredAt])
+  @@index([kind, occurredAt])
+  @@index([category, occurredAt])
+  @@map("finance_txns")
+}
+
+model StudentProfile {
+  id            String    @id @default(cuid())
+  studentId     String    @unique
+  student       User      @relation("StudentProfileUser", fields: [studentId], references: [id], onDelete: Cascade)
+  branchId      String
+  branch        Branch    @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  teacherId     String?
+  teacher       User?     @relation("TeacherOfStudent", fields: [teacherId], references: [id], onDelete: SetNull)
+  firstEnrollAt DateTime?
+  monthlyFee    Decimal?  @db.Decimal(10, 2)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([branchId])
+  @@index([teacherId])
+  @@map("student_profiles")
+}
+
+model TuitionPayment {
+  id        String        @id @default(cuid())
+  studentId String
+  student   User          @relation("StudentTuitionPayments", fields: [studentId], references: [id], onDelete: Cascade)
+  branchId  String
+  branch    Branch        @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  year      Int
+  month     Int           // 1..12
+  amount    Decimal       @db.Decimal(10, 2)
+  status    PaymentStatus @default(UNPAID)
+  paidAt    DateTime?
+  note      String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@unique([studentId, year, month])
+  @@index([branchId, year, month])
+  @@index([status, year, month])
+  @@map("tuition_payments")
 }

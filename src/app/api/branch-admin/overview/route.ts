@@ -9,6 +9,16 @@ export async function GET() {
     
     // Build where clause based on user role
     const branchFilter = branchId ? { branchId } : {};
+    
+    // Get branch name if applicable
+    let branchName = null;
+    if (branchId) {
+      const branch = await prisma.branch.findUnique({
+        where: { id: branchId },
+        select: { name: true },
+      });
+      branchName = branch?.name;
+    }
 
     const now = new Date();
 
@@ -83,6 +93,7 @@ export async function GET() {
     });
 
     return NextResponse.json({
+      branchName,
       totalStudents,
       totalTeachers,
       activeClasses,
