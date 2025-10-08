@@ -59,6 +59,10 @@ model User {
   // Notifications
   notifications    Notification[]
   
+  // Enrollment and Payment relations
+  enrollments      StudentEnrollment[] @relation("StudentEnrollments")
+  payments         PaymentSchedule[]  @relation("StudentPayments")
+  
   @@map("users")
 }
 
@@ -72,6 +76,8 @@ model Branch {
   bookings  Booking[]
   attempts  Attempt[]
   assignments Assignment[]
+  enrollments StudentEnrollment[]
+  payments  PaymentSchedule[]
 
   @@map("branches")
 }
@@ -358,4 +364,49 @@ model Assignment {
   @@index([studentId, startAt])
   @@index([teacherId, startAt])
   @@map("assignments")
+}
+
+model StudentEnrollment {
+  id          String    @id @default(cuid())
+  studentId   String
+  student     User      @relation("StudentEnrollments", fields: [studentId], references: [id], onDelete: Cascade)
+  courseName  String    // e.g., "IELTS Preparation", "General English A1"
+  courseType  String    // e.g., "IELTS", "GENERAL_ENGLISH", "TOEFL"
+  level       String?   // e.g., "A1", "A2", "B1", "B1+", "B2"
+  branchId    String?
+  branch      Branch?   @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  enrolledAt  DateTime  @default(now())
+  status      String    @default("ACTIVE") // ACTIVE, COMPLETED, SUSPENDED, CANCELLED
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  paymentSchedules PaymentSchedule[]
+
+  @@index([studentId, status])
+  @@index([branchId, status])
+  @@map("student_enrollments")
+}
+
+model PaymentSchedule {
+  id              String            @id @default(cuid())
+  enrollmentId    String
+  enrollment      StudentEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  studentId       String
+  student         User              @relation("StudentPayments", fields: [studentId], references: [id], onDelete: Cascade)
+  amount          Decimal          @db.Decimal(10, 2)
+  dueDate         DateTime
+  paidDate        DateTime?
+  status          String            @default("PENDING") // PENDING, PAID, OVERDUE, CANCELLED
+  paymentMethod   String?           // CASH, CARD, TRANSFER
+  notes           String?
+  branchId        String?
+  branch          Branch?           @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([studentId, dueDate])
+  @@index([branchId, dueDate])
+  @@index([status, dueDate])
+  @@map("payment_schedules")
 }

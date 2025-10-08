@@ -7,14 +7,13 @@ export async function GET() {
     const user = await requireBranchAdmin();
     const branchId = getScopedBranchId(user);
     
-    if (!branchId) {
-      return NextResponse.json({ error: "Branch ID not found" }, { status: 400 });
-    }
+    // Build where clause based on user role
+    const branchFilter = branchId ? { branchId } : {};
 
     const users = await prisma.user.findMany({
       where: {
         role: { in: ["STUDENT", "TEACHER"] },
-        branchId: branchId,
+        ...branchFilter,
         approved: false,
       },
       select: {

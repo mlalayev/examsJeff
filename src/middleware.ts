@@ -44,9 +44,9 @@ export default withAuth(
     }
   }
 
-  // Branch Admin dashboard routes (BRANCH_ADMIN only)
+  // Branch Admin dashboard routes (BRANCH_ADMIN or BOSS)
   if (path.startsWith("/dashboard/branch-admin")) {
-    if (token?.role !== "BRANCH_ADMIN") {
+    if (token?.role !== "BRANCH_ADMIN" && token?.role !== "BOSS") {
       return NextResponse.redirect(new URL("/auth/login?error=unauthorized", req.url));
     }
   }

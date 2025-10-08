@@ -7,9 +7,8 @@ export async function GET() {
     const user = await requireBranchAdmin();
     const branchId = getScopedBranchId(user);
     
-    if (!branchId) {
-      return NextResponse.json({ error: "Branch ID not found" }, { status: 400 });
-    }
+    // Build where clause based on user role
+    const branchFilter = branchId ? { branchId } : {};
 
     const now = new Date();
 
@@ -18,24 +17,24 @@ export async function GET() {
       prisma.user.count({
         where: {
           role: "STUDENT",
-          branchId: branchId,
+          ...branchFilter,
         },
       }),
       prisma.user.count({
         where: {
           role: "TEACHER",
-          branchId: branchId,
+          ...branchFilter,
         },
       }),
       prisma.class.count({
         where: {
-          branchId: branchId,
+          ...branchFilter,
         },
       }),
       prisma.user.count({
         where: {
           role: { in: ["STUDENT", "TEACHER"] },
-          branchId: branchId,
+          ...branchFilter,
           approved: false,
         },
       }),
@@ -45,7 +44,7 @@ export async function GET() {
     const recentStudents = await prisma.user.findMany({
       where: {
         role: "STUDENT",
-        branchId: branchId,
+        ...branchFilter,
       },
       select: {
         id: true,
@@ -61,7 +60,7 @@ export async function GET() {
     // Get recent classes (last 5)
     const recentClasses = await prisma.class.findMany({
       where: {
-        branchId: branchId,
+        ...branchFilter,
       },
       select: {
         id: true,

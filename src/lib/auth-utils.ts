@@ -67,10 +67,17 @@ export async function requireBoss() {
 export async function requireBranchAdmin() {
   const user = await requireAuth();
   const role = (user as any).role;
-  if (role !== "BRANCH_ADMIN") {
-    throw new Error("Forbidden: Branch admin access required");
+  if (role !== "BRANCH_ADMIN" && role !== "BOSS") {
+    throw new Error("Forbidden: Branch admin or boss access required");
   }
   return user;
+}
+
+export function getScopedBranchId(user: any): string | null {
+  if (user.role === "BOSS" || user.role === "ADMIN") {
+    return null; // BOSS/ADMIN see all branches
+  }
+  return user.branchId || null;
 }
 
 export function assertSameBranchOrBoss(current: any, targetBranchId: string | null | undefined) {

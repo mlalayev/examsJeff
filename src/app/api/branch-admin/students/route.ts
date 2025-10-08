@@ -7,15 +7,19 @@ export async function GET() {
     const user = await requireBranchAdmin();
     const branchId = getScopedBranchId(user);
     
-    if (!branchId) {
-      return NextResponse.json({ error: "Branch ID not found" }, { status: 400 });
+    // Build where clause based on user role
+    const whereClause: any = {
+      role: "STUDENT",
+    };
+    
+    // If user has a specific branch, filter by it
+    if (branchId) {
+      whereClause.branchId = branchId;
     }
+    // If BOSS/ADMIN, they can see all students (no branch filter)
 
     const students = await prisma.user.findMany({
-      where: {
-        role: "STUDENT",
-        branchId: branchId,
-      },
+      where: whereClause,
       select: {
         id: true,
         name: true,

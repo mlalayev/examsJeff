@@ -2,45 +2,52 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireBranchAdmin, getScopedBranchId } from "@/lib/auth-utils";
 
-export async function GET() {
+// GET /api/branch-admin/student-payments?studentId=xxx - Get payments for a specific student
+export async function GET(request: Request) {
   try {
     const user = await requireBranchAdmin();
     const branchId = getScopedBranchId(user);
+    const { searchParams } = new URL(request.url);
+    const studentId = searchParams.get("studentId");
     
-    // Build where clause based on user role
+    if (!studentId) {
+      return NextResponse.json({ error: "Student ID is required" }, { status: 400 });
+    }
+
     const branchFilter = branchId ? { branchId } : {};
 
-    const classes = await prisma.class.findMany({
+    const payments = await prisma.paymentSchedule.findMany({
       where: {
+        studentId: studentId,
         ...branchFilter,
       },
-      select: {
-        id: true,
-        name: true,
-        createdAt: true,
-        teacher: {
+      include: {
+        student: {
           select: {
             id: true,
             name: true,
             email: true,
           },
         },
-        _count: {
+        enrollment: {
           select: {
-            classStudents: true,
+            id: true,
+            courseName: true,
+            courseType: true,
+            level: true,
           },
         },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { dueDate: "asc" },
     });
 
-    return NextResponse.json({ classes });
+    return NextResponse.json({ payments });
 
   } catch (error) {
     if (error instanceof Error && error.message.includes("Forbidden")) {
       return NextResponse.json({ error: error.message }, { status: 403 });
     }
-    console.error("Branch admin classes error:", error);
+    console.error("Student payments error:", error);
     return NextResponse.json({ error: "An error occurred" }, { status: 500 });
   }
 }
