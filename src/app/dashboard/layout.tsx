@@ -1,5 +1,4 @@
 import Sidebar from "@/components/dashboard/Sidebar";
-import Header from "@/components/dashboard/Header";
 
 export default function DashboardLayout({
   children,
@@ -7,11 +6,10 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <div className="h-screen bg-gradient-to-br from-slate-50 to-slate-100 overflow-hidden">
       <Sidebar />
-      <Header />
-      <main className="ml-72">
-        <div className="p-8">
+      <main className="ml-72 h-full">
+        <div className="h-full">
           {children}
         </div>
       </main>
