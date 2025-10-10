@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { DollarSign, TrendingUp, TrendingDown, Users, Building2, Calendar, Search } from "lucide-react";
 
 type TabType = "overview" | "monthly" | "branches" | "courses";
 
@@ -71,9 +72,9 @@ export default function BossFinanceV2Page() {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="p-8">
         <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400"></div>
         </div>
       </div>
     );
@@ -81,142 +82,137 @@ export default function BossFinanceV2Page() {
 
   if (!financeData) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="p-8">
         <div className="text-center text-gray-500">No data available</div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          💰 Finance Analytics Dashboard
-        </h1>
-        <p className="text-gray-600">
-          Comprehensive financial overview and insights
-        </p>
+    <div className="p-8">
+      {/* Minimal Header */}
+      <div className="mb-12">
+        <h1 className="text-2xl font-medium text-gray-900">Finance</h1>
+        <p className="text-gray-500 mt-1">Financial overview and analytics</p>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Year
-            </label>
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            >
-              {years.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Month
-            </label>
-            <select
-              value={selectedMonth || ""}
-              onChange={(e) => setSelectedMonth(e.target.value ? parseInt(e.target.value) : null)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            >
-              {months.map((month) => (
-                <option key={month.label} value={month.value || ""}>
-                  {month.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Branch
-            </label>
-            <select
-              value={selectedBranch}
-              onChange={(e) => setSelectedBranch(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            >
-              <option value="">All Branches</option>
-              {financeData.branches?.map((branch: any) => (
-                <option key={branch.id} value={branch.id}>
-                  {branch.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex items-end">
-            <button
-              onClick={() => {
-                setSelectedYear(currentYear);
-                setSelectedMonth(null);
-                setSelectedBranch("");
-              }}
-              className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
-            >
-              Reset Filters
-            </button>
-          </div>
+      {/* Compact Stats Row */}
+      <div className="flex items-center gap-8 mb-8 text-sm">
+        <div className="flex items-center gap-2">
+          <span className="text-gray-500">Total Income:</span>
+          <span className="font-medium text-green-600">{formatCurrency(financeData.summary?.totalIncome || 0)}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-gray-500">Total Expenses:</span>
+          <span className="font-medium text-red-600">{formatCurrency(financeData.summary?.totalExpense || 0)}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-gray-500">Net Profit:</span>
+          <span className={`font-medium ${(financeData.summary?.totalNet || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            {formatCurrency(financeData.summary?.totalNet || 0)}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-gray-500">Tuition Revenue:</span>
+          <span className="font-medium">{formatCurrency(financeData.summary?.tuitionRevenue || 0)}</span>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="bg-white rounded-lg shadow-sm mb-6">
-        <div className="border-b border-gray-200">
-          <nav className="flex -mb-px">
-            <button
-              onClick={() => setActiveTab("overview")}
-              className={`px-6 py-3 text-sm font-medium border-b-2 transition ${
-                activeTab === "overview"
-                  ? "border-purple-600 text-purple-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              📊 Overview
-            </button>
-            <button
-              onClick={() => setActiveTab("monthly")}
-              className={`px-6 py-3 text-sm font-medium border-b-2 transition ${
-                activeTab === "monthly"
-                  ? "border-purple-600 text-purple-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              📅 Monthly Breakdown
-            </button>
-            <button
-              onClick={() => setActiveTab("branches")}
-              className={`px-6 py-3 text-sm font-medium border-b-2 transition ${
-                activeTab === "branches"
-                  ? "border-purple-600 text-purple-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              🏢 By Branch
-            </button>
-            <button
-              onClick={() => setActiveTab("courses")}
-              className={`px-6 py-3 text-sm font-medium border-b-2 transition ${
-                activeTab === "courses"
-                  ? "border-purple-600 text-purple-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              📚 By Course Type
-            </button>
-          </nav>
+      {/* Simple Filters */}
+      <div className="flex items-center gap-4 mb-6">
+        <div className="flex items-center gap-2">
+          <Calendar className="w-4 h-4 text-gray-400" />
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+            className="px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+          >
+            {years.map((year) => (
+              <option key={year} value={year}>{year}</option>
+            ))}
+          </select>
         </div>
 
-        <div className="p-6">
+        <select
+          value={selectedMonth || ""}
+          onChange={(e) => setSelectedMonth(e.target.value ? parseInt(e.target.value) : null)}
+          className="px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+        >
+          {months.map((month) => (
+            <option key={month.label} value={month.value || ""}>{month.label}</option>
+          ))}
+        </select>
+
+        <select
+          value={selectedBranch}
+          onChange={(e) => setSelectedBranch(e.target.value)}
+          className="px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+        >
+          <option value="">All Branches</option>
+          {financeData.branches?.map((branch: any) => (
+            <option key={branch.id} value={branch.id}>{branch.name}</option>
+          ))}
+        </select>
+
+        <button
+          onClick={() => {
+            setSelectedYear(currentYear);
+            setSelectedMonth(null);
+            setSelectedBranch("");
+          }}
+          className="px-3 py-2 text-sm text-gray-600 border border-gray-200 rounded-md hover:bg-gray-50"
+        >
+          Reset
+        </button>
+      </div>
+
+      {/* Simple Tabs */}
+      <div className="flex items-center gap-1 mb-6">
+        <button
+          onClick={() => setActiveTab("overview")}
+          className={`px-4 py-2 text-sm font-medium rounded-md ${
+            activeTab === "overview"
+              ? "bg-gray-900 text-white"
+              : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+          }`}
+        >
+          Overview
+        </button>
+        <button
+          onClick={() => setActiveTab("monthly")}
+          className={`px-4 py-2 text-sm font-medium rounded-md ${
+            activeTab === "monthly"
+              ? "bg-gray-900 text-white"
+              : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+          }`}
+        >
+          Monthly
+        </button>
+        <button
+          onClick={() => setActiveTab("branches")}
+          className={`px-4 py-2 text-sm font-medium rounded-md ${
+            activeTab === "branches"
+              ? "bg-gray-900 text-white"
+              : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+          }`}
+        >
+          Branches
+        </button>
+        <button
+          onClick={() => setActiveTab("courses")}
+          className={`px-4 py-2 text-sm font-medium rounded-md ${
+            activeTab === "courses"
+              ? "bg-gray-900 text-white"
+              : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+          }`}
+        >
+          Courses
+        </button>
+      </div>
+
+      {/* Content */}
+      <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
+        <div className="pb-6">
           {activeTab === "overview" && <OverviewTab data={financeData} formatCurrency={formatCurrency} />}
           {activeTab === "monthly" && <MonthlyTab data={financeData} formatCurrency={formatCurrency} />}
           {activeTab === "branches" && <BranchesTab data={financeData} formatCurrency={formatCurrency} />}
@@ -230,94 +226,78 @@ export default function BossFinanceV2Page() {
 // Overview Tab Component
 function OverviewTab({ data, formatCurrency }: any) {
   return (
-    <div className="space-y-6">
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-lg p-4">
-          <div className="text-sm font-medium text-green-700 mb-1">Total Income</div>
-          <div className="text-2xl font-bold text-green-900">{formatCurrency(data.summary.totalIncome)}</div>
-        </div>
-
-        <div className="bg-gradient-to-br from-red-50 to-red-100 border border-red-200 rounded-lg p-4">
-          <div className="text-sm font-medium text-red-700 mb-1">Total Expenses</div>
-          <div className="text-2xl font-bold text-red-900">{formatCurrency(data.summary.totalExpense)}</div>
-        </div>
-
-        <div className={`bg-gradient-to-br ${data.summary.totalNet >= 0 ? 'from-blue-50 to-blue-100 border-blue-200' : 'from-orange-50 to-orange-100 border-orange-200'} border rounded-lg p-4`}>
-          <div className={`text-sm font-medium ${data.summary.totalNet >= 0 ? 'text-blue-700' : 'text-orange-700'} mb-1`}>
-            Net Profit/Loss
-          </div>
-          <div className={`text-2xl font-bold ${data.summary.totalNet >= 0 ? 'text-blue-900' : 'text-orange-900'}`}>
-            {formatCurrency(data.summary.totalNet)}
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-lg p-4">
-          <div className="text-sm font-medium text-purple-700 mb-1">Tuition Revenue</div>
-          <div className="text-2xl font-bold text-purple-900">{formatCurrency(data.summary.tuitionRevenue)}</div>
-          <div className="text-xs text-purple-600 mt-1">
-            {data.summary.tuitionPaymentCount} payments
-          </div>
-        </div>
-      </div>
-
+    <div className="p-6">
       {/* Current Month Payment Status */}
       {data.currentMonth && (
-        <div className="bg-white border rounded-lg p-4">
-          <h3 className="text-lg font-semibold mb-3">
-            📅 Current Month Payment Status ({data.currentMonth.month}/{data.currentMonth.year})
+        <div className="mb-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">
+            Current Month Payment Status ({data.currentMonth.month}/{data.currentMonth.year})
           </h3>
           
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-              <div className="text-xs text-green-700 mb-1">Paid</div>
+            <div className="text-center">
               <div className="text-2xl font-bold text-green-600">{data.currentMonth.paidCount}</div>
+              <div className="text-sm text-gray-600">Paid</div>
             </div>
             
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-              <div className="text-xs text-red-700 mb-1">Unpaid</div>
+            <div className="text-center">
               <div className="text-2xl font-bold text-red-600">{data.currentMonth.unpaidCount}</div>
+              <div className="text-sm text-gray-600">Unpaid</div>
             </div>
             
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-              <div className="text-xs text-gray-700 mb-1">No Record</div>
+            <div className="text-center">
               <div className="text-2xl font-bold text-gray-600">{data.currentMonth.noRecordCount}</div>
+              <div className="text-sm text-gray-600">No Record</div>
             </div>
             
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <div className="text-xs text-blue-700 mb-1">Total Students</div>
-              <div className="text-2xl font-bold text-blue-600">{data.currentMonth.totalStudents}</div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-gray-900">{data.currentMonth.totalStudents}</div>
+              <div className="text-sm text-gray-600">Total Students</div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Payment Rate</span>
-              <span className="text-lg font-bold text-blue-600">{data.currentMonth.paymentRate}%</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Pending</span>
-              <span className="text-lg font-bold text-orange-600">
-                {data.currentMonth.unpaidCount + data.currentMonth.noRecordCount}
-              </span>
-            </div>
-          </div>
-
-          {/* Progress Bar */}
-          <div className="mt-4">
-            <div className="flex justify-between text-xs text-gray-600 mb-1">
-              <span>Payment Progress</span>
-              <span>{data.currentMonth.paidCount} / {data.currentMonth.totalStudents}</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-3">
-              <div 
-                className="bg-gradient-to-r from-green-500 to-green-600 h-3 rounded-full transition-all"
-                style={{ width: `${data.currentMonth.paymentRate}%` }}
-              ></div>
-            </div>
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-gray-600">Payment Rate: <span className="font-medium">{data.currentMonth.paymentRate}%</span></span>
+            <span className="text-gray-600">Pending: <span className="font-medium">{data.currentMonth.unpaidCount + data.currentMonth.noRecordCount}</span></span>
           </div>
         </div>
       )}
+
+      {/* Summary Table */}
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-gray-50 border-b border-gray-200">
+            <tr>
+              <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Metric</th>
+              <th className="text-right px-4 py-3 text-sm font-medium text-gray-700">Amount</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            <tr>
+              <td className="px-4 py-3 text-sm text-gray-900">Total Income</td>
+              <td className="px-4 py-3 text-sm text-right font-medium text-green-600">{formatCurrency(data.summary?.totalIncome || 0)}</td>
+            </tr>
+            <tr>
+              <td className="px-4 py-3 text-sm text-gray-900">Total Expenses</td>
+              <td className="px-4 py-3 text-sm text-right font-medium text-red-600">{formatCurrency(data.summary?.totalExpense || 0)}</td>
+            </tr>
+            <tr>
+              <td className="px-4 py-3 text-sm text-gray-900">Net Profit/Loss</td>
+              <td className={`px-4 py-3 text-sm text-right font-medium ${(data.summary?.totalNet || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {formatCurrency(data.summary?.totalNet || 0)}
+              </td>
+            </tr>
+            <tr>
+              <td className="px-4 py-3 text-sm text-gray-900">Tuition Revenue</td>
+              <td className="px-4 py-3 text-sm text-right font-medium">{formatCurrency(data.summary?.tuitionRevenue || 0)}</td>
+            </tr>
+            <tr>
+              <td className="px-4 py-3 text-sm text-gray-900">Payment Count</td>
+              <td className="px-4 py-3 text-sm text-right font-medium">{data.summary?.tuitionPaymentCount || 0}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -325,46 +305,46 @@ function OverviewTab({ data, formatCurrency }: any) {
 // Monthly Tab Component
 function MonthlyTab({ data, formatCurrency }: any) {
   return (
-    <div>
-      <h3 className="text-lg font-semibold mb-4">Monthly Breakdown for {data.period.year}</h3>
+    <div className="p-6">
+      <h3 className="text-lg font-medium text-gray-900 mb-4">Monthly Breakdown for {data.period?.year || new Date().getFullYear()}</h3>
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+        <table className="w-full">
+          <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Month</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Income</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Expenses</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Net</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Tuition</th>
+              <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Month</th>
+              <th className="text-right px-4 py-3 text-sm font-medium text-gray-700">Income</th>
+              <th className="text-right px-4 py-3 text-sm font-medium text-gray-700">Expenses</th>
+              <th className="text-right px-4 py-3 text-sm font-medium text-gray-700">Net</th>
+              <th className="text-right px-4 py-3 text-sm font-medium text-gray-700">Tuition</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {data.monthlyBreakdown.map((month: any) => (
+          <tbody className="divide-y divide-gray-200">
+            {data.monthlyBreakdown?.map((month: any) => (
               <tr key={month.month} className="hover:bg-gray-50">
                 <td className="px-4 py-3 text-sm font-medium text-gray-900">{month.monthName}</td>
                 <td className="px-4 py-3 text-sm text-right text-green-600">{formatCurrency(month.income)}</td>
                 <td className="px-4 py-3 text-sm text-right text-red-600">{formatCurrency(month.expense)}</td>
-                <td className={`px-4 py-3 text-sm text-right font-semibold ${month.net >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
+                <td className={`px-4 py-3 text-sm text-right font-medium ${month.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {formatCurrency(month.net)}
                 </td>
-                <td className="px-4 py-3 text-sm text-right text-purple-600">{formatCurrency(month.tuitionRevenue)}</td>
+                <td className="px-4 py-3 text-sm text-right">{formatCurrency(month.tuitionRevenue)}</td>
               </tr>
-            ))}
+            )) || []}
           </tbody>
-          <tfoot className="bg-gray-100 font-semibold">
+          <tfoot className="bg-gray-50 border-t border-gray-200">
             <tr>
-              <td className="px-4 py-3 text-sm">TOTAL</td>
-              <td className="px-4 py-3 text-sm text-right text-green-700">
-                {formatCurrency(data.monthlyBreakdown.reduce((sum: number, m: any) => sum + m.income, 0))}
+              <td className="px-4 py-3 text-sm font-medium">TOTAL</td>
+              <td className="px-4 py-3 text-sm text-right font-medium text-green-600">
+                {formatCurrency(data.monthlyBreakdown?.reduce((sum: number, m: any) => sum + m.income, 0) || 0)}
               </td>
-              <td className="px-4 py-3 text-sm text-right text-red-700">
-                {formatCurrency(data.monthlyBreakdown.reduce((sum: number, m: any) => sum + m.expense, 0))}
+              <td className="px-4 py-3 text-sm text-right font-medium text-red-600">
+                {formatCurrency(data.monthlyBreakdown?.reduce((sum: number, m: any) => sum + m.expense, 0) || 0)}
               </td>
-              <td className="px-4 py-3 text-sm text-right text-blue-700">
-                {formatCurrency(data.monthlyBreakdown.reduce((sum: number, m: any) => sum + m.net, 0))}
+              <td className="px-4 py-3 text-sm text-right font-medium">
+                {formatCurrency(data.monthlyBreakdown?.reduce((sum: number, m: any) => sum + m.net, 0) || 0)}
               </td>
-              <td className="px-4 py-3 text-sm text-right text-purple-700">
-                {formatCurrency(data.monthlyBreakdown.reduce((sum: number, m: any) => sum + m.tuitionRevenue, 0))}
+              <td className="px-4 py-3 text-sm text-right font-medium">
+                {formatCurrency(data.monthlyBreakdown?.reduce((sum: number, m: any) => sum + m.tuitionRevenue, 0) || 0)}
               </td>
             </tr>
           </tfoot>
@@ -377,38 +357,35 @@ function MonthlyTab({ data, formatCurrency }: any) {
 // Branches Tab Component
 function BranchesTab({ data, formatCurrency }: any) {
   return (
-    <div>
-      <h3 className="text-lg font-semibold mb-4">Branch Performance</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        {data.branchBreakdown.map((branch: any) => (
-          <div key={branch.branchId} className="bg-white border rounded-lg p-4">
-            <h4 className="font-semibold text-gray-900 mb-3">{branch.branchName}</h4>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Students:</span>
-                <span className="font-semibold">{branch.studentCount}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Income:</span>
-                <span className="font-semibold text-green-600">{formatCurrency(branch.income)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Expenses:</span>
-                <span className="font-semibold text-red-600">{formatCurrency(branch.expense)}</span>
-              </div>
-              <div className="flex justify-between pt-2 border-t">
-                <span className="text-gray-600">Net:</span>
-                <span className={`font-bold ${branch.net >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
+    <div className="p-6">
+      <h3 className="text-lg font-medium text-gray-900 mb-4">Branch Performance</h3>
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-gray-50 border-b border-gray-200">
+            <tr>
+              <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Branch</th>
+              <th className="text-right px-4 py-3 text-sm font-medium text-gray-700">Students</th>
+              <th className="text-right px-4 py-3 text-sm font-medium text-gray-700">Income</th>
+              <th className="text-right px-4 py-3 text-sm font-medium text-gray-700">Expenses</th>
+              <th className="text-right px-4 py-3 text-sm font-medium text-gray-700">Net</th>
+              <th className="text-right px-4 py-3 text-sm font-medium text-gray-700">Tuition</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {data.branchBreakdown?.map((branch: any) => (
+              <tr key={branch.branchId} className="hover:bg-gray-50">
+                <td className="px-4 py-3 text-sm font-medium text-gray-900">{branch.branchName}</td>
+                <td className="px-4 py-3 text-sm text-right">{branch.studentCount}</td>
+                <td className="px-4 py-3 text-sm text-right text-green-600">{formatCurrency(branch.income)}</td>
+                <td className="px-4 py-3 text-sm text-right text-red-600">{formatCurrency(branch.expense)}</td>
+                <td className={`px-4 py-3 text-sm text-right font-medium ${branch.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {formatCurrency(branch.net)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Tuition:</span>
-                <span className="font-semibold text-purple-600">{formatCurrency(branch.tuitionRevenue)}</span>
-              </div>
-            </div>
-          </div>
-        ))}
+                </td>
+                <td className="px-4 py-3 text-sm text-right">{formatCurrency(branch.tuitionRevenue)}</td>
+              </tr>
+            )) || []}
+          </tbody>
+        </table>
       </div>
     </div>
   );
@@ -416,13 +393,6 @@ function BranchesTab({ data, formatCurrency }: any) {
 
 // Courses Tab Component
 function CoursesTab({ data, formatCurrency }: any) {
-  const courseIcons: Record<string, string> = {
-    IELTS: "🎓",
-    SAT: "📝",
-    KIDS: "👶",
-    GENERAL_ENGLISH: "🌐",
-  };
-
   const courseLabels: Record<string, string> = {
     IELTS: "IELTS Preparation",
     SAT: "SAT Preparation",
@@ -431,49 +401,45 @@ function CoursesTab({ data, formatCurrency }: any) {
   };
 
   return (
-    <div>
-      <h3 className="text-lg font-semibold mb-4">Course Type Statistics</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {data.courseTypeStats.map((course: any) => (
-          <div key={course.courseType} className="bg-gradient-to-br from-indigo-50 to-indigo-100 border border-indigo-200 rounded-lg p-4">
-            <div className="text-2xl mb-2">{courseIcons[course.courseType] || "📚"}</div>
-            <h4 className="font-semibold text-gray-900 mb-3">{courseLabels[course.courseType] || course.courseType}</h4>
-            <div className="space-y-2">
-              <div>
-                <div className="text-xs text-gray-600">Active Students</div>
-                <div className="text-2xl font-bold text-indigo-900">{course.studentCount}</div>
-              </div>
-              <div className="pt-2 border-t border-indigo-200">
-                <div className="text-xs text-gray-600">Revenue</div>
-                <div className="text-lg font-bold text-indigo-700">{formatCurrency(course.revenue)}</div>
-              </div>
-              {course.studentCount > 0 && (
-                <div className="text-xs text-gray-500">
-                  Avg: {formatCurrency(course.revenue / course.studentCount)}/student
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Summary */}
-      <div className="mt-6 bg-white border rounded-lg p-4">
-        <h4 className="font-semibold mb-3">Total Summary</h4>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <div className="text-sm text-gray-600">Total Students</div>
-            <div className="text-2xl font-bold text-gray-900">
-              {data.courseTypeStats.reduce((sum: number, c: any) => sum + c.studentCount, 0)}
-            </div>
-          </div>
-          <div>
-            <div className="text-sm text-gray-600">Total Revenue</div>
-            <div className="text-2xl font-bold text-indigo-600">
-              {formatCurrency(data.courseTypeStats.reduce((sum: number, c: any) => sum + c.revenue, 0))}
-            </div>
-          </div>
-        </div>
+    <div className="p-6">
+      <h3 className="text-lg font-medium text-gray-900 mb-4">Course Type Statistics</h3>
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-gray-50 border-b border-gray-200">
+            <tr>
+              <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Course Type</th>
+              <th className="text-right px-4 py-3 text-sm font-medium text-gray-700">Students</th>
+              <th className="text-right px-4 py-3 text-sm font-medium text-gray-700">Revenue</th>
+              <th className="text-right px-4 py-3 text-sm font-medium text-gray-700">Avg/Student</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {data.courseTypeStats?.map((course: any) => (
+              <tr key={course.courseType} className="hover:bg-gray-50">
+                <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                  {courseLabels[course.courseType] || course.courseType}
+                </td>
+                <td className="px-4 py-3 text-sm text-right">{course.studentCount}</td>
+                <td className="px-4 py-3 text-sm text-right font-medium">{formatCurrency(course.revenue)}</td>
+                <td className="px-4 py-3 text-sm text-right text-gray-600">
+                  {course.studentCount > 0 ? formatCurrency(course.revenue / course.studentCount) : "—"}
+                </td>
+              </tr>
+            )) || []}
+          </tbody>
+          <tfoot className="bg-gray-50 border-t border-gray-200">
+            <tr>
+              <td className="px-4 py-3 text-sm font-medium">TOTAL</td>
+              <td className="px-4 py-3 text-sm text-right font-medium">
+                {data.courseTypeStats?.reduce((sum: number, c: any) => sum + c.studentCount, 0) || 0}
+              </td>
+              <td className="px-4 py-3 text-sm text-right font-medium">
+                {formatCurrency(data.courseTypeStats?.reduce((sum: number, c: any) => sum + c.revenue, 0) || 0)}
+              </td>
+              <td className="px-4 py-3 text-sm text-right font-medium">—</td>
+            </tr>
+          </tfoot>
+        </table>
       </div>
     </div>
   );

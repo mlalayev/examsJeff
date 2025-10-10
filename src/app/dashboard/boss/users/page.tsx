@@ -127,6 +127,8 @@ export default function BossUsersPage() {
     setSelectedBranchId(user.branchId || "");
     setApprovedDesired(!!user.approved);
     setModalOpen(true);
+    // Prevent body scroll when modal is open
+    document.body.style.overflow = 'hidden';
   };
 
   const saveUser = async () => {
@@ -172,6 +174,8 @@ export default function BossUsersPage() {
 
       setModalOpen(false);
       setSelectedUser(null);
+      // Restore body scroll when modal is closed
+      document.body.style.overflow = 'unset';
       await load();
     } finally {
       setSaving(false);
@@ -182,7 +186,7 @@ export default function BossUsersPage() {
   const filteredUsers = getFilteredUsers();
 
   return (
-    <div className="h-full p-8">
+    <div className="p-8">
       {/* Minimal Header */}
       <div className="mb-12">
         <h1 className="text-2xl font-medium text-gray-900">Users</h1>
@@ -259,7 +263,7 @@ export default function BossUsersPage() {
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-400"></div>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto pb-6">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
@@ -315,43 +319,104 @@ export default function BossUsersPage() {
         )}
       </div>
       {modalOpen && selectedUser && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white w-full max-w-lg rounded-xl shadow-xl p-6">
-            <h3 className="text-lg font-semibold mb-4">Manage User</h3>
-            <div className="grid grid-cols-1 gap-3 text-sm mb-4">
-              <div><span className="text-gray-500">Name:</span> {selectedUser.name || "—"}</div>
-              <div><span className="text-gray-500">Email:</span> {selectedUser.email}</div>
-              <div><span className="text-gray-500">Current Branch:</span> {branchMap[selectedUser.branchId] || "—"}</div>
+        <div 
+          className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setModalOpen(false);
+              setSelectedUser(null);
+              document.body.style.overflow = 'unset';
+            }
+          }}
+        >
+          <div className="bg-white w-full max-w-md border border-gray-200 rounded-md shadow-lg">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-medium text-gray-900">Edit User</h3>
+              <p className="text-sm text-gray-500 mt-1">Update user information</p>
             </div>
-            <div className="grid grid-cols-1 gap-4">
-              <div>
-                <label className="block text-sm text-gray-700 mb-1">Role</label>
-                <select className="w-full border rounded px-3 py-2" value={selectedRole} onChange={(e) => setSelectedRole(e.target.value)}>
-                  <option value="STUDENT">STUDENT</option>
-                  <option value="TEACHER">TEACHER</option>
-                  <option value="ADMIN">ADMIN</option>
-                  <option value="BRANCH_ADMIN">BRANCH_ADMIN</option>
-                </select>
+
+            {/* Modal Content */}
+            <div className="px-6 py-4 space-y-4">
+              {/* User Info */}
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Name:</span>
+                  <span className="font-medium">{selectedUser.name || "—"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Email:</span>
+                  <span className="font-medium">{selectedUser.email}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Current Branch:</span>
+                  <span className="font-medium">{branchMap[selectedUser.branchId] || "—"}</span>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm text-gray-700 mb-1">Branch</label>
-                <select className="w-full border rounded px-3 py-2" value={selectedBranchId} onChange={(e) => setSelectedBranchId(e.target.value)}>
-                  <option value="">—</option>
-                  {branches.map((b: any) => (
-                    <option key={b.id} value={b.id}>{b.name}</option>
-                  ))}
-                </select>
-                <p className="text-xs text-gray-500 mt-1">Required if setting role to BRANCH_ADMIN. Optional for others.</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <input id="approve" type="checkbox" className="w-4 h-4" checked={approvedDesired} onChange={(e) => setApprovedDesired(e.target.checked)} />
-                <label htmlFor="approve" className="text-sm">Approved</label>
+
+              {/* Form Fields */}
+              <div className="space-y-4 pt-4 border-t border-gray-200">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
+                  <select 
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400" 
+                    value={selectedRole} 
+                    onChange={(e) => setSelectedRole(e.target.value)}
+                  >
+                    <option value="STUDENT">Student</option>
+                    <option value="TEACHER">Teacher</option>
+                    <option value="ADMIN">Admin</option>
+                    <option value="BRANCH_ADMIN">Branch Admin</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Branch</label>
+                  <select 
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400" 
+                    value={selectedBranchId} 
+                    onChange={(e) => setSelectedBranchId(e.target.value)}
+                  >
+                    <option value="">Select branch</option>
+                    {branches.map((b: any) => (
+                      <option key={b.id} value={b.id}>{b.name}</option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">Required for Branch Admin role</p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <input 
+                    id="approve" 
+                    type="checkbox" 
+                    className="w-4 h-4 text-gray-600 border-gray-300 rounded focus:ring-gray-500" 
+                    checked={approvedDesired} 
+                    onChange={(e) => setApprovedDesired(e.target.checked)} 
+                  />
+                  <label htmlFor="approve" className="text-sm font-medium text-gray-700">Approved</label>
+                </div>
               </div>
             </div>
-            <div className="flex justify-end gap-2 mt-6">
-              <button className="px-4 py-2 rounded border" onClick={() => { setModalOpen(false); setSelectedUser(null); }}>Cancel</button>
-              <button disabled={saving} className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50" onClick={saveUser}>
-                {saving ? "Saving..." : "Save"}
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+              <button 
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500" 
+                onClick={() => { 
+                  setModalOpen(false); 
+                  setSelectedUser(null); 
+                  // Restore body scroll when modal is closed
+                  document.body.style.overflow = 'unset';
+                }}
+              >
+                Cancel
+              </button>
+              <button 
+                disabled={saving} 
+                className="px-4 py-2 text-sm font-medium text-white bg-gray-900 border border-transparent rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed" 
+                onClick={saveUser}
+              >
+                {saving ? "Saving..." : "Save Changes"}
               </button>
             </div>
           </div>

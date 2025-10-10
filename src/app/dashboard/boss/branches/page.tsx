@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Building2, Users, UserCheck, Plus, Edit, Search } from "lucide-react";
 
 export default function BossBranchesPage() {
   const [branches, setBranches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newBranchName, setNewBranchName] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     loadBranches();
@@ -25,6 +27,25 @@ export default function BossBranchesPage() {
     }
   };
 
+  // Filter branches based on search
+  const getFilteredBranches = () => {
+    if (!searchQuery) return branches;
+    return branches.filter(branch => 
+      branch.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  };
+
+  // Get branch statistics
+  const getBranchStats = () => {
+    const stats = {
+      total: branches.length,
+      totalStudents: branches.reduce((sum, branch) => sum + (branch._count?.students || 0), 0),
+      totalTeachers: branches.reduce((sum, branch) => sum + (branch._count?.teachers || 0), 0),
+      totalUsers: branches.reduce((sum, branch) => sum + (branch._count?.users || 0), 0),
+    };
+    return stats;
+  };
+
   const createBranch = async () => {
     if (!newBranchName.trim()) {
       alert("Branch name is required");
@@ -41,6 +62,8 @@ export default function BossBranchesPage() {
       if (res.ok) {
         setShowCreateModal(false);
         setNewBranchName("");
+        // Restore body scroll when modal is closed
+        document.body.style.overflow = 'unset';
         await loadBranches();
       } else {
         const error = await res.json();
@@ -52,145 +75,175 @@ export default function BossBranchesPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        </div>
-      </div>
-    );
-  }
+  const openCreateModal = () => {
+    setShowCreateModal(true);
+    // Prevent body scroll when modal is open
+    document.body.style.overflow = 'hidden';
+  };
+
+  const closeCreateModal = () => {
+    setShowCreateModal(false);
+    setNewBranchName("");
+    // Restore body scroll when modal is closed
+    document.body.style.overflow = 'unset';
+  };
+
+  const stats = getBranchStats();
+  const filteredBranches = getFilteredBranches();
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      <div className="mb-8 flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Branches</h1>
-          <p className="text-gray-600">Manage all branches and view statistics</p>
+    <div className="p-8">
+      {/* Minimal Header */}
+      <div className="mb-12">
+        <h1 className="text-2xl font-medium text-gray-900">Branches</h1>
+        <p className="text-gray-500 mt-1">Manage your organization branches</p>
+      </div>
+
+      {/* Compact Stats Row */}
+      <div className="flex items-center gap-8 mb-8 text-sm">
+        <div className="flex items-center gap-2">
+          <span className="text-gray-500">Total:</span>
+          <span className="font-medium">{stats.total}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-gray-500">Students:</span>
+          <span className="font-medium">{stats.totalStudents}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-gray-500">Teachers:</span>
+          <span className="font-medium">{stats.totalTeachers}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-gray-500">Total Users:</span>
+          <span className="font-medium">{stats.totalUsers}</span>
+        </div>
+      </div>
+
+      {/* Simple Filters */}
+      <div className="flex items-center gap-4 mb-6">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search branches..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+          />
         </div>
         <button
-          onClick={() => setShowCreateModal(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          onClick={openCreateModal}
+          className="px-4 py-2 text-sm font-medium text-white bg-gray-900 border border-transparent rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500"
         >
+          <Plus className="w-4 h-4 mr-2 inline" />
           Create Branch
         </button>
       </div>
 
-      {branches.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg shadow">
-          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-          </svg>
-          <h3 className="text-lg font-medium text-gray-900 mt-4">No branches yet</h3>
-          <p className="text-gray-500 mt-2">Create your first branch to get started</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {branches.map((branch) => (
-            <div key={branch.id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-semibold text-gray-900">{branch.name}</h3>
-                <div className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">
-                  {branch.id.slice(0, 8)}
-                </div>
+      {/* Simple Table */}
+      <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
+        {loading ? (
+          <div className="flex items-center justify-center h-32">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-400"></div>
+          </div>
+        ) : (
+          <div className="overflow-x-auto pb-6">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Name</th>
+                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Students</th>
+                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Teachers</th>
+                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Total Users</th>
+                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Created</th>
+                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-700"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {filteredBranches.map((branch) => (
+                  <tr key={branch.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-gray-100 rounded-md flex items-center justify-center">
+                          <Building2 className="w-4 h-4 text-gray-600" />
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900">{branch.name}</div>
+                          <div className="text-xs text-gray-500">{branch.id.slice(0, 8)}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{branch._count?.students || 0}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{branch._count?.teachers || 0}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{branch._count?.users || 0}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">
+                      {new Date(branch.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <button className="text-gray-400 hover:text-gray-600">
+                        <Edit className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {filteredBranches.length === 0 && (
+              <div className="text-center py-12 text-gray-500">
+                <Building2 className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                <p>No branches found</p>
               </div>
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                    <span className="text-sm text-gray-600">Students</span>
-                  </div>
-                  <span className="text-lg font-semibold text-blue-600">{branch._count.students}</span>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                    <span className="text-sm text-gray-600">Teachers</span>
-                  </div>
-                  <span className="text-lg font-semibold text-green-600">{branch._count.teachers}</span>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                    <span className="text-sm text-gray-600">Total Users</span>
-                  </div>
-                  <span className="text-lg font-semibold text-purple-600">{branch._count.users}</span>
-                </div>
-
-                <div className="flex items-center justify-between pt-3 border-t">
-                  <div className="flex items-center gap-2">
-                    <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <span className="text-sm text-gray-600">Created</span>
-                  </div>
-                  <span className="text-sm text-gray-500">
-                    {new Date(branch.createdAt).toLocaleDateString()}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Create Branch Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white w-full max-w-md rounded-xl shadow-xl p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-semibold">Create New Branch</h3>
-              <button
-                onClick={() => {
-                  setShowCreateModal(false);
-                  setNewBranchName("");
-                }}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+        <div 
+          className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              closeCreateModal();
+            }
+          }}
+        >
+          <div className="bg-white w-full max-w-md border border-gray-200 rounded-md shadow-lg">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-medium text-gray-900">Create Branch</h3>
+              <p className="text-sm text-gray-500 mt-1">Add a new branch to your organization</p>
             </div>
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Branch Name
-              </label>
-              <input
-                type="text"
-                value={newBranchName}
-                onChange={(e) => setNewBranchName(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && createBranch()}
-                className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="e.g., Baku Center, Ganja Branch"
-                autoFocus
-              />
+            {/* Modal Content */}
+            <div className="px-6 py-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Branch Name
+                </label>
+                <input
+                  type="text"
+                  value={newBranchName}
+                  onChange={(e) => setNewBranchName(e.target.value)}
+                  onKeyPress={(e) => e.key === "Enter" && createBranch()}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+                  placeholder="e.g., Baku Center, Ganja Branch"
+                  autoFocus
+                />
+              </div>
             </div>
 
-            <div className="flex justify-end gap-3">
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
               <button
-                onClick={() => {
-                  setShowCreateModal(false);
-                  setNewBranchName("");
-                }}
-                className="px-4 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
+                onClick={closeCreateModal}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500"
               >
                 Cancel
               </button>
               <button
                 onClick={createBranch}
-                className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"
+                className="px-4 py-2 text-sm font-medium text-white bg-gray-900 border border-transparent rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500"
               >
                 Create Branch
               </button>
