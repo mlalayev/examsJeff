@@ -2,37 +2,19 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireBranchAdmin, getScopedBranchId } from "@/lib/auth-utils";
 
-// GET /api/analytics/branch/finance?from=&to= - Get finance analytics for branch admin's branch
+// GET /api/analytics/branch/finance - Branch admin finance analytics
 export async function GET(request: Request) {
   try {
     const user = await requireBranchAdmin();
     const branchId = getScopedBranchId(user);
-    
+
     if (!branchId) {
-      return NextResponse.json({ error: "Branch admin must be assigned to a branch" }, { status: 400 });
+      return NextResponse.json({ error: "Branch ID required" }, { status: 400 });
     }
 
     const { searchParams } = new URL(request.url);
-    
-    // Default to last 12 months if no dates provided
-    const defaultTo = new Date();
-    const defaultFrom = new Date();
-    defaultFrom.setMonth(defaultFrom.getMonth() - 12);
-    
-    const from = searchParams.get("from") ? new Date(searchParams.get("from")!) : defaultFrom;
-    const to = searchParams.get("to") ? new Date(searchParams.get("to")!) : defaultTo;
-
-    // Get all transactions for this branch in the date range
-    const transactions = await prisma.financeTxn.findMany({
-      where: {
-        branchId: branchId,
-        occurredAt: {
-          gte: from,
-          lte: to,
-        },
-      },
-      orderBy: { occurredAt: "asc" },
-    });
+    const year = searchParams.get("year") ? parseInt(searchParams.get("year")!) : new Date().getFullYear();
+    const month = searchParams.get("month") ? parseInt(searchParams.get("month")!) : null;
 
     // Get branch info
     const branch = await prisma.branch.findUnique({
@@ -40,114 +22,229 @@ export async function GET(request: Request) {
       select: { id: true, name: true },
     });
 
-    // Calculate by month
-    const monthlyMap = new Map<string, { income: number; expense: number }>();
-    
-    transactions.forEach(txn => {
-      const monthISO = txn.occurredAt.toISOString().substring(0, 7); // YYYY-MM
-      if (!monthlyMap.has(monthISO)) {
-        monthlyMap.set(monthISO, { income: 0, expense: 0 });
-      }
-      const month = monthlyMap.get(monthISO)!;
-      
-      if (txn.kind === "INCOME") {
-        month.income += Number(txn.amount);
-      } else if (txn.kind === "EXPENSE") {
-        month.expense += Number(txn.amount);
-      }
+    if (!branch) {
+      return NextResponse.json({ error: "Branch not found" }, { status: 404 });
+    }
+
+    // Course types
+    const courseTypes = ["IELTS", "SAT", "KIDS", "GENERAL_ENGLISH"];
+
+    // Build date filter
+    let dateFilter: any = {};
+    if (month) {
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 0, 23, 59, 59);
+      dateFilter = {
+        occurredAt: {
+          gte: startDate,
+          lte: endDate,
+        },
+      };
+    } else {
+      const startDate = new Date(year, 0, 1);
+      const endDate = new Date(year, 11, 31, 23, 59, 59);
+      dateFilter = {
+        occurredAt: {
+          gte: startDate,
+          lte: endDate,
+        },
+      };
+    }
+
+    // Get finance transactions for this branch
+    const transactions = await prisma.financeTxn.findMany({
+      where: {
+        ...dateFilter,
+        branchId,
+      },
     });
 
-    const byMonth = Array.from(monthlyMap.entries())
-      .map(([monthISO, data]) => ({
-        monthISO,
-        income: data.income,
-        expense: data.expense,
-        net: data.income - data.expense,
-      }))
-      .sort((a, b) => a.monthISO.localeCompare(b.monthISO));
-
-    // Calculate by category
-    const categoryMap = new Map<string, { income: number; expense: number }>();
-    
-    transactions.forEach(txn => {
-      if (!categoryMap.has(txn.category)) {
-        categoryMap.set(txn.category, { income: 0, expense: 0 });
-      }
-      const category = categoryMap.get(txn.category)!;
-      
-      if (txn.kind === "INCOME") {
-        category.income += Number(txn.amount);
-      } else if (txn.kind === "EXPENSE") {
-        category.expense += Number(txn.amount);
-      }
-    });
-
-    const byCategory = Array.from(categoryMap.entries()).map(([category, data]) => ({
-      category,
-      income: data.income,
-      expense: data.expense,
-      net: data.income - data.expense,
-    }));
-
-    // Calculate this month vs last month
-    const now = new Date();
-    const thisMonthISO = now.toISOString().substring(0, 7);
-    const lastMonthDate = new Date(now);
-    lastMonthDate.setMonth(lastMonthDate.getMonth() - 1);
-    const lastMonthISO = lastMonthDate.toISOString().substring(0, 7);
-
-    const thisMonth = byMonth.find(m => m.monthISO === thisMonthISO) || { income: 0, expense: 0, net: 0 };
-    const lastMonth = byMonth.find(m => m.monthISO === lastMonthISO) || { income: 0, expense: 0, net: 0 };
-
-    const revenueDelta = thisMonth.income - lastMonth.income;
-    const revenuePct = lastMonth.income > 0 ? ((revenueDelta / lastMonth.income) * 100) : 0;
-    
-    const expenseDelta = thisMonth.expense - lastMonth.expense;
-    const expensePct = lastMonth.expense > 0 ? ((expenseDelta / lastMonth.expense) * 100) : 0;
-    
-    const netDelta = thisMonth.net - lastMonth.net;
-    const netPct = lastMonth.net !== 0 ? ((netDelta / Math.abs(lastMonth.net)) * 100) : 0;
-
-    const thisMonthVsLast = {
-      thisMonth: {
-        monthISO: thisMonthISO,
-        income: thisMonth.income,
-        expense: thisMonth.expense,
-        net: thisMonth.net,
-      },
-      lastMonth: {
-        monthISO: lastMonthISO,
-        income: lastMonth.income,
-        expense: lastMonth.expense,
-        net: lastMonth.net,
-      },
-      revenueDelta,
-      revenuePct: parseFloat(revenuePct.toFixed(2)),
-      expenseDelta,
-      expensePct: parseFloat(expensePct.toFixed(2)),
-      netDelta,
-      netPct: parseFloat(netPct.toFixed(2)),
-    };
-
-    // Overall totals
+    // Calculate totals
     const totalIncome = transactions
       .filter(t => t.kind === "INCOME")
       .reduce((sum, t) => sum + Number(t.amount), 0);
+    
     const totalExpense = transactions
       .filter(t => t.kind === "EXPENSE")
       .reduce((sum, t) => sum + Number(t.amount), 0);
 
+    // Get student enrollment stats by course type for this branch
+    const enrollmentStats = await Promise.all(
+      courseTypes.map(async (courseType) => {
+        const count = await prisma.studentEnrollment.count({
+          where: {
+            courseType,
+            status: "ACTIVE",
+            branchId,
+          },
+        });
+
+        // Calculate revenue from this course type
+        const revenue = await prisma.paymentSchedule.aggregate({
+          where: {
+            enrollment: {
+              courseType,
+              status: "ACTIVE",
+              branchId,
+            },
+            status: "PAID",
+            dueDate: {
+              gte: month 
+                ? new Date(year, month - 1, 1)
+                : new Date(year, 0, 1),
+              lte: month
+                ? new Date(year, month, 0, 23, 59, 59)
+                : new Date(year, 11, 31, 23, 59, 59),
+            },
+          },
+          _sum: {
+            amount: true,
+          },
+        });
+
+        return {
+          courseType,
+          studentCount: count,
+          revenue: Number(revenue._sum.amount || 0),
+        };
+      })
+    );
+
+    // Get monthly breakdown for the year
+    const monthlyData = [];
+    for (let m = 1; m <= 12; m++) {
+      const monthStart = new Date(year, m - 1, 1);
+      const monthEnd = new Date(year, m, 0, 23, 59, 59);
+
+      const monthTxns = await prisma.financeTxn.findMany({
+        where: {
+          occurredAt: { gte: monthStart, lte: monthEnd },
+          branchId,
+        },
+      });
+
+      const income = monthTxns
+        .filter(t => t.kind === "INCOME")
+        .reduce((sum, t) => sum + Number(t.amount), 0);
+      
+      const expense = monthTxns
+        .filter(t => t.kind === "EXPENSE")
+        .reduce((sum, t) => sum + Number(t.amount), 0);
+
+      const tuitionPaid = await prisma.tuitionPayment.aggregate({
+        where: {
+          year,
+          month: m,
+          status: "PAID",
+          branchId,
+        },
+        _sum: { amount: true },
+      });
+
+      monthlyData.push({
+        month: m,
+        monthName: new Date(year, m - 1).toLocaleString('en-US', { month: 'short' }),
+        income,
+        expense,
+        net: income - expense,
+        tuitionRevenue: Number(tuitionPaid._sum.amount || 0),
+      });
+    }
+
+    // Get tuition payment stats
+    const tuitionStats = await prisma.tuitionPayment.aggregate({
+      where: {
+        status: "PAID",
+        year,
+        ...(month ? { month } : {}),
+        branchId,
+      },
+      _sum: { amount: true },
+      _count: true,
+    });
+
+    const unpaidCount = await prisma.tuitionPayment.count({
+      where: {
+        status: "UNPAID",
+        year,
+        ...(month ? { month } : {}),
+        branchId,
+      },
+    });
+
+    // Get current month statistics
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+
+    const currentMonthPaidCount = await prisma.tuitionPayment.count({
+      where: {
+        year: currentYear,
+        month: currentMonth,
+        status: "PAID",
+        branchId,
+      },
+    });
+
+    const currentMonthUnpaidCount = await prisma.tuitionPayment.count({
+      where: {
+        year: currentYear,
+        month: currentMonth,
+        status: "UNPAID",
+        branchId,
+      },
+    });
+
+    // Get total active students count for this branch
+    const totalStudentsCount = await prisma.user.count({
+      where: {
+        role: "STUDENT",
+        branchId,
+      },
+    });
+
+    // Get teacher count
+    const teacherCount = await prisma.user.count({
+      where: {
+        role: "TEACHER",
+        branchId,
+      },
+    });
+
+    const studentsWithPaymentRecord = currentMonthPaidCount + currentMonthUnpaidCount;
+    const studentsWithoutRecord = totalStudentsCount - studentsWithPaymentRecord;
+
     return NextResponse.json({
-      branch: branch?.name || "Unknown",
-      dateRange: { from: from.toISOString(), to: to.toISOString() },
+      branch,
+      period: {
+        year,
+        month: month || "all",
+      },
       summary: {
         totalIncome,
         totalExpense,
         totalNet: totalIncome - totalExpense,
+        tuitionRevenue: Number(tuitionStats._sum.amount || 0),
+        tuitionPaymentCount: tuitionStats._count,
+        tuitionUnpaidCount: unpaidCount,
       },
-      byMonth,
-      byCategory,
-      thisMonthVsLast,
+      currentMonth: {
+        year: currentYear,
+        month: currentMonth,
+        paidCount: currentMonthPaidCount,
+        unpaidCount: currentMonthUnpaidCount,
+        noRecordCount: studentsWithoutRecord,
+        totalStudents: totalStudentsCount,
+        paymentRate: totalStudentsCount > 0 
+          ? ((currentMonthPaidCount / totalStudentsCount) * 100).toFixed(1)
+          : "0.0",
+      },
+      courseTypeStats: enrollmentStats,
+      monthlyBreakdown: monthlyData,
+      stats: {
+        studentCount: totalStudentsCount,
+        teacherCount,
+      },
     });
 
   } catch (error) {

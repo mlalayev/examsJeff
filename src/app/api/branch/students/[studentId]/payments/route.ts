@@ -59,7 +59,7 @@ export async function GET(
         return {
           month,
           id: existing.id,
-          amount: existing.amount,
+          amount: Number(existing.amount),
           status: existing.status,
           paidAt: existing.paidAt,
           note: existing.note,
@@ -70,7 +70,7 @@ export async function GET(
         return {
           month,
           id: null,
-          amount: student.studentProfile?.monthlyFee || 0,
+          amount: Number(student.studentProfile?.monthlyFee || 0),
           status: "UNPAID",
           paidAt: null,
           note: null,
@@ -81,7 +81,7 @@ export async function GET(
 
     return NextResponse.json({ 
       year,
-      defaultFee: student.studentProfile?.monthlyFee || 0,
+      defaultFee: Number(student.studentProfile?.monthlyFee || 0),
       payments: monthlyPayments 
     });
 

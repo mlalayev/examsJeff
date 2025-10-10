@@ -53,6 +53,10 @@ export default function PaymentModal({ student, teachers, onClose, onUpdate }: P
 
   const togglePaymentStatus = async (month: number, currentStatus: string, amount: any) => {
     try {
+      // Convert amount to number, if it's 0 or invalid, use monthlyFee
+      const numAmount = parseFloat(amount);
+      const finalAmount = (numAmount > 0) ? numAmount : (parseFloat(profileForm.monthlyFee?.toString() || "0") || 0);
+      
       const res = await fetch(`/api/branch/students/${student.id}/payments/mark`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -60,7 +64,7 @@ export default function PaymentModal({ student, teachers, onClose, onUpdate }: P
           year: paymentYear,
           month,
           paid: currentStatus !== "PAID",
-          amount: parseFloat(amount) || 0,
+          amount: finalAmount,
         }),
       });
 

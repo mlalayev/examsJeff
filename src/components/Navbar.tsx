@@ -1,9 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
-import { GraduationCap, LogOut, User, Bell } from "lucide-react";
+import { 
+  Bell, 
+  User, 
+  Settings, 
+  LayoutDashboard,
+  ChevronDown,
+  LogOut
+} from "lucide-react";
 
 interface Notification {
   id: string;
@@ -17,13 +24,31 @@ export default function Navbar() {
   const { data: session, status } = useSession();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
+  
+  const notificationsRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (session) {
       fetchNotifications();
     }
   }, [session]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
+        setShowNotifications(false);
+      }
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setShowProfileDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const fetchNotifications = async () => {
     try {
@@ -51,60 +76,104 @@ export default function Navbar() {
     return null;
   };
 
+  const getRoleDisplayName = (role: string) => {
+    switch (role) {
+      case "STUDENT": return "Student";
+      case "TEACHER": return "Teacher";
+      case "ADMIN": return "Admin";
+      case "BOSS": return "Boss";
+      case "BRANCH_ADMIN": return "Branch Admin";
+      default: return role;
+    }
+  };
+
+  const getUserDisplayName = () => {
+    if (!session?.user) return "";
+    const name = session.user.name || "";
+    const email = session.user.email || "";
+    
+    if (name && name !== email) {
+      return name;
+    }
+    
+    // Extract name from email if no name is provided
+    const emailName = email.split('@')[0];
+    return emailName.charAt(0).toUpperCase() + emailName.slice(1);
+  };
+
+  if (status === "loading") {
+    return (
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-slate-200 rounded-lg animate-pulse"></div>
+              <div className="w-32 h-6 bg-slate-200 rounded animate-pulse"></div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="w-8 h-8 bg-slate-200 rounded-full animate-pulse"></div>
+              <div className="w-8 h-8 bg-slate-200 rounded-full animate-pulse"></div>
+            </div>
+          </div>
+        </div>
+      </header>
+    );
+  }
+
   return (
-    <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
-      <div className="max-w-[1200px] mx-auto px-4 py-4 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 text-xl font-bold text-gray-900">
-          <GraduationCap className="w-6 h-6 text-blue-600" />
-          JEFF Exams
-        </Link>
+    <header className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+      <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="flex items-center justify-between">
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-3 group">
+            <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-sm group-hover:scale-105 transition-transform duration-200">
+              J
+            </div>
+            <span className="text-xl font-bold text-slate-900">JEFF Exams</span>
+          </Link>
 
-        <div className="flex items-center gap-4">
-          {status === "loading" ? (
-            <div className="px-4 py-2 text-sm text-gray-500">Loading...</div>
-          ) : session ? (
-            <>
-              {/* Notifications Bell */}
-              <div className="relative">
-                <button
-                  onClick={() => setShowNotifications(!showNotifications)}
-                  className="relative p-2 text-gray-700 hover:text-blue-600 transition"
-                  title="Notifications"
-                >
-                  <Bell className="w-5 h-5" />
-                  {notifications.length > 0 && (
-                    <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
-                  )}
-                </button>
+          {/* Right Side - Notifications and Profile */}
+          <div className="flex items-center gap-4">
+            {session ? (
+              <>
+                {/* Notifications */}
+                <div className="relative" ref={notificationsRef}>
+                  <button
+                    onClick={() => setShowNotifications(!showNotifications)}
+                    className="relative p-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
+                    title="Notifications"
+                  >
+                    <Bell className="w-5 h-5" />
+                    {notifications.length > 0 && (
+                      <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full flex items-center justify-center">
+                        <span className="w-1.5 h-1.5 bg-white rounded-full"></span>
+                      </span>
+                    )}
+                  </button>
 
-                {/* Notifications Dropdown */}
-                {showNotifications && (
-                  <>
-                    <div 
-                      className="fixed inset-0 z-10"
-                      onClick={() => setShowNotifications(false)}
-                    />
-                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-20 max-h-96 overflow-y-auto">
-                      <div className="p-4 border-b border-gray-200">
-                        <h3 className="font-semibold text-gray-900">Notifications</h3>
+                  {/* Notifications Dropdown */}
+                  {showNotifications && (
+                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-slate-200 z-50 max-h-96 overflow-y-auto">
+                      <div className="p-4 border-b border-slate-200">
+                        <h3 className="font-semibold text-slate-900">Notifications</h3>
                       </div>
                       {loading ? (
-                        <div className="p-4 text-center text-sm text-gray-500">Loading...</div>
+                        <div className="p-4 text-center text-sm text-slate-500">Loading...</div>
                       ) : notifications.length === 0 ? (
-                        <div className="p-4 text-center text-sm text-gray-500">
+                        <div className="p-4 text-center text-sm text-slate-500">
                           No notifications yet
                         </div>
                       ) : (
-                        <div className="divide-y divide-gray-200">
+                        <div className="divide-y divide-slate-200">
                           {notifications.map((notification) => (
-                            <div key={notification.id} className="p-4 hover:bg-gray-50 transition">
-                              <p className="font-medium text-sm text-gray-900 mb-1">
+                            <div key={notification.id} className="p-4 hover:bg-slate-50 transition-colors duration-150">
+                              <p className="font-medium text-sm text-slate-900 mb-1">
                                 {notification.title}
                               </p>
-                              <p className="text-sm text-gray-600 mb-2">
+                              <p className="text-sm text-slate-600 mb-2">
                                 {notification.body}
                               </p>
-                              <p className="text-xs text-gray-400">
+                              <p className="text-xs text-slate-400">
                                 {new Date(notification.createdAt).toLocaleString('en-US', {
                                   timeZone: 'Asia/Baku',
                                   month: 'short',
@@ -118,65 +187,101 @@ export default function Navbar() {
                         </div>
                       )}
                     </div>
-                  </>
-                )}
-              </div>
+                  )}
+                </div>
 
-              <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 rounded-lg">
-                <User className="w-4 h-4 text-blue-600" />
-                <span className="text-sm font-medium text-gray-900">
-                  {session.user?.name || session.user?.email}
-                </span>
-                <span className="text-xs px-2 py-0.5 bg-blue-600 text-white rounded">
-                  {(session.user as any).role}
-                </span>
-              </div>
-              
-              {getDashboardLink() && (
+                {/* Profile Dropdown */}
+                <div className="relative" ref={profileRef}>
+                  <button
+                    onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+                    className="flex items-center gap-3 p-2 hover:bg-slate-50 rounded-lg transition-all duration-200"
+                  >
+                    <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full flex items-center justify-center text-white font-medium text-sm">
+                      {getUserDisplayName().charAt(0).toUpperCase()}
+                    </div>
+                    <ChevronDown className={`w-4 h-4 text-slate-600 transition-transform duration-200 ${showProfileDropdown ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {/* Profile Dropdown Menu */}
+                  {showProfileDropdown && (
+                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-slate-200 z-50">
+                      {/* User Info */}
+                      <div className="p-4 border-b border-slate-200">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full flex items-center justify-center text-white font-medium text-lg">
+                            {getUserDisplayName().charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-slate-900">{getUserDisplayName()}</p>
+                            <p className="text-xs text-slate-500">{getRoleDisplayName((session.user as any).role)}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Menu Items */}
+                      <div className="py-2">
+                        <Link
+                          href={getDashboardLink() || "/"}
+                          className="flex items-center gap-3 px-4 py-2 text-slate-700 hover:bg-slate-50 transition-colors duration-150"
+                          onClick={() => setShowProfileDropdown(false)}
+                        >
+                          <LayoutDashboard className="w-4 h-4" />
+                          Dashboard
+                        </Link>
+                        
+                        <Link
+                          href="/profile"
+                          className="flex items-center gap-3 px-4 py-2 text-slate-700 hover:bg-slate-50 transition-colors duration-150"
+                          onClick={() => setShowProfileDropdown(false)}
+                        >
+                          <User className="w-4 h-4" />
+                          Profile
+                        </Link>
+                        
+                        <Link
+                          href="/settings"
+                          className="flex items-center gap-3 px-4 py-2 text-slate-700 hover:bg-slate-50 transition-colors duration-150"
+                          onClick={() => setShowProfileDropdown(false)}
+                        >
+                          <Settings className="w-4 h-4" />
+                          Settings
+                        </Link>
+                      </div>
+
+                      {/* Sign Out */}
+                      <div className="border-t border-slate-200 py-2">
+                        <button
+                          onClick={() => signOut({ callbackUrl: "/" })}
+                          className="flex items-center gap-3 px-4 py-2 text-red-600 hover:bg-red-50 transition-colors duration-150 w-full text-left"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          Sign Out
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
                 <Link
-                  href={getDashboardLink()!}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition"
+                  href="/auth/login"
+                  className="px-4 py-2 text-slate-700 font-medium hover:text-blue-600 transition-colors duration-200"
                 >
-                  Dashboard
+                  Sign In
                 </Link>
-              )}
-              
-              {(session?.user as any)?.approved === false && ((session?.user as any)?.role === 'STUDENT' || (session?.user as any)?.role === 'TEACHER') ? (
-                <Link href="/pending" className="ml-4 text-sm text-amber-600">Pending Approval</Link>
-              ) : null}
-              {(session?.user as any)?.role === 'BRANCH_ADMIN' && (session?.user as any)?.branchName ? (
-                <span className="ml-4 text-sm text-blue-600 font-medium">
-                  Managing Branch: {(session?.user as any)?.branchName}
-                </span>
-              ) : null}
-              
-              <button
-                onClick={() => signOut({ callbackUrl: "/" })}
-                className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-red-600 transition"
-                title="Sign out"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
-            </>
-          ) : (
-            <>
-              <Link
-                href="/auth/login"
-                className="px-4 py-2 text-gray-700 font-medium hover:text-blue-600 transition"
-              >
-                Sign In
-              </Link>
-              <Link
-                href="/auth/register"
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition"
-              >
-                Get Started
-              </Link>
-            </>
-          )}
+                <Link
+                  href="/auth/register"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors duration-200"
+                >
+                  Get Started
+                </Link>
+              </>
+            )}
+          </div>
         </div>
       </div>
-    </nav>
+    </header>
   );
 }
 

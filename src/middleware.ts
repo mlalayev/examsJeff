@@ -62,11 +62,7 @@ export default withAuth(
 
 export const config = {
   matcher: [
-    "/dashboard/student/:path*",
-    "/dashboard/teacher/:path*",
-    "/dashboard/admin/:path*",
-    "/dashboard/boss/:path*",
-    "/dashboard/branch-admin/:path*",
+    "/dashboard/:path*",
     "/pending",
   ],
 };

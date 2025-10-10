@@ -2,18 +2,18 @@
 
 import { useEffect, useState } from "react";
 
-type TabType = "overview" | "monthly" | "branches" | "courses";
+type TabType = "overview" | "monthly" | "courses";
 
-export default function BossFinanceV2Page() {
+export default function BranchAdminFinancePage() {
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [financeData, setFinanceData] = useState<any>(null);
+  const [branchInfo, setBranchInfo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   
   // Filters
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
-  const [selectedBranch, setSelectedBranch] = useState<string>("");
 
   const loadFinanceData = async () => {
     setLoading(true);
@@ -25,14 +25,11 @@ export default function BossFinanceV2Page() {
       if (selectedMonth) {
         params.append("month", selectedMonth.toString());
       }
-      
-      if (selectedBranch) {
-        params.append("branchId", selectedBranch);
-      }
 
-      const res = await fetch(`/api/analytics/boss/finance-enhanced?${params}`);
+      const res = await fetch(`/api/analytics/branch/finance?${params}`);
       const data = await res.json();
       setFinanceData(data);
+      setBranchInfo(data.branch);
     } catch (error) {
       console.error("Failed to load finance data:", error);
     } finally {
@@ -42,7 +39,7 @@ export default function BossFinanceV2Page() {
 
   useEffect(() => {
     loadFinanceData();
-  }, [selectedYear, selectedMonth, selectedBranch]);
+  }, [selectedYear, selectedMonth]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('az-AZ', {
@@ -91,17 +88,24 @@ export default function BossFinanceV2Page() {
     <div className="max-w-7xl mx-auto px-4 py-8">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          💰 Finance Analytics Dashboard
-        </h1>
+        <div className="flex items-center gap-3 mb-2">
+          <h1 className="text-3xl font-bold text-gray-900">
+            💰 Finance Dashboard
+          </h1>
+          {branchInfo && (
+            <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
+              {branchInfo.name}
+            </span>
+          )}
+        </div>
         <p className="text-gray-600">
-          Comprehensive financial overview and insights
+          Financial overview for your branch
         </p>
       </div>
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Year
@@ -136,30 +140,11 @@ export default function BossFinanceV2Page() {
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Branch
-            </label>
-            <select
-              value={selectedBranch}
-              onChange={(e) => setSelectedBranch(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            >
-              <option value="">All Branches</option>
-              {financeData.branches?.map((branch: any) => (
-                <option key={branch.id} value={branch.id}>
-                  {branch.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
           <div className="flex items-end">
             <button
               onClick={() => {
                 setSelectedYear(currentYear);
                 setSelectedMonth(null);
-                setSelectedBranch("");
               }}
               className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
             >
@@ -194,16 +179,6 @@ export default function BossFinanceV2Page() {
               📅 Monthly Breakdown
             </button>
             <button
-              onClick={() => setActiveTab("branches")}
-              className={`px-6 py-3 text-sm font-medium border-b-2 transition ${
-                activeTab === "branches"
-                  ? "border-purple-600 text-purple-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              🏢 By Branch
-            </button>
-            <button
               onClick={() => setActiveTab("courses")}
               className={`px-6 py-3 text-sm font-medium border-b-2 transition ${
                 activeTab === "courses"
@@ -219,7 +194,6 @@ export default function BossFinanceV2Page() {
         <div className="p-6">
           {activeTab === "overview" && <OverviewTab data={financeData} formatCurrency={formatCurrency} />}
           {activeTab === "monthly" && <MonthlyTab data={financeData} formatCurrency={formatCurrency} />}
-          {activeTab === "branches" && <BranchesTab data={financeData} formatCurrency={formatCurrency} />}
           {activeTab === "courses" && <CoursesTab data={financeData} formatCurrency={formatCurrency} />}
         </div>
       </div>
@@ -318,6 +292,23 @@ function OverviewTab({ data, formatCurrency }: any) {
           </div>
         </div>
       )}
+
+      {/* Branch Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white border rounded-lg p-4">
+          <h4 className="font-semibold text-gray-900 mb-3">📊 Branch Statistics</h4>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Total Students:</span>
+              <span className="font-semibold">{data.stats?.studentCount || 0}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Active Teachers:</span>
+              <span className="font-semibold">{data.stats?.teacherCount || 0}</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -339,7 +330,7 @@ function MonthlyTab({ data, formatCurrency }: any) {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {data.monthlyBreakdown.map((month: any) => (
+            {data.monthlyBreakdown?.map((month: any) => (
               <tr key={month.month} className="hover:bg-gray-50">
                 <td className="px-4 py-3 text-sm font-medium text-gray-900">{month.monthName}</td>
                 <td className="px-4 py-3 text-sm text-right text-green-600">{formatCurrency(month.income)}</td>
@@ -355,60 +346,20 @@ function MonthlyTab({ data, formatCurrency }: any) {
             <tr>
               <td className="px-4 py-3 text-sm">TOTAL</td>
               <td className="px-4 py-3 text-sm text-right text-green-700">
-                {formatCurrency(data.monthlyBreakdown.reduce((sum: number, m: any) => sum + m.income, 0))}
+                {formatCurrency(data.monthlyBreakdown?.reduce((sum: number, m: any) => sum + m.income, 0) || 0)}
               </td>
               <td className="px-4 py-3 text-sm text-right text-red-700">
-                {formatCurrency(data.monthlyBreakdown.reduce((sum: number, m: any) => sum + m.expense, 0))}
+                {formatCurrency(data.monthlyBreakdown?.reduce((sum: number, m: any) => sum + m.expense, 0) || 0)}
               </td>
               <td className="px-4 py-3 text-sm text-right text-blue-700">
-                {formatCurrency(data.monthlyBreakdown.reduce((sum: number, m: any) => sum + m.net, 0))}
+                {formatCurrency(data.monthlyBreakdown?.reduce((sum: number, m: any) => sum + m.net, 0) || 0)}
               </td>
               <td className="px-4 py-3 text-sm text-right text-purple-700">
-                {formatCurrency(data.monthlyBreakdown.reduce((sum: number, m: any) => sum + m.tuitionRevenue, 0))}
+                {formatCurrency(data.monthlyBreakdown?.reduce((sum: number, m: any) => sum + m.tuitionRevenue, 0) || 0)}
               </td>
             </tr>
           </tfoot>
         </table>
-      </div>
-    </div>
-  );
-}
-
-// Branches Tab Component
-function BranchesTab({ data, formatCurrency }: any) {
-  return (
-    <div>
-      <h3 className="text-lg font-semibold mb-4">Branch Performance</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        {data.branchBreakdown.map((branch: any) => (
-          <div key={branch.branchId} className="bg-white border rounded-lg p-4">
-            <h4 className="font-semibold text-gray-900 mb-3">{branch.branchName}</h4>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Students:</span>
-                <span className="font-semibold">{branch.studentCount}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Income:</span>
-                <span className="font-semibold text-green-600">{formatCurrency(branch.income)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Expenses:</span>
-                <span className="font-semibold text-red-600">{formatCurrency(branch.expense)}</span>
-              </div>
-              <div className="flex justify-between pt-2 border-t">
-                <span className="text-gray-600">Net:</span>
-                <span className={`font-bold ${branch.net >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
-                  {formatCurrency(branch.net)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Tuition:</span>
-                <span className="font-semibold text-purple-600">{formatCurrency(branch.tuitionRevenue)}</span>
-              </div>
-            </div>
-          </div>
-        ))}
       </div>
     </div>
   );
@@ -434,7 +385,7 @@ function CoursesTab({ data, formatCurrency }: any) {
     <div>
       <h3 className="text-lg font-semibold mb-4">Course Type Statistics</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {data.courseTypeStats.map((course: any) => (
+        {data.courseTypeStats?.map((course: any) => (
           <div key={course.courseType} className="bg-gradient-to-br from-indigo-50 to-indigo-100 border border-indigo-200 rounded-lg p-4">
             <div className="text-2xl mb-2">{courseIcons[course.courseType] || "📚"}</div>
             <h4 className="font-semibold text-gray-900 mb-3">{courseLabels[course.courseType] || course.courseType}</h4>
@@ -464,13 +415,13 @@ function CoursesTab({ data, formatCurrency }: any) {
           <div>
             <div className="text-sm text-gray-600">Total Students</div>
             <div className="text-2xl font-bold text-gray-900">
-              {data.courseTypeStats.reduce((sum: number, c: any) => sum + c.studentCount, 0)}
+              {data.courseTypeStats?.reduce((sum: number, c: any) => sum + c.studentCount, 0) || 0}
             </div>
           </div>
           <div>
             <div className="text-sm text-gray-600">Total Revenue</div>
             <div className="text-2xl font-bold text-indigo-600">
-              {formatCurrency(data.courseTypeStats.reduce((sum: number, c: any) => sum + c.revenue, 0))}
+              {formatCurrency(data.courseTypeStats?.reduce((sum: number, c: any) => sum + c.revenue, 0) || 0)}
             </div>
           </div>
         </div>
@@ -478,4 +429,5 @@ function CoursesTab({ data, formatCurrency }: any) {
     </div>
   );
 }
+
 

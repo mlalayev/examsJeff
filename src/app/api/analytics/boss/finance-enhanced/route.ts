@@ -225,6 +225,41 @@ export async function GET(request: Request) {
       },
     });
 
+    // Get current month statistics for overview
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+
+    const currentMonthPaidCount = await prisma.tuitionPayment.count({
+      where: {
+        year: currentYear,
+        month: currentMonth,
+        status: "PAID",
+        ...branchFilter,
+      },
+    });
+
+    const currentMonthUnpaidCount = await prisma.tuitionPayment.count({
+      where: {
+        year: currentYear,
+        month: currentMonth,
+        status: "UNPAID",
+        ...branchFilter,
+      },
+    });
+
+    // Get total active students count
+    const totalStudentsCount = await prisma.user.count({
+      where: {
+        role: "STUDENT",
+        ...(branchId ? { branchId } : {}),
+      },
+    });
+
+    // Calculate students with no payment record for current month
+    const studentsWithPaymentRecord = currentMonthPaidCount + currentMonthUnpaidCount;
+    const studentsWithoutRecord = totalStudentsCount - studentsWithPaymentRecord;
+
     return NextResponse.json({
       period: {
         year,
@@ -238,6 +273,17 @@ export async function GET(request: Request) {
         tuitionRevenue: Number(tuitionStats._sum.amount || 0),
         tuitionPaymentCount: tuitionStats._count,
         tuitionUnpaidCount: unpaidCount,
+      },
+      currentMonth: {
+        year: currentYear,
+        month: currentMonth,
+        paidCount: currentMonthPaidCount,
+        unpaidCount: currentMonthUnpaidCount,
+        noRecordCount: studentsWithoutRecord,
+        totalStudents: totalStudentsCount,
+        paymentRate: totalStudentsCount > 0 
+          ? ((currentMonthPaidCount / totalStudentsCount) * 100).toFixed(1)
+          : "0.0",
       },
       courseTypeStats: enrollmentStats,
       monthlyBreakdown: monthlyData,

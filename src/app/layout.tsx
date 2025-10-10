@@ -21,7 +21,7 @@ export default function RootLayout({
       <body className={inter.className}>
         <SessionProvider>
           <Navbar />
-          <div className="min-h-screen bg-gray-50">
+          <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
             {children}
           </div>
         </SessionProvider>
