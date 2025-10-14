@@ -6,7 +6,7 @@ import { z } from "zod";
 const createBookingSchema = z.object({
   studentId: z.string().min(1, "Student ID is required"),
   examId: z.string().min(1, "Exam ID is required"),
-  sections: z.array(z.enum(["READING", "LISTENING", "WRITING", "SPEAKING"])).min(1, "At least one section is required"),
+  sections: z.array(z.enum(["READING", "LISTENING", "WRITING", "SPEAKING", "GRAMMAR", "VOCABULARY"])).min(1, "At least one section is required"),
   startAt: z.string().datetime("Invalid date format"), // ISO 8601 UTC
   status: z.string().optional().default("CONFIRMED"),
 });

@@ -7,7 +7,7 @@ import { BookOpen, Calendar, Clock, Search, AlertCircle } from "lucide-react";
 type SectionType = "READING" | "LISTENING" | "WRITING" | "SPEAKING" | "GRAMMAR" | "VOCABULARY";
 
 interface StudentExamItem {
-  id: string;           // assignment id
+  id: string;           // booking id
   examId: string;
   title: string;
   category: string;
@@ -16,6 +16,9 @@ interface StudentExamItem {
   startAt?: string | null;
   dueAt?: string | null;
   createdAt: string;
+  teacher?: string;
+  status?: string;
+  attemptId?: string;
 }
 
 export default function StudentExamsPage() {
@@ -35,7 +38,24 @@ export default function StudentExamsPage() {
       const res = await fetch("/api/student/exams");
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to load exams");
-      setItems(data.exams || []);
+      
+      // Transform bookings to exam items
+      const examItems = (data.bookings || []).map((booking: any) => ({
+        id: booking.id,
+        examId: booking.examId,
+        title: booking.exam?.title || "Unknown Exam",
+        category: booking.exam?.category || "UNKNOWN",
+        track: booking.exam?.track,
+        sections: booking.sections || [],
+        startAt: booking.startAt,
+        dueAt: booking.dueAt,
+        createdAt: booking.createdAt,
+        teacher: booking.teacher?.name || "Unknown Teacher",
+        status: booking.attempt?.status || "NOT_STARTED",
+        attemptId: booking.attempt?.id,
+      }));
+      
+      setItems(examItems);
     } catch (err) {
       console.error("Failed to load student exams", err);
     } finally {

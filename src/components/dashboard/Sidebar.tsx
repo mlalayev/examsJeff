@@ -20,7 +20,8 @@ import {
   FileText,
   CreditCard,
   CheckCircle,
-  Home
+  Home,
+  Library
 } from "lucide-react";
 
 type NavItem = {
@@ -149,6 +150,12 @@ export default function Sidebar() {
         color: "from-purple-500 to-purple-600"
       },
       {
+        label: "Catalog",
+        href: "/dashboard/catalog",
+        icon: Library,
+        color: "from-indigo-500 to-indigo-600"
+      },
+      {
         label: "Exams",
         href: "/dashboard/teacher/exams",
         icon: ClipboardList,
@@ -170,7 +177,7 @@ export default function Sidebar() {
         label: "Reports",
         href: "/dashboard/teacher/reports",
         icon: BarChart3,
-        color: "from-indigo-500 to-indigo-600"
+        color: "from-cyan-500 to-cyan-600"
       },
       {
         label: "Salary",
@@ -195,6 +202,12 @@ export default function Sidebar() {
         href: "/dashboard/student/exams",
         icon: BookOpen,
         color: "from-purple-500 to-purple-600"
+      },
+      {
+        label: "Catalog",
+        href: "/dashboard/catalog",
+        icon: Library,
+        color: "from-indigo-500 to-indigo-600"
       },
       {
         label: "History",
