@@ -1,20 +1,70 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+
+interface AttemptItem {
+  id: string;
+  status: string;
+  createdAt: string;
+  submittedAt: string | null;
+  overallPercent: number | null;
+  exam: { id: string; title: string; category: string; track?: string | null };
+  class: { id: string; name: string; teacher?: { id: string; name?: string | null } } | null;
+  sections: { type: string; rawScore: number | null; maxScore: number | null }[];
+}
+
 export default function StudentHistoryPage() {
+  const [loading, setLoading] = useState(true);
+  const [attempts, setAttempts] = useState<AttemptItem[]>([]);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/student/attempts");
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || "Failed to load attempts");
+        setAttempts(json.attempts || []);
+      } catch (e) {
+        console.error(e);
+        alert(e instanceof Error ? e.message : "Failed to load attempts");
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
   return (
-    <div className="max-w-7xl mx-auto">
-      <div className="bg-white rounded-xl p-8 border border-gray-100">
-        <div className="text-center">
-          <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">History</h1>
-          <p className="text-gray-600">View your exam history and results</p>
-          <div className="mt-6 px-4 py-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm text-blue-800">This page is under development</p>
-          </div>
+    <div className="max-w-5xl mx-auto px-6 py-8">
+      <h1 className="text-2xl font-semibold text-gray-900 mb-6">My Exam History</h1>
+      {loading ? (
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-400" />
+      ) : attempts.length === 0 ? (
+        <div className="text-gray-600">No attempts yet.</div>
+      ) : (
+        <div className="space-y-3">
+          {attempts.map((a) => (
+            <div key={a.id} className="border rounded bg-white p-4 flex items-center justify-between">
+              <div>
+                <div className="text-sm text-gray-500">{a.exam.category}{a.exam.track ? ` · ${a.exam.track}` : ""}</div>
+                <div className="text-lg font-medium text-gray-900">{a.exam.title}</div>
+                <div className="text-xs text-gray-500">{a.class ? `Class: ${a.class.name} ${a.class.teacher?.name ? ` · Teacher: ${a.class.teacher?.name}` : ""}` : "—"}</div>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <div className="text-sm text-gray-500">Overall</div>
+                  <div className="text-lg font-semibold text-gray-900">{a.overallPercent != null ? `${a.overallPercent}%` : "—"}</div>
+                </div>
+                <Link href={`/attempt/${a.id}/results`} className="px-4 py-2 rounded bg-gray-900 text-white hover:bg-gray-800">
+                  View Results
+                </Link>
+              </div>
+            </div>
+          ))}
         </div>
-      </div>
+      )}
     </div>
   );
 }

@@ -40,11 +40,13 @@ enum SectionType {
 }
 
 enum QuestionType {
-  MCQ
   TF
+  MCQ_SINGLE
+  MCQ_MULTI
+  SELECT
   GAP
-  ORDER
-  DND_MATCH
+  ORDER_SENTENCE
+  DND_GAP
   SHORT_TEXT
   ESSAY
 }

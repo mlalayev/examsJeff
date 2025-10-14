@@ -1,8 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { BookOpen, Clock, CheckCircle2 } from "lucide-react";
+import {
+  QTF,
+  QMcqSingle,
+  QMcqMulti,
+  QSelect,
+  QGap,
+  QOrderSentence,
+  QDndGap,
+} from "@/components/questions";
 
 interface AttemptData {
   attempt: { id: string; status: string; startedAt: string | null };
@@ -75,29 +84,60 @@ export default function AttemptRunnerPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attemptId]);
 
+  // Autosave with debounce
+  const autosaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+
+  const saveSection = useCallback(
+    async (sectionType: string, answersToSave: Record<string, any>) => {
+      setSaving(sectionType);
+      try {
+        const res = await fetch(`/api/attempts/${attemptId}/save`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sectionType,
+            answers: answersToSave,
+          }),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || "Failed to save");
+        setLastSaved(new Date());
+      } catch (e) {
+        console.error(e);
+        // Silently fail for autosave, only alert on manual save
+      } finally {
+        setSaving(null);
+      }
+    },
+    [attemptId]
+  );
+
   const setAnswer = (sectionType: string, questionId: string, value: any) => {
-    setAnswers((prev) => ({
-      ...prev,
-      [sectionType]: { ...(prev[sectionType] || {}), [questionId]: value },
-    }));
+    setAnswers((prev) => {
+      const newAnswers = {
+        ...prev,
+        [sectionType]: { ...(prev[sectionType] || {}), [questionId]: value },
+      };
+
+      // Trigger autosave with debounce (8 seconds)
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+      }
+      autosaveTimerRef.current = setTimeout(() => {
+        saveSection(sectionType, newAnswers[sectionType]);
+      }, 8000);
+
+      return newAnswers;
+    });
   };
 
-  const saveSection = async (sectionType: string) => {
-    setSaving(sectionType);
-    try {
-      const res = await fetch(`/api/attempts/${attemptId}/save`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sectionType, answers: answers[sectionType] || {} }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to save");
-    } catch (e) {
-      console.error(e);
-      alert(e instanceof Error ? e.message : "Save failed");
-    } finally {
-      setSaving(null);
+  const manualSave = async (sectionType: string) => {
+    // Clear autosave timer and save immediately
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
     }
+    await saveSection(sectionType, answers[sectionType] || {});
   };
 
   const markDone = (sectionType: string) => {
@@ -106,13 +146,18 @@ export default function AttemptRunnerPage() {
 
   const submitAttempt = async () => {
     if (!data) return;
+    if (!confirm("Are you sure you want to submit? You won't be able to change your answers after submission.")) {
+      return;
+    }
     setSubmitting(true);
     try {
-      const res = await fetch(`/api/attempts/${attemptId}/submit`, { method: "POST" });
+      const res = await fetch(`/api/attempts/${attemptId}/submit`, {
+        method: "POST",
+      });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Submit failed");
-      alert("Attempt submitted! Redirecting to dashboard...");
-      router.push("/dashboard/student");
+      // Redirect to results page
+      router.push(`/attempt/${attemptId}/results`);
     } catch (e) {
       console.error(e);
       alert(e instanceof Error ? e.message : "Submit failed");
@@ -140,7 +185,9 @@ export default function AttemptRunnerPage() {
           <div className="bg-white border border-gray-200 rounded-lg p-4 sticky top-6">
             <div className="mb-4">
               <h2 className="text-sm font-semibold text-gray-900">Sections</h2>
-              <p className="text-xs text-gray-500">Select a section to answer</p>
+              <p className="text-xs text-gray-500">
+                Select a section to answer
+              </p>
             </div>
             <div className="space-y-2">
               {sections.map((s) => (
@@ -148,14 +195,26 @@ export default function AttemptRunnerPage() {
                   key={s.id}
                   onClick={() => setActiveSection(s.type)}
                   className={`w-full text-left px-3 py-2 rounded-md border transition-colors ${
-                    activeSection === s.type ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-800 border-gray-200 hover:bg-gray-50"
+                    activeSection === s.type
+                      ? "bg-gray-900 text-white border-gray-900"
+                      : "bg-white text-gray-800 border-gray-200 hover:bg-gray-50"
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">{s.title}</span>
-                    {done[s.type] && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+                    {done[s.type] && (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                    )}
                   </div>
-                  <div className={`text-xs mt-1 ${activeSection === s.type ? "text-gray-300" : "text-gray-500"}`}>{s.type}</div>
+                  <div
+                    className={`text-xs mt-1 ${
+                      activeSection === s.type
+                        ? "text-gray-300"
+                        : "text-gray-500"
+                    }`}
+                  >
+                    {s.type}
+                  </div>
                 </button>
               ))}
             </div>
@@ -176,7 +235,9 @@ export default function AttemptRunnerPage() {
         {/* Content */}
         <main className="col-span-12 md:col-span-8 lg:col-span-9">
           <div className="mb-4">
-            <h1 className="text-xl font-semibold text-gray-900">{active.title} ({active.type})</h1>
+            <h1 className="text-xl font-semibold text-gray-900">
+              {active.title} ({active.type})
+            </h1>
           </div>
 
           <div className="mb-4 flex items-center justify-between">
@@ -185,9 +246,14 @@ export default function AttemptRunnerPage() {
               <span>{active.durationMin} min</span>
             </div>
             <div className="flex items-center gap-2">
+              {lastSaved && (
+                <span className="text-xs text-gray-400">
+                  Saved {lastSaved.toLocaleTimeString()}
+                </span>
+              )}
               <button
-                className="px-3 py-1.5 text-sm rounded-md bg-white border border-gray-200 hover:bg-gray-50"
-                onClick={() => saveSection(active.type)}
+                className="px-3 py-1.5 text-sm rounded-md bg-white border border-gray-200 hover:bg-gray-50 disabled:opacity-50"
+                onClick={() => manualSave(active.type)}
                 disabled={saving === active.type}
               >
                 {saving === active.type ? "Saving..." : "Save Draft"}
@@ -209,7 +275,10 @@ export default function AttemptRunnerPage() {
           )}
           {active.questions.some((q) => q.prompt?.transcript) && (
             <div className="mb-4 p-3 bg-blue-50 rounded border border-blue-200 text-sm text-blue-800 whitespace-pre-wrap">
-              {active.questions.find((q) => q.prompt?.transcript)?.prompt?.transcript}
+              {
+                active.questions.find((q) => q.prompt?.transcript)?.prompt
+                  ?.transcript
+              }
             </div>
           )}
 
@@ -230,61 +299,53 @@ export default function AttemptRunnerPage() {
   );
 }
 
-function QuestionBlock({ sectionType, q, value, onChange }: { sectionType: string; q: any; value: any; onChange: (v: any) => void }) {
+function QuestionBlock({
+  sectionType,
+  q,
+  value,
+  onChange,
+}: {
+  sectionType: string;
+  q: any;
+  value: any;
+  onChange: (v: any) => void;
+}) {
   const qtype = q.qtype as string;
+  
   return (
     <div className="border border-gray-100 rounded p-4">
-      <div className="text-sm text-gray-900 font-medium mb-2">Q{q.order}. {q.prompt?.text || "Question"}</div>
-      {renderInputByType(qtype, q, value, onChange)}
+      <div className="text-sm text-gray-900 font-medium mb-3">
+        Q{q.order}. {q.prompt?.text || "Question"}
+      </div>
+      {renderQuestionComponent(qtype, q, value, onChange)}
     </div>
   );
 }
 
-function renderInputByType(qtype: string, q: any, value: any, onChange: (v: any) => void) {
+function renderQuestionComponent(
+  qtype: string,
+  q: any,
+  value: any,
+  onChange: (v: any) => void
+) {
+  const props = { question: q, value, onChange, readOnly: false };
+
   switch (qtype) {
-    case "MCQ": {
-      const variants = q.options?.variants || [];
-      return (
-        <div className="space-y-2">
-          {variants.map((opt: any) => (
-            <label key={opt.id} className="flex items-center gap-2 text-sm text-gray-800">
-              <input
-                type="radio"
-                name={q.id}
-                checked={value === opt.id}
-                onChange={() => onChange(opt.id)}
-                className="h-4 w-4"
-              />
-              <span>{opt.text}</span>
-            </label>
-          ))}
-        </div>
-      );
-    }
-    case "TF": {
-      return (
-        <div className="flex items-center gap-4 text-sm text-gray-800">
-          <label className="flex items-center gap-2">
-            <input type="radio" name={q.id} checked={value === true} onChange={() => onChange(true)} className="h-4 w-4" /> True
-          </label>
-          <label className="flex items-center gap-2">
-            <input type="radio" name={q.id} checked={value === false} onChange={() => onChange(false)} className="h-4 w-4" /> False
-          </label>
-        </div>
-      );
-    }
-    case "GAP": {
-      return (
-        <input
-          type="text"
-          value={value || ""}
-          onChange={(e) => onChange(e.target.value)}
-          className="mt-1 w-full px-3 py-2 border border-gray-200 rounded text-sm focus:outline-none focus:border-gray-400"
-          placeholder="Type your answer"
-        />
-      );
-    }
-    case "SHORT_TEXT": {
+    case "TF":
+      return <QTF {...props} />;
+    case "MCQ_SINGLE":
+      return <QMcqSingle {...props} />;
+    case "MCQ_MULTI":
+      return <QMcqMulti {...props} />;
+    case "SELECT":
+      return <QSelect {...props} />;
+    case "GAP":
+      return <QGap {...props} />;
+    case "ORDER_SENTENCE":
+      return <QOrderSentence {...props} />;
+    case "DND_GAP":
+      return <QDndGap {...props} />;
+    case "SHORT_TEXT":
       return (
         <input
           type="text"
@@ -294,8 +355,7 @@ function renderInputByType(qtype: string, q: any, value: any, onChange: (v: any)
           placeholder="Write a short answer"
         />
       );
-    }
-    case "ESSAY": {
+    case "ESSAY":
       return (
         <textarea
           value={value || ""}
@@ -304,63 +364,12 @@ function renderInputByType(qtype: string, q: any, value: any, onChange: (v: any)
           placeholder="Write your essay here"
         />
       );
-    }
-    case "ORDER": {
-      const items = useMemo(() => (value && Array.isArray(value) ? value : (q.options?.items || []).map((it: any) => it.id)), [value, q.options]);
-      const labels: Record<string, string> = {};
-      (q.options?.items || []).forEach((it: any) => (labels[it.id] = it.text));
-      const move = (idx: number, dir: -1 | 1) => {
-        const next = items.slice();
-        const j = idx + dir;
-        if (j < 0 || j >= next.length) return;
-        const tmp = next[idx];
-        next[idx] = next[j];
-        next[j] = tmp;
-        onChange(next);
-      };
-      return (
-        <div className="space-y-2">
-          {items.map((id: string, idx: number) => (
-            <div key={id} className="flex items-center justify-between bg-gray-50 border rounded px-2 py-1 text-sm">
-              <div className="flex items-center gap-2"><span className="inline-block w-4 h-4 rounded bg-gray-200" />{labels[id] || id}</div>
-              <div className="flex items-center gap-1">
-                <button type="button" className="px-2 py-0.5 text-xs border rounded" onClick={() => move(idx, -1)}>Up</button>
-                <button type="button" className="px-2 py-0.5 text-xs border rounded" onClick={() => move(idx, +1)}>Down</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      );
-    }
-    case "DND_MATCH": {
-      const pairs = q.options?.pairs || [];
-      const rights = pairs.map((p: any) => p.right);
-      const current: Record<string, string> = value || {};
-      const onSelect = (left: string, right: string) => {
-        onChange({ ...current, [left]: right });
-      };
-      return (
-        <div className="space-y-2">
-          {pairs.map((p: any) => (
-            <div key={p.id} className="flex items-center gap-3 text-sm">
-              <div className="min-w-[140px]">{p.left}</div>
-              <select
-                className="px-2 py-1 border border-gray-200 rounded"
-                value={current[p.left] || ""}
-                onChange={(e) => onSelect(p.left, e.target.value)}
-              >
-                <option value="" disabled>Select match…</option>
-                {rights.map((r: string) => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
-            </div>
-          ))}
-        </div>
-      );
-    }
     default:
-      return <div className="text-xs text-gray-500">Unsupported question type: {qtype}</div>;
+      return (
+        <div className="text-xs text-gray-500">
+          Unsupported question type: {qtype}
+        </div>
+      );
   }
 }
 

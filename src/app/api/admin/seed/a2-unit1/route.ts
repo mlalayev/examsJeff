@@ -42,64 +42,56 @@ export async function POST(request: Request) {
             {
               type: "READING",
               title: "Reading Comprehension",
-              durationMin: 20,
+              durationMin: 15,
               order: 1,
               questions: {
                 create: [
-                  // Q1 - MCQ with passage
+                  // Q1 - TF with passage
                   {
-                    qtype: "MCQ",
+                    qtype: "TF",
                     order: 1,
                     maxScore: 1,
                     prompt: {
-                      text: "What time does the library close on weekdays?",
-                      passage: "The City Library is open Monday to Friday from 9:00 AM to 6:00 PM. On Saturdays, it opens at 10:00 AM and closes at 4:00 PM. The library is closed on Sundays and public holidays.",
+                      passage: "Sara lives in Baku and studies every evening.",
+                      text: "Sara studies in the morning.",
                     },
-                    options: {
-                      variants: [
-                        { id: "A", text: "4:00 PM" },
-                        { id: "B", text: "6:00 PM" },
-                        { id: "C", text: "9:00 PM" },
-                        { id: "D", text: "10:00 PM" },
-                      ],
-                    },
-                    answerKey: { correct: "B" },
+                    answerKey: { value: false },
                     explanation: {
-                      text: "The passage states 'Monday to Friday from 9:00 AM to 6:00 PM', so the library closes at 6:00 PM on weekdays.",
+                      text: "The passage says Sara studies every evening, not in the morning.",
                     },
                   },
-                  // Q2 - GAP fill
+                  // Q2 - MCQ_SINGLE with passage
                   {
-                    qtype: "GAP",
+                    qtype: "MCQ_SINGLE",
                     order: 2,
                     maxScore: 1,
                     prompt: {
-                      text: "I ___ go to the gym on weekends.",
-                      hint: "Use an adverb of frequency",
+                      passage: "Tom usually goes to work by bus.",
+                      text: "How does Tom usually go to work?",
                     },
-                    answerKey: { correct: "usually", alternatives: ["often", "sometimes"] },
+                    options: {
+                      choices: ["by car", "by bus", "on foot"],
+                    },
+                    answerKey: { index: 1 },
                     explanation: {
-                      text: "The sentence requires an adverb of frequency. Common answers include 'usually', 'often', or 'sometimes'.",
+                      text: "The passage clearly states 'Tom usually goes to work by bus'.",
                     },
                   },
-                  // Q3 - Another MCQ
+                  // Q3 - MCQ_MULTI
                   {
-                    qtype: "MCQ",
+                    qtype: "MCQ_MULTI",
                     order: 3,
                     maxScore: 1,
                     prompt: {
-                      text: "According to the passage, when is the library closed?",
-                      passage: "The City Library is open Monday to Friday from 9:00 AM to 6:00 PM. On Saturdays, it opens at 10:00 AM and closes at 4:00 PM. The library is closed on Sundays and public holidays.",
+                      text: "Choose healthy morning habits.",
                     },
                     options: {
-                      variants: [
-                        { id: "A", text: "Mondays" },
-                        { id: "B", text: "Saturdays" },
-                        { id: "C", text: "Sundays and public holidays" },
-                        { id: "D", text: "Weekdays" },
-                      ],
+                      choices: ["Skipping breakfast", "Drinking water", "Short exercise"],
                     },
-                    answerKey: { correct: "C" },
+                    answerKey: { indices: [1, 2] },
+                    explanation: {
+                      text: "Drinking water and doing short exercise are healthy habits. Skipping breakfast is not recommended.",
+                    },
                   },
                 ],
               },
@@ -109,58 +101,40 @@ export async function POST(request: Request) {
             {
               type: "LISTENING",
               title: "Listening Comprehension",
-              durationMin: 15,
+              durationMin: 10,
               order: 2,
               questions: {
                 create: [
-                  // Q1 - True/False
+                  // Q1 - TF
                   {
                     qtype: "TF",
                     order: 1,
                     maxScore: 1,
                     prompt: {
+                      transcript: "The meeting starts at nine thirty.",
                       text: "The meeting starts at 9:30.",
-                      transcript: "Good morning everyone. Just a reminder that our weekly team meeting will start at 9:30 sharp in the conference room. Please bring your project updates.",
                     },
-                    answerKey: { correct: true },
+                    answerKey: { value: true },
+                    explanation: {
+                      text: "The transcript says 'nine thirty', which is 9:30.",
+                    },
                   },
-                  // Q2 - ORDER (sequence of events)
+                  // Q2 - SELECT
                   {
-                    qtype: "ORDER",
+                    qtype: "SELECT",
                     order: 2,
                     maxScore: 1,
                     prompt: {
-                      text: "Put the events in the correct order based on the conversation.",
-                      transcript: "First, you need to arrive at the airport. Then, go to the check-in counter. After that, the flight will start boarding. Finally, there will be a short break before takeoff.",
+                      transcript: "Please bring your ID and a pen.",
+                      text: "What should you bring?",
                     },
                     options: {
-                      items: [
-                        { id: "1", text: "Arrive at airport" },
-                        { id: "2", text: "Check-in" },
-                        { id: "3", text: "Start boarding" },
-                        { id: "4", text: "Break before takeoff" },
-                      ],
+                      choices: ["Notebook only", "ID and a pen", "Laptop"],
                     },
-                    answerKey: { correctOrder: ["1", "2", "3", "4"] },
-                  },
-                  // Q3 - MCQ from listening
-                  {
-                    qtype: "MCQ",
-                    order: 3,
-                    maxScore: 1,
-                    prompt: {
-                      text: "Where will the meeting take place?",
-                      transcript: "Good morning everyone. Just a reminder that our weekly team meeting will start at 9:30 sharp in the conference room. Please bring your project updates.",
+                    answerKey: { index: 1 },
+                    explanation: {
+                      text: "The speaker clearly asks to bring 'your ID and a pen'.",
                     },
-                    options: {
-                      variants: [
-                        { id: "A", text: "In the office" },
-                        { id: "B", text: "In the conference room" },
-                        { id: "C", text: "Online" },
-                        { id: "D", text: "In the cafeteria" },
-                      ],
-                    },
-                    answerKey: { correct: "B" },
                   },
                 ],
               },
@@ -170,41 +144,43 @@ export async function POST(request: Request) {
             {
               type: "WRITING",
               title: "Writing Skills",
-              durationMin: 25,
+              durationMin: 20,
               order: 3,
               questions: {
                 create: [
-                  // Q1 - SHORT_TEXT (sentence ordering)
+                  // Q1 - ORDER_SENTENCE
                   {
-                    qtype: "SHORT_TEXT",
+                    qtype: "ORDER_SENTENCE",
                     order: 1,
                     maxScore: 1,
                     prompt: {
                       text: "Put the words in the correct order to make a sentence.",
-                      words: ["was", "going", "he", "yesterday", "morning", "Sunday", "on"],
+                      tokens: ["is", "playing", "she", "in", "garden", "the"],
                     },
                     answerKey: {
-                      correct: "He was going on Sunday morning yesterday.",
-                      alternatives: ["He was going yesterday on Sunday morning."],
+                      order: [2, 0, 1, 3, 5, 4], // she is playing in the garden
                     },
                     explanation: {
-                      text: "The correct word order follows: Subject + Verb + Time expression",
+                      text: "The correct sentence is: 'She is playing in the garden.'",
                     },
                   },
-                  // Q2 - ESSAY
+                  // Q2 - DND_GAP
                   {
-                    qtype: "ESSAY",
+                    qtype: "DND_GAP",
                     order: 2,
-                    maxScore: 5,
+                    maxScore: 1,
                     prompt: {
-                      text: "Write a short paragraph (50-80 words) about your daily routine.",
-                      instructions: "Include: what time you wake up, what you do in the morning, and your evening activities.",
-                      minWords: 50,
-                      maxWords: 80,
+                      text: "Fill in the blanks with the correct form of 'to be'.",
+                      textWithBlanks: "I ___ running. You ___ playing. He ___ reading.",
                     },
-                    answerKey: null, // Manual grading required
+                    options: {
+                      bank: ["am", "is", "are"],
+                    },
+                    answerKey: {
+                      blanks: ["am", "are", "is"],
+                    },
                     explanation: {
-                      rubric: "Grammar (0-2), Vocabulary (0-2), Content (0-1)",
+                      text: "I am, You are, He is - these are the correct forms of 'to be'.",
                     },
                   },
                 ],
@@ -215,66 +191,38 @@ export async function POST(request: Request) {
             {
               type: "GRAMMAR",
               title: "Grammar",
-              durationMin: 15,
+              durationMin: 10,
               order: 4,
               questions: {
                 create: [
-                  // Q1 - MCQ
+                  // Q1 - MCQ_SINGLE
                   {
-                    qtype: "MCQ",
+                    qtype: "MCQ_SINGLE",
                     order: 1,
                     maxScore: 1,
                     prompt: {
-                      text: "She ___ to school by bus every day.",
+                      text: "She ___ to school by bus.",
                     },
                     options: {
-                      variants: [
-                        { id: "A", text: "go" },
-                        { id: "B", text: "goes" },
-                        { id: "C", text: "going" },
-                        { id: "D", text: "gone" },
-                      ],
+                      choices: ["go", "goes", "going"],
                     },
-                    answerKey: { correct: "B" },
+                    answerKey: { index: 1 },
                     explanation: {
-                      text: "With third person singular (she/he/it) in present simple, we add 's' or 'es' to the verb.",
+                      text: "With third person singular (she) in present simple, we use 'goes'.",
                     },
                   },
-                  // Q2 - DND_MATCH (contractions)
+                  // Q2 - GAP
                   {
-                    qtype: "DND_MATCH",
+                    qtype: "GAP",
                     order: 2,
                     maxScore: 1,
                     prompt: {
-                      text: "Match the full forms with their contractions.",
+                      text: "I usually ___ coffee in the morning.",
                     },
-                    options: {
-                      pairs: [
-                        { id: "p1", left: "I am", right: "I'm" },
-                        { id: "p2", left: "You are", right: "You're" },
-                        { id: "p3", left: "He is", right: "He's" },
-                        { id: "p4", left: "They are", right: "They're" },
-                      ],
+                    answerKey: { answers: ["drink"] },
+                    explanation: {
+                      text: "With 'I' in present simple, we use the base form 'drink'.",
                     },
-                    answerKey: {
-                      correctPairs: [
-                        { leftId: "I am", rightId: "I'm" },
-                        { leftId: "You are", rightId: "You're" },
-                        { leftId: "He is", rightId: "He's" },
-                        { leftId: "They are", rightId: "They're" },
-                      ],
-                    },
-                  },
-                  // Q3 - GAP
-                  {
-                    qtype: "GAP",
-                    order: 3,
-                    maxScore: 1,
-                    prompt: {
-                      text: "They ___ playing football in the park right now.",
-                      hint: "Use the present continuous tense",
-                    },
-                    answerKey: { correct: "are" },
                   },
                 ],
               },
@@ -288,59 +236,40 @@ export async function POST(request: Request) {
               order: 5,
               questions: {
                 create: [
-                  // Q1 - DND_MATCH (words to definitions)
+                  // Q1 - DND_GAP
                   {
-                    qtype: "DND_MATCH",
+                    qtype: "DND_GAP",
                     order: 1,
                     maxScore: 1,
                     prompt: {
-                      text: "Match each word with its correct definition.",
+                      text: "Fill in the blanks with the correct verbs.",
+                      textWithBlanks: "I need to ___ a ticket and ___ a hotel.",
                     },
                     options: {
-                      pairs: [
-                        { id: "p1", left: "Happy", right: "Feeling or showing pleasure" },
-                        { id: "p2", left: "Tired", right: "In need of sleep or rest" },
-                        { id: "p3", left: "Hungry", right: "Feeling a need for food" },
-                        { id: "p4", left: "Angry", right: "Feeling or showing strong annoyance" },
-                      ],
+                      bank: ["book", "buy", "cook"],
                     },
                     answerKey: {
-                      correctPairs: [
-                        { leftId: "Happy", rightId: "Feeling or showing pleasure" },
-                        { leftId: "Tired", rightId: "In need of sleep or rest" },
-                        { leftId: "Hungry", rightId: "Feeling a need for food" },
-                        { leftId: "Angry", rightId: "Feeling or showing strong annoyance" },
-                      ],
+                      blanks: ["buy", "book"],
+                    },
+                    explanation: {
+                      text: "We 'buy' a ticket and 'book' a hotel.",
                     },
                   },
-                  // Q2 - GAP
+                  // Q2 - MCQ_MULTI
                   {
-                    qtype: "GAP",
+                    qtype: "MCQ_MULTI",
                     order: 2,
                     maxScore: 1,
                     prompt: {
-                      text: "I need to ___ a ticket for the concert.",
-                      hint: "A verb meaning 'to purchase'",
-                    },
-                    answerKey: { correct: "buy", alternatives: ["purchase", "get"] },
-                  },
-                  // Q3 - MCQ
-                  {
-                    qtype: "MCQ",
-                    order: 3,
-                    maxScore: 1,
-                    prompt: {
-                      text: "What is the opposite of 'expensive'?",
+                      text: "Select words related to 'transport'.",
                     },
                     options: {
-                      variants: [
-                        { id: "A", text: "cheap" },
-                        { id: "B", text: "costly" },
-                        { id: "C", text: "valuable" },
-                        { id: "D", text: "pricey" },
-                      ],
+                      choices: ["bus", "keyboard", "train", "window"],
                     },
-                    answerKey: { correct: "A" },
+                    answerKey: { indices: [0, 2] },
+                    explanation: {
+                      text: "Bus and train are types of transport. Keyboard and window are not.",
+                    },
                   },
                 ],
               },
