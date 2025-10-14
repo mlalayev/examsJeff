@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Users, ChevronRight, Loader2, BarChart3 } from "lucide-react";
+import { Plus, Users, Search, Edit, BarChart3 } from "lucide-react";
 
 interface Class {
   id: string;
@@ -17,10 +17,10 @@ export default function ClassesPage() {
   const router = useRouter();
   const [classes, setClasses] = useState<Class[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newClassName, setNewClassName] = useState("");
   const [creating, setCreating] = useState(false);
-  const [error, setError] = useState("");
 
   useEffect(() => {
     fetchClasses();
@@ -41,7 +41,6 @@ export default function ClassesPage() {
 
   const handleCreateClass = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setCreating(true);
 
     try {
@@ -61,146 +60,197 @@ export default function ClassesPage() {
       setNewClassName("");
       setShowCreateModal(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      console.error("Error creating class:", err);
     } finally {
       setCreating(false);
     }
   };
 
+  const openCreateModal = () => {
+    setShowCreateModal(true);
+    document.body.style.overflow = 'hidden';
+  };
+
+  const closeCreateModal = () => {
+    setShowCreateModal(false);
+    setNewClassName("");
+    document.body.style.overflow = 'unset';
+  };
+
+  const filteredClasses = classes.filter((classItem) =>
+    classItem.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const stats = {
+    total: classes.length,
+    totalStudents: classes.reduce((sum, classItem) => sum + classItem._count.classStudents, 0),
+    averageStudents: classes.length > 0 ? Math.round(classes.reduce((sum, classItem) => sum + classItem._count.classStudents, 0) / classes.length) : 0,
+  };
+
   return (
-    <div className="max-w-[1200px] mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">My Classes</h1>
-          <p className="text-gray-600 mt-2">Manage your classes and students</p>
+    <div className="p-8">
+      {/* Minimal Header */}
+      <div className="mb-12">
+        <h1 className="text-2xl font-medium text-gray-900">Classes</h1>
+        <p className="text-gray-500 mt-1">Manage your classes and students</p>
+      </div>
+
+      {/* Compact Stats Row */}
+      <div className="flex items-center gap-8 mb-8 text-sm">
+        <div className="flex items-center gap-2">
+          <span className="text-gray-500">Total Classes:</span>
+          <span className="font-medium">{stats.total}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-gray-500">Total Students:</span>
+          <span className="font-medium">{stats.totalStudents}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-gray-500">Average per Class:</span>
+          <span className="font-medium">{stats.averageStudents}</span>
+        </div>
+      </div>
+
+      {/* Simple Filters */}
+      <div className="flex items-center gap-4 mb-6">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search classes..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+          />
         </div>
         <button
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition"
+          onClick={openCreateModal}
+          className="px-4 py-2 text-sm font-medium text-white bg-gray-900 border border-transparent rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500"
         >
-          <Plus className="w-5 h-5" />
+          <Plus className="w-4 h-4 mr-2 inline" />
           Create Class
         </button>
       </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-        </div>
-      ) : classes.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-          <div className="inline-flex p-4 bg-gray-50 rounded-full mb-4">
-            <Users className="w-8 h-8 text-gray-400" />
+      {/* Simple Table */}
+      <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
+        {loading ? (
+          <div className="flex items-center justify-center h-32">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-400"></div>
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">No classes yet</h3>
-          <p className="text-gray-500 mb-6">Create your first class to start managing students</p>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition"
-          >
-            <Plus className="w-5 h-5" />
-            Create Class
-          </button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {classes.map((classItem) => (
-            <div
-              key={classItem.id}
-              className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 text-lg mb-2">
-                    {classItem.name}
-                  </h3>
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <Users className="w-4 h-4" />
-                    {classItem._count.classStudents} {classItem._count.classStudents === 1 ? "student" : "students"}
-                  </div>
-                </div>
+        ) : (
+          <div className="overflow-x-auto pb-6">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Name</th>
+                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Students</th>
+                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Created</th>
+                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {filteredClasses.map((classItem) => (
+                  <tr key={classItem.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-gray-100 rounded-md flex items-center justify-center">
+                          <Users className="w-4 h-4 text-gray-600" />
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900">{classItem.name}</div>
+                          <div className="text-xs text-gray-500">{classItem.id.slice(0, 8)}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{classItem._count.classStudents}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">
+                      {new Date(classItem.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => router.push(`/dashboard/teacher/classes/${classItem.id}`)}
+                          className="text-gray-400 hover:text-gray-600"
+                          title="Manage"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => router.push(`/dashboard/teacher/analytics/${classItem.id}`)}
+                          className="text-gray-400 hover:text-gray-600"
+                          title="Analytics"
+                        >
+                          <BarChart3 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {filteredClasses.length === 0 && (
+              <div className="text-center py-12 text-gray-500">
+                <Users className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                <p>No classes found</p>
               </div>
-              <p className="text-xs text-gray-400 mb-4">
-                Created {new Date(classItem.createdAt).toLocaleDateString()}
-              </p>
-              
-              {/* Action Buttons */}
-              <div className="flex gap-2">
-                <button
-                  onClick={() => router.push(`/dashboard/teacher/classes/${classItem.id}`)}
-                  className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition flex items-center justify-center gap-2"
-                >
-                  <Users className="w-4 h-4" />
-                  Manage
-                </button>
-                <button
-                  onClick={() => router.push(`/dashboard/teacher/analytics/${classItem.id}`)}
-                  className="flex-1 px-3 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition flex items-center justify-center gap-2"
-                >
-                  <BarChart3 className="w-4 h-4" />
-                  Analytics
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Create Class Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Create New Class</h2>
-            
-            {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-red-800 text-sm">{error}</p>
-              </div>
-            )}
-            
+        <div
+          className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              closeCreateModal();
+            }
+          }}
+        >
+          <div className="bg-white w-full max-w-md border border-gray-200 rounded-md shadow-lg">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-medium text-gray-900">Create Class</h3>
+              <p className="text-sm text-gray-500 mt-1">Add a new class to manage students</p>
+            </div>
+
+            {/* Modal Content */}
             <form onSubmit={handleCreateClass}>
-              <div className="mb-6">
-                <label htmlFor="className" className="block text-sm font-medium text-gray-700 mb-2">
-                  Class Name
-                </label>
-                <input
-                  id="className"
-                  type="text"
-                  required
-                  value={newClassName}
-                  onChange={(e) => setNewClassName(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="e.g., IELTS Advanced 2025"
-                  maxLength={100}
-                />
+              <div className="px-6 py-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Class Name
+                  </label>
+                  <input
+                    type="text"
+                    value={newClassName}
+                    onChange={(e) => setNewClassName(e.target.value)}
+                    onKeyPress={(e) => e.key === "Enter" && handleCreateClass(e)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+                    placeholder="e.g., IELTS Advanced 2025"
+                    autoFocus
+                    required
+                  />
+                </div>
               </div>
-              
-              <div className="flex gap-3">
+
+              {/* Modal Footer */}
+              <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowCreateModal(false);
-                    setNewClassName("");
-                    setError("");
-                  }}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition"
-                  disabled={creating}
+                  onClick={closeCreateModal}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={creating || !newClassName.trim()}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="px-4 py-2 text-sm font-medium text-white bg-gray-900 border border-transparent rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50"
                 >
-                  {creating ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    "Create Class"
-                  )}
+                  {creating ? "Creating..." : "Create Class"}
                 </button>
               </div>
             </form>

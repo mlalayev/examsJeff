@@ -123,6 +123,12 @@ export default function Sidebar() {
         href: "/dashboard/admin/exams",
         icon: BookOpen,
         color: "from-emerald-500 to-emerald-600"
+      },
+      {
+        label: "Seed Demo Data",
+        href: "/dashboard/admin/seed",
+        icon: Settings,
+        color: "from-orange-500 to-orange-600"
       }
     );
   }

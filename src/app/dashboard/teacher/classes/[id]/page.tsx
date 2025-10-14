@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, UserPlus, Mail, Loader2, Award, Calendar, BookOpen } from "lucide-react";
+import { ArrowLeft, UserPlus, Mail, Award, Calendar, BookOpen, Search } from "lucide-react";
 
 interface Student {
   id: string;
@@ -43,10 +43,10 @@ export default function ClassRosterPage() {
   const [classData, setClassData] = useState<ClassData | null>(null);
   const [roster, setRoster] = useState<RosterItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [studentEmail, setStudentEmail] = useState("");
   const [adding, setAdding] = useState(false);
-  const [error, setError] = useState("");
   
   // Assign Exam state
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -59,7 +59,6 @@ export default function ClassRosterPage() {
     startTime: "",
   });
   const [assigning, setAssigning] = useState(false);
-  const [assignError, setAssignError] = useState("");
 
   useEffect(() => {
     fetchRoster();
@@ -88,7 +87,6 @@ export default function ClassRosterPage() {
 
   const handleAddStudent = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setAdding(true);
 
     try {
@@ -109,7 +107,7 @@ export default function ClassRosterPage() {
       setStudentEmail("");
       setShowAddModal(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      console.error("Error adding student:", err);
     } finally {
       setAdding(false);
     }
@@ -129,13 +127,30 @@ export default function ClassRosterPage() {
   const openAssignModal = (student: Student) => {
     setSelectedStudent(student);
     setShowAssignModal(true);
-    setAssignError("");
     setAssignData({
       examId: "",
       sections: [],
       startDate: "",
       startTime: "",
     });
+    document.body.style.overflow = 'hidden';
+  };
+
+  const closeAssignModal = () => {
+    setShowAssignModal(false);
+    setSelectedStudent(null);
+    document.body.style.overflow = 'unset';
+  };
+
+  const openAddModal = () => {
+    setShowAddModal(true);
+    document.body.style.overflow = 'hidden';
+  };
+
+  const closeAddModal = () => {
+    setShowAddModal(false);
+    setStudentEmail("");
+    document.body.style.overflow = 'unset';
   };
 
   const toggleSection = (section: string) => {
@@ -149,7 +164,6 @@ export default function ClassRosterPage() {
 
   const handleAssignExam = async (e: React.FormEvent) => {
     e.preventDefault();
-    setAssignError("");
     setAssigning(true);
 
     try {
@@ -179,25 +193,50 @@ export default function ClassRosterPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to assign exam");
+        // Show detailed error with conflict info if available
+        let errorMsg = data.error || "Failed to assign exam";
+        if (data.conflict) {
+          const conflictTime = new Date(data.conflict.startAt).toLocaleString('en-US', {
+            timeZone: 'Asia/Baku',
+            dateStyle: 'short',
+            timeStyle: 'short'
+          });
+          errorMsg += `\n\nConflicting booking:\n- Time: ${conflictTime}\n- Status: ${data.conflict.status}\n\nPlease choose a time at least 30 minutes away from existing bookings.`;
+        }
+        alert(errorMsg);
+        return;
       }
 
-      setShowAssignModal(false);
-      setSelectedStudent(null);
-      // Show success message or refresh data
+      closeAssignModal();
       alert(`Exam assigned successfully to ${selectedStudent.name || selectedStudent.email}`);
     } catch (err) {
-      setAssignError(err instanceof Error ? err.message : "An error occurred");
+      console.error("Error assigning exam:", err);
+      alert(err instanceof Error ? err.message : "Failed to assign exam");
     } finally {
       setAssigning(false);
     }
   };
 
+  const filteredRoster = roster.filter((item) =>
+    (item.student.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+     item.student.email.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  const stats = {
+    total: roster.length,
+    withAttempts: roster.filter(item => item.latestAttempt).length,
+    averageScore: roster.filter(item => item.latestAttempt?.bandOverall).length > 0 
+      ? (roster.filter(item => item.latestAttempt?.bandOverall)
+          .reduce((sum, item) => sum + (item.latestAttempt?.bandOverall || 0), 0) / 
+         roster.filter(item => item.latestAttempt?.bandOverall).length).toFixed(1)
+      : "—"
+  };
+
   if (loading) {
     return (
-      <div className="max-w-[1200px] mx-auto px-4 py-8">
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+      <div className="p-8">
+        <div className="flex items-center justify-center h-32">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-400"></div>
         </div>
       </div>
     );
@@ -205,14 +244,15 @@ export default function ClassRosterPage() {
 
   if (!classData) {
     return (
-      <div className="max-w-[1200px] mx-auto px-4 py-8">
+      <div className="p-8">
         <p>Class not found</p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-[1200px] mx-auto px-4 py-8">
+    <div className="p-8">
+      {/* Back Button */}
       <button
         onClick={() => router.push("/dashboard/teacher/classes")}
         className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition"
@@ -221,114 +261,114 @@ export default function ClassRosterPage() {
         Back to Classes
       </button>
 
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">{classData.name}</h1>
-          <p className="text-gray-600 mt-2">{roster.length} students enrolled</p>
+      {/* Minimal Header */}
+      <div className="mb-12">
+        <h1 className="text-2xl font-medium text-gray-900">{classData.name}</h1>
+        <p className="text-gray-500 mt-1">Manage students in this class</p>
+      </div>
+
+      {/* Compact Stats Row */}
+      <div className="flex items-center gap-8 mb-8 text-sm">
+        <div className="flex items-center gap-2">
+          <span className="text-gray-500">Total Students:</span>
+          <span className="font-medium">{stats.total}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-gray-500">With Attempts:</span>
+          <span className="font-medium">{stats.withAttempts}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-gray-500">Average Score:</span>
+          <span className="font-medium">{stats.averageScore}</span>
+        </div>
+      </div>
+
+      {/* Simple Filters */}
+      <div className="flex items-center gap-4 mb-6">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search students..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+          />
         </div>
         <button
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition"
+          onClick={openAddModal}
+          className="px-4 py-2 text-sm font-medium text-white bg-gray-900 border border-transparent rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500"
         >
-          <UserPlus className="w-5 h-5" />
+          <UserPlus className="w-4 h-4 mr-2 inline" />
           Add Student
         </button>
       </div>
 
-      {roster.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-          <div className="inline-flex p-4 bg-gray-50 rounded-full mb-4">
-            <UserPlus className="w-8 h-8 text-gray-400" />
+      {/* Simple Table */}
+      <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
+        {filteredRoster.length === 0 ? (
+          <div className="text-center py-12 text-gray-500">
+            <UserPlus className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+            <p>No students found</p>
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">No students yet</h3>
-          <p className="text-gray-500 mb-6">Add students to this class by their email address</p>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition"
-          >
-            <UserPlus className="w-5 h-5" />
-            Add Student
-          </button>
-        </div>
-      ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
+        ) : (
+          <div className="overflow-x-auto pb-6">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Student
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Email
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Latest Score
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Last Attempt
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Enrolled
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Actions
-                  </th>
+                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Student</th>
+                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Email</th>
+                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Latest Score</th>
+                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Last Attempt</th>
+                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Enrolled</th>
+                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {roster.map((item) => (
-                  <tr key={item.enrollmentId} className="hover:bg-gray-50 transition">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold">
-                          {(item.student.name || item.student.email).charAt(0).toUpperCase()}
+                {filteredRoster.map((item) => (
+                  <tr key={item.enrollmentId} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-gray-100 rounded-md flex items-center justify-center">
+                          <span className="text-gray-600 font-medium text-sm">
+                            {(item.student.name || item.student.email).charAt(0).toUpperCase()}
+                          </span>
                         </div>
-                        <div className="ml-4">
+                        <div>
                           <div className="font-medium text-gray-900">
                             {item.student.name || "No name"}
                           </div>
+                          <div className="text-xs text-gray-500">{item.student.id.slice(0, 8)}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Mail className="w-4 h-4" />
-                        {item.student.email}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 py-3 text-sm text-gray-600">{item.student.email}</td>
+                    <td className="px-4 py-3 text-sm">
                       {item.latestAttempt?.bandOverall ? (
-                        <div className="flex items-center gap-2">
-                          <Award className="w-4 h-4 text-yellow-500" />
-                          <span className="font-semibold text-gray-900">
-                            {item.latestAttempt.bandOverall.toFixed(1)}
-                          </span>
-                        </div>
+                        <span className="font-medium text-gray-900">
+                          {item.latestAttempt.bandOverall.toFixed(1)}
+                        </span>
                       ) : (
                         <span className="text-gray-400">—</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                    <td className="px-4 py-3 text-sm text-gray-600">
                       {item.latestAttempt ? (
-                        <div className="flex items-center gap-2">
-                          <Calendar className="w-4 h-4" />
-                          {new Date(item.latestAttempt.createdAt).toLocaleDateString()}
-                        </div>
+                        new Date(item.latestAttempt.createdAt).toLocaleDateString()
                       ) : (
                         <span className="text-gray-400">No attempts</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                    <td className="px-4 py-3 text-sm text-gray-600">
                       {new Date(item.enrolledAt).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 py-3 text-sm">
                       <button
                         onClick={() => openAssignModal(item.student)}
-                        className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition"
+                        className="text-gray-400 hover:text-gray-600"
+                        title="Assign Exam"
                       >
                         <BookOpen className="w-4 h-4" />
-                        Assign Exam
                       </button>
                     </td>
                   </tr>
@@ -336,66 +376,64 @@ export default function ClassRosterPage() {
               </tbody>
             </table>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Add Student Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Add Student</h2>
-            
-            {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-red-800 text-sm">{error}</p>
-              </div>
-            )}
-            
+        <div
+          className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              closeAddModal();
+            }
+          }}
+        >
+          <div className="bg-white w-full max-w-md border border-gray-200 rounded-md shadow-lg">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-medium text-gray-900">Add Student</h3>
+              <p className="text-sm text-gray-500 mt-1">Add a student to this class by email</p>
+            </div>
+
+            {/* Modal Content */}
             <form onSubmit={handleAddStudent}>
-              <div className="mb-6">
-                <label htmlFor="studentEmail" className="block text-sm font-medium text-gray-700 mb-2">
-                  Student Email
-                </label>
-                <input
-                  id="studentEmail"
-                  type="email"
-                  required
-                  value={studentEmail}
-                  onChange={(e) => setStudentEmail(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="student@example.com"
-                />
-                <p className="text-xs text-gray-500 mt-2">
-                  The student must already have an account with the STUDENT role
-                </p>
+              <div className="px-6 py-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Student Email
+                  </label>
+                  <input
+                    type="email"
+                    value={studentEmail}
+                    onChange={(e) => setStudentEmail(e.target.value)}
+                    onKeyPress={(e) => e.key === "Enter" && handleAddStudent(e)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+                    placeholder="student@example.com"
+                    autoFocus
+                    required
+                  />
+                  <p className="text-xs text-gray-500 mt-2">
+                    The student must already have an account with the STUDENT role
+                  </p>
+                </div>
               </div>
-              
-              <div className="flex gap-3">
+
+              {/* Modal Footer */}
+              <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowAddModal(false);
-                    setStudentEmail("");
-                    setError("");
-                  }}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition"
-                  disabled={adding}
+                  onClick={closeAddModal}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={adding || !studentEmail.trim()}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="px-4 py-2 text-sm font-medium text-white bg-gray-900 border border-transparent rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50"
                 >
-                  {adding ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Adding...
-                    </>
-                  ) : (
-                    "Add Student"
-                  )}
+                  {adding ? "Adding..." : "Add Student"}
                 </button>
               </div>
             </form>
@@ -405,144 +443,137 @@ export default function ClassRosterPage() {
 
       {/* Assign Exam Modal */}
       {showAssignModal && selectedStudent && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Assign Exam</h2>
-            <p className="text-gray-600 mb-6">
-              Assigning to: <span className="font-semibold">{selectedStudent.name || selectedStudent.email}</span>
-            </p>
-            
-            {assignError && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-red-800 text-sm">{assignError}</p>
-              </div>
-            )}
-            
-            <form onSubmit={handleAssignExam}>
-              {/* Exam Selection */}
-              <div className="mb-6">
-                <label htmlFor="examId" className="block text-sm font-medium text-gray-700 mb-2">
-                  Select Exam
-                </label>
-                {exams.length === 0 ? (
-                  <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <p className="text-sm text-yellow-800 mb-2">
-                      <strong>No exams available!</strong>
-                    </p>
-                    <p className="text-sm text-yellow-700 mb-3">
-                      You need to create exam templates first before you can assign them to students.
-                    </p>
-                    <a
-                      href="/dashboard/teacher/exams"
-                      target="_blank"
-                      className="inline-flex items-center gap-2 px-3 py-2 bg-yellow-600 text-white text-sm rounded-lg hover:bg-yellow-700 transition"
-                    >
-                      <BookOpen className="w-4 h-4" />
-                      Create Exams
-                    </a>
-                  </div>
-                ) : (
-                  <select
-                    id="examId"
-                    required
-                    value={assignData.examId}
-                    onChange={(e) => setAssignData({ ...assignData, examId: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Choose an exam...</option>
-                    {exams.map((exam) => (
-                      <option key={exam.id} value={exam.id}>
-                        {exam.title}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-
-              {/* Section Selection */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                  Select Sections
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  {["READING", "LISTENING", "WRITING", "SPEAKING"].map((section) => (
-                    <button
-                      key={section}
-                      type="button"
-                      onClick={() => toggleSection(section)}
-                      className={`px-4 py-3 rounded-lg border-2 font-medium transition ${
-                        assignData.sections.includes(section)
-                          ? "border-blue-500 bg-blue-50 text-blue-700"
-                          : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
-                      }`}
-                    >
-                      {section}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Date and Time Selection */}
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div>
-                  <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-2">
-                    Date
-                  </label>
-                  <input
-                    id="startDate"
-                    type="date"
-                    required
-                    value={assignData.startDate}
-                    onChange={(e) => setAssignData({ ...assignData, startDate: e.target.value })}
-                    min={new Date().toISOString().split('T')[0]}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="startTime" className="block text-sm font-medium text-gray-700 mb-2">
-                    Time (Asia/Baku)
-                  </label>
-                  <input
-                    id="startTime"
-                    type="time"
-                    required
-                    value={assignData.startTime}
-                    onChange={(e) => setAssignData({ ...assignData, startTime: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
-
-              <p className="text-xs text-gray-500 mb-6">
-                Time will be stored in UTC but displayed in Asia/Baku timezone
+        <div
+          className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              closeAssignModal();
+            }
+          }}
+        >
+          <div className="bg-white w-full max-w-2xl border border-gray-200 rounded-md shadow-lg max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-medium text-gray-900">Assign Exam</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                Assigning to: <span className="font-medium">{selectedStudent.name || selectedStudent.email}</span>
               </p>
-              
-              <div className="flex gap-3">
+            </div>
+
+            {/* Modal Content */}
+            <form onSubmit={handleAssignExam}>
+              <div className="px-6 py-4 space-y-6">
+                {/* Exam Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Select Exam
+                  </label>
+                  {exams.length === 0 ? (
+                    <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+                      <p className="text-sm text-yellow-800 mb-2">
+                        <strong>No exams available!</strong>
+                      </p>
+                      <p className="text-sm text-yellow-700 mb-3">
+                        You need to create exam templates first before you can assign them to students.
+                      </p>
+                      <a
+                        href="/dashboard/teacher/exams"
+                        target="_blank"
+                        className="inline-flex items-center gap-2 px-3 py-2 bg-yellow-600 text-white text-sm rounded-md hover:bg-yellow-700 transition"
+                      >
+                        <BookOpen className="w-4 h-4" />
+                        Create Exams
+                      </a>
+                    </div>
+                  ) : (
+                    <select
+                      required
+                      value={assignData.examId}
+                      onChange={(e) => setAssignData({ ...assignData, examId: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+                    >
+                      <option value="">Choose an exam...</option>
+                      {exams.map((exam) => (
+                        <option key={exam.id} value={exam.id}>
+                          {exam.title}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+
+                {/* Section Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Select Sections
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {["READING", "LISTENING", "WRITING", "SPEAKING"].map((section) => (
+                      <button
+                        key={section}
+                        type="button"
+                        onClick={() => toggleSection(section)}
+                        className={`px-3 py-2 rounded-md border text-sm font-medium transition ${
+                          assignData.sections.includes(section)
+                            ? "border-gray-400 bg-gray-100 text-gray-900"
+                            : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
+                        }`}
+                      >
+                        {section}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Date and Time Selection */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Date
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={assignData.startDate}
+                      onChange={(e) => setAssignData({ ...assignData, startDate: e.target.value })}
+                      min={new Date().toISOString().split('T')[0]}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Time (Asia/Baku)
+                    </label>
+                    <input
+                      type="time"
+                      required
+                      value={assignData.startTime}
+                      onChange={(e) => setAssignData({ ...assignData, startTime: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+                    />
+                  </div>
+                </div>
+
+                <p className="text-xs text-gray-500">
+                  Time will be stored in UTC but displayed in Asia/Baku timezone
+                </p>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowAssignModal(false);
-                    setSelectedStudent(null);
-                    setAssignError("");
-                  }}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition"
-                  disabled={assigning}
+                  onClick={closeAssignModal}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={assigning || exams.length === 0}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="px-4 py-2 text-sm font-medium text-white bg-gray-900 border border-transparent rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50"
                 >
-                  {assigning ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Assigning...
-                    </>
-                  ) : (
-                    "Assign Exam"
-                  )}
+                  {assigning ? "Assigning..." : "Assign Exam"}
                 </button>
               </div>
             </form>

@@ -21,11 +21,32 @@ enum Role {
   BRANCH_ADMIN
 }
 
+enum ExamCategory {
+  IELTS
+  TOEFL
+  SAT
+  KIDS
+  GENERAL_ENGLISH
+  MATH
+}
+
 enum SectionType {
   READING
   LISTENING
   WRITING
   SPEAKING
+  GRAMMAR
+  VOCABULARY
+}
+
+enum QuestionType {
+  MCQ
+  TF
+  GAP
+  ORDER
+  DND_MATCH
+  SHORT_TEXT
+  ESSAY
 }
 
 enum PaymentStatus {
@@ -47,34 +68,34 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  accounts      Account[]
-  sessions      Session[]
-  
+  accounts Account[]
+  sessions Session[]
+
   // Teacher relations
-  classesTeaching  Class[]
-  examsCreated     Exam[]
+  classesTeaching   Class[]
+  examsCreated      Exam[]
   bookingsAsTeacher Booking[] @relation("TeacherBookings")
-  
+
   // Student relations
-  classEnrollments ClassStudent[]
-  bookingsAsStudent Booking[] @relation("StudentBookings")
-  assignmentsAsStudent Assignment[] @relation("AssignmentStudent")
-  assignmentsAsTeacher Assignment[] @relation("AssignmentTeacher")
-  
+  classEnrollments     ClassStudent[]
+  bookingsAsStudent    Booking[]      @relation("StudentBookings")
+  assignmentsAsStudent Assignment[]   @relation("AssignmentStudent")
+  assignmentsAsTeacher Assignment[]   @relation("AssignmentTeacher")
+
   // Notifications
-  notifications    Notification[]
-  
+  notifications Notification[]
+
   // Enrollment and Payment relations
-  enrollments      StudentEnrollment[] @relation("StudentEnrollments")
-  payments         PaymentSchedule[]  @relation("StudentPayments")
-  
+  enrollments StudentEnrollment[] @relation("StudentEnrollments")
+  payments    PaymentSchedule[]   @relation("StudentPayments")
+
   // Student Profile relations
-  studentProfile   StudentProfile?     @relation("StudentProfileUser")
-  studentsTeaching StudentProfile[]    @relation("TeacherOfStudent")
-  
+  studentProfile   StudentProfile?  @relation("StudentProfileUser")
+  studentsTeaching StudentProfile[] @relation("TeacherOfStudent")
+
   // Tuition Payment relations
-  tuitionPayments  TuitionPayment[]    @relation("StudentTuitionPayments")
-  
+  tuitionPayments TuitionPayment[] @relation("StudentTuitionPayments")
+
   @@map("users")
 }
 
@@ -83,14 +104,14 @@ model Branch {
   name      String   @unique
   createdAt DateTime @default(now())
 
-  users     User[]
-  classes   Class[]
-  bookings  Booking[]
-  attempts  Attempt[]
-  assignments Assignment[]
-  enrollments StudentEnrollment[]
-  payments  PaymentSchedule[]
-  financeTxns FinanceTxn[]
+  users           User[]
+  classes         Class[]
+  bookings        Booking[]
+  attempts        Attempt[]
+  assignments     Assignment[]
+  enrollments     StudentEnrollment[]
+  payments        PaymentSchedule[]
+  financeTxns     FinanceTxn[]
   studentProfiles StudentProfile[]
   tuitionPayments TuitionPayment[]
 
@@ -144,10 +165,10 @@ model Class {
   branchId  String?
   branch    Branch?  @relation(fields: [branchId], references: [id], onDelete: Restrict)
   createdAt DateTime @default(now())
-  
+
   classStudents ClassStudent[]
-  assignments  Assignment[]
-  
+  assignments   Assignment[]
+
   @@map("classes")
 }
 
@@ -158,27 +179,29 @@ model ClassStudent {
   class     Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
   student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
-  
+
   @@unique([classId, studentId])
   @@map("class_students")
 }
 
 model Attempt {
-  id          String            @id @default(cuid())
-  bookingId   String?   @unique
-  booking     Booking?          @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  assignmentId String?          @unique
-  assignment   Assignment?      @relation(fields: [assignmentId], references: [id], onDelete: SetNull)
-  branchId    String?
-  branch      Branch?           @relation(fields: [branchId], references: [id], onDelete: Restrict)
-  status      String            @default("IN_PROGRESS")
-  startedAt   DateTime?
-  submittedAt DateTime?
-  bandOverall Float?
-  createdAt   DateTime          @default(now())
-  
-  sections    AttemptSection[]
-  
+  id           String      @id @default(cuid())
+  bookingId    String?     @unique
+  booking      Booking?    @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  assignmentId String?     @unique
+  assignment   Assignment? @relation(fields: [assignmentId], references: [id], onDelete: SetNull)
+  studentId    String
+  examId       String
+  branchId     String?
+  branch       Branch?     @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  status       String      @default("IN_PROGRESS") // IN_PROGRESS | SUBMITTED
+  startedAt    DateTime?
+  submittedAt  DateTime?
+  bandOverall  Float?
+  createdAt    DateTime    @default(now())
+
+  sections AttemptSection[]
+
   @@map("attempts")
 }
 
@@ -187,33 +210,36 @@ model AttemptSection {
   attemptId  String
   attempt    Attempt     @relation(fields: [attemptId], references: [id], onDelete: Cascade)
   type       SectionType
-  answers    Json?
+  answers    Json? // qeyri-avtomatiklərdə raw text; digərlərində struktur cavab
   rawScore   Int?
+  maxScore   Int?
   bandScore  Float?
   gradedById String?
   rubric     Json?
   feedback   String?     @db.Text
   startedAt  DateTime?
   endedAt    DateTime?
-  status     String      @default("NOT_STARTED")
-  
+  status     String      @default("IN_PROGRESS")
+
   @@map("attempt_sections")
 }
 
 model Exam {
-  id          String        @id @default(cuid())
+  id          String       @id @default(cuid())
   title       String
-  examType    String        @default("IELTS")
-  isActive    Boolean       @default(true)
+  category    ExamCategory @default(IELTS)
+  track       String? // e.g. "A2" (General English üçün)
+  isActive    Boolean      @default(true)
   createdById String?
-  createdBy   User?         @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  createdAt   DateTime      @default(now())
-  
+  createdBy   User?        @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime     @default(now())
+
   bookings    Booking[]
   sections    ExamSection[]
   questions   Question[]
   unitExams   UnitExam[]
-  
+  assignments ExamAssignment[]
+
   @@map("exams")
 }
 
@@ -233,9 +259,9 @@ model Booking {
   reminded24h Boolean       @default(false)
   reminded1h  Boolean       @default(false)
   createdAt   DateTime      @default(now())
-  
-  attempt     Attempt?
-  
+
+  attempt Attempt?
+
   @@index([studentId, startAt])
   @@index([teacherId, startAt])
   @@map("bookings")
@@ -251,7 +277,7 @@ model Notification {
   sentAt    DateTime?
   meta      Json?
   createdAt DateTime  @default(now())
-  
+
   @@index([userId, createdAt])
   @@map("notifications")
 }
@@ -261,26 +287,31 @@ model ExamSection {
   examId      String
   exam        Exam        @relation(fields: [examId], references: [id], onDelete: Cascade)
   type        SectionType
-  durationMin Int
+  title       String
+  durationMin Int         @default(15)
   order       Int
-  
+
+  questions Question[]
+
   @@map("exam_sections")
 }
 
 model Question {
-  id          String         @id @default(cuid())
-  examId      String
-  exam        Exam           @relation(fields: [examId], references: [id], onDelete: Cascade)
-  sectionType SectionType
-  qtype       String
-  prompt      Json
-  options     Json?
-  answerKey   Json?
-  maxScore    Int            @default(1)
+  id          String       @id @default(cuid())
+  sectionId   String
+  section     ExamSection  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  qtype       QuestionType
+  prompt      Json // {text, passage?, audioUrl?}
+  options     Json? // MCQ variants, DND pair pool, ORDER list
+  answerKey   Json? // doğru cavab(lar)
+  maxScore    Int          @default(1)
   order       Int
-  
-  tags        QuestionTag[]
-  
+  explanation Json? // optional
+
+  tags   QuestionTag[]
+  Exam   Exam?         @relation(fields: [examId], references: [id])
+  examId String?
+
   @@map("questions")
 }
 
@@ -291,7 +322,7 @@ model BandMap {
   minRaw   Int
   maxRaw   Int
   band     Float
-  
+
   @@map("band_maps")
 }
 
@@ -301,7 +332,7 @@ model QuestionTag {
   question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
   tag        String
   createdAt  DateTime @default(now())
-  
+
   @@index([tag])
   @@index([questionId])
   @@map("question_tags")
@@ -314,7 +345,7 @@ model Track {
   kind      String   @default("GENERAL_ENGLISH")
   createdAt DateTime @default(now())
 
-  books     Book[]
+  books Book[]
 
   @@map("tracks")
 }
@@ -326,7 +357,7 @@ model Book {
   track     Track?   @relation(fields: [trackId], references: [id], onDelete: SetNull)
   createdAt DateTime @default(now())
 
-  units     Unit[]
+  units Unit[]
 
   @@map("books")
 }
@@ -374,27 +405,43 @@ model Assignment {
   status     String    @default("ASSIGNED")
   createdAt  DateTime  @default(now())
 
-  attempt    Attempt?
+  attempt Attempt?
 
   @@index([studentId, startAt])
   @@index([teacherId, startAt])
   @@map("assignments")
 }
 
-model StudentEnrollment {
-  id          String    @id @default(cuid())
+model ExamAssignment {
+  id          String        @id @default(cuid())
   studentId   String
-  student     User      @relation("StudentEnrollments", fields: [studentId], references: [id], onDelete: Cascade)
-  courseName  String    // e.g., "IELTS Preparation", "General English A1"
-  courseType  String    // e.g., "IELTS", "GENERAL_ENGLISH", "TOEFL"
-  level       String?   // e.g., "A1", "A2", "B1", "B1+", "B2"
+  examId      String
+  exam        Exam          @relation(fields: [examId], references: [id], onDelete: Cascade)
+  sections    SectionType[] // Which sections to take
+  startAt     DateTime?
+  dueAt       DateTime?
+  createdById String
   branchId    String?
-  branch      Branch?   @relation(fields: [branchId], references: [id], onDelete: Restrict)
-  enrolledAt  DateTime  @default(now())
-  status      String    @default("ACTIVE") // ACTIVE, COMPLETED, SUSPENDED, CANCELLED
-  notes       String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime      @default(now())
+
+  @@index([studentId, examId])
+  @@map("exam_assignments")
+}
+
+model StudentEnrollment {
+  id         String   @id @default(cuid())
+  studentId  String
+  student    User     @relation("StudentEnrollments", fields: [studentId], references: [id], onDelete: Cascade)
+  courseName String // e.g., "IELTS Preparation", "General English A1"
+  courseType String // e.g., "IELTS", "GENERAL_ENGLISH", "TOEFL"
+  level      String? // e.g., "A1", "A2", "B1", "B1+", "B2"
+  branchId   String?
+  branch     Branch?  @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  enrolledAt DateTime @default(now())
+  status     String   @default("ACTIVE") // ACTIVE, COMPLETED, SUSPENDED, CANCELLED
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   paymentSchedules PaymentSchedule[]
 
@@ -404,21 +451,21 @@ model StudentEnrollment {
 }
 
 model PaymentSchedule {
-  id              String            @id @default(cuid())
-  enrollmentId    String
-  enrollment      StudentEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
-  studentId       String
-  student         User              @relation("StudentPayments", fields: [studentId], references: [id], onDelete: Cascade)
-  amount          Decimal          @db.Decimal(10, 2)
-  dueDate         DateTime
-  paidDate        DateTime?
-  status          String            @default("PENDING") // PENDING, PAID, OVERDUE, CANCELLED
-  paymentMethod   String?           // CASH, CARD, TRANSFER
-  notes           String?
-  branchId        String?
-  branch          Branch?           @relation(fields: [branchId], references: [id], onDelete: Restrict)
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  id            String            @id @default(cuid())
+  enrollmentId  String
+  enrollment    StudentEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  studentId     String
+  student       User              @relation("StudentPayments", fields: [studentId], references: [id], onDelete: Cascade)
+  amount        Decimal           @db.Decimal(10, 2)
+  dueDate       DateTime
+  paidDate      DateTime?
+  status        String            @default("PENDING") // PENDING, PAID, OVERDUE, CANCELLED
+  paymentMethod String? // CASH, CARD, TRANSFER
+  notes         String?
+  branchId      String?
+  branch        Branch?           @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
 
   @@index([studentId, dueDate])
   @@index([branchId, dueDate])
@@ -427,16 +474,16 @@ model PaymentSchedule {
 }
 
 model FinanceTxn {
-  id          String    @id @default(cuid())
-  branchId    String?
-  branch      Branch?   @relation(fields: [branchId], references: [id], onDelete: Restrict)
-  kind        String    // "INCOME" | "EXPENSE"
-  category    String    // "TUITION" | "EXAM" | "MATERIAL" | "RENT" | "SALARY" | "OTHER"
-  amount      Decimal   @db.Decimal(10, 2)
-  currency    String    @default("AZN")
-  occurredAt  DateTime
-  meta        Json?
-  createdAt   DateTime  @default(now())
+  id         String   @id @default(cuid())
+  branchId   String?
+  branch     Branch?  @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  kind       String // "INCOME" | "EXPENSE"
+  category   String // "TUITION" | "EXAM" | "MATERIAL" | "RENT" | "SALARY" | "OTHER"
+  amount     Decimal  @db.Decimal(10, 2)
+  currency   String   @default("AZN")
+  occurredAt DateTime
+  meta       Json?
+  createdAt  DateTime @default(now())
 
   @@index([branchId, occurredAt])
   @@index([kind, occurredAt])
@@ -469,7 +516,7 @@ model TuitionPayment {
   branchId  String
   branch    Branch        @relation(fields: [branchId], references: [id], onDelete: Restrict)
   year      Int
-  month     Int           // 1..12
+  month     Int // 1..12
   amount    Decimal       @db.Decimal(10, 2)
   status    PaymentStatus @default(UNPAID)
   paidAt    DateTime?

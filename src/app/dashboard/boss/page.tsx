@@ -6,7 +6,7 @@ export default function BossDashboardPage() {
   const { data: session } = useSession();
 
   return (
-    <div className="h-full flex items-center justify-center">
+    <div className="h-[calc(100vh-5rem)] flex items-center justify-center">
       <div className="text-center">
         <div className="inline-flex items-center gap-3 px-6 py-3 bg-white/80 backdrop-blur-sm rounded-full shadow-lg border border-white/20 mb-8">
           <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full flex items-center justify-center">

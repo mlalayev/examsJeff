@@ -1,71 +1,35 @@
 "use client";
 
-import { useState } from "react";
-import { Shield, BookOpen, BarChart3, Users, Settings } from "lucide-react";
-import ExamsTab from "./tabs/ExamsTab";
-import BandMapTab from "./tabs/BandMapTab";
-import UsersTab from "./tabs/UsersTab";
-
-type Tab = "exams" | "bandmap" | "users" | "settings";
+import { useSession } from "next-auth/react";
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<Tab>("exams");
-
-  const tabs = [
-    { id: "exams" as Tab, label: "Exams", icon: BookOpen },
-    { id: "bandmap" as Tab, label: "Band Map", icon: BarChart3 },
-    { id: "users" as Tab, label: "Users", icon: Users },
-    { id: "settings" as Tab, label: "Settings", icon: Settings },
-  ];
+  const { data: session } = useSession();
 
   return (
-    <div className="max-w-[1400px] mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 bg-red-50 rounded-lg">
-            <Shield className="w-6 h-6 text-red-600" />
+    <div className="h-[calc(100vh-5rem)] flex items-center justify-center">
+      <div className="text-center">
+        <div className="inline-flex items-center gap-3 px-6 py-3 bg-white/80 backdrop-blur-sm rounded-full shadow-lg border border-white/20 mb-8">
+          <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full flex items-center justify-center">
+            <span className="text-white font-bold text-sm">J</span>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">Admin Panel</h1>
+          <span className="text-slate-700 font-medium">JEFF Exams Portal</span>
         </div>
-        <p className="text-gray-600">System-wide content and user management</p>
-      </div>
 
-      {/* Tabs */}
-      <div className="mb-6 border-b border-gray-200">
-        <div className="flex gap-4">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-3 font-medium border-b-2 transition ${
-                  activeTab === tab.id
-                    ? "border-red-600 text-red-600"
-                    : "border-transparent text-gray-600 hover:text-gray-900"
-                }`}
-              >
-                <Icon className="w-5 h-5" />
-                {tab.label}
-              </button>
-            );
-          })}
+        <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-6">
+          Welcome,
+          <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            {session?.user?.name || session?.user?.email?.split('@')[0] || "Admin"}!
+          </span>
+        </h1>
+
+        <p className="text-lg text-slate-600 max-w-xl mx-auto mb-8">
+          Your system administration hub for managing content, users, and platform settings.
+        </p>
+
+        <div className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-full text-slate-600 text-sm">
+          <span>⚙️</span>
+          <span>Use the sidebar to navigate between different sections</span>
         </div>
-      </div>
-
-      {/* Tab Content */}
-      <div>
-        {activeTab === "exams" && <ExamsTab />}
-        {activeTab === "bandmap" && <BandMapTab />}
-        {activeTab === "users" && <UsersTab />}
-        {activeTab === "settings" && (
-          <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-            <Settings className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">Settings</h3>
-            <p className="text-gray-600">System settings coming soon</p>
-          </div>
-        )}
       </div>
     </div>
   );

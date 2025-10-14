@@ -80,16 +80,17 @@ export async function POST(request: Request) {
       );
     }
     
-    // Check for conflicting bookings (within 2 hours window)
-    const twoHoursBefore = new Date(startAt.getTime() - 2 * 60 * 60 * 1000);
-    const twoHoursAfter = new Date(startAt.getTime() + 2 * 60 * 60 * 1000);
+    // Check for conflicting bookings (within 30 minutes window)
+    const windowMs = 30 * 60 * 1000; // 30 minutes
+    const windowBefore = new Date(startAt.getTime() - windowMs);
+    const windowAfter = new Date(startAt.getTime() + windowMs);
     
     const conflictingBooking = await prisma.booking.findFirst({
       where: {
         studentId: validatedData.studentId,
         startAt: {
-          gte: twoHoursBefore,
-          lte: twoHoursAfter,
+          gte: windowBefore,
+          lte: windowAfter,
         },
         status: {
           in: ["CONFIRMED", "IN_PROGRESS"]
@@ -99,7 +100,14 @@ export async function POST(request: Request) {
     
     if (conflictingBooking) {
       return NextResponse.json(
-        { error: "Student already has a booking scheduled near this time" },
+        { 
+          error: "Student already has a booking scheduled near this time",
+          conflict: {
+            id: conflictingBooking.id,
+            startAt: conflictingBooking.startAt,
+            status: conflictingBooking.status,
+          }
+        },
         { status: 409 }
       );
     }
