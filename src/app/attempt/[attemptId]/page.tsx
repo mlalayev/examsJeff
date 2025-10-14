@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { BookOpen, Clock, CheckCircle2 } from "lucide-react";
+import { BookOpen, Clock, CheckCircle2, Save, Check, ArrowLeft, Play, Pause } from "lucide-react";
 import {
   QTF,
   QMcqSingle,
@@ -53,6 +53,8 @@ export default function AttemptRunnerPage() {
   const [done, setDone] = useState<DoneState>({});
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -71,6 +73,10 @@ export default function AttemptRunnerPage() {
       setAnswers((prev) => ({ ...initAnswers, ...prev }));
       setDone((prev) => ({ ...initDone, ...prev }));
       setActiveSection(json.exam.sections[0]?.type || null);
+      
+      // Initialize timer with total duration
+      const totalDuration = json.exam.sections.reduce((acc: number, s: any) => acc + s.durationMin, 0);
+      setTimeLeft(totalDuration * 60); // Convert to seconds
     } catch (e) {
       console.error(e);
       alert(e instanceof Error ? e.message : "Failed to load attempt");
@@ -83,6 +89,25 @@ export default function AttemptRunnerPage() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attemptId]);
+
+  // Timer effect
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isTimerRunning && timeLeft && timeLeft > 0) {
+      interval = setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev && prev <= 1) {
+            setIsTimerRunning(false);
+            // Auto submit when time runs out
+            submitAttempt();
+            return 0;
+          }
+          return prev ? prev - 1 : 0;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isTimerRunning, timeLeft]);
 
   // Autosave with debounce
   const autosaveTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -166,132 +191,229 @@ export default function AttemptRunnerPage() {
     }
   };
 
+  const formatTime = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${minutes}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const getProgressPercentage = () => {
+    if (!data) return 0;
+    const totalSections = data.exam.sections.length;
+    const completedSections = Object.values(done).filter(Boolean).length;
+    return (completedSections / totalSections) * 100;
+  };
+
   if (loading || !data) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-400"></div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-400 mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading exam...</p>
+        </div>
       </div>
     );
   }
 
   const sections = data.exam.sections;
   const active = sections.find((s) => s.type === activeSection) || sections[0];
+  const progress = getProgressPercentage();
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-6xl mx-auto px-6 py-8 grid grid-cols-12 gap-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      {/* Header */}
+      <div className="bg-white/80 backdrop-blur-sm border-b border-white/20 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => router.back()}
+                className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span className="text-sm font-medium">Back</span>
+              </button>
+              <div className="h-6 w-px bg-slate-200"></div>
+              <div>
+                <h1 className="text-lg font-semibold text-slate-900">{data.exam.title}</h1>
+                <p className="text-sm text-slate-500">{data.exam.category}</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              {/* Timer */}
+              <div className="flex items-center gap-2 px-3 py-2 bg-slate-100 rounded-lg">
+                <Clock className="w-4 h-4 text-slate-600" />
+                <span className="text-sm font-mono font-medium text-slate-900">
+                  {timeLeft ? formatTime(timeLeft) : "0:00"}
+                </span>
+                <button
+                  onClick={() => setIsTimerRunning(!isTimerRunning)}
+                  className="p-1 hover:bg-slate-200 rounded transition"
+                >
+                  {isTimerRunning ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+                </button>
+              </div>
+              
+              {/* Progress */}
+              <div className="flex items-center gap-2">
+                <div className="w-24 h-2 bg-slate-200 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-300"
+                    style={{ width: `${progress}%` }}
+                  ></div>
+                </div>
+                <span className="text-sm text-slate-600 font-medium">{Math.round(progress)}%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-6 py-8 grid grid-cols-12 gap-8">
         {/* Sidebar */}
-        <aside className="col-span-12 md:col-span-4 lg:col-span-3">
-          <div className="bg-white border border-gray-200 rounded-lg p-4 sticky top-6">
-            <div className="mb-4">
-              <h2 className="text-sm font-semibold text-gray-900">Sections</h2>
-              <p className="text-xs text-gray-500">
-                Select a section to answer
+        <aside className="col-span-12 lg:col-span-4">
+          <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-xl p-6 sticky top-24 shadow-lg">
+            <div className="mb-6">
+              <h2 className="text-lg font-semibold text-slate-900 mb-2">Exam Sections</h2>
+              <p className="text-sm text-slate-500">
+                Complete all sections to finish your exam
               </p>
             </div>
-            <div className="space-y-2">
+            
+            <div className="space-y-3 mb-6">
               {sections.map((s) => (
                 <button
                   key={s.id}
                   onClick={() => setActiveSection(s.type)}
-                  className={`w-full text-left px-3 py-2 rounded-md border transition-colors ${
+                  className={`w-full text-left p-4 rounded-lg border transition-all duration-200 ${
                     activeSection === s.type
-                      ? "bg-gray-900 text-white border-gray-900"
-                      : "bg-white text-gray-800 border-gray-200 hover:bg-gray-50"
+                      ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white border-transparent shadow-lg"
+                      : "bg-white/50 text-slate-700 border-slate-200 hover:bg-white hover:border-slate-300 hover:shadow-md"
                   }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">{s.title}</span>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium">{s.title}</span>
                     {done[s.type] && (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                      <CheckCircle2 className="w-5 h-5 text-emerald-400" />
                     )}
                   </div>
-                  <div
-                    className={`text-xs mt-1 ${
-                      activeSection === s.type
-                        ? "text-gray-300"
-                        : "text-gray-500"
-                    }`}
-                  >
-                    {s.type}
+                  <div className="flex items-center justify-between text-sm">
+                    <span className={activeSection === s.type ? "text-blue-100" : "text-slate-500"}>
+                      {s.type}
+                    </span>
+                    <span className={activeSection === s.type ? "text-blue-100" : "text-slate-500"}>
+                      {s.durationMin} min
+                    </span>
                   </div>
                 </button>
               ))}
             </div>
 
-            {/* Submit button */}
-            <div className="pt-4 mt-4 border-t">
+            {/* Action Buttons */}
+            <div className="space-y-3">
+              <button
+                onClick={() => manualSave(active.type)}
+                disabled={saving === active.type}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 disabled:opacity-50 transition"
+              >
+                <Save className="w-4 h-4" />
+                {saving === active.type ? "Saving..." : "Save Draft"}
+              </button>
+              
+              <button
+                onClick={() => markDone(active.type)}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition"
+              >
+                <Check className="w-4 h-4" />
+                Mark as Done
+              </button>
+              
               <button
                 onClick={submitAttempt}
                 disabled={submitting}
-                className="w-full px-4 py-2 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
+                className="w-full px-4 py-3 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-lg hover:from-red-600 hover:to-pink-600 disabled:opacity-50 transition font-medium"
               >
-                {submitting ? "Submitting..." : "Submit Attempt"}
+                {submitting ? "Submitting..." : "Submit Exam"}
               </button>
             </div>
+            
+            {lastSaved && (
+              <div className="mt-4 text-center">
+                <span className="text-xs text-slate-400">
+                  Last saved: {lastSaved.toLocaleTimeString()}
+                </span>
+              </div>
+            )}
           </div>
         </aside>
 
         {/* Content */}
-        <main className="col-span-12 md:col-span-8 lg:col-span-9">
-          <div className="mb-4">
-            <h1 className="text-xl font-semibold text-gray-900">
-              {active.title} ({active.type})
-            </h1>
-          </div>
+        <main className="col-span-12 lg:col-span-8">
+          <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-xl p-8 shadow-lg">
+            {/* Section Header */}
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h1 className="text-2xl font-bold text-slate-900 mb-2">
+                    {active.title}
+                  </h1>
+                  <div className="flex items-center gap-4 text-sm text-slate-500">
+                    <span className="flex items-center gap-1">
+                      <BookOpen className="w-4 h-4" />
+                      {active.type}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-4 h-4" />
+                      {active.durationMin} minutes
+                    </span>
+                    <span>{active.questions.length} questions</span>
+                  </div>
+                </div>
+                {done[active.type] && (
+                  <div className="flex items-center gap-2 px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-sm font-medium">
+                    <CheckCircle2 className="w-4 h-4" />
+                    Completed
+                  </div>
+                )}
+              </div>
+            </div>
 
-          <div className="mb-4 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-xs text-gray-500">
-              <Clock className="w-3.5 h-3.5" />
-              <span>{active.durationMin} min</span>
-            </div>
-            <div className="flex items-center gap-2">
-              {lastSaved && (
-                <span className="text-xs text-gray-400">
-                  Saved {lastSaved.toLocaleTimeString()}
-                </span>
-              )}
-              <button
-                className="px-3 py-1.5 text-sm rounded-md bg-white border border-gray-200 hover:bg-gray-50 disabled:opacity-50"
-                onClick={() => manualSave(active.type)}
-                disabled={saving === active.type}
-              >
-                {saving === active.type ? "Saving..." : "Save Draft"}
-              </button>
-              <button
-                className="px-3 py-1.5 text-sm rounded-md bg-gray-900 text-white hover:bg-gray-800"
-                onClick={() => markDone(active.type)}
-              >
-                Mark as Done
-              </button>
-            </div>
-          </div>
+            {/* Passages / transcript */}
+            {active.questions.some((q) => q.prompt?.passage) && (
+              <div className="mb-8 p-6 bg-slate-50 border border-slate-200 rounded-lg">
+                <h3 className="text-sm font-semibold text-slate-700 mb-3">Reading Passage</h3>
+                <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+                  {active.questions.find((q) => q.prompt?.passage)?.prompt?.passage}
+                </div>
+              </div>
+            )}
+            
+            {active.questions.some((q) => q.prompt?.transcript) && (
+              <div className="mb-8 p-6 bg-blue-50 border border-blue-200 rounded-lg">
+                <h3 className="text-sm font-semibold text-blue-700 mb-3">Listening Transcript</h3>
+                <div className="text-sm text-blue-800 leading-relaxed whitespace-pre-wrap">
+                  {active.questions.find((q) => q.prompt?.transcript)?.prompt?.transcript}
+                </div>
+              </div>
+            )}
 
-          {/* Passages / transcript */}
-          {active.questions.some((q) => q.prompt?.passage) && (
-            <div className="mb-4 p-3 bg-gray-50 rounded border text-sm text-gray-700 whitespace-pre-wrap">
-              {active.questions.find((q) => q.prompt?.passage)?.prompt?.passage}
+            {/* Questions */}
+            <div className="space-y-6">
+              {active.questions.map((q) => (
+                <QuestionBlock
+                  key={q.id}
+                  sectionType={active.type}
+                  q={q}
+                  value={(answers[active.type] || {})[q.id]}
+                  onChange={(val) => setAnswer(active.type, q.id, val)}
+                />
+              ))}
             </div>
-          )}
-          {active.questions.some((q) => q.prompt?.transcript) && (
-            <div className="mb-4 p-3 bg-blue-50 rounded border border-blue-200 text-sm text-blue-800 whitespace-pre-wrap">
-              {
-                active.questions.find((q) => q.prompt?.transcript)?.prompt
-                  ?.transcript
-              }
-            </div>
-          )}
-
-          <div className="space-y-4">
-            {active.questions.map((q) => (
-              <QuestionBlock
-                key={q.id}
-                sectionType={active.type}
-                q={q}
-                value={(answers[active.type] || {})[q.id]}
-                onChange={(val) => setAnswer(active.type, q.id, val)}
-              />
-            ))}
           </div>
         </main>
       </div>
@@ -313,11 +435,25 @@ function QuestionBlock({
   const qtype = q.qtype as string;
   
   return (
-    <div className="border border-gray-100 rounded p-4">
-      <div className="text-sm text-gray-900 font-medium mb-3">
-        Q{q.order}. {q.prompt?.text || "Question"}
+    <div className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex items-start gap-4 mb-4">
+        <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-full flex items-center justify-center text-sm font-semibold">
+          {q.order}
+        </div>
+        <div className="flex-1">
+          <div className="text-slate-900 font-medium mb-2 leading-relaxed">
+            {q.prompt?.text || "Question"}
+          </div>
+          {q.maxScore && (
+            <div className="text-xs text-slate-500">
+              {q.maxScore} point{q.maxScore !== 1 ? 's' : ''}
+            </div>
+          )}
+        </div>
       </div>
-      {renderQuestionComponent(qtype, q, value, onChange)}
+      <div className="ml-12">
+        {renderQuestionComponent(qtype, q, value, onChange)}
+      </div>
     </div>
   );
 }
@@ -351,7 +487,7 @@ function renderQuestionComponent(
           type="text"
           value={value || ""}
           onChange={(e) => onChange(e.target.value)}
-          className="mt-1 w-full px-3 py-2 border border-gray-200 rounded text-sm focus:outline-none focus:border-gray-400"
+          className="w-full px-4 py-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition"
           placeholder="Write a short answer"
         />
       );
@@ -360,14 +496,19 @@ function renderQuestionComponent(
         <textarea
           value={value || ""}
           onChange={(e) => onChange(e.target.value)}
-          className="mt-1 w-full px-3 py-2 border border-gray-200 rounded text-sm focus:outline-none focus:border-gray-400 min-h-[120px]"
+          className="w-full px-4 py-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition min-h-[120px] resize-y"
           placeholder="Write your essay here"
         />
       );
     default:
       return (
-        <div className="text-xs text-gray-500">
-          Unsupported question type: {qtype}
+        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div className="text-sm text-yellow-800">
+            <strong>Unsupported question type:</strong> {qtype}
+          </div>
+          <div className="text-xs text-yellow-600 mt-1">
+            Please contact support if you believe this is an error.
+          </div>
         </div>
       );
   }
