@@ -57,19 +57,19 @@ export function QGap({ question, value, onChange, readOnly }: BaseQuestionProps<
     const answer = currentAnswers[index];
     
     return (
-      <div key={index} className="mb-4">
+      <div key={index} className="mb-3">
         <div className="flex items-center gap-2 text-sm">
-          <span className="font-medium text-slate-600">{index + 1}.</span>
-          <span className="text-slate-800">
+          <span className="font-medium text-gray-600">{index + 1}.</span>
+          <span className="text-gray-800">
             {parts[0]}
             <span
               onDrop={(e) => handleDrop(index, e)}
               onDragOver={handleDragOver}
-              className={`inline-block min-w-[80px] h-8 border-2 border-dashed rounded px-2 py-1 mx-1 ${
+              className={`inline-block min-w-[60px] h-7 border border-dashed rounded px-2 py-1 mx-1 ${
                 answer 
-                  ? "border-green-300 bg-green-50 text-green-800" 
-                  : "border-slate-300 bg-slate-50 text-slate-500"
-              } ${!readOnly ? "cursor-pointer hover:border-blue-400" : ""}`}
+                  ? "border-green-200 bg-green-50 text-green-700" 
+                  : "border-gray-300 bg-gray-50 text-gray-500"
+              } ${!readOnly ? "cursor-pointer hover:border-slate-300 hover:bg-slate-50" : ""}`}
             >
               {answer || "___"}
             </span>
@@ -89,15 +89,15 @@ export function QGap({ question, value, onChange, readOnly }: BaseQuestionProps<
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Sentences */}
       <div className="space-y-2">
         {sentences.map((sentence: string, index: number) => renderSentence(sentence, index))}
       </div>
       
       {/* Options */}
-      <div className="border-t border-slate-200 pt-4">
-        <h4 className="text-sm font-medium text-slate-700 mb-3">Choose from:</h4>
+      <div className="border-t border-gray-200 pt-3">
+        <h4 className="text-sm font-medium text-gray-700 mb-2">Choose from:</h4>
         <div className="flex flex-wrap gap-2">
           {options.map((option: string) => {
             const isUsed = usedOptions.has(option);
@@ -106,10 +106,10 @@ export function QGap({ question, value, onChange, readOnly }: BaseQuestionProps<
                 key={option}
                 draggable={!readOnly && !isUsed}
                 onDragStart={(e) => handleDragStart(option, e)}
-                className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+                className={`px-3 py-2 rounded border text-sm ${
                   isUsed
-                    ? "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed"
-                    : "bg-white border-slate-300 text-slate-700 cursor-move hover:border-blue-400 hover:shadow-md"
+                    ? "bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed"
+                    : "bg-white border-gray-300 text-gray-700 cursor-move hover:border-slate-300 hover:bg-slate-50"
                 }`}
               >
                 {option}

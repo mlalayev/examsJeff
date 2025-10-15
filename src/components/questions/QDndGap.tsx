@@ -4,25 +4,20 @@ import { BaseQuestionProps } from "./types";
 import { useState } from "react";
 
 export function QDndGap({ question, value, onChange, readOnly }: BaseQuestionProps<Record<string, string>>) {
-  // Simple approach - just use the text as is and split by common patterns
   let sentences = [];
   
   if (question.prompt?.textWithBlanks) {
     const text = question.prompt.textWithBlanks;
-    // Try multiple splitting strategies
     if (text.includes('\n')) {
       sentences = text.split('\n').filter((line: string) => line.trim());
     } else if (text.includes('1.') && text.includes('2.')) {
-      // Split by number patterns
       sentences = text.split(/(?=\d+\.\s)/).filter((line: string) => line.trim());
     } else {
-      // If it's one long string, try to split by common sentence endings
       sentences = text.split(/(?<=\.)\s+(?=[A-Z])/).filter((line: string) => line.trim());
     }
   } else if (question.prompt?.sentences) {
     sentences = question.prompt.sentences;
   } else {
-    // Fallback: create sample sentences for testing
     sentences = [
       "I ___ running.",
       "You ___ playing.",
@@ -32,31 +27,27 @@ export function QDndGap({ question, value, onChange, readOnly }: BaseQuestionPro
   
   const options = question.options?.bank || ["am", "is", "are"];
   
-  // Initialize value as object with sentence indices as keys
   const currentAnswers = value || {};
   
   const [draggedOption, setDraggedOption] = useState<string | null>(null);
 
-  // Calculate used options from current answers
   const usedOptions = new Set(Object.values(currentAnswers));
 
-  const handleDrop = (sentenceIndex: number, e: React.DragEvent) => {
+  const handleDrop = (gapKey: string, e: React.DragEvent) => {
     e.preventDefault();
     if (readOnly || !draggedOption) return;
     
     const newAnswers = { ...currentAnswers };
     
-    // Check if this option is already used elsewhere
-    const existingIndex = Object.keys(newAnswers).find(key => 
-      newAnswers[key] === draggedOption && key !== sentenceIndex.toString()
+    const existingKey = Object.keys(newAnswers).find(key => 
+      newAnswers[key] === draggedOption && key !== gapKey
     );
     
-    if (existingIndex) {
-      // Remove the option from the existing position
-      delete newAnswers[existingIndex];
+    if (existingKey) {
+      delete newAnswers[existingKey];
     }
     
-    newAnswers[sentenceIndex] = draggedOption;
+    newAnswers[gapKey] = draggedOption;
     onChange(newAnswers);
     setDraggedOption(null);
   };
@@ -76,10 +67,10 @@ export function QDndGap({ question, value, onChange, readOnly }: BaseQuestionPro
     setDraggedOption(null);
   };
 
-  const removeAnswer = (sentenceIndex: number) => {
+  const removeAnswer = (gapKey: string) => {
     if (readOnly) return;
     const newAnswers = { ...currentAnswers };
-    delete newAnswers[sentenceIndex];
+    delete newAnswers[gapKey];
     onChange(newAnswers);
   };
 
@@ -87,37 +78,43 @@ export function QDndGap({ question, value, onChange, readOnly }: BaseQuestionPro
     // Clean the sentence - remove leading numbers and dots
     const cleanSentence = sentence.replace(/^\d+\.\s*/, '').trim();
     const parts = cleanSentence.split('___');
-    const answer = currentAnswers[index];
+    
+    const gapCount = parts.length - 1;
     
     return (
-      <div key={index} className="mb-6 group">
+      <div key={index} className="mb-4 group">
         <div className="flex items-center gap-2 text-sm">
-          <span className="font-medium text-slate-600">{index + 1}.</span>
-          <div className="flex items-center gap-1">
-            <span className="text-slate-800">{parts[0]}</span>
-            <span
-              onDrop={(e) => handleDrop(index, e)}
-              onDragOver={handleDragOver}
-              className={`relative inline-block min-w-[80px] h-8 border-2 border-dashed rounded px-2 py-1 ${
-                answer 
-                  ? "border-green-300 bg-green-50 text-green-800" 
-                  : "border-slate-300 bg-slate-50 text-slate-500"
-              } ${!readOnly ? "cursor-pointer hover:border-blue-400" : ""}`}
-            >
-              {answer || "___"}
-              {answer && !readOnly && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeAnswer(index);
-                  }}
-                  className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition opacity-0 group-hover:opacity-100"
-                >
-                  ×
-                </button>
-              )}
-            </span>
-            <span className="text-slate-800">{parts[1]}</span>
+          <span className="font-medium text-gray-600">{index + 1}.</span>
+          <div className="flex items-center gap-1 flex-wrap">
+            {parts.map((part, partIndex) => (
+              <div key={partIndex} className="flex items-center gap-1">
+                <span className="text-gray-800">{part}</span>
+                {partIndex < parts.length - 1 && (
+                  <span
+                    onDrop={(e) => handleDrop(`${index}-${partIndex}`, e)}
+                    onDragOver={handleDragOver}
+                    className={`relative inline-block min-w-[60px] h-7 border border-dashed rounded px-2 py-1 group/gap ${
+                      currentAnswers[`${index}-${partIndex}`]
+                        ? "border-green-200 bg-green-50 text-green-700" 
+                        : "border-gray-300 bg-gray-50 text-gray-500"
+                    } ${!readOnly ? "cursor-pointer hover:border-slate-300 hover:bg-slate-50" : ""}`}
+                  >
+                    {currentAnswers[`${index}-${partIndex}`] || "___"}
+                    {currentAnswers[`${index}-${partIndex}`] && !readOnly && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeAnswer(`${index}-${partIndex}`);
+                        }}
+                        className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition opacity-0 group-hover/gap:opacity-100"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </span>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -125,15 +122,15 @@ export function QDndGap({ question, value, onChange, readOnly }: BaseQuestionPro
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Sentences */}
-      <div>
+      <div className="space-y-4">
         {sentences.map((sentence: string, index: number) => renderSentence(sentence, index))}
       </div>
       
       {/* Options */}
-      <div className="border-t border-slate-200 pt-4">
-        <h4 className="text-sm font-medium text-slate-700 mb-3">Choose from:</h4>
+      <div className="pt-4">
+        <div className="text-xs text-gray-500 mb-3">Choose from:</div>
         <div className="flex flex-wrap gap-2">
           {options.map((option: string) => {
             const isUsed = usedOptions.has(option);
@@ -143,12 +140,12 @@ export function QDndGap({ question, value, onChange, readOnly }: BaseQuestionPro
                 draggable={!readOnly && !isUsed}
                 onDragStart={(e) => handleDragStart(option, e)}
                 onDragEnd={handleDragEnd}
-                className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+                className={`px-3 py-1.5 text-sm border rounded transition-all ${
                   !readOnly && !isUsed ? "cursor-move" : "cursor-default"
                 } ${
                   isUsed
-                    ? "bg-slate-100 border-slate-200 text-slate-400 opacity-50"
-                    : "bg-white border-slate-300 text-slate-700 hover:border-blue-400 hover:shadow-md"
+                    ? "bg-gray-50 border-gray-200 text-gray-400"
+                    : "bg-white border-gray-300 text-gray-700 hover:border-slate-300 hover:bg-slate-50"
                 }`}
               >
                 {option}
