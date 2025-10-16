@@ -32,16 +32,29 @@ export default function ExamsPage() {
 
   const fetchExams = async () => {
     try {
-      const response = await fetch("/api/exams");
-      if (!response.ok) throw new Error("Failed to fetch exams");
-      const data = await response.json();
-      setExams(data.exams);
+      // Fetch both DB and JSON exams
+      const [dbRes, jsonRes] = await Promise.all([
+        fetch("/api/exams"),
+        fetch("/api/exams/json")
+      ]);
+      
+      const dbData = dbRes.ok ? await dbRes.json() : { exams: [] };
+      const jsonData = jsonRes.ok ? await jsonRes.json() : { exams: [] };
+      
+      // Merge and mark source
+      const allExams = [
+        ...dbData.exams.map((e: any) => ({ ...e, source: 'db' })),
+        ...jsonData.exams.map((e: any) => ({ ...e, source: 'json', createdAt: new Date().toISOString() }))
+      ];
+      
+      setExams(allExams);
     } catch (error) {
       console.error("Error fetching exams:", error);
     } finally {
       setLoading(false);
     }
   };
+
 
   const handleCreateExam = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -167,7 +180,13 @@ export default function ExamsPage() {
                         </div>
                         <div>
                           <div className="font-medium text-gray-900">{exam.title}</div>
-                          <div className="text-xs text-gray-500">{exam.id.slice(0, 8)}</div>
+                          <div className="text-xs text-gray-500 flex items-center gap-2">
+                            {exam.id.slice(0, 8)}
+                            {(exam as any).source === 'json' && (
+                              <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-xs">JSON</span>
+                            )}
+                            {exam.track && <span>· {exam.track}</span>}
+                          </div>
                         </div>
                       </div>
                     </td>

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireStudent } from "@/lib/auth-utils";
+import { loadJsonExam } from "@/lib/json-exam-loader";
 
 export async function POST(request: Request) {
   try {
@@ -48,6 +49,16 @@ export async function POST(request: Request) {
       });
     }
 
+    // Check if this is a JSON exam (stub with no DB sections)
+    let sectionsToCreate = booking.sections;
+    if (!booking.exam.sections || booking.exam.sections.length === 0) {
+      // This is a JSON exam, load sections from JSON
+      const jsonExam = await loadJsonExam(booking.examId);
+      if (jsonExam && jsonExam.sections) {
+        sectionsToCreate = jsonExam.sections.map((s: any) => s.type);
+      }
+    }
+    
     // Create new attempt
     attempt = await prisma.attempt.create({
       data: {
@@ -58,7 +69,7 @@ export async function POST(request: Request) {
         status: "IN_PROGRESS",
         startedAt: new Date(),
         sections: {
-          create: booking.sections.map((sectionType) => ({
+          create: sectionsToCreate.map((sectionType) => ({
             type: sectionType,
             status: "IN_PROGRESS",
           })),

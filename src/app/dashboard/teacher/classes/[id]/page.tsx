@@ -115,10 +115,20 @@ export default function ClassRosterPage() {
 
   const fetchExams = async () => {
     try {
-      const response = await fetch("/api/exams");
-      if (!response.ok) throw new Error("Failed to fetch exams");
-      const data = await response.json();
-      setExams(data.exams);
+      const [dbRes, jsonRes] = await Promise.all([
+        fetch("/api/exams"),
+        fetch("/api/exams/json")
+      ]);
+      
+      const dbData = dbRes.ok ? await dbRes.json() : { exams: [] };
+      const jsonData = jsonRes.ok ? await jsonRes.json() : { exams: [] };
+      
+      const allExams = [
+        ...dbData.exams.map((e: any) => ({ ...e, source: 'db' })),
+        ...jsonData.exams.map((e: any) => ({ ...e, source: 'json' }))
+      ];
+      
+      setExams(allExams);
     } catch (error) {
       console.error("Error fetching exams:", error);
     }
@@ -179,7 +189,12 @@ export default function ClassRosterPage() {
       // Convert to UTC ISO string
       const startAtUTC = localDate.toISOString();
 
-      const response = await fetch("/api/bookings", {
+      // Detect if this is a JSON exam
+      const selectedExam = exams.find(e => e.id === assignData.examId);
+      const isJsonExam = (selectedExam as any)?.source === 'json';
+      const apiPath = isJsonExam ? "/api/bookings/json" : "/api/bookings";
+
+      const response = await fetch(apiPath, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

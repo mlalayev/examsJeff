@@ -219,9 +219,19 @@ export default function AttemptRunnerPage() {
     );
   }
 
-  const sections = data.exam.sections;
+  const sections = data.exam.sections || [];
   const active = sections.find((s) => s.type === activeSection) || sections[0];
   const progress = getProgressPercentage();
+
+  if (!active) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600">No sections found for this exam</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white">

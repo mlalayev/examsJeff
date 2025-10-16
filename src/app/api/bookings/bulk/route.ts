@@ -64,7 +64,7 @@ export async function POST(request: Request) {
     }
     
     // Check for conflicts for each student
-    const windowMs = 30 * 60 * 1000; // 30 minutes
+    const windowMs = 1 * 60 * 1000; // 1 minute
     const windowBefore = new Date(startAt.getTime() - windowMs);
     const windowAfter = new Date(startAt.getTime() + windowMs);
     

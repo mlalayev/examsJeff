@@ -80,8 +80,8 @@ export async function POST(request: Request) {
       );
     }
     
-    // Check for conflicting bookings (within 30 minutes window)
-    const windowMs = 30 * 60 * 1000; // 30 minutes
+    // Check for conflicting bookings (within 1 minute window)
+    const windowMs = 1 * 60 * 1000; // 1 minute
     const windowBefore = new Date(startAt.getTime() - windowMs);
     const windowAfter = new Date(startAt.getTime() + windowMs);
     
