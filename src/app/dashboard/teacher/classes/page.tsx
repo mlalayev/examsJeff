@@ -134,11 +134,11 @@ export default function ClassesPage() {
 
       {/* Simple Table */}
       <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
-        {loading ? (
+      {loading ? (
           <div className="flex items-center justify-center h-32">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-400"></div>
-          </div>
-        ) : (
+        </div>
+      ) : (
           <div className="overflow-x-auto pb-6">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
@@ -156,12 +156,12 @@ export default function ClassesPage() {
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-gray-100 rounded-md flex items-center justify-center">
                           <Users className="w-4 h-4 text-gray-600" />
-                        </div>
+                  </div>
                         <div>
                           <div className="font-medium text-gray-900">{classItem.name}</div>
                           <div className="text-xs text-gray-500">{classItem.id.slice(0, 8)}</div>
-                        </div>
-                      </div>
+                </div>
+              </div>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600">{classItem._count.classStudents}</td>
                     <td className="px-4 py-3 text-sm text-gray-600">
@@ -169,21 +169,21 @@ export default function ClassesPage() {
                     </td>
                     <td className="px-4 py-3 text-sm">
                       <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => router.push(`/dashboard/teacher/classes/${classItem.id}`)}
+                <button
+                  onClick={() => router.push(`/dashboard/teacher/classes/${classItem.id}`)}
                           className="text-gray-400 hover:text-gray-600"
                           title="Manage"
-                        >
+                >
                           <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => router.push(`/dashboard/teacher/analytics/${classItem.id}`)}
+                </button>
+                <button
+                  onClick={() => router.push(`/dashboard/teacher/analytics/${classItem.id}`)}
                           className="text-gray-400 hover:text-gray-600"
                           title="Analytics"
-                        >
-                          <BarChart3 className="w-4 h-4" />
-                        </button>
-                      </div>
+                >
+                  <BarChart3 className="w-4 h-4" />
+                </button>
+              </div>
                     </td>
                   </tr>
                 ))}
@@ -193,10 +193,10 @@ export default function ClassesPage() {
               <div className="text-center py-12 text-gray-500">
                 <Users className="w-8 h-8 mx-auto mb-2 text-gray-300" />
                 <p>No classes found</p>
-              </div>
+            </div>
             )}
-          </div>
-        )}
+        </div>
+      )}
       </div>
 
       {/* Create Class Modal */}
@@ -214,28 +214,28 @@ export default function ClassesPage() {
             <div className="px-6 py-4 border-b border-gray-200">
               <h3 className="text-lg font-medium text-gray-900">Create Class</h3>
               <p className="text-sm text-gray-500 mt-1">Add a new class to manage students</p>
-            </div>
-
+              </div>
+            
             {/* Modal Content */}
             <form onSubmit={handleCreateClass}>
               <div className="px-6 py-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Class Name
-                  </label>
-                  <input
-                    type="text"
-                    value={newClassName}
-                    onChange={(e) => setNewClassName(e.target.value)}
+                  Class Name
+                </label>
+                <input
+                  type="text"
+                  value={newClassName}
+                  onChange={(e) => setNewClassName(e.target.value)}
                     onKeyPress={(e) => e.key === "Enter" && handleCreateClass(e)}
                     className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
-                    placeholder="e.g., IELTS Advanced 2025"
+                  placeholder="e.g., IELTS Advanced 2025"
                     autoFocus
                     required
-                  />
+                />
                 </div>
               </div>
-
+              
               {/* Modal Footer */}
               <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
                 <button

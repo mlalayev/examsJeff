@@ -49,9 +49,8 @@ export function QOrderSentence({ question, value, onChange, readOnly }: BaseQues
   };
 
   return (
-    <div className="space-y-3">
-      {/* Horizontal word boxes */}
-      <div className="flex gap-2 items-center w-full">
+    <div className="space-y-4">
+      <div className="flex gap-2 items-center w-full flex-wrap">
         {order.map((tokenIdx: number, posIdx: number) => (
           <div
             key={posIdx}
@@ -59,18 +58,14 @@ export function QOrderSentence({ question, value, onChange, readOnly }: BaseQues
             onDragStart={(e) => handleDragStart(e, posIdx)}
             onDragOver={handleDragOver}
             onDrop={(e) => handleDrop(e, posIdx)}
-            className={`flex-1 flex items-center justify-center bg-white border border-gray-200 rounded px-3 py-2 text-sm ${
-              !readOnly ? "cursor-move hover:border-slate-300 hover:bg-slate-50" : "cursor-default"
+            className={`flex-1 min-w-[80px] flex items-center justify-center bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm ${
+              !readOnly ? "cursor-move hover:border-gray-900 hover:bg-gray-50" : "cursor-default"
             } ${draggedIdx === posIdx ? "opacity-50" : ""}`}
-            role="listitem"
-            aria-label={`Position ${posIdx + 1}: ${tokens[tokenIdx]}`}
           >
-            <span className="text-gray-800 text-center">{tokens[tokenIdx] || "?"}</span>
+            <span className="text-gray-900 text-center font-medium">{tokens[tokenIdx] || "?"}</span>
           </div>
         ))}
       </div>
-      
     </div>
   );
 }
-

@@ -154,11 +154,11 @@ export default function ExamsPage() {
 
       {/* Simple Table */}
       <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
-        {loading ? (
+      {loading ? (
           <div className="flex items-center justify-center h-32">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-400"></div>
-          </div>
-        ) : (
+        </div>
+      ) : (
           <div className="overflow-x-auto pb-6">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
@@ -187,17 +187,17 @@ export default function ExamsPage() {
                             )}
                             {exam.track && <span>· {exam.track}</span>}
                           </div>
-                        </div>
-                      </div>
+                  </div>
+                </div>
                     </td>
                     <td className="px-4 py-3 text-sm">
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        exam.isActive 
-                          ? "bg-green-100 text-green-700" 
-                          : "bg-gray-100 text-gray-700"
-                      }`}>
-                        {exam.isActive ? "Active" : "Inactive"}
-                      </span>
+                  exam.isActive 
+                    ? "bg-green-100 text-green-700" 
+                    : "bg-gray-100 text-gray-700"
+                }`}>
+                  {exam.isActive ? "Active" : "Inactive"}
+                </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600">
                       {exam._count?.bookings || 0}
@@ -218,11 +218,11 @@ export default function ExamsPage() {
               <div className="text-center py-12 text-gray-500">
                 <BookOpen className="w-8 h-8 mx-auto mb-2 text-gray-300" />
                 <p>No exams found</p>
-              </div>
-            )}
-          </div>
+                </div>
+              )}
+            </div>
         )}
-      </div>
+        </div>
 
       {/* Create Exam Modal */}
       {showCreateModal && (
@@ -239,32 +239,32 @@ export default function ExamsPage() {
             <div className="px-6 py-4 border-b border-gray-200">
               <h3 className="text-lg font-medium text-gray-900">Create Exam</h3>
               <p className="text-sm text-gray-500 mt-1">Create a new exam template</p>
-            </div>
-
+              </div>
+            
             {/* Modal Content */}
             <form onSubmit={handleCreateExam}>
               <div className="px-6 py-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Exam Title
-                  </label>
-                  <input
-                    type="text"
-                    value={examTitle}
-                    onChange={(e) => setExamTitle(e.target.value)}
+                  Exam Title
+                </label>
+                <input
+                  type="text"
+                  value={examTitle}
+                  onChange={(e) => setExamTitle(e.target.value)}
                     onKeyPress={(e) => e.key === "Enter" && handleCreateExam(e)}
                     className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
-                    placeholder="e.g., IELTS Academic Mock Exam #1"
+                  placeholder="e.g., IELTS Academic Mock Exam #1"
                     autoFocus
                     required
-                    maxLength={200}
-                  />
-                  <p className="text-xs text-gray-500 mt-2">
-                    Create exam templates that you can assign to students with specific dates and sections
-                  </p>
+                  maxLength={200}
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  Create exam templates that you can assign to students with specific dates and sections
+                </p>
                 </div>
               </div>
-
+              
               {/* Modal Footer */}
               <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
                 <button

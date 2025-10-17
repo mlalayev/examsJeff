@@ -258,7 +258,7 @@ export default function BossUsersPage() {
 
       {/* Simple Table */}
       <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
-        {loading ? (
+      {loading ? (
           <div className="flex items-center justify-center h-32">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-400"></div>
           </div>
@@ -273,8 +273,8 @@ export default function BossUsersPage() {
                   <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Branch</th>
                   <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Status</th>
                   <th className="text-left px-4 py-3 text-sm font-medium text-gray-700"></th>
-                </tr>
-              </thead>
+              </tr>
+            </thead>
               <tbody className="divide-y divide-gray-200">
                 {filteredUsers.map((user) => (
                   <tr key={user.id} className="hover:bg-gray-50">
@@ -305,18 +305,18 @@ export default function BossUsersPage() {
                         <Edit className="w-4 h-4" />
                       </button>
                     </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                </tr>
+              ))}
+            </tbody>
+          </table>
             {filteredUsers.length === 0 && (
               <div className="text-center py-12 text-gray-500">
                 <Users className="w-8 h-8 mx-auto mb-2 text-gray-300" />
                 <p>No users found</p>
               </div>
             )}
-          </div>
-        )}
+        </div>
+      )}
       </div>
       {modalOpen && selectedUser && (
         <div 
@@ -352,11 +352,11 @@ export default function BossUsersPage() {
                   <span className="text-gray-500">Current Branch:</span>
                   <span className="font-medium">{branchMap[selectedUser.branchId] || "—"}</span>
                 </div>
-              </div>
+            </div>
 
               {/* Form Fields */}
               <div className="space-y-4 pt-4 border-t border-gray-200">
-                <div>
+              <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
                   <select 
                     className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400" 
@@ -367,10 +367,10 @@ export default function BossUsersPage() {
                     <option value="TEACHER">Teacher</option>
                     <option value="ADMIN">Admin</option>
                     <option value="BRANCH_ADMIN">Branch Admin</option>
-                  </select>
-                </div>
+                </select>
+              </div>
 
-                <div>
+              <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Branch</label>
                   <select 
                     className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400" 
@@ -378,10 +378,10 @@ export default function BossUsersPage() {
                     onChange={(e) => setSelectedBranchId(e.target.value)}
                   >
                     <option value="">Select branch</option>
-                    {branches.map((b: any) => (
-                      <option key={b.id} value={b.id}>{b.name}</option>
-                    ))}
-                  </select>
+                  {branches.map((b: any) => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
+                  ))}
+                </select>
                   <p className="text-xs text-gray-500 mt-1">Required for Branch Admin role</p>
                 </div>
 
@@ -394,7 +394,7 @@ export default function BossUsersPage() {
                     onChange={(e) => setApprovedDesired(e.target.checked)} 
                   />
                   <label htmlFor="approve" className="text-sm font-medium text-gray-700">Approved</label>
-                </div>
+              </div>
               </div>
             </div>
 

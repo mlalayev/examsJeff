@@ -19,7 +19,7 @@ export default function BranchAdminDashboardPage() {
           Welcome,
           <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
             {session?.user?.name || session?.user?.email?.split('@')[0] || "Branch Admin"}!
-          </span>
+                        </span>
         </h1>
 
         <p className="text-lg text-slate-600 max-w-xl mx-auto mb-8">

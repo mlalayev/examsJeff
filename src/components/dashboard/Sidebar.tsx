@@ -29,6 +29,8 @@ type NavItem = {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   color: string;
+  disabled?: boolean;
+  comingSoon?: boolean;
 };
 
 export default function Sidebar() {
@@ -45,25 +47,33 @@ export default function Sidebar() {
         label: "Dashboard",
         href: "/dashboard/boss",
         icon: LayoutDashboard,
-        color: "from-blue-500 to-blue-600"
+        color: "from-blue-500 to-blue-600",
+        disabled: true,
+        comingSoon: true
       },
       {
         label: "Finance",
         href: "/dashboard/boss/finance",
         icon: DollarSign,
-        color: "from-emerald-500 to-emerald-600"
+        color: "from-emerald-500 to-emerald-600",
+        disabled: true,
+        comingSoon: true
       },
       {
         label: "Manage Users",
         href: "/dashboard/boss/users",
         icon: Users,
-        color: "from-purple-500 to-purple-600"
+        color: "from-purple-500 to-purple-600",
+        disabled: true,
+        comingSoon: true
       },
       {
         label: "Manage Branches",
         href: "/dashboard/boss/branches",
         icon: Building2,
-        color: "from-orange-500 to-orange-600"
+        color: "from-orange-500 to-orange-600",
+        disabled: true,
+        comingSoon: true
       }
     );
   }
@@ -75,31 +85,41 @@ export default function Sidebar() {
         label: "Dashboard",
         href: "/dashboard/branch-admin",
         icon: LayoutDashboard,
-        color: "from-blue-500 to-blue-600"
+        color: "from-blue-500 to-blue-600",
+        disabled: true,
+        comingSoon: true
       },
       {
         label: "Students",
         href: "/dashboard/branch-admin/students",
         icon: Users,
-        color: "from-purple-500 to-purple-600"
+        color: "from-purple-500 to-purple-600",
+        disabled: true,
+        comingSoon: true
       },
       {
         label: "Classes",
         href: "/dashboard/branch-admin/classes",
         icon: BookOpen,
-        color: "from-emerald-500 to-emerald-600"
+        color: "from-emerald-500 to-emerald-600",
+        disabled: true,
+        comingSoon: true
       },
       {
         label: "Finance",
         href: "/dashboard/branch-admin/finance",
         icon: DollarSign,
-        color: "from-orange-500 to-orange-600"
+        color: "from-orange-500 to-orange-600",
+        disabled: true,
+        comingSoon: true
       },
       {
         label: "Approvals",
         href: "/dashboard/branch-admin/approvals",
         icon: CheckCircle,
-        color: "from-green-500 to-green-600"
+        color: "from-green-500 to-green-600",
+        disabled: true,
+        comingSoon: true
       }
     );
   }
@@ -111,25 +131,33 @@ export default function Sidebar() {
         label: "Dashboard",
         href: "/dashboard/admin",
         icon: LayoutDashboard,
-        color: "from-blue-500 to-blue-600"
+        color: "from-blue-500 to-blue-600",
+        disabled: true,
+        comingSoon: true
       },
       {
         label: "Students",
         href: "/dashboard/admin/students",
         icon: Users,
-        color: "from-purple-500 to-purple-600"
+        color: "from-purple-500 to-purple-600",
+        disabled: true,
+        comingSoon: true
       },
       {
         label: "Exams",
         href: "/dashboard/admin/exams",
         icon: BookOpen,
-        color: "from-emerald-500 to-emerald-600"
+        color: "from-emerald-500 to-emerald-600",
+        disabled: true,
+        comingSoon: true
       },
       {
         label: "Seed Demo Data",
         href: "/dashboard/admin/seed",
         icon: Settings,
-        color: "from-orange-500 to-orange-600"
+        color: "from-orange-500 to-orange-600",
+        disabled: true,
+        comingSoon: true
       }
     );
   }
@@ -138,40 +166,10 @@ export default function Sidebar() {
   if (role === "TEACHER") {
     navItems.push(
       {
-        label: "Dashboard",
-        href: "/dashboard/teacher",
-        icon: LayoutDashboard,
-        color: "from-blue-500 to-blue-600"
-      },
-      {
         label: "Classes",
         href: "/dashboard/teacher/classes",
         icon: BookOpen,
         color: "from-purple-500 to-purple-600"
-      },
-      {
-        label: "Catalog",
-        href: "/dashboard/catalog",
-        icon: Library,
-        color: "from-indigo-500 to-indigo-600"
-      },
-      {
-        label: "Exams",
-        href: "/dashboard/teacher/exams",
-        icon: ClipboardList,
-        color: "from-emerald-500 to-emerald-600"
-      },
-      {
-        label: "Grading",
-        href: "/dashboard/teacher/grading",
-        icon: CheckCircle,
-        color: "from-orange-500 to-orange-600"
-      },
-      {
-        label: "Schedule",
-        href: "/dashboard/teacher/schedule",
-        icon: Calendar,
-        color: "from-pink-500 to-pink-600"
       },
       {
         label: "Reports",
@@ -180,10 +178,44 @@ export default function Sidebar() {
         color: "from-cyan-500 to-cyan-600"
       },
       {
+        label: "Catalog",
+        href: "/dashboard/catalog",
+        icon: Library,
+        color: "from-indigo-500 to-indigo-600",
+        disabled: true,
+        comingSoon: true
+      },
+      {
+        label: "Exams",
+        href: "/dashboard/teacher/exams",
+        icon: ClipboardList,
+        color: "from-emerald-500 to-emerald-600",
+        disabled: true,
+        comingSoon: true
+      },
+      {
+        label: "Grading",
+        href: "/dashboard/teacher/grading",
+        icon: CheckCircle,
+        color: "from-orange-500 to-orange-600",
+        disabled: true,
+        comingSoon: true
+      },
+      {
+        label: "Schedule",
+        href: "/dashboard/teacher/schedule",
+        icon: Calendar,
+        color: "from-pink-500 to-pink-600",
+        disabled: true,
+        comingSoon: true
+      },
+      {
         label: "Salary",
         href: "/dashboard/teacher/salary",
         icon: CreditCard,
-        color: "from-green-500 to-green-600"
+        color: "from-green-500 to-green-600",
+        disabled: true,
+        comingSoon: true
       }
     );
   }
@@ -192,28 +224,32 @@ export default function Sidebar() {
   if (role === "STUDENT") {
     navItems.push(
       {
-        label: "Dashboard",
-        href: "/dashboard/student",
-        icon: LayoutDashboard,
-        color: "from-blue-500 to-blue-600"
-      },
-      {
         label: "My Exams",
         href: "/dashboard/student/exams",
         icon: BookOpen,
         color: "from-purple-500 to-purple-600"
       },
       {
-        label: "Catalog",
-        href: "/dashboard/catalog",
-        icon: Library,
-        color: "from-indigo-500 to-indigo-600"
-      },
-      {
         label: "History",
         href: "/dashboard/student/history",
         icon: History,
         color: "from-emerald-500 to-emerald-600"
+      },
+      {
+        label: "Dashboard",
+        href: "/dashboard/student",
+        icon: LayoutDashboard,
+        color: "from-blue-500 to-blue-600",
+        disabled: true,
+        comingSoon: true
+      },
+      {
+        label: "Catalog",
+        href: "/dashboard/catalog",
+        icon: Library,
+        color: "from-indigo-500 to-indigo-600",
+        disabled: true,
+        comingSoon: true
       }
     );
   }
@@ -256,6 +292,27 @@ export default function Sidebar() {
           {navItems.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
             const Icon = item.icon;
+            const isDisabled = item.disabled || item.comingSoon;
+            
+            if (isDisabled) {
+              return (
+                <div
+                  key={item.href}
+                  className="group flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 cursor-not-allowed opacity-60 relative"
+                  title="Coming soon"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
+                    <Icon className="w-4 h-4 text-slate-400" />
+                  </div>
+                  <span className="font-medium text-slate-400">
+                    {item.label}
+                  </span>
+                  <span className="ml-auto text-xs bg-slate-100 text-slate-500 px-2 py-1 rounded-full">
+                    Soon
+                  </span>
+                </div>
+              );
+            }
             
             return (
               <Link

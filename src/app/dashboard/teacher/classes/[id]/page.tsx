@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, UserPlus, Mail, Award, Calendar, BookOpen, Search } from "lucide-react";
+import AssignExamModal from "@/components/teacher/AssignExamModal";
 
 interface Student {
   id: string;
@@ -48,21 +49,12 @@ export default function ClassRosterPage() {
   const [studentEmail, setStudentEmail] = useState("");
   const [adding, setAdding] = useState(false);
   
-  // Assign Exam state
+  // Assign Exam state (simplified for new modal)
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-  const [exams, setExams] = useState<Exam[]>([]);
-  const [assignData, setAssignData] = useState({
-    examId: "",
-    sections: [] as string[],
-    startDate: "",
-    startTime: "",
-  });
-  const [assigning, setAssigning] = useState(false);
 
   useEffect(() => {
     fetchRoster();
-    fetchExams();
   }, [classId]);
 
   const fetchRoster = async () => {
@@ -179,7 +171,6 @@ export default function ClassRosterPage() {
     try {
       if (!selectedStudent) throw new Error("No student selected");
       if (!assignData.examId) throw new Error("Please select an exam");
-      if (assignData.sections.length === 0) throw new Error("Please select at least one section");
       if (!assignData.startDate || !assignData.startTime) throw new Error("Please select date and time");
 
       // Combine date and time in Asia/Baku timezone, then convert to UTC
@@ -200,7 +191,7 @@ export default function ClassRosterPage() {
         body: JSON.stringify({
           studentId: selectedStudent.id,
           examId: assignData.examId,
-          sections: assignData.sections,
+          sections: ["FULL_EXAM"], // All sections included automatically
           startAt: startAtUTC,
         }),
       });
@@ -325,8 +316,8 @@ export default function ClassRosterPage() {
           <div className="text-center py-12 text-gray-500">
             <UserPlus className="w-8 h-8 mx-auto mb-2 text-gray-300" />
             <p>No students found</p>
-          </div>
-        ) : (
+        </div>
+      ) : (
           <div className="overflow-x-auto pb-6">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
@@ -346,7 +337,7 @@ export default function ClassRosterPage() {
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-gray-100 rounded-md flex items-center justify-center">
                           <span className="text-gray-600 font-medium text-sm">
-                            {(item.student.name || item.student.email).charAt(0).toUpperCase()}
+                          {(item.student.name || item.student.email).charAt(0).toUpperCase()}
                           </span>
                         </div>
                         <div>
@@ -361,8 +352,8 @@ export default function ClassRosterPage() {
                     <td className="px-4 py-3 text-sm">
                       {item.latestAttempt?.bandOverall ? (
                         <span className="font-medium text-gray-900">
-                          {item.latestAttempt.bandOverall.toFixed(1)}
-                        </span>
+                            {item.latestAttempt.bandOverall.toFixed(1)}
+                          </span>
                       ) : (
                         <span className="text-gray-400">—</span>
                       )}
@@ -392,7 +383,7 @@ export default function ClassRosterPage() {
             </table>
           </div>
         )}
-      </div>
+        </div>
 
       {/* Add Student Modal */}
       {showAddModal && (
@@ -409,31 +400,31 @@ export default function ClassRosterPage() {
             <div className="px-6 py-4 border-b border-gray-200">
               <h3 className="text-lg font-medium text-gray-900">Add Student</h3>
               <p className="text-sm text-gray-500 mt-1">Add a student to this class by email</p>
-            </div>
-
+              </div>
+            
             {/* Modal Content */}
             <form onSubmit={handleAddStudent}>
               <div className="px-6 py-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Student Email
-                  </label>
-                  <input
-                    type="email"
-                    value={studentEmail}
-                    onChange={(e) => setStudentEmail(e.target.value)}
+                  Student Email
+                </label>
+                <input
+                  type="email"
+                  value={studentEmail}
+                  onChange={(e) => setStudentEmail(e.target.value)}
                     onKeyPress={(e) => e.key === "Enter" && handleAddStudent(e)}
                     className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
-                    placeholder="student@example.com"
+                  placeholder="student@example.com"
                     autoFocus
                     required
-                  />
-                  <p className="text-xs text-gray-500 mt-2">
-                    The student must already have an account with the STUDENT role
-                  </p>
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  The student must already have an account with the STUDENT role
+                </p>
                 </div>
               </div>
-
+              
               {/* Modal Footer */}
               <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
                 <button
@@ -456,145 +447,17 @@ export default function ClassRosterPage() {
         </div>
       )}
 
-      {/* Assign Exam Modal */}
-      {showAssignModal && selectedStudent && (
-        <div
-          className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              closeAssignModal();
-            }
-          }}
-        >
-          <div className="bg-white w-full max-w-2xl border border-gray-200 rounded-md shadow-lg max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">Assign Exam</h3>
-              <p className="text-sm text-gray-500 mt-1">
-                Assigning to: <span className="font-medium">{selectedStudent.name || selectedStudent.email}</span>
-              </p>
-            </div>
-
-            {/* Modal Content */}
-            <form onSubmit={handleAssignExam}>
-              <div className="px-6 py-4 space-y-6">
-                {/* Exam Selection */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Select Exam
-                  </label>
-                  {exams.length === 0 ? (
-                    <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
-                      <p className="text-sm text-yellow-800 mb-2">
-                        <strong>No exams available!</strong>
-                      </p>
-                      <p className="text-sm text-yellow-700 mb-3">
-                        You need to create exam templates first before you can assign them to students.
-                      </p>
-                      <a
-                        href="/dashboard/teacher/exams"
-                        target="_blank"
-                        className="inline-flex items-center gap-2 px-3 py-2 bg-yellow-600 text-white text-sm rounded-md hover:bg-yellow-700 transition"
-                      >
-                        <BookOpen className="w-4 h-4" />
-                        Create Exams
-                      </a>
-                    </div>
-                  ) : (
-                    <select
-                      required
-                      value={assignData.examId}
-                      onChange={(e) => setAssignData({ ...assignData, examId: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
-                    >
-                      <option value="">Choose an exam...</option>
-                      {exams.map((exam) => (
-                        <option key={exam.id} value={exam.id}>
-                          {exam.title}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-
-                {/* Section Selection */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Select Sections
-                  </label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {["READING", "LISTENING", "WRITING", "SPEAKING"].map((section) => (
-                      <button
-                        key={section}
-                        type="button"
-                        onClick={() => toggleSection(section)}
-                        className={`px-3 py-2 rounded-md border text-sm font-medium transition ${
-                          assignData.sections.includes(section)
-                            ? "border-gray-400 bg-gray-100 text-gray-900"
-                            : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
-                        }`}
-                      >
-                        {section}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Date and Time Selection */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Date
-                    </label>
-                    <input
-                      type="date"
-                      required
-                      value={assignData.startDate}
-                      onChange={(e) => setAssignData({ ...assignData, startDate: e.target.value })}
-                      min={new Date().toISOString().split('T')[0]}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Time (Asia/Baku)
-                    </label>
-                    <input
-                      type="time"
-                      required
-                      value={assignData.startTime}
-                      onChange={(e) => setAssignData({ ...assignData, startTime: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
-                    />
-                  </div>
-                </div>
-
-                <p className="text-xs text-gray-500">
-                  Time will be stored in UTC but displayed in Asia/Baku timezone
-                </p>
-              </div>
-
-              {/* Modal Footer */}
-              <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={closeAssignModal}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={assigning || exams.length === 0}
-                  className="px-4 py-2 text-sm font-medium text-white bg-gray-900 border border-transparent rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50"
-                >
-                  {assigning ? "Assigning..." : "Assign Exam"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* Assign Exam Modal - New 3-Step Flow */}
+      <AssignExamModal
+        isOpen={showAssignModal && !!selectedStudent}
+        onClose={closeAssignModal}
+        student={selectedStudent!}
+        classId={classId}
+        onSuccess={() => {
+          fetchRoster();
+          alert("Exam assigned successfully!");
+        }}
+      />
     </div>
   );
 }

@@ -18,22 +18,36 @@ export function QMcqMulti({ question, value, onChange, readOnly }: BaseQuestionP
   return (
     <div className="space-y-2">
       {choices.map((choice: string, idx: number) => (
-        <label
+        <button
           key={idx}
-          className="flex items-center gap-2 text-sm text-gray-800 cursor-pointer"
+          onClick={() => toggle(idx)}
+          disabled={readOnly}
+          className={`w-full text-left flex items-center space-x-3 px-4 py-2.5 rounded-lg border transition-all ${
+            selected.includes(idx)
+              ? "bg-gray-900 border-gray-900 text-white"
+              : "bg-white border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50"
+          } ${readOnly ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
         >
-          <input
-            type="checkbox"
-            checked={selected.includes(idx)}
-            onChange={() => toggle(idx)}
-            disabled={readOnly}
-            className="h-4 w-4 disabled:opacity-50"
-            aria-label={`Option ${idx + 1}: ${choice}`}
-          />
-          <span>{choice}</span>
-        </label>
+          <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
+            selected.includes(idx) ? "border-white bg-white" : "border-gray-300"
+          }`}>
+            {selected.includes(idx) && (
+              <svg
+                className="w-3 h-3 text-gray-900"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path d="M5 13l4 4L19 7" />
+              </svg>
+            )}
+          </div>
+          <span className="text-sm">{choice}</span>
+        </button>
       ))}
     </div>
   );
 }
-

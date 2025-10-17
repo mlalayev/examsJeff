@@ -4,7 +4,7 @@ import { BaseQuestionProps } from "./types";
 import { useState } from "react";
 
 export function QDndGap({ question, value, onChange, readOnly }: BaseQuestionProps<Record<string, string>>) {
-  let sentences = [];
+  let sentences: string[] = [];
   
   if (question.prompt?.textWithBlanks) {
     const text = question.prompt.textWithBlanks;
@@ -20,17 +20,14 @@ export function QDndGap({ question, value, onChange, readOnly }: BaseQuestionPro
   } else {
     sentences = [
       "I ___ running.",
-      "You ___ playing.",
-      "He ___ reading."
+      "She ___ to school every day.",
+      "They ___ playing football."
     ];
   }
-  
-  const options = question.options?.bank || ["am", "is", "are"];
-  
-  const currentAnswers = value || {};
-  
-  const [draggedOption, setDraggedOption] = useState<string | null>(null);
 
+  const options = question.options?.bank || ["am", "is", "are"];
+  const currentAnswers = value || {};
+  const [draggedOption, setDraggedOption] = useState<string | null>(null);
   const usedOptions = new Set(Object.values(currentAnswers));
 
   const handleDrop = (gapKey: string, e: React.DragEvent) => {
@@ -75,29 +72,26 @@ export function QDndGap({ question, value, onChange, readOnly }: BaseQuestionPro
   };
 
   const renderSentence = (sentence: string, index: number) => {
-    // Clean the sentence - remove leading numbers and dots
     const cleanSentence = sentence.replace(/^\d+\.\s*/, '').trim();
     const parts = cleanSentence.split('___');
     
-    const gapCount = parts.length - 1;
-    
     return (
-      <div key={index} className="mb-4 group">
-        <div className="flex items-center gap-2 text-sm">
-          <span className="font-medium text-gray-600">{index + 1}.</span>
-          <div className="flex items-center gap-1 flex-wrap">
+      <div key={index} className="mb-3 group">
+        <div className="flex items-start space-x-2 text-sm">
+          <span className="flex-shrink-0 font-medium text-gray-500">{index + 1}.</span>
+          <div className="flex items-center space-x-1 flex-wrap flex-1">
             {parts.map((part, partIndex) => (
-              <div key={partIndex} className="flex items-center gap-1">
-                <span className="text-gray-800">{part}</span>
+              <div key={partIndex} className="flex items-center space-x-1">
+                <span className="text-gray-900">{part}</span>
                 {partIndex < parts.length - 1 && (
                   <span
                     onDrop={(e) => handleDrop(`${index}-${partIndex}`, e)}
                     onDragOver={handleDragOver}
-                    className={`relative inline-block min-w-[60px] h-7 border border-dashed rounded px-2 py-1 group/gap ${
+                    className={`relative inline-block min-w-[80px] px-3 py-1 rounded-lg border group/gap ${
                       currentAnswers[`${index}-${partIndex}`]
-                        ? "border-green-200 bg-green-50 text-green-700" 
-                        : "border-gray-300 bg-gray-50 text-gray-500"
-                    } ${!readOnly ? "cursor-pointer hover:border-slate-300 hover:bg-slate-50" : ""}`}
+                        ? "border-gray-900 bg-gray-900 text-white font-medium" 
+                        : "border-gray-200 bg-gray-50 text-gray-400 border-dashed"
+                    } ${!readOnly ? "cursor-pointer hover:border-gray-400" : ""}`}
                   >
                     {currentAnswers[`${index}-${partIndex}`] || "___"}
                     {currentAnswers[`${index}-${partIndex}`] && !readOnly && (
@@ -106,9 +100,9 @@ export function QDndGap({ question, value, onChange, readOnly }: BaseQuestionPro
                           e.stopPropagation();
                           removeAnswer(`${index}-${partIndex}`);
                         }}
-                        className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition opacity-0 group-hover/gap:opacity-100"
+                        className="ml-2 text-gray-300 hover:text-white text-xs"
                       >
-                        ×
+                        ✕
                       </button>
                     )}
                   </span>
@@ -122,15 +116,13 @@ export function QDndGap({ question, value, onChange, readOnly }: BaseQuestionPro
   };
 
   return (
-    <div className="space-y-8">
-      {/* Sentences */}
-      <div className="space-y-4">
+    <div className="space-y-6">
+      <div className="space-y-2">
         {sentences.map((sentence: string, index: number) => renderSentence(sentence, index))}
       </div>
       
-      {/* Options */}
-      <div className="pt-4">
-        <div className="text-xs text-gray-500 mb-3">Choose from:</div>
+      <div className="border-t border-gray-100 pt-4">
+        <h4 className="text-xs font-medium text-gray-500 mb-3 uppercase tracking-wide">Options</h4>
         <div className="flex flex-wrap gap-2">
           {options.map((option: string) => {
             const isUsed = usedOptions.has(option);
@@ -140,12 +132,12 @@ export function QDndGap({ question, value, onChange, readOnly }: BaseQuestionPro
                 draggable={!readOnly && !isUsed}
                 onDragStart={(e) => handleDragStart(option, e)}
                 onDragEnd={handleDragEnd}
-                className={`px-3 py-1.5 text-sm border rounded transition-all ${
+                className={`px-3 py-1.5 rounded-lg border text-sm ${
                   !readOnly && !isUsed ? "cursor-move" : "cursor-default"
                 } ${
                   isUsed
-                    ? "bg-gray-50 border-gray-200 text-gray-400"
-                    : "bg-white border-gray-300 text-gray-700 hover:border-slate-300 hover:bg-slate-50"
+                    ? "bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed"
+                    : "bg-white border-gray-200 text-gray-700 hover:border-gray-900 hover:bg-gray-50"
                 }`}
               >
                 {option}
@@ -157,4 +149,3 @@ export function QDndGap({ question, value, onChange, readOnly }: BaseQuestionPro
     </div>
   );
 }
-

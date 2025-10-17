@@ -122,93 +122,93 @@ export default function BossFinanceV2Page() {
       <div className="flex items-center gap-4 mb-6">
         <div className="flex items-center gap-2">
           <Calendar className="w-4 h-4 text-gray-400" />
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(parseInt(e.target.value))}
             className="px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
-          >
-            {years.map((year) => (
+            >
+              {years.map((year) => (
               <option key={year} value={year}>{year}</option>
-            ))}
-          </select>
-        </div>
+              ))}
+            </select>
+          </div>
 
-        <select
-          value={selectedMonth || ""}
-          onChange={(e) => setSelectedMonth(e.target.value ? parseInt(e.target.value) : null)}
+            <select
+              value={selectedMonth || ""}
+              onChange={(e) => setSelectedMonth(e.target.value ? parseInt(e.target.value) : null)}
           className="px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
-        >
-          {months.map((month) => (
+            >
+              {months.map((month) => (
             <option key={month.label} value={month.value || ""}>{month.label}</option>
-          ))}
-        </select>
+              ))}
+            </select>
 
-        <select
-          value={selectedBranch}
-          onChange={(e) => setSelectedBranch(e.target.value)}
+            <select
+              value={selectedBranch}
+              onChange={(e) => setSelectedBranch(e.target.value)}
           className="px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
-        >
-          <option value="">All Branches</option>
-          {financeData.branches?.map((branch: any) => (
+            >
+              <option value="">All Branches</option>
+              {financeData.branches?.map((branch: any) => (
             <option key={branch.id} value={branch.id}>{branch.name}</option>
-          ))}
-        </select>
+              ))}
+            </select>
 
-        <button
-          onClick={() => {
-            setSelectedYear(currentYear);
-            setSelectedMonth(null);
-            setSelectedBranch("");
-          }}
+            <button
+              onClick={() => {
+                setSelectedYear(currentYear);
+                setSelectedMonth(null);
+                setSelectedBranch("");
+              }}
           className="px-3 py-2 text-sm text-gray-600 border border-gray-200 rounded-md hover:bg-gray-50"
-        >
+            >
           Reset
-        </button>
+            </button>
       </div>
 
       {/* Simple Tabs */}
       <div className="flex items-center gap-1 mb-6">
-        <button
-          onClick={() => setActiveTab("overview")}
+            <button
+              onClick={() => setActiveTab("overview")}
           className={`px-4 py-2 text-sm font-medium rounded-md ${
-            activeTab === "overview"
+                activeTab === "overview"
               ? "bg-gray-900 text-white"
               : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-          }`}
-        >
+              }`}
+            >
           Overview
-        </button>
-        <button
-          onClick={() => setActiveTab("monthly")}
+            </button>
+            <button
+              onClick={() => setActiveTab("monthly")}
           className={`px-4 py-2 text-sm font-medium rounded-md ${
-            activeTab === "monthly"
+                activeTab === "monthly"
               ? "bg-gray-900 text-white"
               : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-          }`}
-        >
+              }`}
+            >
           Monthly
-        </button>
-        <button
-          onClick={() => setActiveTab("branches")}
+            </button>
+            <button
+              onClick={() => setActiveTab("branches")}
           className={`px-4 py-2 text-sm font-medium rounded-md ${
-            activeTab === "branches"
+                activeTab === "branches"
               ? "bg-gray-900 text-white"
               : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-          }`}
-        >
+              }`}
+            >
           Branches
-        </button>
-        <button
-          onClick={() => setActiveTab("courses")}
+            </button>
+            <button
+              onClick={() => setActiveTab("courses")}
           className={`px-4 py-2 text-sm font-medium rounded-md ${
-            activeTab === "courses"
+                activeTab === "courses"
               ? "bg-gray-900 text-white"
               : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-          }`}
-        >
+              }`}
+            >
           Courses
-        </button>
-      </div>
+            </button>
+        </div>
 
       {/* Content */}
       <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
