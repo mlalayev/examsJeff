@@ -52,6 +52,13 @@ export default function ClassRosterPage() {
   // Assign Exam state (simplified for new modal)
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [exams, setExams] = useState<Exam[]>([]);
+  const [assignData, setAssignData] = useState({
+    examId: "",
+    sections: [] as string[],
+    startDate: "",
+    startTime: "",
+  });
 
   useEffect(() => {
     fetchRoster();
@@ -351,16 +358,26 @@ export default function ClassRosterPage() {
                     <td className="px-4 py-3 text-sm text-gray-600">{item.student.email}</td>
                     <td className="px-4 py-3 text-sm">
                       {item.latestAttempt?.bandOverall ? (
-                        <span className="font-medium text-gray-900">
-                            {item.latestAttempt.bandOverall.toFixed(1)}
-                          </span>
+                        <button
+                          onClick={() => router.push(`/attempts/${item.latestAttempt?.id}/results`)}
+                          className="font-medium text-purple-600 hover:text-purple-800 hover:underline"
+                          title="View detailed results"
+                        >
+                          {item.latestAttempt.bandOverall.toFixed(1)}
+                        </button>
                       ) : (
                         <span className="text-gray-400">—</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600">
                       {item.latestAttempt ? (
-                        new Date(item.latestAttempt.createdAt).toLocaleDateString()
+                        <button
+                          onClick={() => router.push(`/attempts/${item.latestAttempt?.id}/results`)}
+                          className="text-purple-600 hover:text-purple-800 hover:underline"
+                          title="View results"
+                        >
+                          {new Date(item.latestAttempt.createdAt).toLocaleDateString()}
+                        </button>
                       ) : (
                         <span className="text-gray-400">No attempts</span>
                       )}

@@ -172,6 +172,12 @@ export default function Sidebar() {
         color: "from-purple-500 to-purple-600"
       },
       {
+        label: "Attempts",
+        href: "/dashboard/teacher/attempts",
+        icon: ClipboardList,
+        color: "from-emerald-500 to-emerald-600"
+      },
+      {
         label: "Reports",
         href: "/dashboard/teacher/reports",
         icon: BarChart3,

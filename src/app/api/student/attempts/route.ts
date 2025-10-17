@@ -11,9 +11,20 @@ export async function GET() {
       where: { studentId },
       orderBy: { createdAt: "desc" },
       include: {
-        exam: { select: { id: true, title: true, category: true, track: true } },
         sections: true,
-        booking: { select: { id: true, class: { select: { id: true, name: true, teacher: { select: { id: true, name: true } } } } } },
+        booking: { 
+          select: { 
+            id: true, 
+            exam: { select: { id: true, title: true, category: true, track: true } },
+            class: { 
+              select: { 
+                id: true, 
+                name: true, 
+                teacher: { select: { id: true, name: true } } 
+              } 
+            } 
+          } 
+        },
         assignment: true,
       },
     });
@@ -29,7 +40,7 @@ export async function GET() {
         createdAt: a.createdAt,
         submittedAt: a.submittedAt,
         overallPercent: percent,
-        exam: a.exam,
+        exam: a.booking?.exam || null,
         class: a.booking?.class || null,
         sections: a.sections.map((s) => ({ type: s.type, rawScore: s.rawScore, maxScore: s.maxScore })),
       };

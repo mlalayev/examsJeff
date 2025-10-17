@@ -5,11 +5,11 @@ import { requireTeacher } from "@/lib/auth-utils";
 // GET /api/classes/[id]/roster - Get roster with latest attempt for each student
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireTeacher();
-    const classId = params.id;
+    const { id: classId } = await params;
     
     // Verify the class belongs to this teacher
     const classData = await prisma.class.findFirst({

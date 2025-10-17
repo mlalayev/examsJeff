@@ -17,11 +17,19 @@ interface AssignExamModalProps {
   onSuccess: () => void;
 }
 
-interface Unit {
+interface Exam {
   id: string;
   title: string;
+  category: string;
   track: string;
-  createdAt: string;
+  unit?: string;
+  path: string;
+}
+
+interface Category {
+  id: string;
+  name: string;
+  tracks?: string[];
 }
 
 export default function AssignExamModal({
@@ -32,86 +40,108 @@ export default function AssignExamModal({
   onSuccess,
 }: AssignExamModalProps) {
   const [step, setStep] = useState(1);
-  const [selectedLevel, setSelectedLevel] = useState("");
-  const [selectedUnit, setSelectedUnit] = useState("");
-  const [units, setUnits] = useState<Unit[]>([]);
-  const [loadingUnits, setLoadingUnits] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedTrack, setSelectedTrack] = useState("");
+  const [selectedExam, setSelectedExam] = useState("");
+  const [allExams, setAllExams] = useState<Exam[]>([]);
+  const [loadingExams, setLoadingExams] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const levels = ["A1", "A2", "B1", "B1+", "B2"];
+  const categories: Category[] = [
+    { id: "GENERAL_ENGLISH", name: "General English", tracks: ["A1", "A2", "B1", "B1+", "B2"] },
+    { id: "IELTS", name: "IELTS" },
+    { id: "TOEFL", name: "TOEFL" },
+    { id: "SAT", name: "SAT" },
+    { id: "KIDS", name: "Kids" },
+    { id: "MATH", name: "Math" },
+  ];
 
   // Reset when modal opens/closes
   useEffect(() => {
     if (isOpen) {
       setStep(1);
-      setSelectedLevel("");
-      setSelectedUnit("");
-      setUnits([]);
+      setSelectedCategory("");
+      setSelectedTrack("");
+      setSelectedExam("");
+      fetchAllExams();
     }
   }, [isOpen]);
 
-  // Fetch units when level is selected
-  useEffect(() => {
-    if (selectedLevel) {
-      fetchUnits(selectedLevel);
-    }
-  }, [selectedLevel]);
-
-  const fetchUnits = async (level: string) => {
-    setLoadingUnits(true);
+  const fetchAllExams = async () => {
+    setLoadingExams(true);
     try {
-      const res = await fetch(`/api/catalog/ge-units?level=${level}`);
+      const res = await fetch("/api/exams/json");
       const data = await res.json();
       if (res.ok) {
-        setUnits(data.units || []);
+        setAllExams(data.exams || []);
       } else {
-        console.error("Failed to fetch units:", data.error);
-        setUnits([]);
+        console.error("Failed to fetch exams:", data.error);
+        setAllExams([]);
       }
     } catch (err) {
-      console.error("Error fetching units:", err);
-      setUnits([]);
+      console.error("Error fetching exams:", err);
+      setAllExams([]);
     } finally {
-      setLoadingUnits(false);
+      setLoadingExams(false);
     }
   };
 
-  const handleLevelSelect = (level: string) => {
-    setSelectedLevel(level);
-    setSelectedUnit("");
-    setStep(2);
+  const handleCategorySelect = (categoryId: string) => {
+    setSelectedCategory(categoryId);
+    setSelectedTrack("");
+    setSelectedExam("");
+    
+    const category = categories.find(c => c.id === categoryId);
+    if (category?.tracks && category.tracks.length > 0) {
+      setStep(2); // Go to track selection
+    } else {
+      setStep(3); // Go directly to exam selection
+    }
   };
 
-  const handleUnitSelect = (unitId: string) => {
-    setSelectedUnit(unitId);
+  const handleTrackSelect = (track: string) => {
+    setSelectedTrack(track);
+    setSelectedExam("");
     setStep(3);
+  };
+
+  const handleExamSelect = (examId: string) => {
+    setSelectedExam(examId);
+    setStep(4);
   };
 
   const handleBack = () => {
     if (step > 1) {
       setStep(step - 1);
       if (step === 2) {
-        setSelectedLevel("");
+        setSelectedCategory("");
+        setSelectedTrack("");
       } else if (step === 3) {
-        setSelectedUnit("");
+        const category = categories.find(c => c.id === selectedCategory);
+        if (!category?.tracks) {
+          setSelectedCategory("");
+        }
+        setSelectedTrack("");
+        setSelectedExam("");
+      } else if (step === 4) {
+        setSelectedExam("");
       }
     }
   };
 
   const handleSubmit = async () => {
-    if (!selectedUnit) return;
+    if (!selectedExam) return;
 
     setSubmitting(true);
     try {
-      const response = await fetch("/api/bookings/bulk", {
+      const response = await fetch("/api/bookings/json", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          classId,
-          studentIds: [student.id],
-          examId: selectedUnit,
+          studentId: student.id,
+          examId: selectedExam,
+          sections: ["GRAMMAR", "VOCABULARY", "READING", "LISTENING", "WRITING", "SPEAKING"],
           startAt: new Date().toISOString(),
-          dueAt: null,
         }),
       });
 
@@ -133,7 +163,15 @@ export default function AssignExamModal({
 
   if (!isOpen) return null;
 
-  const selectedUnitData = units.find((u) => u.id === selectedUnit);
+  const selectedCategoryData = categories.find(c => c.id === selectedCategory);
+  const selectedExamData = allExams.find(e => e.id === selectedExam);
+  
+  // Filter exams by category and track
+  const filteredExams = allExams.filter(exam => {
+    if (selectedCategory && exam.category !== selectedCategory) return false;
+    if (selectedTrack && exam.track?.toUpperCase() !== selectedTrack) return false;
+    return true;
+  });
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
@@ -158,7 +196,7 @@ export default function AssignExamModal({
         <div className="px-6 py-4 bg-slate-50 border-b border-slate-200">
           <div className="flex items-center justify-center gap-2">
             <div
-              className={`flex items-center justify-center w-8 h-8 rounded-full ${
+              className={`flex items-center justify-center w-8 h-8 rounded-full text-sm ${
                 step >= 1
                   ? "bg-purple-600 text-white"
                   : "bg-slate-200 text-slate-400"
@@ -167,12 +205,12 @@ export default function AssignExamModal({
               1
             </div>
             <div
-              className={`h-1 w-12 ${
+              className={`h-1 w-8 ${
                 step >= 2 ? "bg-purple-600" : "bg-slate-200"
               }`}
             ></div>
             <div
-              className={`flex items-center justify-center w-8 h-8 rounded-full ${
+              className={`flex items-center justify-center w-8 h-8 rounded-full text-sm ${
                 step >= 2
                   ? "bg-purple-600 text-white"
                   : "bg-slate-200 text-slate-400"
@@ -181,12 +219,12 @@ export default function AssignExamModal({
               2
             </div>
             <div
-              className={`h-1 w-12 ${
+              className={`h-1 w-8 ${
                 step >= 3 ? "bg-purple-600" : "bg-slate-200"
               }`}
             ></div>
             <div
-              className={`flex items-center justify-center w-8 h-8 rounded-full ${
+              className={`flex items-center justify-center w-8 h-8 rounded-full text-sm ${
                 step >= 3
                   ? "bg-purple-600 text-white"
                   : "bg-slate-200 text-slate-400"
@@ -194,61 +232,104 @@ export default function AssignExamModal({
             >
               3
             </div>
+            <div
+              className={`h-1 w-8 ${
+                step >= 4 ? "bg-purple-600" : "bg-slate-200"
+              }`}
+            ></div>
+            <div
+              className={`flex items-center justify-center w-8 h-8 rounded-full text-sm ${
+                step >= 4
+                  ? "bg-purple-600 text-white"
+                  : "bg-slate-200 text-slate-400"
+              }`}
+            >
+              4
+            </div>
           </div>
           <div className="flex justify-between mt-2 text-xs text-slate-600">
-            <span>Level</span>
-            <span>Unit</span>
+            <span>Category</span>
+            <span>Track</span>
+            <span>Exam</span>
             <span>Confirm</span>
           </div>
         </div>
 
         {/* Content */}
         <div className="px-6 py-6 min-h-[300px]">
-          {/* Step 1: Select Level */}
+          {/* Step 1: Select Category */}
           {step === 1 && (
             <div>
               <h3 className="text-lg font-semibold text-slate-800 mb-4">
-                Select Level
+                Select Exam Category
+              </h3>
+              {loadingExams ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-10 w-10 border-4 border-purple-200 border-t-purple-600"></div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {categories.map((category) => (
+                    <button
+                      key={category.id}
+                      onClick={() => handleCategorySelect(category.id)}
+                      className="px-6 py-4 bg-gradient-to-br from-purple-50 to-indigo-50 hover:from-purple-100 hover:to-indigo-100 border border-purple-200 rounded-xl text-purple-700 font-semibold transition-all hover:scale-105 hover:shadow-md"
+                    >
+                      {category.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Step 2: Select Track (only for General English) */}
+          {step === 2 && selectedCategoryData?.tracks && (
+            <div>
+              <h3 className="text-lg font-semibold text-slate-800 mb-4">
+                Select Level ({selectedCategoryData.name})
               </h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {levels.map((level) => (
+                {selectedCategoryData.tracks.map((track) => (
                   <button
-                    key={level}
-                    onClick={() => handleLevelSelect(level)}
+                    key={track}
+                    onClick={() => handleTrackSelect(track)}
                     className="px-6 py-4 bg-gradient-to-br from-purple-50 to-indigo-50 hover:from-purple-100 hover:to-indigo-100 border border-purple-200 rounded-xl text-purple-700 font-semibold transition-all hover:scale-105 hover:shadow-md"
                   >
-                    {level}
+                    {track}
                   </button>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Step 2: Select Unit */}
-          {step === 2 && (
+          {/* Step 3: Select Exam */}
+          {step === 3 && (
             <div>
               <h3 className="text-lg font-semibold text-slate-800 mb-2">
-                Select Unit ({selectedLevel})
+                Select Exam
+                {selectedCategoryData && <span className="text-sm text-slate-500 ml-2">({selectedCategoryData.name}{selectedTrack && ` - ${selectedTrack}`})</span>}
               </h3>
-              {loadingUnits ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-10 w-10 border-4 border-purple-200 border-t-purple-600"></div>
-                </div>
-              ) : units.length === 0 ? (
+              {filteredExams.length === 0 ? (
                 <div className="text-center py-12">
-                  <p className="text-slate-500">No units available for {selectedLevel}</p>
+                  <p className="text-slate-500">No exams available for this category</p>
                 </div>
               ) : (
                 <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                  {units.map((unit) => (
+                  {filteredExams.map((exam) => (
                     <button
-                      key={unit.id}
-                      onClick={() => handleUnitSelect(unit.id)}
+                      key={exam.id}
+                      onClick={() => handleExamSelect(exam.id)}
                       className="w-full text-left px-4 py-3 bg-white hover:bg-purple-50 border border-slate-200 hover:border-purple-300 rounded-lg transition-all hover:shadow-sm flex items-center justify-between group"
                     >
-                      <span className="font-medium text-slate-700 group-hover:text-purple-700">
-                        {unit.title}
-                      </span>
+                      <div className="flex-1">
+                        <span className="font-medium text-slate-700 group-hover:text-purple-700 block">
+                          {exam.title}
+                        </span>
+                        {exam.unit && (
+                          <span className="text-xs text-slate-500">{exam.unit}</span>
+                        )}
+                      </div>
                       <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-purple-600" />
                     </button>
                   ))}
@@ -257,8 +338,8 @@ export default function AssignExamModal({
             </div>
           )}
 
-          {/* Step 3: Confirm */}
-          {step === 3 && (
+          {/* Step 4: Confirm */}
+          {step === 4 && (
             <div>
               <h3 className="text-lg font-semibold text-slate-800 mb-4">
                 Confirm Assignment
@@ -271,19 +352,25 @@ export default function AssignExamModal({
                   </p>
                 </div>
                 <div>
-                  <span className="text-xs text-slate-500 uppercase font-medium">Level</span>
-                  <p className="text-slate-800 font-medium">{selectedLevel}</p>
+                  <span className="text-xs text-slate-500 uppercase font-medium">Category</span>
+                  <p className="text-slate-800 font-medium">{selectedCategoryData?.name}</p>
                 </div>
+                {selectedTrack && (
+                  <div>
+                    <span className="text-xs text-slate-500 uppercase font-medium">Level</span>
+                    <p className="text-slate-800 font-medium">{selectedTrack}</p>
+                  </div>
+                )}
                 <div>
                   <span className="text-xs text-slate-500 uppercase font-medium">Exam</span>
                   <p className="text-slate-800 font-medium">
-                    {selectedUnitData?.title}
+                    {selectedExamData?.title}
                   </p>
                 </div>
                 <div>
-                  <span className="text-xs text-slate-500 uppercase font-medium">Sections</span>
+                  <span className="text-xs text-slate-500 uppercase font-medium">Start Time</span>
                   <p className="text-slate-600 text-sm">
-                    All sections (Reading, Listening, Writing, Grammar, Vocabulary)
+                    Immediately
                   </p>
                 </div>
               </div>
@@ -308,7 +395,7 @@ export default function AssignExamModal({
             )}
           </button>
 
-          {step === 3 && (
+          {step === 4 && (
             <button
               onClick={handleSubmit}
               disabled={submitting}

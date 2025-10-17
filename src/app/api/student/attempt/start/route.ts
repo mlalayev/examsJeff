@@ -50,16 +50,11 @@ export async function POST(request: Request) {
     }
 
     // Check if this is a JSON exam (stub with no DB sections)
-    let sectionsToCreate = booking.sections;
-    if (!booking.exam.sections || booking.exam.sections.length === 0) {
-      // This is a JSON exam, load sections from JSON
-      const jsonExam = await loadJsonExam(booking.examId);
-      if (jsonExam && jsonExam.sections) {
-        sectionsToCreate = jsonExam.sections.map((s: any) => s.type);
-      }
-    }
+    const isJsonExam = !booking.exam.sections || booking.exam.sections.length === 0;
     
     // Create new attempt
+    // For JSON exams, we don't create attempt_sections in DB (they're loaded from JSON at runtime)
+    // For DB exams, we create attempt_sections based on booking.sections
     attempt = await prisma.attempt.create({
       data: {
         bookingId,
@@ -68,12 +63,14 @@ export async function POST(request: Request) {
         branchId: booking.branchId,
         status: "IN_PROGRESS",
         startedAt: new Date(),
-        sections: {
-          create: sectionsToCreate.map((sectionType) => ({
-            type: sectionType,
-            status: "IN_PROGRESS",
-          })),
-        },
+        ...(isJsonExam ? {} : {
+          sections: {
+            create: booking.sections.map((sectionType) => ({
+              type: sectionType,
+              status: "IN_PROGRESS",
+            })),
+          },
+        }),
       },
     });
 

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireStudent } from "@/lib/auth-utils";
 import { SectionType, QuestionType } from "@prisma/client";
 import { scoreQuestion } from "@/lib/scoring";
+import { loadJsonExam } from "@/lib/json-exam-loader";
 
 type AnswersByQuestionId = Record<string, any>;
 
@@ -22,7 +23,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
     if (attempt.studentId !== studentId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     // Load exam with sections/questions to evaluate
-    const exam = await prisma.exam.findUnique({
+    let examWithSections = await prisma.exam.findUnique({
       where: { id: attempt.examId },
       include: {
         sections: {
@@ -36,12 +37,34 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
         },
       },
     });
-    if (!exam) return NextResponse.json({ error: "Exam not found" }, { status: 404 });
+    if (!examWithSections) return NextResponse.json({ error: "Exam not found" }, { status: 404 });
 
-    // Map attempt section answers by section type
+    // Check if this is a JSON exam (no sections in DB)
+    const isJsonExam = !examWithSections.sections || examWithSections.sections.length === 0;
+    if (isJsonExam) {
+      const jsonExam = await loadJsonExam(attempt.examId);
+      if (jsonExam) {
+        examWithSections = {
+          ...examWithSections,
+          sections: jsonExam.sections as any,
+        };
+      }
+    }
+
+    // Map attempt section answers
+    // For JSON exams, all answers are in attempt.answers
+    // For DB exams, answers are in attempt.sections[].answers
+    const allAnswers = (attempt.answers as any) || {};
     const answersByType: Record<string, AnswersByQuestionId> = {};
-    for (const as of attempt.sections) {
-      if (as.answers) answersByType[as.type as string] = as.answers as AnswersByQuestionId;
+    
+    if (isJsonExam) {
+      // For JSON exams, all answers are in one place
+      answersByType['ALL'] = allAnswers;
+    } else {
+      // For DB exams, answers are per section
+      for (const as of attempt.sections) {
+        if (as.answers) answersByType[as.type as string] = as.answers as AnswersByQuestionId;
+      }
     }
 
     let totalRaw = 0;
@@ -49,12 +72,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
 
     const updates: Array<Promise<any>> = [];
 
-    for (const section of exam.sections) {
-      const sectionType = section.type as SectionType;
-      const isWriting = sectionType === "WRITING";
+    for (const section of examWithSections.sections) {
+      const sectionType = section.type as string;
+      const isWriting = sectionType.startsWith("WRITING");
 
       let sectionRaw = 0;
       let sectionMax = 0;
+
+      // Get answers for this section
+      const sectionAnswers = isJsonExam ? answersByType['ALL'] : (answersByType[sectionType] || {});
 
       // For writing, don't auto-score; calculate maxScore but keep raw null
       if (!isWriting) {
@@ -64,7 +90,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
           const auto = qtype !== "SHORT_TEXT" && qtype !== "ESSAY";
           if (!auto) continue;
 
-          const answer = (answersByType[sectionType] || {})[q.id];
+          const answer = sectionAnswers[q.id];
           const correct = scoreQuestion(qtype, answer, q.answerKey);
           // Each question's maxScore may be >1; scale with correct (0/1)
           if (typeof q.maxScore === "number") {
@@ -85,16 +111,19 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
         }
       }
 
-      updates.push(
-        prisma.attemptSection.updateMany({
-          where: { attemptId, type: sectionType },
-          data: {
-            rawScore: isWriting ? null : sectionRaw,
-            maxScore: sectionMax || null,
-            status: "COMPLETED",
-          },
-        })
-      );
+      // Only update attempt_sections for DB exams (not JSON exams)
+      if (!isJsonExam) {
+        updates.push(
+          prisma.attemptSection.updateMany({
+            where: { attemptId, type: sectionType as SectionType },
+            data: {
+              rawScore: isWriting ? null : sectionRaw,
+              maxScore: sectionMax || null,
+              status: "COMPLETED",
+            },
+          })
+        );
+      }
     }
 
     await Promise.all(updates);

@@ -96,7 +96,7 @@ function transformJsonExam(examJson: any) {
     if (partQuestions.length > 0) {
       sections.push({
         id: `section-${partId}`,
-        type: sectionType,
+        type: `${sectionType}_${partId.toUpperCase()}`, // Make type unique by adding part ID
         title: part.title || `Part ${sections.length + 1}`,
         instruction: `Complete the ${part.title || 'questions'}`,
         durationMin: Math.ceil(partQuestions.length * 1.5),

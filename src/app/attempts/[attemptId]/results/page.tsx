@@ -81,13 +81,13 @@ export default function AttemptResultsPage() {
     }
   };
 
-  const toggleSection = (sectionType: string) => {
+  const toggleSection = (sectionKey: string) => {
     setExpandedSections((prev) => {
       const next = new Set(prev);
-      if (next.has(sectionType)) {
-        next.delete(sectionType);
+      if (next.has(sectionKey)) {
+        next.delete(sectionKey);
       } else {
-        next.add(sectionType);
+        next.add(sectionKey);
       }
       return next;
     });
@@ -180,9 +180,9 @@ export default function AttemptResultsPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Per-Section Summary */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-          {(data.summary.perSection || data.sections)?.map((section) => (
+          {(data.summary.perSection || data.sections)?.map((section, index) => (
             <div
-              key={section.type}
+              key={`${section.type}-${index}`}
               className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition-shadow"
             >
               <div className="flex items-center justify-between mb-2">
@@ -229,10 +229,12 @@ export default function AttemptResultsPage() {
               <span>Full review mode (Teacher)</span>
             </div>
 
-            {data.sections.map((section) => (
-              <div key={section.type} className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+            {data.sections.map((section, index) => {
+              const sectionKey = `${section.type}-${index}`;
+              return (
+              <div key={sectionKey} className="bg-white border border-slate-200 rounded-xl overflow-hidden">
                 <button
-                  onClick={() => toggleSection(section.type)}
+                  onClick={() => toggleSection(sectionKey)}
                   className="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors"
                 >
                   <div className="flex items-center gap-3">
@@ -242,11 +244,11 @@ export default function AttemptResultsPage() {
                     </span>
                   </div>
                   <div className="text-slate-400">
-                    {expandedSections.has(section.type) ? "▼" : "▶"}
+                    {expandedSections.has(sectionKey) ? "▼" : "▶"}
                   </div>
                 </button>
 
-                {expandedSections.has(section.type) && (
+                {expandedSections.has(sectionKey) && (
                   <div className="px-6 pb-6 space-y-4">
                     {section.questions.map((q, idx) => (
                       <div
@@ -317,7 +319,8 @@ export default function AttemptResultsPage() {
                   </div>
                 )}
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
