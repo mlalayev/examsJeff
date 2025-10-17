@@ -1,91 +1,207 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireStudent } from "@/lib/auth-utils";
+import { requireAuth } from "@/lib/auth-utils";
 
-export async function GET(request: Request, { params }: { params: Promise<{ attemptId: string }> }) {
+/**
+ * GET /api/attempts/:attemptId/results
+ * Returns exam results based on user role:
+ * - STUDENT (owner): Summary only (total score, per-section correct/total counts)
+ * - TEACHER/ADMIN/BOSS: Full review (all questions with correct answers and explanations)
+ */
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ attemptId: string }> }
+) {
   try {
-    const user = await requireStudent();
+    const user = await requireAuth();
     const { attemptId } = await params;
-    const studentId = (user as any).id as string;
 
+    // Fetch attempt with all details
     const attempt = await prisma.attempt.findUnique({
       where: { id: attemptId },
-      include: { sections: true },
-    });
-    if (!attempt) return NextResponse.json({ error: "Attempt not found" }, { status: 404 });
-    if (attempt.studentId !== studentId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-
-    const exam = await prisma.exam.findUnique({
-      where: { id: attempt.examId },
       include: {
-        sections: {
-          orderBy: { order: "asc" },
+        booking: {
           include: {
-            questions: {
-              orderBy: { order: "asc" },
-              select: { id: true, qtype: true, prompt: true, options: true, answerKey: true, explanation: true, maxScore: true, order: true },
+            exam: {
+              include: {
+                sections: {
+                  include: {
+                    questions: true,
+                  },
+                  orderBy: { order: "asc" },
+                },
+              },
             },
+            student: true,
+            teacher: true,
           },
         },
+        sections: true,
       },
     });
-    if (!exam) return NextResponse.json({ error: "Exam not found" }, { status: 404 });
 
-    // Map answers by section type for quick lookup
-    const answersByType: Record<string, Record<string, any>> = {};
-    for (const s of attempt.sections) {
-      if (s.answers) answersByType[s.type as string] = s.answers as Record<string, any>;
+    if (!attempt) {
+      return NextResponse.json(
+        { error: "Attempt not found" },
+        { status: 404 }
+      );
     }
 
-    const response = {
-      attempt: {
-        id: attempt.id,
-        status: attempt.status,
-        submittedAt: attempt.submittedAt,
-        bandOverall: attempt.bandOverall,
-      },
-      exam: {
-        id: exam.id,
-        title: exam.title,
-        category: exam.category,
-        track: exam.track,
-      },
-      sections: exam.sections.map((sec) => {
-        const as = attempt.sections.find((x) => x.type === sec.type);
-        const sectionPercent = as?.rawScore != null && as?.maxScore != null && as.maxScore > 0
-          ? Math.round((as.rawScore / as.maxScore) * 100)
-          : null;
+    const role = (user as any).role;
+    const isOwner = attempt.booking.studentId === user.id;
+    const isTeacher = role === "TEACHER" || role === "ADMIN" || role === "BRANCH_ADMIN" || role === "BOSS";
+
+    // Authorization check
+    if (!isOwner && !isTeacher) {
+      return NextResponse.json(
+        { error: "Forbidden" },
+        { status: 403 }
+      );
+    }
+
+    // Check if submitted
+    if (attempt.status !== "SUBMITTED") {
+      return NextResponse.json(
+        { error: "Attempt not submitted yet" },
+        { status: 400 }
+      );
+    }
+
+    // STUDENT VIEW: Summary only
+    if (role === "STUDENT" && isOwner) {
+      const perSection = attempt.sections.map((attemptSec) => {
+        const examSection = attempt.booking.exam.sections.find(
+          (s) => s.type === attemptSec.type
+        );
+
+        const totalQuestions = examSection?.questions.length || 0;
+        const correctCount = attemptSec.rawScore || 0;
+
         return {
-          id: sec.id,
-          type: sec.type,
-          title: sec.title,
-          rawScore: as?.rawScore ?? null,
-          maxScore: as?.maxScore ?? null,
-          percent: sectionPercent,
-          questions: sec.questions.map((q) => {
-            const your = (answersByType[sec.type] || {})[q.id];
+          type: attemptSec.type,
+          title: examSection?.title || attemptSec.type,
+          correct: correctCount,
+          total: totalQuestions,
+          percentage: totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0,
+        };
+      });
+
+      // Calculate overall
+      const totalCorrect = perSection.reduce((sum, s) => sum + s.correct, 0);
+      const totalQuestions = perSection.reduce((sum, s) => sum + s.total, 0);
+      const totalPercentage = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
+
+      return NextResponse.json({
+        attemptId: attempt.id,
+        examTitle: attempt.booking.exam.title,
+        studentName: attempt.booking.student.name || attempt.booking.student.email,
+        submittedAt: attempt.submittedAt,
+        status: attempt.status,
+        role: "STUDENT",
+        summary: {
+          totalCorrect,
+          totalQuestions,
+          totalPercentage,
+          perSection,
+        },
+      });
+    }
+
+    // TEACHER VIEW: Full review
+    if (isTeacher) {
+      const fullSections = await Promise.all(
+        attempt.booking.exam.sections.map(async (examSection) => {
+          const attemptSection = attempt.sections.find(
+            (as) => as.type === examSection.type
+          );
+
+          const studentAnswers = attemptSection?.answers as Record<string, any> || {};
+
+          const questions = examSection.questions.map((q) => {
+            const studentAnswer = studentAnswers[q.id];
+            const answerKey = q.answerKey as any;
+
+            // Simple correctness check (could use scoring utility)
+            let isCorrect = false;
+            if (q.qtype === "TF") {
+              isCorrect = studentAnswer === answerKey?.value;
+            } else if (q.qtype === "MCQ_SINGLE" || q.qtype === "SELECT") {
+              isCorrect = studentAnswer === answerKey?.index;
+            } else if (q.qtype === "MCQ_MULTI") {
+              const sorted = Array.isArray(studentAnswer) ? [...studentAnswer].sort() : [];
+              const correctSorted = Array.isArray(answerKey?.indices) ? [...answerKey.indices].sort() : [];
+              isCorrect = JSON.stringify(sorted) === JSON.stringify(correctSorted);
+            } else if (q.qtype === "GAP") {
+              const normalized = typeof studentAnswer === "string" ? studentAnswer.trim().toLowerCase() : "";
+              const accepted = answerKey?.answers || [];
+              isCorrect = accepted.some((a: string) => a.trim().toLowerCase() === normalized);
+            } else if (q.qtype === "ORDER_SENTENCE") {
+              isCorrect = JSON.stringify(studentAnswer) === JSON.stringify(answerKey?.order);
+            } else if (q.qtype === "DND_GAP") {
+              const blanks = answerKey?.blanks || [];
+              if (Array.isArray(studentAnswer) && studentAnswer.length === blanks.length) {
+                isCorrect = studentAnswer.every((v: string, i: number) =>
+                  v.trim().toLowerCase() === blanks[i].trim().toLowerCase()
+                );
+              }
+            }
+
             return {
               id: q.id,
-              order: q.order,
               qtype: q.qtype,
               prompt: q.prompt,
               options: q.options,
-              yourAnswer: your ?? null,
-              correctAnswer: q.answerKey ?? null,
-              explanation: q.explanation ?? null,
+              order: q.order,
               maxScore: q.maxScore,
+              studentAnswer,
+              correctAnswer: answerKey,
+              isCorrect,
+              explanation: q.explanation,
             };
-          }),
-        };
-      }),
-    };
+          });
 
-    return NextResponse.json(response);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    const isForbidden = message.toLowerCase().includes("forbidden") || message.toLowerCase().includes("unauthorized");
-    if (isForbidden) return NextResponse.json({ error: message }, { status: 403 });
-    console.error("Get results error:", error);
-    return NextResponse.json({ error: "Failed to load results" }, { status: 500 });
+          const correctCount = questions.filter((q) => q.isCorrect).length;
+
+          return {
+            type: examSection.type,
+            title: examSection.title,
+            correct: correctCount,
+            total: questions.length,
+            percentage: questions.length > 0 ? Math.round((correctCount / questions.length) * 100) : 0,
+            questions,
+          };
+        })
+      );
+
+      const totalCorrect = fullSections.reduce((sum, s) => sum + s.correct, 0);
+      const totalQuestions = fullSections.reduce((sum, s) => sum + s.total, 0);
+      const totalPercentage = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
+
+      return NextResponse.json({
+        attemptId: attempt.id,
+        examTitle: attempt.booking.exam.title,
+        studentName: attempt.booking.student.name || attempt.booking.student.email,
+        submittedAt: attempt.submittedAt,
+        status: attempt.status,
+        role: "TEACHER",
+        summary: {
+          totalCorrect,
+          totalQuestions,
+          totalPercentage,
+        },
+        sections: fullSections,
+      });
+    }
+
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: 403 }
+    );
+  } catch (error: any) {
+    console.error("Error fetching attempt results:", error);
+    return NextResponse.json(
+      { error: error.message || "Failed to fetch results" },
+      { status: 500 }
+    );
   }
 }

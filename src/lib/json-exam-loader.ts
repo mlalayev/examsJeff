@@ -2,8 +2,11 @@ import fs from "fs/promises";
 import path from "path";
 
 export async function loadJsonExam(examId: string) {
+  console.log('Loading JSON exam:', examId);
   const examsDir = path.join(process.cwd(), "src", "data", "exams");
+  console.log('Exams directory:', examsDir);
   const categories = await fs.readdir(examsDir, { withFileTypes: true });
+  console.log('Categories found:', categories.map(c => c.name));
   
   for (const category of categories) {
     if (!category.isDirectory()) continue;
@@ -25,12 +28,14 @@ export async function loadJsonExam(examId: string) {
         try {
           const examData = await fs.readFile(examPath, "utf-8");
           const examJson = JSON.parse(examData);
+          console.log('Found exam file:', examPath, 'with ID:', examJson.id);
           
           if (examJson.id === examId) {
+            console.log('Match found! Transforming exam...');
             return transformJsonExam(examJson);
           }
         } catch (err) {
-          // Skip
+          console.log('Error reading exam file:', examPath, err);
         }
       }
     }
@@ -40,94 +45,77 @@ export async function loadJsonExam(examId: string) {
 }
 
 function transformJsonExam(examJson: any) {
-  // Group by question type instead of skill (Reading/Writing/etc)
-  const questionTypeGroups: Record<string, any[]> = {};
-  const questionTypeInstructions: Record<string, string> = {
-    "MCQ_SINGLE": "Choose the correct answer",
-    "TF": "Mark the statements as True or False",
-    "DND_GAP": "Drag the correct words to fill in the blanks",
-    "GAP": "Fill in the blanks with the correct words",
-    "SHORT_TEXT": "Write your answer in the space provided",
-  };
-  
+  // Create ONE SECTION PER PART (not grouped by skill!)
+  const sections: any[] = [];
   let globalQuestionOrder = 1;
-  
-  // Collect all questions first
-  const allQuestions: any[] = [];
   
   for (const part of examJson.parts || []) {
     const partId = part.id;
+    const partQuestions: any[] = [];
     
+    // Determine section type based on part content
+    let sectionType = determineSectionType(part.title, partId);
+    
+    // Handle subparts (like reading/listening with multiple question types)
     if (part.subparts) {
       for (const sub of part.subparts) {
         if (sub.items) {
           for (const item of sub.items) {
-            allQuestions.push(transformItem(item, sub.type, globalQuestionOrder++, part.text, part.title));
+            const question = transformItem(item, sub.type, globalQuestionOrder++, part.text, part.title);
+            partQuestions.push(question);
           }
         }
       }
     }
+    // Handle regular parts
     else if (part.items) {
+      // Special handling for parts that should be combined into single GAP questions
       if (["part1", "part5", "part6", "part9"].includes(partId)) {
-        const sentences = part.items.map((it: any) => String(it.prompt).replace(/_{2,}/g, "___"));
-        const bankSet = new Set<string>();
-        part.items.forEach((it: any) => {
-          const answers = Array.isArray(it.answer) ? it.answer : [it.answer];
-          answers.forEach((a: string) => a && bankSet.add(a));
-        });
-        
-        allQuestions.push({
-          id: `q-${partId}`,
-          qtype: "DND_GAP",
-          prompt: { text: part.title, textWithBlanks: sentences.join("\n") },
-          options: { bank: Array.from(bankSet) },
-          maxScore: part.points || 1,
-          order: globalQuestionOrder++,
-          partTitle: part.title,
-        });
+        // Each item is a separate GAP question
+        for (const item of part.items) {
+          partQuestions.push(transformItem(item, part.type || 'gap_fill', globalQuestionOrder++, undefined, part.title));
+        }
       } else if (partId === "part10" && part.wordBank) {
-        const sentences = part.items.map((it: any) => String(it.prompt).replace(/_{2,}/g, "___"));
-        allQuestions.push({
-          id: `q-${partId}`,
-          qtype: "DND_GAP",
-          prompt: { text: part.title, textWithBlanks: sentences.join("\n") },
-          options: { bank: part.wordBank },
-          maxScore: part.points || 1,
-          order: globalQuestionOrder++,
-          partTitle: part.title,
-        });
+        // Each item is a separate GAP question with shared word bank
+        for (const item of part.items) {
+          const question = transformItem(item, 'gap_fill', globalQuestionOrder++, undefined, part.title);
+          // Add word bank to options if not already there
+          if (!question.options) {
+            question.options = { bank: part.wordBank };
+          }
+          partQuestions.push(question);
+        }
       } else {
         for (const item of part.items) {
-          allQuestions.push(transformItem(item, part.type, globalQuestionOrder++, undefined, part.title));
+          partQuestions.push(transformItem(item, part.type, globalQuestionOrder++, part.text, part.title));
         }
       }
     }
+    
+    // Only create section if it has questions
+    if (partQuestions.length > 0) {
+      sections.push({
+        id: `section-${partId}`,
+        type: sectionType,
+        title: part.title || `Part ${sections.length + 1}`,
+        instruction: `Complete the ${part.title || 'questions'}`,
+        durationMin: Math.ceil(partQuestions.length * 1.5),
+        order: sections.length,
+        questions: partQuestions,
+      });
+    }
   }
   
-  // Group questions by type
-  allQuestions.forEach(q => {
-    const type = q.qtype;
-    if (!questionTypeGroups[type]) {
-      questionTypeGroups[type] = [];
-    }
-    questionTypeGroups[type].push(q);
-  });
-  
-  // Create sections from question type groups
-  const sections = Object.entries(questionTypeGroups).map(([qtype, questions], index) => ({
-    id: `section-${qtype.toLowerCase()}`,
-    type: qtype, // Use question type as section type
-    title: getQuestionTypeTitle(qtype),
-    instruction: questionTypeInstructions[qtype] || "Complete the following questions",
-    durationMin: Math.ceil(questions.length * 1.5), // ~1.5 min per question
-    order: index,
-    questions: questions.sort((a, b) => a.order - b.order),
-  }));
-  
-  console.log('JSON Exam Transform (by question type):', {
+  console.log('JSON Exam Transform (by parts):', {
     examId: examJson.id,
     partsCount: examJson.parts?.length,
-    questionTypes: sections.map(s => ({ type: s.type, count: s.questions.length }))
+    sectionsCreated: sections.length,
+    sections: sections.map(s => ({ 
+      id: s.id,
+      type: s.type, 
+      title: s.title, 
+      questionsCount: s.questions.length 
+    }))
   });
   
   return {
@@ -139,15 +127,17 @@ function transformJsonExam(examJson: any) {
   };
 }
 
-function getQuestionTypeTitle(qtype: string): string {
-  const titles: Record<string, string> = {
-    "MCQ_SINGLE": "Multiple Choice Questions",
-    "TF": "True or False",
-    "DND_GAP": "Fill in the Blanks",
-    "GAP": "Gap Fill",
-    "SHORT_TEXT": "Short Answer Questions",
-  };
-  return titles[qtype] || qtype;
+function determineSectionType(title: string, partId: string): string {
+  const lowerTitle = (title || '').toLowerCase();
+  
+  if (lowerTitle.includes('reading')) return 'READING';
+  if (lowerTitle.includes('listening')) return 'LISTENING';
+  if (lowerTitle.includes('writing')) return 'WRITING';
+  if (lowerTitle.includes('speaking')) return 'SPEAKING';
+  if (lowerTitle.includes('vocabulary') || lowerTitle.includes('vocab')) return 'VOCABULARY';
+  
+  // Default to GRAMMAR for numbered parts
+  return 'GRAMMAR';
 }
 
 function transformItem(item: any, partType: string, order: number, passage?: string, partTitle?: string) {
@@ -163,29 +153,27 @@ function transformItem(item: any, partType: string, order: number, passage?: str
       ...base,
       qtype: "TF",
       prompt: { text: item.prompt, passage },
-      answerKey: { correct: item.answer },
+      answerKey: { value: item.answer },
     };
   }
   
   if (partType === "multiple_choice" || item.options) {
-    const letters = ["A","B","C","D","E","F","G","H","I","J"];
-    const options = Object.fromEntries(item.options.map((o: string, i: number) => [letters[i], o]));
     return {
       ...base,
       qtype: "MCQ_SINGLE",
       prompt: { text: item.prompt, passage },
-      options,
-      answerKey: { correct: letters[item.answer] },
+      options: { choices: item.options },
+      answerKey: { index: item.answer },
     };
   }
   
-  if (partType === "gap_fill" || partType === "short_answer") {
+  if (partType === "gap_fill" || partType === "short_answer" || partType === "gap_fill_verbs") {
     const answers = Array.isArray(item.answer) ? item.answer : [item.answer].filter(Boolean);
     return {
       ...base,
-      qtype: "SHORT_TEXT",
+      qtype: "GAP",
       prompt: { text: item.prompt, passage },
-      answerKey: { correct: answers },
+      answerKey: { answers: answers },
     };
   }
   
@@ -193,9 +181,11 @@ function transformItem(item: any, partType: string, order: number, passage?: str
     ...base,
     qtype: "SHORT_TEXT",
     prompt: { text: item.prompt || item.text },
-    answerKey: { correct: Array.isArray(item.answer) ? item.answer : [item.answer] },
+    answerKey: { answers: Array.isArray(item.answer) ? item.answer : [item.answer] },
   };
 }
+
+
 
 
 

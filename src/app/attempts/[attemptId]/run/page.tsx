@@ -74,6 +74,7 @@ export default function AttemptRunnerPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to load");
       
+      console.log("Attempt data:", json);
       setData(json);
       setAnswers(json.savedAnswers || {});
       
@@ -161,7 +162,7 @@ export default function AttemptRunnerPage() {
       if (!res.ok) throw new Error(json.error || "Failed to submit");
 
       alert("Exam submitted successfully!");
-      router.push(`/attempt/${attemptId}/results`);
+      router.push(`/attempts/${attemptId}/results`);
     } catch (err: any) {
       console.error(err);
       alert(err.message || "Failed to submit exam");
@@ -230,7 +231,18 @@ export default function AttemptRunnerPage() {
     );
   }
 
-  const currentSection = data.sections.find((s) => s.type === activeSection);
+  if (!data.sections || data.sections.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-500 mb-2">No sections found for this exam</p>
+          <p className="text-sm text-gray-400">Please contact your teacher</p>
+        </div>
+      </div>
+    );
+  }
+
+  const currentSection = data.sections?.find((s) => s.type === activeSection);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
@@ -283,7 +295,7 @@ export default function AttemptRunnerPage() {
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sticky top-24">
               <h3 className="text-sm font-semibold text-slate-700 uppercase mb-3">Sections</h3>
               <div className="space-y-2">
-                {data.sections.map((section) => {
+                {data.sections?.map((section) => {
                   const isActive = activeSection === section.type;
                   const isLocked = lockedSections.has(section.type);
                   const answeredCount = Object.keys(answers[section.type] || {}).length;
@@ -346,7 +358,7 @@ export default function AttemptRunnerPage() {
                 </div>
 
                 <div className="space-y-6">
-                  {currentSection.questions.map((q, idx) => {
+                  {currentSection?.questions?.map((q, idx) => {
                     const value = answers[currentSection.type]?.[q.id];
                     const isLocked = lockedSections.has(currentSection.type);
 
@@ -397,4 +409,3 @@ export default function AttemptRunnerPage() {
     </div>
   );
 }
-

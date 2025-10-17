@@ -84,8 +84,8 @@ export default function StudentExamsPage() {
         return;
       }
 
-      // Navigate to attempt runner
-      router.push(`/attempt/${data.attemptId}`);
+      // Navigate to attempt runner (plural)
+      router.push(`/attempts/${data.attemptId}/run`);
     } catch (err) {
       console.error("Failed to start exam", err);
       alert("Failed to start exam");

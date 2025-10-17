@@ -33,11 +33,16 @@ export async function GET(request: Request, { params }: { params: Promise<{ atte
     });
     
     console.log('Loading exam:', { attemptId, examId: attempt.examId, hasDbExam: !!dbExam, dbSectionsCount: dbExam?.sections?.length });
+    console.log('DB Exam details:', JSON.stringify(dbExam, null, 2));
     
     if (!dbExam || !dbExam.sections || dbExam.sections.length === 0) {
       // Try loading from JSON (either no DB exam or it's a stub with no sections)
+      console.log('Attempting to load from JSON for exam:', attempt.examId);
       exam = await loadJsonExam(attempt.examId);
       console.log('Loaded from JSON:', { examId: exam?.id, sectionsCount: exam?.sections?.length });
+      if (exam) {
+        console.log('JSON Exam sections:', JSON.stringify(exam.sections, null, 2));
+      }
     } else {
       // Load from DB with full details
       exam = await prisma.exam.findUnique({
@@ -67,27 +72,24 @@ export async function GET(request: Request, { params }: { params: Promise<{ atte
       return NextResponse.json({ error: "Exam not found" }, { status: 404 });
     }
 
+    if (!exam.sections || exam.sections.length === 0) {
+      console.error('No sections found in exam:', { examId: attempt.examId, exam });
+      return NextResponse.json({ error: "Exam has no sections" }, { status: 500 });
+    }
+
     return NextResponse.json({
-      attempt: {
-        id: attempt.id,
-        status: attempt.status,
-        startedAt: attempt.startedAt,
-        submittedAt: attempt.submittedAt,
-      },
-      exam: {
-        id: exam.id,
-        title: exam.title,
-        category: exam.category,
-        track: exam.track,
-        sections: exam.sections.map((s) => ({
-          id: s.id,
-          type: s.type,
-          title: s.title,
-          durationMin: s.durationMin,
-          order: s.order,
-          questions: s.questions,
-        })),
-      },
+      id: attempt.id,
+      examTitle: exam.title,
+      status: attempt.status,
+      sections: exam.sections.map((s: any) => ({
+        id: s.id,
+        type: s.type,
+        title: s.title,
+        durationMin: s.durationMin,
+        order: s.order,
+        questions: s.questions || [],
+      })),
+      savedAnswers: (attempt.answers as any) || {},
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
