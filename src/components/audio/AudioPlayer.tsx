@@ -6,12 +6,14 @@ interface AudioPlayerProps {
   className?: string;
 }
 
-const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, className = "" }) => {
+const AudioPlayer: React.FC<AudioPlayerProps> = ({  className = "" }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
+
+  const src = "/audio/Alexander Rybak - Fairytale (Lyrics) Norway  Eurovision Winner 2009.mp3";
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -82,7 +84,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, className = "" }) => {
   const progressPercentage = duration ? (currentTime / duration) * 100 : 0;
 
   return (
-    <div className={`bg-white rounded-lg border p-4 ${className}`}
+    <div className={`bg-white rounded-lg border p-4 w-full ${className}`}
          style={{
            backgroundColor: 'rgba(48, 51, 128, 0.02)',
            borderColor: 'rgba(48, 51, 128, 0.1)'
@@ -114,19 +116,21 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, className = "" }) => {
       `}</style>
       <audio ref={audioRef} src={src} preload="metadata" />
       
-      {/* Progress Bar */}
+      {/* Seek Bar - Moved to top */}
       <div className="mb-4">
-        <div className="w-full h-2 rounded-full mb-2"
-             style={{ backgroundColor: 'rgba(48, 51, 128, 0.1)' }}>
-          <div 
-            className="h-2 rounded-full transition-all duration-200"
-            style={{ 
-              backgroundColor: '#303380',
-              width: `${progressPercentage}%`
-            }}
-          />
-        </div>
-        <div className="flex justify-between text-xs"
+        <input
+          type="range"
+          min="0"
+          max={duration || 0}
+          value={currentTime}
+          onChange={handleSeek}
+          className="w-full h-1 rounded-lg appearance-none cursor-pointer"
+          style={{
+            background: `linear-gradient(to right, #303380 0%, #303380 ${progressPercentage}%, rgba(48, 51, 128, 0.2) ${progressPercentage}%, rgba(48, 51, 128, 0.2) 100%)`,
+            outline: 'none'
+          }}
+        />
+        <div className="flex justify-between text-xs mt-1"
              style={{ color: 'rgba(48, 51, 128, 0.7)' }}>
           <span>{formatTime(currentTime)}</span>
           <span>{formatTime(duration)}</span>
@@ -210,21 +214,6 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, className = "" }) => {
         </div>
       </div>
 
-      {/* Seek Bar */}
-      <div className="mt-3">
-        <input
-          type="range"
-          min="0"
-          max={duration || 0}
-          value={currentTime}
-          onChange={handleSeek}
-          className="w-full h-1 rounded-lg appearance-none cursor-pointer"
-          style={{
-            background: `linear-gradient(to right, #303380 0%, #303380 ${progressPercentage}%, rgba(48, 51, 128, 0.2) ${progressPercentage}%, rgba(48, 51, 128, 0.2) 100%)`,
-            outline: 'none'
-          }}
-        />
-      </div>
     </div>
   );
 };

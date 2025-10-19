@@ -175,12 +175,18 @@ export default function AssignExamModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden">
+      <div className="rounded-xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden"
+           style={{
+             backgroundColor: 'rgba(48, 51, 128, 0.01)',
+             borderColor: 'rgba(48, 51, 128, 0.1)',
+             border: '1px solid'
+           }}>
         {/* Header */}
-        <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-5 flex items-center justify-between">
+        <div className="px-6 py-5 flex items-center justify-between"
+             style={{ backgroundColor: '#303380' }}>
           <div>
             <h2 className="text-xl font-bold text-white">Assign Exam</h2>
-            <p className="text-purple-100 text-sm mt-1">
+            <p className="text-white/80 text-sm mt-1">
               {student.name || student.email}
             </p>
           </div>
@@ -193,61 +199,81 @@ export default function AssignExamModal({
         </div>
 
         {/* Progress Steps */}
-        <div className="px-6 py-4 bg-slate-50 border-b border-slate-200">
+        <div className="px-6 py-4 border-b"
+             style={{
+               backgroundColor: 'rgba(48, 51, 128, 0.02)',
+               borderColor: 'rgba(48, 51, 128, 0.1)'
+             }}>
           <div className="flex items-center justify-center gap-2">
             <div
               className={`flex items-center justify-center w-8 h-8 rounded-full text-sm ${
                 step >= 1
-                  ? "bg-purple-600 text-white"
-                  : "bg-slate-200 text-slate-400"
+                  ? "text-white"
+                  : "text-slate-400"
               }`}
+              style={{
+                backgroundColor: step >= 1 ? '#303380' : 'rgba(48, 51, 128, 0.1)'
+              }}
             >
               1
             </div>
             <div
-              className={`h-1 w-8 ${
-                step >= 2 ? "bg-purple-600" : "bg-slate-200"
-              }`}
+              className="h-1 w-8"
+              style={{
+                backgroundColor: step >= 2 ? '#303380' : 'rgba(48, 51, 128, 0.1)'
+              }}
             ></div>
             <div
               className={`flex items-center justify-center w-8 h-8 rounded-full text-sm ${
                 step >= 2
-                  ? "bg-purple-600 text-white"
-                  : "bg-slate-200 text-slate-400"
+                  ? "text-white"
+                  : "text-slate-400"
               }`}
+              style={{
+                backgroundColor: step >= 2 ? '#303380' : 'rgba(48, 51, 128, 0.1)'
+              }}
             >
               2
             </div>
             <div
-              className={`h-1 w-8 ${
-                step >= 3 ? "bg-purple-600" : "bg-slate-200"
-              }`}
+              className="h-1 w-8"
+              style={{
+                backgroundColor: step >= 3 ? '#303380' : 'rgba(48, 51, 128, 0.1)'
+              }}
             ></div>
             <div
               className={`flex items-center justify-center w-8 h-8 rounded-full text-sm ${
                 step >= 3
-                  ? "bg-purple-600 text-white"
-                  : "bg-slate-200 text-slate-400"
+                  ? "text-white"
+                  : "text-slate-400"
               }`}
+              style={{
+                backgroundColor: step >= 3 ? '#303380' : 'rgba(48, 51, 128, 0.1)'
+              }}
             >
               3
             </div>
             <div
-              className={`h-1 w-8 ${
-                step >= 4 ? "bg-purple-600" : "bg-slate-200"
-              }`}
+              className="h-1 w-8"
+              style={{
+                backgroundColor: step >= 4 ? '#303380' : 'rgba(48, 51, 128, 0.1)'
+              }}
             ></div>
             <div
               className={`flex items-center justify-center w-8 h-8 rounded-full text-sm ${
                 step >= 4
-                  ? "bg-purple-600 text-white"
-                  : "bg-slate-200 text-slate-400"
+                  ? "text-white"
+                  : "text-slate-400"
               }`}
+              style={{
+                backgroundColor: step >= 4 ? '#303380' : 'rgba(48, 51, 128, 0.1)'
+              }}
             >
               4
             </div>
           </div>
-          <div className="flex justify-between mt-2 text-xs text-slate-600">
+          <div className="flex justify-between mt-2 text-xs"
+               style={{ color: 'rgba(48, 51, 128, 0.7)' }}>
             <span>Category</span>
             <span>Track</span>
             <span>Exam</span>
@@ -273,7 +299,21 @@ export default function AssignExamModal({
                     <button
                       key={category.id}
                       onClick={() => handleCategorySelect(category.id)}
-                      className="px-6 py-4 bg-gradient-to-br from-purple-50 to-indigo-50 hover:from-purple-100 hover:to-indigo-100 border border-purple-200 rounded-xl text-purple-700 font-semibold transition-all hover:scale-105 hover:shadow-md"
+                      className="px-6 py-4 rounded-xl font-semibold transition-all hover:scale-105 hover:shadow-md"
+                      style={{
+                        backgroundColor: 'rgba(48, 51, 128, 0.05)',
+                        borderColor: 'rgba(48, 51, 128, 0.15)',
+                        border: '1px solid',
+                        color: '#303380'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(48, 51, 128, 0.1)';
+                        e.currentTarget.style.borderColor = 'rgba(48, 51, 128, 0.2)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(48, 51, 128, 0.05)';
+                        e.currentTarget.style.borderColor = 'rgba(48, 51, 128, 0.15)';
+                      }}
                     >
                       {category.name}
                     </button>
@@ -294,7 +334,21 @@ export default function AssignExamModal({
                   <button
                     key={track}
                     onClick={() => handleTrackSelect(track)}
-                    className="px-6 py-4 bg-gradient-to-br from-purple-50 to-indigo-50 hover:from-purple-100 hover:to-indigo-100 border border-purple-200 rounded-xl text-purple-700 font-semibold transition-all hover:scale-105 hover:shadow-md"
+                    className="px-6 py-4 rounded-xl font-semibold transition-all hover:scale-105 hover:shadow-md"
+                    style={{
+                      backgroundColor: 'rgba(48, 51, 128, 0.05)',
+                      borderColor: 'rgba(48, 51, 128, 0.15)',
+                      border: '1px solid',
+                      color: '#303380'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'rgba(48, 51, 128, 0.1)';
+                      e.currentTarget.style.borderColor = 'rgba(48, 51, 128, 0.2)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'rgba(48, 51, 128, 0.05)';
+                      e.currentTarget.style.borderColor = 'rgba(48, 51, 128, 0.15)';
+                    }}
                   >
                     {track}
                   </button>
@@ -320,17 +374,33 @@ export default function AssignExamModal({
                     <button
                       key={exam.id}
                       onClick={() => handleExamSelect(exam.id)}
-                      className="w-full text-left px-4 py-3 bg-white hover:bg-purple-50 border border-slate-200 hover:border-purple-300 rounded-lg transition-all hover:shadow-sm flex items-center justify-between group"
+                      className="w-full text-left px-4 py-3 rounded-lg transition-all hover:shadow-sm flex items-center justify-between group"
+                      style={{
+                        backgroundColor: 'rgba(48, 51, 128, 0.02)',
+                        borderColor: 'rgba(48, 51, 128, 0.1)',
+                        border: '1px solid'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(48, 51, 128, 0.05)';
+                        e.currentTarget.style.borderColor = 'rgba(48, 51, 128, 0.2)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(48, 51, 128, 0.02)';
+                        e.currentTarget.style.borderColor = 'rgba(48, 51, 128, 0.1)';
+                      }}
                     >
                       <div className="flex-1">
-                        <span className="font-medium text-slate-700 group-hover:text-purple-700 block">
+                        <span className="font-medium block"
+                              style={{ color: '#303380' }}>
                           {exam.title}
                         </span>
                         {exam.unit && (
-                          <span className="text-xs text-slate-500">{exam.unit}</span>
+                          <span className="text-xs"
+                                style={{ color: 'rgba(48, 51, 128, 0.6)' }}>{exam.unit}</span>
                         )}
                       </div>
-                      <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-purple-600" />
+                      <ChevronRight className="w-4 h-4"
+                                    style={{ color: 'rgba(48, 51, 128, 0.6)' }} />
                     </button>
                   ))}
                 </div>
@@ -344,7 +414,12 @@ export default function AssignExamModal({
               <h3 className="text-lg font-semibold text-slate-800 mb-4">
                 Confirm Assignment
               </h3>
-              <div className="bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-200 rounded-xl p-5 space-y-3">
+              <div className="rounded-xl p-5 space-y-3"
+                   style={{
+                     backgroundColor: 'rgba(48, 51, 128, 0.05)',
+                     borderColor: 'rgba(48, 51, 128, 0.15)',
+                     border: '1px solid'
+                   }}>
                 <div>
                   <span className="text-xs text-slate-500 uppercase font-medium">Student</span>
                   <p className="text-slate-800 font-medium">
@@ -379,7 +454,11 @@ export default function AssignExamModal({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+        <div className="px-6 py-4 border-t flex items-center justify-between"
+             style={{
+               backgroundColor: 'rgba(48, 51, 128, 0.02)',
+               borderColor: 'rgba(48, 51, 128, 0.1)'
+             }}>
           <button
             onClick={step === 1 ? onClose : handleBack}
             className="px-4 py-2 text-slate-600 hover:text-slate-800 font-medium flex items-center gap-2 transition-colors"
@@ -399,7 +478,14 @@ export default function AssignExamModal({
             <button
               onClick={handleSubmit}
               disabled={submitting}
-              className="px-6 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-6 py-2 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              style={{ backgroundColor: '#303380' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#252a6b';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#303380';
+              }}
             >
               {submitting ? (
                 <>

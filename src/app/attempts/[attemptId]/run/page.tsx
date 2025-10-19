@@ -22,6 +22,7 @@ import {
   QOrderSentence,
   QDndGap,
 } from "@/components/questions";
+import { QOpenText } from "@/components/questions/QOpenText";
 
 interface Question {
   id: string;
@@ -189,31 +190,23 @@ export default function AttemptRunnerPage() {
         return <QGap {...props} />;
       case "ORDER_SENTENCE":
         return <QOrderSentence {...props} />;
-      case "DND_GAP":
-        return <QDndGap {...props} />;
-      case "SHORT_TEXT":
-        return (
-          <input
-            type="text"
-            value={value || ""}
-            onChange={(e) => onChange(e.target.value)}
-            disabled={readOnly}
-            className="mt-2 w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-400 disabled:bg-gray-50"
-            placeholder="Write your answer"
-          />
-        );
-      case "ESSAY":
-        return (
-          <textarea
-            value={value || ""}
-            onChange={(e) => onChange(e.target.value)}
-            disabled={readOnly}
-            className="mt-2 w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-400 min-h-[150px] disabled:bg-gray-50"
-            placeholder="Write your essay here"
-          />
-        );
-      default:
-        return <div className="text-sm text-gray-500">Unsupported question type: {q.qtype}</div>;
+       case "DND_GAP":
+         return <QDndGap {...props} />;
+       case "OPEN_TEXT":
+       case "SHORT_TEXT":
+         return <QOpenText {...props} />;
+       case "ESSAY":
+         return (
+           <textarea
+             value={value || ""}
+             onChange={(e) => onChange(e.target.value)}
+             disabled={readOnly}
+             className="mt-2 w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-400 min-h-[150px] disabled:bg-gray-50"
+             placeholder="Write your essay here"
+           />
+         );
+       default:
+         return <div className="text-sm text-gray-500">Unsupported question type: {q.qtype}</div>;
     }
   };
 
@@ -441,23 +434,52 @@ export default function AttemptRunnerPage() {
                  </div>
 
                  {/* Audio Player for Listening Section */}
-                 {currentSection.type === 'LISTENING' && (
-                   <div className="mb-6">
+                 {(currentSection.type === 'LISTENING' || 
+                   currentSection.type === 'listening' || 
+                   currentSection.title?.toLowerCase().includes('listening')) && (
+                   <div className="mb-8">
+                     <div className="text-center mb-4">
+                       <h3 className="text-lg font-semibold mb-2" style={{ color: '#303380' }}>
+                         🎧 Listening Audio
+                       </h3>
+                       <p className="text-sm" style={{ color: 'rgba(48, 51, 128, 0.7)' }}>
+                         Listen to the audio and answer the questions below
+                       </p>
+                     </div>
                      <AudioPlayer 
                        src="/audio/listening-sample.mp3" 
-                       className="max-w-md mx-auto"
+                       className="w-full"
                      />
-                    </div>
-                  )}
+                   </div>
+                 )}
 
-                <div className="space-y-6">
-                  {currentSection?.questions?.map((q, idx) => {
-                    const value = answers[currentSection.type]?.[q.id];
-                    const isLocked = lockedSections.has(currentSection.type);
+                 {/* Reading Passage - Show once at the top for READING section */}
+                 {currentSection?.questions?.[0]?.prompt?.passage && (
+                   <div className="mb-6 p-6 rounded-lg"
+                        style={{
+                          backgroundColor: 'rgba(48, 51, 128, 0.05)',
+                          borderColor: 'rgba(48, 51, 128, 0.15)',
+                          border: '1px solid'
+                        }}>
+                     <h3 className="text-lg font-semibold mb-4" style={{ color: '#303380' }}>
+                       Reading Passage
+                     </h3>
+                     <div className="prose prose-sm max-w-none">
+                       <p className="text-slate-700 leading-relaxed whitespace-pre-line">
+                         {currentSection.questions[0].prompt.passage}
+                       </p>
+                     </div>
+                   </div>
+                 )}
 
-                    return (
-                      <div
-                        key={q.id}
+                 <div className="space-y-6">
+                   {currentSection?.questions?.map((q, idx) => {
+                     const value = answers[currentSection.type]?.[q.id];
+                     const isLocked = lockedSections.has(currentSection.type);
+
+                     return (
+                       <div
+                         key={q.id}
                          className="p-5 border rounded-lg transition-all duration-200"
                          style={{
                            backgroundColor: 'rgba(48, 51, 128, 0.02)',
@@ -473,28 +495,28 @@ export default function AttemptRunnerPage() {
                            e.currentTarget.style.borderColor = 'rgba(48, 51, 128, 0.1)';
                            e.currentTarget.style.boxShadow = 'none';
                          }}
-                      >
-                        <div className="flex items-start gap-3">
+                       >
+                         <div className="flex items-start gap-3">
                            <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm"
                                 style={{ 
                                   backgroundColor: 'rgba(48, 51, 128, 0.1)',
                                   color: '#303380'
                                 }}>
-                            {idx + 1}
-                          </div>
-                          <div className="flex-1">
-                            {/* Question Prompt */}
-                            {q.prompt?.passage && (
+                             {idx + 1}
+                           </div>
+                           <div className="flex-1">
+                             {/* Question Prompt - Hide passage for READING section as it's shown above */}
+                             {false && q.prompt?.passage && (
                                <div className="mb-3 p-4 rounded-lg"
                                     style={{
                                       backgroundColor: 'rgba(48, 51, 128, 0.05)',
                                       borderColor: 'rgba(48, 51, 128, 0.15)',
                                       border: '1px solid'
                                     }}>
-                                <p className="text-sm text-slate-700 italic">{q.prompt.passage}</p>
-                              </div>
-                            )}
-                            {q.prompt?.transcript && (
+                                 <p className="text-sm text-slate-700 italic">{q.prompt.passage}</p>
+                               </div>
+                             )}
+                             {q.prompt?.transcript && (
                                <div className="mb-3 p-4 rounded-lg"
                                     style={{
                                       backgroundColor: 'rgba(48, 51, 128, 0.05)',
@@ -502,20 +524,21 @@ export default function AttemptRunnerPage() {
                                       border: '1px solid'
                                     }}>
                                  <p className="text-xs font-medium mb-1" style={{ color: '#303380' }}>🎧 Transcript:</p>
-                                <p className="text-sm text-slate-700">{q.prompt.transcript}</p>
-                              </div>
-                            )}
-                            <p className="text-slate-900 font-medium mb-3">
-                              {q.prompt?.text || "Question"}
-                            </p>
+                                 <p className="text-sm text-slate-700">{q.prompt.transcript}</p>
+                               </div>
+                             )}
+                             <p className="text-slate-900 font-medium mb-3">
+                               {q.prompt?.text || "Question"}
+                             </p>
 
-                            {/* Question Component */}
-                            {renderQuestionComponent(
-                              q,
-                              value,
-                              (v) => setAnswer(currentSection.type, q.id, v),
-                              isLocked
-                            )}
+                             {/* Question Component */}
+                             {renderQuestionComponent(
+                               q,
+                               value,
+                               (v) => setAnswer(currentSection.type, q.id, v),
+                               isLocked
+                             )}
+                             
                           </div>
                         </div>
                       </div>
