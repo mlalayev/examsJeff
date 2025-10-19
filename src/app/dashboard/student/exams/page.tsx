@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BookOpen, Calendar, Clock, Search, AlertCircle } from "lucide-react";
+import SkeletonLoading from "@/components/loading/SkeletonLoading";
 
 type SectionType = "READING" | "LISTENING" | "WRITING" | "SPEAKING" | "GRAMMAR" | "VOCABULARY";
 
@@ -70,26 +71,36 @@ export default function StudentExamsPage() {
   const handleStart = async (bookingId: string) => {
     setStarting(bookingId);
     try {
-      // Create or get attempt for this booking
+      // Create or get attempt for this booking with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
       const res = await fetch("/api/student/attempt/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ bookingId }),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
       const data = await res.json();
 
       if (!res.ok) {
         alert(data.error || "Failed to start exam");
+        setStarting(null);
         return;
       }
 
-      // Navigate to attempt runner (plural)
-      router.push(`/attempts/${data.attemptId}/run`);
+      // Navigate to attempt runner immediately using replace for better UX
+      router.replace(`/attempts/${data.attemptId}/run`);
+      // Don't set starting to null here - let the navigation handle it
     } catch (err) {
       console.error("Failed to start exam", err);
-      alert("Failed to start exam");
-    } finally {
+      if (err.name === 'AbortError') {
+        alert("Request timed out. Please try again.");
+      } else {
+        alert("Failed to start exam");
+      }
       setStarting(null);
     }
   };
@@ -99,6 +110,12 @@ export default function StudentExamsPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-gray-900">My Exams</h1>
         <p className="text-gray-500">Exams assigned by your teacher</p>
+        {starting && (
+          <div className="mt-3 p-3 bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-lg flex items-center gap-2">
+            <div className="w-4 h-4 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+            <span className="text-purple-700 text-sm font-medium">Preparing your exam...</span>
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-4 mb-6">
@@ -121,9 +138,7 @@ export default function StudentExamsPage() {
 
       <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center h-32">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-400"></div>
-          </div>
+          <SkeletonLoading variant="list" count={3} className="p-6" />
         ) : filtered.length === 0 ? (
           <div className="px-6 py-10 text-center text-gray-500">
             <BookOpen className="w-8 h-8 mx-auto mb-2 text-gray-300" />
@@ -165,13 +180,19 @@ export default function StudentExamsPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button
-                      className="px-3 py-1.5 text-sm rounded-md bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                      onClick={() => handleStart(item.id)}
-                      disabled={starting === item.id}
-                    >
-                      {starting === item.id ? "Starting..." : "Start"}
-                    </button>
+                    {starting === item.id ? (
+                      <div className="px-4 py-2 text-sm rounded-md bg-gradient-to-r from-purple-600 to-indigo-600 text-white flex items-center gap-2 shadow-lg">
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <span className="font-medium">Starting Exam...</span>
+                      </div>
+                    ) : (
+                      <button
+                        className="px-4 py-2 text-sm rounded-md bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105"
+                        onClick={() => handleStart(item.id)}
+                      >
+                        <span className="font-medium">Start Exam</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               </li>

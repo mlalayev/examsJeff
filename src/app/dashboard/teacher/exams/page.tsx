@@ -156,7 +156,7 @@ export default function ExamsPage() {
       <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
       {loading ? (
           <div className="flex items-center justify-center h-32">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-400"></div>
+            <Loading size="md" variant="pulse" />
         </div>
       ) : (
           <div className="overflow-x-auto pb-6">

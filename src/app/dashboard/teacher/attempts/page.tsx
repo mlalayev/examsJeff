@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Eye, Clock, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import Loading from "@/components/loading/Loading";
 
 interface AttemptItem {
   id: string;
@@ -112,7 +113,7 @@ export default function TeacherAttemptsPage() {
       <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center h-32">
-            <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+            <Loading size="md" variant="dots" />
           </div>
         ) : filteredAttempts.length === 0 ? (
           <div className="text-center py-12 text-gray-500">

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Loading from "@/components/loading/Loading";
 
 interface AttemptItem {
   id: string;
@@ -40,7 +41,7 @@ export default function StudentHistoryPage() {
     <div className="max-w-5xl mx-auto px-6 py-8">
       <h1 className="text-2xl font-semibold text-gray-900 mb-6">My Exam History</h1>
       {loading ? (
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-400" />
+        <Loading size="lg" variant="spinner" />
       ) : attempts.length === 0 ? (
         <div className="text-gray-600">No attempts yet.</div>
       ) : (

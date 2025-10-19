@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+import Loading from "@/components/loading/Loading";
 
 interface PaymentModalProps {
   student: any;
@@ -268,7 +269,7 @@ export default function PaymentModal({ student, teachers, onClose, onUpdate }: P
 
             {loading ? (
               <div className="flex justify-center items-center h-64">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                <Loading size="md" variant="spinner" />
               </div>
             ) : (
               <>

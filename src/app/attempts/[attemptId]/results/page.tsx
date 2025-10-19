@@ -12,6 +12,7 @@ import {
   Eye,
   Lock
 } from "lucide-react";
+import Loading from "@/components/loading/Loading";
 
 interface ResultsData {
   attemptId: string;
@@ -126,7 +127,7 @@ export default function AttemptResultsPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
-        <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+        <Loading size="lg" variant="spinner" />
       </div>
     );
   }

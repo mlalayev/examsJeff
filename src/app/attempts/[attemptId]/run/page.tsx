@@ -11,6 +11,7 @@ import {
   Save,
   Send
 } from "lucide-react";
+import Loading from "@/components/loading/Loading";
 import {
   QTF,
   QMcqSingle,
@@ -215,10 +216,35 @@ export default function AttemptRunnerPage() {
     }
   };
 
+  const getShortSectionTitle = (title: string) => {
+    const shortTitles: Record<string, string> = {
+      'READING': 'Reading',
+      'LISTENING': 'Listening', 
+      'WRITING': 'Writing',
+      'SPEAKING': 'Speaking',
+      'GRAMMAR': 'Grammar',
+      'VOCABULARY': 'Vocabulary',
+      'Reading Comprehension': 'Reading',
+      'Listening Comprehension': 'Listening',
+      'Writing Task': 'Writing',
+      'Speaking Task': 'Speaking',
+      'Grammar Exercise': 'Grammar',
+      'Vocabulary Test': 'Vocabulary',
+      'Reading Section': 'Reading',
+      'Listening Section': 'Listening',
+      'Writing Section': 'Writing',
+      'Speaking Section': 'Speaking',
+      'Grammar Section': 'Grammar',
+      'Vocabulary Section': 'Vocabulary'
+    };
+    
+    return shortTitles[title] || title.substring(0, 10) + (title.length > 10 ? '...' : '');
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+        <Loading size="lg" variant="spinner" />
       </div>
     );
   }
@@ -246,90 +272,128 @@ export default function AttemptRunnerPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      {/* Header */}
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-bold text-slate-900">{data.examTitle}</h1>
-              <p className="text-sm text-slate-500 mt-1">Attempt ID: {attemptId}</p>
-            </div>
-            <div className="flex items-center gap-4">
-              {saving && (
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <Save className="w-4 h-4 animate-pulse" />
-                  Saving...
-                </div>
-              )}
-              {lastSaved && !saving && (
-                <div className="text-sm text-gray-500">
-                  Saved {lastSaved.toLocaleTimeString()}
-                </div>
-              )}
-              <button
-                onClick={handleSubmit}
-                disabled={submitting}
-                className="px-6 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold rounded-lg transition-all disabled:opacity-50 flex items-center gap-2"
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Submitting...
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-4 h-4" />
-                    Submit Exam
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Section Tabs - Sidebar on desktop, horizontal on mobile */}
           <div className="lg:w-64 flex-shrink-0">
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sticky top-24">
-              <h3 className="text-sm font-semibold text-slate-700 uppercase mb-3">Sections</h3>
-              <div className="space-y-2">
-                {data.sections?.map((section) => {
-                  const isActive = activeSection === section.type;
-                  const isLocked = lockedSections.has(section.type);
-                  const answeredCount = Object.keys(answers[section.type] || {}).length;
-                  const totalCount = section.questions.length;
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sticky top-24 flex flex-col h-[calc(100vh-8rem)]">
+              {/* Exam Info - Top */}
+              <div className="mb-4">
+                <h2 className="text-sm font-semibold text-slate-800 mb-1 truncate" title={data.examTitle}>
+                  {data.examTitle}
+                </h2>
+                <p className="text-xs text-slate-500">Exam Sections</p>
+                <div className="mt-2">
+                  <div className="flex justify-between text-xs text-slate-600 mb-1">
+                    <span>Progress</span>
+                    <span>
+                      {Object.values(answers).reduce((total, sectionAnswers) => 
+                        total + Object.keys(sectionAnswers).length, 0
+                      )} / {data.sections?.reduce((total, section) => total + section.questions.length, 0)} questions
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-200 rounded-full h-2">
+                    <div 
+                      className="bg-gradient-to-r from-purple-500 to-indigo-500 h-2 rounded-full transition-all duration-300"
+                      style={{
+                        width: `${(Object.values(answers).reduce((total, sectionAnswers) => 
+                          total + Object.keys(sectionAnswers).length, 0
+                        ) / (data.sections?.reduce((total, section) => total + section.questions.length, 0) || 1)) * 100}%`
+                      }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
 
-                  return (
-                    <button
-                      key={section.type}
-                      onClick={() => setActiveSection(section.type)}
-                      className={`w-full text-left px-4 py-3 rounded-lg transition-all ${
-                        isActive
-                          ? "bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 text-purple-700"
-                          : "bg-slate-50 hover:bg-slate-100 border border-transparent text-slate-700"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          {isLocked ? (
-                            <Lock className="w-4 h-4 text-green-600" />
-                          ) : (
-                            <BookOpen className="w-4 h-4" />
+              {/* Sections List - Middle */}
+              <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100 hover:scrollbar-thumb-slate-400">
+                <style jsx>{`
+                  .scrollbar-thin {
+                    scrollbar-width: thin;
+                  }
+                  .scrollbar-thin::-webkit-scrollbar {
+                    width: 6px;
+                  }
+                  .scrollbar-thin::-webkit-scrollbar-track {
+                    background: #f1f5f9;
+                    border-radius: 3px;
+                  }
+                  .scrollbar-thin::-webkit-scrollbar-thumb {
+                    background: #cbd5e1;
+                    border-radius: 3px;
+                    transition: background 0.2s ease;
+                  }
+                  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+                    background: #94a3b8;
+                  }
+                  .scrollbar-thin::-webkit-scrollbar-thumb:active {
+                    background: #64748b;
+                  }
+                `}</style>
+                <div className="space-y-2 pr-2">
+                  {data.sections?.map((section) => {
+                    const isActive = activeSection === section.type;
+                    const isLocked = lockedSections.has(section.type);
+                    const answeredCount = Object.keys(answers[section.type] || {}).length;
+                    const totalCount = section.questions.length;
+
+                    return (
+                      <button
+                        key={section.type}
+                        onClick={() => setActiveSection(section.type)}
+                        className={`w-full text-left px-3 py-2.5 rounded-lg transition-all ${
+                          isActive
+                            ? "bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 text-purple-700"
+                            : "bg-slate-50 hover:bg-slate-100 border border-transparent text-slate-700"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 min-w-0">
+                            {isLocked ? (
+                              <Lock className="w-4 h-4 text-green-600 flex-shrink-0" />
+                            ) : (
+                              <BookOpen className="w-4 h-4 flex-shrink-0" />
+                            )}
+                            <span className="font-medium text-sm truncate" title={section.title}>
+                              {getShortSectionTitle(section.title)}
+                            </span>
+                          </div>
+                          {isLocked && (
+                            <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
                           )}
-                          <span className="font-medium text-sm">{section.title}</span>
                         </div>
-                        {isLocked && (
-                          <CheckCircle className="w-4 h-4 text-green-600" />
-                        )}
-                      </div>
-                      <div className="mt-1 text-xs text-slate-500">
-                        {answeredCount} / {totalCount} answered
-                      </div>
-                    </button>
-                  );
-                })}
+                        <div className="mt-1 text-xs text-slate-500">
+                          {answeredCount}/{totalCount} answered
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Submit Button - Bottom */}
+              <div className="mt-4 pt-4 border-t border-slate-200">
+                <button
+                  onClick={handleSubmit}
+                  disabled={submitting}
+                  className="w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:scale-105"
+                >
+                  {submitting ? (
+                    <>
+                      <Loading size="sm" variant="dots" />
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" />
+                      Submit Exam
+                    </>
+                  )}
+                </button>
+                <p className="text-xs text-slate-500 text-center mt-2">
+                  You cannot change answers after submission
+                </p>
               </div>
             </div>
           </div>

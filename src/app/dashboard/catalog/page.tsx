@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Clock, FileText, Users, Eye, UserPlus } from "lucide-react";
+import Loading from "@/components/loading/Loading";
 
 interface ExamCard {
   id: string;
@@ -163,7 +164,7 @@ export default function CatalogPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-400"></div>
+        <Loading size="lg" variant="spinner" />
       </div>
     );
   }

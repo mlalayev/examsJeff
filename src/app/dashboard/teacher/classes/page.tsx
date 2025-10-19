@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Users, Search, Edit, BarChart3 } from "lucide-react";
+import Loading from "@/components/loading/Loading";
 
 interface Class {
   id: string;
@@ -136,7 +137,7 @@ export default function ClassesPage() {
       <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
       {loading ? (
           <div className="flex items-center justify-center h-32">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-400"></div>
+            <Loading size="md" variant="spinner" />
         </div>
       ) : (
           <div className="overflow-x-auto pb-6">

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Users, Calendar, Clock } from "lucide-react";
+import Loading from "@/components/loading/Loading";
 
 interface Class {
   id: string;
@@ -126,7 +127,7 @@ export default function AssignExamPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-400"></div>
+        <Loading size="lg" variant="spinner" />
       </div>
     );
   }

@@ -15,6 +15,7 @@ import {
   Edit,
   Trash2
 } from "lucide-react";
+import SkeletonLoading from "@/components/loading/SkeletonLoading";
 
 type UserRole = "STUDENT" | "TEACHER" | "ADMIN" | "BRANCH_ADMIN";
 type ViewMode = "all" | "branch" | "role";
@@ -259,9 +260,7 @@ export default function BossUsersPage() {
       {/* Simple Table */}
       <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
       {loading ? (
-          <div className="flex items-center justify-center h-32">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-400"></div>
-          </div>
+          <SkeletonLoading variant="table" count={1} />
         ) : (
           <div className="overflow-x-auto pb-6">
             <table className="w-full">

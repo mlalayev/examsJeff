@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { DollarSign, TrendingUp, TrendingDown, Users, Building2, Calendar, Search } from "lucide-react";
+import Loading from "@/components/loading/Loading";
 
 type TabType = "overview" | "monthly" | "branches" | "courses";
 
@@ -74,7 +75,7 @@ export default function BossFinanceV2Page() {
     return (
       <div className="p-8">
         <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400"></div>
+          <Loading size="md" variant="spinner" />
         </div>
       </div>
     );
