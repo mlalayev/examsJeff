@@ -274,7 +274,7 @@ export default function AttemptRunnerPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Section Tabs - Sidebar on desktop, horizontal on mobile */}
           <div className="lg:w-64 flex-shrink-0">
@@ -337,18 +337,18 @@ export default function AttemptRunnerPage() {
                    }
                  `}</style>
                  <div className="space-y-2 pr-1">
-                  {data.sections?.map((section) => {
-                    const isActive = activeSection === section.type;
-                    const isLocked = lockedSections.has(section.type);
-                    const answeredCount = Object.keys(answers[section.type] || {}).length;
-                    const totalCount = section.questions.length;
+                {data.sections?.map((section) => {
+                  const isActive = activeSection === section.type;
+                  const isLocked = lockedSections.has(section.type);
+                  const answeredCount = Object.keys(answers[section.type] || {}).length;
+                  const totalCount = section.questions.length;
 
-                    return (
-                      <button
-                        key={section.type}
-                        onClick={() => setActiveSection(section.type)}
+                  return (
+                    <button
+                      key={section.type}
+                      onClick={() => setActiveSection(section.type)}
                          className={`w-full text-left px-3 py-2.5 rounded-lg transition-all ${
-                           isActive
+                        isActive
                              ? "border"
                              : "border border-transparent"
                          }`}
@@ -373,29 +373,29 @@ export default function AttemptRunnerPage() {
                              e.currentTarget.style.borderColor = 'rgba(48, 51, 128, 0.1)';
                            }
                          }}
-                      >
-                        <div className="flex items-center justify-between">
+                    >
+                      <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2 min-w-0">
-                            {isLocked ? (
+                          {isLocked ? (
                               <Lock className="w-4 h-4 text-green-600 flex-shrink-0" />
-                            ) : (
+                          ) : (
                               <BookOpen className="w-4 h-4 flex-shrink-0" />
-                            )}
+                          )}
                             <span className="font-medium text-sm truncate" title={section.title}>
                               {getShortSectionTitle(section.title)}
                             </span>
-                          </div>
-                          {isLocked && (
-                            <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
-                          )}
                         </div>
+                        {isLocked && (
+                            <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
+                        )}
+                      </div>
                          <div className="mt-1 text-xs"
                               style={{ color: 'rgba(48, 51, 128, 0.6)' }}>
                            {answeredCount}/{totalCount} answered
-                         </div>
-                      </button>
-                    );
-                  })}
+                      </div>
+                    </button>
+                  );
+                })}
                 </div>
               </div>
 
@@ -405,12 +405,7 @@ export default function AttemptRunnerPage() {
                    onClick={handleSubmit}
                    disabled={submitting}
                    className="w-full px-4 py-3 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:scale-105"
-                   style={{
-                     backgroundColor: '#303380',
-                     ':hover': {
-                       backgroundColor: '#252a6b'
-                     }
-                   }}
+                   style={{ backgroundColor: '#303380' }}
                    onMouseEnter={(e) => {
                      e.currentTarget.style.backgroundColor = '#252a6b';
                    }}
@@ -440,31 +435,9 @@ export default function AttemptRunnerPage() {
           {/* Questions Area */}
           <div className="flex-1">
             {currentSection && (
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                 <div className="flex items-center justify-between mb-6">
-                   <h2 className="text-2xl font-bold text-slate-900">{currentSection.title}</h2>
-                   {!lockedSections.has(currentSection.type) && (
-                     <button
-                       onClick={() => handleEndSection(currentSection.type)}
-                       className="px-4 py-2 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
-                       style={{ backgroundColor: '#303380' }}
-                       onMouseEnter={(e) => {
-                         e.currentTarget.style.backgroundColor = '#252a6b';
-                       }}
-                       onMouseLeave={(e) => {
-                         e.currentTarget.style.backgroundColor = '#303380';
-                       }}
-                     >
-                      <CheckCircle className="w-4 h-4" />
-                      End Section
-                    </button>
-                   )}
-                   {lockedSections.has(currentSection.type) && (
-                     <div className="flex items-center gap-2 text-green-700 bg-green-50 px-4 py-2 rounded-lg">
-                       <Lock className="w-4 h-4" />
-                       <span className="text-sm font-medium">Section Locked</span>
-                     </div>
-                   )}
+              <div className="bg-white rounded-xl mt-1 shadow-sm border border-slate-200 p-6">
+                 <div className="mb-6">
+                  <h2 className="text-2xl font-bold text-slate-900">{currentSection.title}</h2>
                  </div>
 
                  {/* Audio Player for Listening Section */}
@@ -474,8 +447,8 @@ export default function AttemptRunnerPage() {
                        src="/audio/listening-sample.mp3" 
                        className="max-w-md mx-auto"
                      />
-                   </div>
-                 )}
+                    </div>
+                  )}
 
                 <div className="space-y-6">
                   {currentSection?.questions?.map((q, idx) => {
@@ -483,8 +456,8 @@ export default function AttemptRunnerPage() {
                     const isLocked = lockedSections.has(currentSection.type);
 
                     return (
-                       <div
-                         key={q.id}
+                      <div
+                        key={q.id}
                          className="p-5 border rounded-lg transition-all duration-200"
                          style={{
                            backgroundColor: 'rgba(48, 51, 128, 0.02)',
@@ -500,28 +473,28 @@ export default function AttemptRunnerPage() {
                            e.currentTarget.style.borderColor = 'rgba(48, 51, 128, 0.1)';
                            e.currentTarget.style.boxShadow = 'none';
                          }}
-                       >
+                      >
                         <div className="flex items-start gap-3">
                            <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm"
                                 style={{ 
                                   backgroundColor: 'rgba(48, 51, 128, 0.1)',
                                   color: '#303380'
                                 }}>
-                             {idx + 1}
-                           </div>
+                            {idx + 1}
+                          </div>
                           <div className="flex-1">
                             {/* Question Prompt */}
-                             {q.prompt?.passage && (
+                            {q.prompt?.passage && (
                                <div className="mb-3 p-4 rounded-lg"
                                     style={{
                                       backgroundColor: 'rgba(48, 51, 128, 0.05)',
                                       borderColor: 'rgba(48, 51, 128, 0.15)',
                                       border: '1px solid'
                                     }}>
-                                 <p className="text-sm text-slate-700 italic">{q.prompt.passage}</p>
-                               </div>
-                             )}
-                             {q.prompt?.transcript && (
+                                <p className="text-sm text-slate-700 italic">{q.prompt.passage}</p>
+                              </div>
+                            )}
+                            {q.prompt?.transcript && (
                                <div className="mb-3 p-4 rounded-lg"
                                     style={{
                                       backgroundColor: 'rgba(48, 51, 128, 0.05)',
@@ -529,9 +502,9 @@ export default function AttemptRunnerPage() {
                                       border: '1px solid'
                                     }}>
                                  <p className="text-xs font-medium mb-1" style={{ color: '#303380' }}>🎧 Transcript:</p>
-                                 <p className="text-sm text-slate-700">{q.prompt.transcript}</p>
-                               </div>
-                             )}
+                                <p className="text-sm text-slate-700">{q.prompt.transcript}</p>
+                              </div>
+                            )}
                             <p className="text-slate-900 font-medium mb-3">
                               {q.prompt?.text || "Question"}
                             </p>
