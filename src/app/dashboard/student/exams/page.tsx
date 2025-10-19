@@ -111,9 +111,14 @@ export default function StudentExamsPage() {
         <h1 className="text-2xl font-semibold text-gray-900">My Exams</h1>
         <p className="text-gray-500">Exams assigned by your teacher</p>
         {starting && (
-          <div className="mt-3 p-3 bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-lg flex items-center gap-2">
-            <div className="w-4 h-4 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
-            <span className="text-purple-700 text-sm font-medium">Preparing your exam...</span>
+          <div className="mt-3 p-3 border rounded-lg flex items-center gap-2"
+               style={{ 
+                 backgroundColor: 'rgba(48, 51, 128, 0.1)',
+                 borderColor: 'rgba(48, 51, 128, 0.2)'
+               }}>
+            <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin"
+                 style={{ borderColor: '#303380' }}></div>
+            <span className="text-sm font-medium" style={{ color: '#303380' }}>Preparing your exam...</span>
           </div>
         )}
       </div>
@@ -181,13 +186,21 @@ export default function StudentExamsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     {starting === item.id ? (
-                      <div className="px-4 py-2 text-sm rounded-md bg-gradient-to-r from-purple-600 to-indigo-600 text-white flex items-center gap-2 shadow-lg">
+                      <div className="px-4 py-2 text-sm rounded-md text-white flex items-center gap-2 shadow-lg"
+                           style={{ backgroundColor: '#303380' }}>
                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                         <span className="font-medium">Starting Exam...</span>
                       </div>
                     ) : (
                       <button
-                        className="px-4 py-2 text-sm rounded-md bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105"
+                        className="px-4 py-2 text-sm rounded-md text-white transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105"
+                        style={{ backgroundColor: '#303380' }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#252a6b';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = '#303380';
+                        }}
                         onClick={() => handleStart(item.id)}
                       >
                         <span className="font-medium">Start Exam</span>

@@ -12,6 +12,7 @@ import {
   Send
 } from "lucide-react";
 import Loading from "@/components/loading/Loading";
+import AudioPlayer from "@/components/audio/AudioPlayer";
 import {
   QTF,
   QMcqSingle,
@@ -277,15 +278,21 @@ export default function AttemptRunnerPage() {
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Section Tabs - Sidebar on desktop, horizontal on mobile */}
           <div className="lg:w-64 flex-shrink-0">
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sticky top-24 flex flex-col h-[calc(100vh-8rem)]">
+             <div className="rounded-xl shadow-sm border p-4 sticky top-24 flex flex-col h-[calc(100vh-8rem)]"
+                  style={{
+                    backgroundColor: 'rgba(48, 51, 128, 0.01)',
+                    borderColor: 'rgba(48, 51, 128, 0.1)'
+                  }}>
               {/* Exam Info - Top */}
               <div className="mb-4">
-                <h2 className="text-sm font-semibold text-slate-800 mb-1 truncate" title={data.examTitle}>
+                <h2 className="text-sm font-semibold mb-1 truncate" title={data.examTitle}
+                    style={{ color: 'rgba(48, 51, 128, 0.9)' }}>
                   {data.examTitle}
                 </h2>
-                <p className="text-xs text-slate-500">Exam Sections</p>
+                <p className="text-xs" style={{ color: 'rgba(48, 51, 128, 0.6)' }}>Exam Sections</p>
                 <div className="mt-2">
-                  <div className="flex justify-between text-xs text-slate-600 mb-1">
+                  <div className="flex justify-between text-xs mb-1"
+                       style={{ color: 'rgba(48, 51, 128, 0.7)' }}>
                     <span>Progress</span>
                     <span>
                       {Object.values(answers).reduce((total, sectionAnswers) => 
@@ -293,45 +300,43 @@ export default function AttemptRunnerPage() {
                       )} / {data.sections?.reduce((total, section) => total + section.questions.length, 0)} questions
                     </span>
                   </div>
-                  <div className="w-full bg-slate-200 rounded-full h-2">
-                    <div 
-                      className="bg-gradient-to-r from-purple-500 to-indigo-500 h-2 rounded-full transition-all duration-300"
-                      style={{
-                        width: `${(Object.values(answers).reduce((total, sectionAnswers) => 
-                          total + Object.keys(sectionAnswers).length, 0
-                        ) / (data.sections?.reduce((total, section) => total + section.questions.length, 0) || 1)) * 100}%`
-                      }}
-                    ></div>
-                  </div>
+                   <div className="w-full rounded-full h-2"
+                        style={{ backgroundColor: 'rgba(48, 51, 128, 0.1)' }}>
+                     <div 
+                       className="h-2 rounded-full transition-all duration-300"
+                       style={{
+                         backgroundColor: '#303380',
+                         width: `${(Object.values(answers).reduce((total, sectionAnswers) => 
+                           total + Object.keys(sectionAnswers).length, 0
+                         ) / (data.sections?.reduce((total, section) => total + section.questions.length, 0) || 1)) * 100}%`
+                       }}
+                     ></div>
+                   </div>
                 </div>
               </div>
 
-              {/* Sections List - Middle */}
-              <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100 hover:scrollbar-thumb-slate-400">
-                <style jsx>{`
-                  .scrollbar-thin {
-                    scrollbar-width: thin;
-                  }
-                  .scrollbar-thin::-webkit-scrollbar {
-                    width: 6px;
-                  }
-                  .scrollbar-thin::-webkit-scrollbar-track {
-                    background: #f1f5f9;
-                    border-radius: 3px;
-                  }
-                  .scrollbar-thin::-webkit-scrollbar-thumb {
-                    background: #cbd5e1;
-                    border-radius: 3px;
-                    transition: background 0.2s ease;
-                  }
-                  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-                    background: #94a3b8;
-                  }
-                  .scrollbar-thin::-webkit-scrollbar-thumb:active {
-                    background: #64748b;
-                  }
-                `}</style>
-                <div className="space-y-2 pr-2">
+               {/* Sections List - Middle */}
+               <div className="flex-1 overflow-y-auto custom-scrollbar">
+                 <style jsx>{`
+                   .custom-scrollbar {
+                     scrollbar-width: thin;
+                     scrollbar-color: #cbd5e1 #f1f5f9;
+                   }
+                   .custom-scrollbar::-webkit-scrollbar {
+                     width: 4px;
+                   }
+                   .custom-scrollbar::-webkit-scrollbar-track {
+                     background: transparent;
+                   }
+                   .custom-scrollbar::-webkit-scrollbar-thumb {
+                     background: #cbd5e1;
+                     border-radius: 2px;
+                   }
+                   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                     background: #94a3b8;
+                   }
+                 `}</style>
+                 <div className="space-y-2 pr-1">
                   {data.sections?.map((section) => {
                     const isActive = activeSection === section.type;
                     const isLocked = lockedSections.has(section.type);
@@ -342,11 +347,32 @@ export default function AttemptRunnerPage() {
                       <button
                         key={section.type}
                         onClick={() => setActiveSection(section.type)}
-                        className={`w-full text-left px-3 py-2.5 rounded-lg transition-all ${
-                          isActive
-                            ? "bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 text-purple-700"
-                            : "bg-slate-50 hover:bg-slate-100 border border-transparent text-slate-700"
-                        }`}
+                         className={`w-full text-left px-3 py-2.5 rounded-lg transition-all ${
+                           isActive
+                             ? "border"
+                             : "border border-transparent"
+                         }`}
+                         style={isActive ? { 
+                           backgroundColor: '#E0E1EC',
+                           borderColor: 'rgba(48, 51, 128, 0.2)',
+                           color: '#303380'
+                         } : {
+                           backgroundColor: 'rgba(48, 51, 128, 0.02)',
+                           borderColor: 'rgba(48, 51, 128, 0.1)',
+                           color: 'rgba(48, 51, 128, 0.8)'
+                         }}
+                         onMouseEnter={(e) => {
+                           if (!isActive) {
+                             e.currentTarget.style.backgroundColor = 'rgba(48, 51, 128, 0.05)';
+                             e.currentTarget.style.borderColor = 'rgba(48, 51, 128, 0.15)';
+                           }
+                         }}
+                         onMouseLeave={(e) => {
+                           if (!isActive) {
+                             e.currentTarget.style.backgroundColor = 'rgba(48, 51, 128, 0.02)';
+                             e.currentTarget.style.borderColor = 'rgba(48, 51, 128, 0.1)';
+                           }
+                         }}
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2 min-w-0">
@@ -363,9 +389,10 @@ export default function AttemptRunnerPage() {
                             <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
                           )}
                         </div>
-                        <div className="mt-1 text-xs text-slate-500">
-                          {answeredCount}/{totalCount} answered
-                        </div>
+                         <div className="mt-1 text-xs"
+                              style={{ color: 'rgba(48, 51, 128, 0.6)' }}>
+                           {answeredCount}/{totalCount} answered
+                         </div>
                       </button>
                     );
                   })}
@@ -374,11 +401,23 @@ export default function AttemptRunnerPage() {
 
               {/* Submit Button - Bottom */}
               <div className="mt-4 pt-4 border-t border-slate-200">
-                <button
-                  onClick={handleSubmit}
-                  disabled={submitting}
-                  className="w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:scale-105"
-                >
+                 <button
+                   onClick={handleSubmit}
+                   disabled={submitting}
+                   className="w-full px-4 py-3 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:scale-105"
+                   style={{
+                     backgroundColor: '#303380',
+                     ':hover': {
+                       backgroundColor: '#252a6b'
+                     }
+                   }}
+                   onMouseEnter={(e) => {
+                     e.currentTarget.style.backgroundColor = '#252a6b';
+                   }}
+                   onMouseLeave={(e) => {
+                     e.currentTarget.style.backgroundColor = '#303380';
+                   }}
+                 >
                   {submitting ? (
                     <>
                       <Loading size="sm" variant="dots" />
@@ -402,24 +441,41 @@ export default function AttemptRunnerPage() {
           <div className="flex-1">
             {currentSection && (
               <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold text-slate-900">{currentSection.title}</h2>
-                  {!lockedSections.has(currentSection.type) && (
-                    <button
-                      onClick={() => handleEndSection(currentSection.type)}
-                      className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
-                    >
+                 <div className="flex items-center justify-between mb-6">
+                   <h2 className="text-2xl font-bold text-slate-900">{currentSection.title}</h2>
+                   {!lockedSections.has(currentSection.type) && (
+                     <button
+                       onClick={() => handleEndSection(currentSection.type)}
+                       className="px-4 py-2 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                       style={{ backgroundColor: '#303380' }}
+                       onMouseEnter={(e) => {
+                         e.currentTarget.style.backgroundColor = '#252a6b';
+                       }}
+                       onMouseLeave={(e) => {
+                         e.currentTarget.style.backgroundColor = '#303380';
+                       }}
+                     >
                       <CheckCircle className="w-4 h-4" />
                       End Section
                     </button>
-                  )}
-                  {lockedSections.has(currentSection.type) && (
-                    <div className="flex items-center gap-2 text-green-700 bg-green-50 px-4 py-2 rounded-lg">
-                      <Lock className="w-4 h-4" />
-                      <span className="text-sm font-medium">Section Locked</span>
-                    </div>
-                  )}
-                </div>
+                   )}
+                   {lockedSections.has(currentSection.type) && (
+                     <div className="flex items-center gap-2 text-green-700 bg-green-50 px-4 py-2 rounded-lg">
+                       <Lock className="w-4 h-4" />
+                       <span className="text-sm font-medium">Section Locked</span>
+                     </div>
+                   )}
+                 </div>
+
+                 {/* Audio Player for Listening Section */}
+                 {currentSection.type === 'LISTENING' && (
+                   <div className="mb-6">
+                     <AudioPlayer 
+                       src="/audio/listening-sample.mp3" 
+                       className="max-w-md mx-auto"
+                     />
+                   </div>
+                 )}
 
                 <div className="space-y-6">
                   {currentSection?.questions?.map((q, idx) => {
@@ -427,27 +483,55 @@ export default function AttemptRunnerPage() {
                     const isLocked = lockedSections.has(currentSection.type);
 
                     return (
-                      <div
-                        key={q.id}
-                        className="p-5 border border-slate-200 rounded-lg hover:shadow-sm transition-shadow bg-slate-50"
-                      >
+                       <div
+                         key={q.id}
+                         className="p-5 border rounded-lg transition-all duration-200"
+                         style={{
+                           backgroundColor: 'rgba(48, 51, 128, 0.02)',
+                           borderColor: 'rgba(48, 51, 128, 0.1)'
+                         }}
+                         onMouseEnter={(e) => {
+                           e.currentTarget.style.backgroundColor = 'rgba(48, 51, 128, 0.05)';
+                           e.currentTarget.style.borderColor = 'rgba(48, 51, 128, 0.2)';
+                           e.currentTarget.style.boxShadow = '0 1px 3px rgba(48, 51, 128, 0.1)';
+                         }}
+                         onMouseLeave={(e) => {
+                           e.currentTarget.style.backgroundColor = 'rgba(48, 51, 128, 0.02)';
+                           e.currentTarget.style.borderColor = 'rgba(48, 51, 128, 0.1)';
+                           e.currentTarget.style.boxShadow = 'none';
+                         }}
+                       >
                         <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-8 h-8 bg-purple-100 text-purple-700 rounded-full flex items-center justify-center font-semibold text-sm">
-                            {idx + 1}
-                          </div>
+                           <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm"
+                                style={{ 
+                                  backgroundColor: 'rgba(48, 51, 128, 0.1)',
+                                  color: '#303380'
+                                }}>
+                             {idx + 1}
+                           </div>
                           <div className="flex-1">
                             {/* Question Prompt */}
-                            {q.prompt?.passage && (
-                              <div className="mb-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                                <p className="text-sm text-slate-700 italic">{q.prompt.passage}</p>
-                              </div>
-                            )}
-                            {q.prompt?.transcript && (
-                              <div className="mb-3 p-4 bg-green-50 border border-green-200 rounded-lg">
-                                <p className="text-xs text-green-700 font-medium mb-1">🎧 Transcript:</p>
-                                <p className="text-sm text-slate-700">{q.prompt.transcript}</p>
-                              </div>
-                            )}
+                             {q.prompt?.passage && (
+                               <div className="mb-3 p-4 rounded-lg"
+                                    style={{
+                                      backgroundColor: 'rgba(48, 51, 128, 0.05)',
+                                      borderColor: 'rgba(48, 51, 128, 0.15)',
+                                      border: '1px solid'
+                                    }}>
+                                 <p className="text-sm text-slate-700 italic">{q.prompt.passage}</p>
+                               </div>
+                             )}
+                             {q.prompt?.transcript && (
+                               <div className="mb-3 p-4 rounded-lg"
+                                    style={{
+                                      backgroundColor: 'rgba(48, 51, 128, 0.05)',
+                                      borderColor: 'rgba(48, 51, 128, 0.15)',
+                                      border: '1px solid'
+                                    }}>
+                                 <p className="text-xs font-medium mb-1" style={{ color: '#303380' }}>🎧 Transcript:</p>
+                                 <p className="text-sm text-slate-700">{q.prompt.transcript}</p>
+                               </div>
+                             )}
                             <p className="text-slate-900 font-medium mb-3">
                               {q.prompt?.text || "Question"}
                             </p>
