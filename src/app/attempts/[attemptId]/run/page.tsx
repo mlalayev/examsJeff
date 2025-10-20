@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import Loading from "@/components/loading/Loading";
 import AudioPlayer from "@/components/audio/AudioPlayer";
+import QDndGroup from "@/components/questions/QDndGroup";
 import {
   QTF,
   QMcqSingle,
@@ -187,6 +188,14 @@ export default function AttemptRunnerPage() {
       case "SELECT":
         return <QSelect {...props} />;
       case "GAP":
+        // For gap_fill_verbs type questions, use QOpenText instead of QGap
+        if (q.prompt?.text && q.prompt.text.includes('(') && q.prompt.text.includes(')')) {
+          return <QOpenText {...props} />;
+        }
+        // For preposition/time expression questions, use QDndGap
+        if (q.prompt?.text && (q.prompt.text.includes('preposition') || q.prompt.text.includes('time expression') || q.prompt.text.includes('________'))) {
+          return <QDndGap {...props} />;
+        }
         return <QGap {...props} />;
       case "ORDER_SENTENCE":
         return <QOrderSentence {...props} />;
@@ -472,7 +481,18 @@ export default function AttemptRunnerPage() {
                    </div>
                  )}
 
-                 <div className="space-y-6">
+                 {/* Grouped DnD for preposition/time expression parts */}
+                 {currentSection?.title?.toLowerCase().includes("preposition") || currentSection?.title?.toLowerCase().includes("time expression") ? (
+                   <div className="space-y-6">
+                     <QDndGroup
+                       questions={currentSection.questions}
+                       values={answers[currentSection.type] || {}}
+                       onChange={(qid, v) => setAnswer(currentSection.type, qid, v)}
+                       readOnly={lockedSections.has(currentSection.type)}
+                     />
+                   </div>
+                 ) : (
+                   <div className="space-y-6">
                    {currentSection?.questions?.map((q, idx) => {
                      const value = answers[currentSection.type]?.[q.id];
                      const isLocked = lockedSections.has(currentSection.type);
@@ -527,9 +547,19 @@ export default function AttemptRunnerPage() {
                                  <p className="text-sm text-slate-700">{q.prompt.transcript}</p>
                                </div>
                              )}
-                             <p className="text-slate-900 font-medium mb-3">
-                               {q.prompt?.text || "Question"}
-                             </p>
+                            {(() => {
+                              const isPrepositionDnD =
+                                q.qtype === "GAP" &&
+                                typeof q.prompt?.text === "string" &&
+                                q.prompt.text.includes("________");
+                              // Hide prompt text when the GAP is rendered via drag-and-drop so sentence is not duplicated
+                              if (isPrepositionDnD) return null;
+                              return (
+                                <p className="text-slate-900 font-medium mb-3">
+                                  {q.prompt?.text || "Question"}
+                                </p>
+                              );
+                            })()}
 
                              {/* Question Component */}
                              {renderQuestionComponent(
@@ -545,6 +575,7 @@ export default function AttemptRunnerPage() {
                     );
                   })}
                 </div>
+                )}
               </div>
             )}
           </div>

@@ -2,17 +2,27 @@
 
 import { BaseQuestionProps } from "./types";
 
-export function QOpenText({ question, value, onChange, readOnly }: BaseQuestionProps<string>) {
+export function QOpenText({ question, value, onChange, readOnly }: BaseQuestionProps<string | Record<string, string>>) {
+  // Handle both string and Record<string, string> values for GAP compatibility
+  const currentValue = typeof value === 'string' ? value : (value?.['0'] || '');
+  
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (readOnly) return;
-    onChange(e.target.value);
+    const newValue = e.target.value;
+    
+    // If question is GAP type, store as Record<string, string>
+    if (question.qtype === 'GAP') {
+      onChange({ '0': newValue });
+    } else {
+      onChange(newValue);
+    }
   };
 
   return (
     <div className="space-y-3">
       <input
         type="text"
-        value={value || ""}
+        value={currentValue}
         onChange={handleChange}
         disabled={readOnly}
         className="w-full px-4 py-3 border rounded-lg text-sm focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
