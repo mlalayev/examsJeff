@@ -10,7 +10,8 @@ import {
   Loader2,
   BarChart3,
   Eye,
-  Lock
+  Lock,
+  X
 } from "lucide-react";
 import Loading from "@/components/loading/Loading";
 
@@ -62,6 +63,8 @@ export default function AttemptResultsPage() {
   const [data, setData] = useState<ResultsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  const [selectedSection, setSelectedSection] = useState<any>(null);
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     fetchResults();
@@ -92,6 +95,18 @@ export default function AttemptResultsPage() {
       }
       return next;
     });
+  };
+
+  const openSectionModal = (section: any) => {
+    if (data.role === "TEACHER") {
+      setSelectedSection(section);
+      setShowModal(true);
+    }
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setSelectedSection(null);
   };
 
   const formatAnswer = (qtype: string, answer: any, options: any): string => {
@@ -141,190 +156,284 @@ export default function AttemptResultsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      {/* Header */}
-      <div className="bg-white border-b border-slate-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div className="min-h-screen" style={{ backgroundColor: 'rgba(48, 51, 128, 0.02)' }}>
+      {/* Minimal Header */}
+      <div className="border-b" style={{ borderColor: 'rgba(48, 51, 128, 0.1)' }}>
+        <div className="max-w-4xl mx-auto px-4 py-4">
           <button
             onClick={() => router.back()}
-            className="flex items-center gap-2 text-slate-600 hover:text-slate-900 mb-4 transition-colors"
+            className="flex items-center gap-2 text-sm mb-4 transition-colors"
+            style={{ color: 'rgba(48, 51, 128, 0.7)' }}
+            onMouseEnter={(e) => e.currentTarget.style.color = '#303380'}
+            onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(48, 51, 128, 0.7)'}
           >
             <ArrowLeft className="w-4 h-4" />
             Back
           </button>
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900">{data.examTitle}</h1>
-              <p className="text-slate-600 mt-1">Results for {data.studentName}</p>
-              <p className="text-sm text-slate-500 mt-1">
-                Submitted: {new Date(data.submittedAt).toLocaleString()}
+            <div className="flex items-center gap-4">
+              <h1 className="text-2xl font-semibold" style={{ color: '#303380' }}>{data.examTitle}</h1>
+              <p className="text-sm" style={{ color: 'rgba(48, 51, 128, 0.6)' }}>
+                {new Date(data.submittedAt).toLocaleDateString()}
               </p>
             </div>
-            <div className="text-right">
-              <div className="inline-flex items-center gap-3 px-6 py-4 bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-200 rounded-xl">
-                <Award className="w-8 h-8 text-purple-600" />
-                <div>
-                  <div className="text-sm text-slate-600">Overall Score</div>
-                  <div className="text-3xl font-bold text-purple-700">
-                    {data.summary.totalPercentage}%
-                  </div>
-                  <div className="text-xs text-slate-500 mt-1">
-                    {data.summary.totalCorrect} / {data.summary.totalQuestions} correct
-                  </div>
-                </div>
+            {data.role === "TEACHER" && (
+              <div className="text-sm" style={{ color: 'rgba(48, 51, 128, 0.6)' }}>
+                {data.studentName}
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Per-Section Summary */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-          {(data.summary.perSection || data.sections)?.map((section, index) => (
-            <div
-              key={`${section.type}-${index}`}
-              className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold text-slate-900">{section.title}</h3>
-                <BarChart3 className="w-5 h-5 text-slate-400" />
-              </div>
-              <div className="flex items-end gap-2">
-                <div className="text-3xl font-bold text-slate-900">{section.percentage}%</div>
-                <div className="text-sm text-slate-500 mb-1">
-                  {section.correct} / {section.total}
-                </div>
-              </div>
-              <div className="mt-3 h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 transition-all duration-500"
-                  style={{ width: `${section.percentage}%` }}
-                ></div>
+      <div className="max-w-4xl mx-auto px-4 py-6">
+        {/* Progress Bar */}
+        <div className="mb-8">
+          <div className="flex justify-between text-sm mb-2" style={{ color: 'rgba(48, 51, 128, 0.7)' }}>
+            <span>Overall Progress</span>
+            <div className="text-right">
+              <div className="font-semibold" style={{ color: '#303380' }}>{data.summary.totalPercentage}%</div>
+              <div className="text-xs" style={{ color: 'rgba(48, 51, 128, 0.6)' }}>
+                {data.summary.totalCorrect} / {data.summary.totalQuestions} correct
               </div>
             </div>
-          ))}
+          </div>
+          <div className="relative w-full rounded-full h-2" style={{ backgroundColor: 'rgba(48, 51, 128, 0.1)' }}>
+            <div
+              className="h-2 rounded-full transition-all duration-500"
+              style={{
+                backgroundColor: '#303380',
+                width: `${data.summary.totalPercentage}%`
+              }}
+            ></div>
+            
+            {/* 75% Pass Mark Indicator */}
+            <div 
+              className="absolute top-0 h-2 w-0.5"
+              style={{ 
+                left: '75%',
+                backgroundColor: 'rgba(34, 197, 94, 0.8)',
+                transform: 'translateX(-50%)'
+              }}
+            ></div>
+            <div 
+              className="absolute top-3 left-1/2 transform -translate-x-1/2 text-xs font-medium"
+              style={{ 
+                color: 'rgba(34, 197, 94, 0.8)',
+                left: '75%'
+              }}
+            >
+              75% (passed)
+            </div>
+          </div>
         </div>
 
-        {/* STUDENT VIEW: Limited info */}
+        {/* Section Results Grid */}
+        <div className="space-y-4">
+          <h2 className="text-lg font-medium mb-4" style={{ color: '#303380' }}>Section Results</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {(data.summary.perSection || data.sections)?.map((section, index) => (
+              <div
+                key={`${section.type}-${index}`}
+                className="bg-white border rounded-lg p-4 cursor-pointer hover:shadow-md transition-all"
+                style={{
+                  borderColor: 'rgba(48, 51, 128, 0.1)',
+                  backgroundColor: 'rgba(48, 51, 128, 0.01)'
+                }}
+                onClick={() => openSectionModal(section)}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(48, 51, 128, 0.05)';
+                  e.currentTarget.style.borderColor = 'rgba(48, 51, 128, 0.2)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(48, 51, 128, 0.01)';
+                  e.currentTarget.style.borderColor = 'rgba(48, 51, 128, 0.1)';
+                }}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-medium text-sm" style={{ color: '#303380' }}>{section.title}</h3>
+                  <div className="text-right">
+                    <div className="text-xl font-semibold" style={{ color: '#303380' }}>
+                      {section.percentage}%
+                    </div>
+                    <div className="text-xs" style={{ color: 'rgba(48, 51, 128, 0.6)' }}>
+                      {section.correct} / {section.total}
+                    </div>
+                  </div>
+                </div>
+                <div className="w-full rounded-full h-2" style={{ backgroundColor: 'rgba(48, 51, 128, 0.1)' }}>
+                  <div
+                    className="h-2 rounded-full transition-all duration-500"
+                    style={{
+                      backgroundColor: '#303380',
+                      width: `${section.percentage}%`
+                    }}
+                  ></div>
+                </div>
+                {data.role === "TEACHER" && (
+                  <p className="text-xs mt-2" style={{ color: 'rgba(48, 51, 128, 0.6)' }}>
+                    Click to view questions
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* STUDENT VIEW: Minimal info */}
         {data.role === "STUDENT" && (
-          <div className="bg-white border border-slate-200 rounded-xl p-6">
-            <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <Lock className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+          <div className="mt-8 p-4 border rounded-lg" style={{ 
+            backgroundColor: 'rgba(48, 51, 128, 0.05)',
+            borderColor: 'rgba(48, 51, 128, 0.15)'
+          }}>
+            <div className="flex items-start gap-3">
+              <Lock className="w-4 h-4 mt-0.5" style={{ color: 'rgba(48, 51, 128, 0.7)' }} />
               <div>
-                <h4 className="font-semibold text-blue-900">Review Restricted</h4>
-                <p className="text-sm text-blue-700 mt-1">
-                  For privacy and academic integrity, detailed question-by-question review is not available.
-                  Your teacher has access to the full review and can discuss specific questions with you.
+                <h4 className="font-medium text-sm" style={{ color: '#303380' }}>Review Restricted</h4>
+                <p className="text-xs mt-1" style={{ color: 'rgba(48, 51, 128, 0.6)' }}>
+                  Detailed review is not available. Contact your teacher for specific feedback.
                 </p>
               </div>
             </div>
           </div>
         )}
 
-        {/* TEACHER VIEW: Full review */}
-        {data.role === "TEACHER" && data.sections && (
-          <div className="space-y-6">
-            <div className="flex items-center gap-2 text-sm text-slate-600">
-              <Eye className="w-4 h-4" />
-              <span>Full review mode (Teacher)</span>
+      </div>
+
+      {/* Modal for Section Questions */}
+      {showModal && selectedSection && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'rgba(48, 51, 128, 0.1)' }}>
+              <h3 className="text-lg font-semibold" style={{ color: '#303380' }}>
+                {selectedSection.title} - Questions Review
+              </h3>
+              <button
+                onClick={closeModal}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5" style={{ color: 'rgba(48, 51, 128, 0.6)' }} />
+              </button>
             </div>
+            
+            <div className="p-4 overflow-y-auto max-h-[calc(90vh-80px)]">
+              <div className="mb-4 p-3 rounded-lg" style={{ backgroundColor: 'rgba(48, 51, 128, 0.05)' }}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-medium" style={{ color: '#303380' }}>Section Performance</span>
+                  <span className="text-lg font-semibold" style={{ color: '#303380' }}>
+                    {selectedSection.percentage}%
+                  </span>
+                </div>
+                <div className="w-full rounded-full h-2" style={{ backgroundColor: 'rgba(48, 51, 128, 0.1)' }}>
+                  <div
+                    className="h-2 rounded-full transition-all duration-500"
+                    style={{
+                      backgroundColor: '#303380',
+                      width: `${selectedSection.percentage}%`
+                    }}
+                  ></div>
+                </div>
+                <p className="text-sm mt-2" style={{ color: 'rgba(48, 51, 128, 0.6)' }}>
+                  {selectedSection.correct} out of {selectedSection.total} questions correct
+                </p>
+              </div>
 
-            {data.sections.map((section, index) => {
-              const sectionKey = `${section.type}-${index}`;
-              return (
-              <div key={sectionKey} className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-                <button
-                  onClick={() => toggleSection(sectionKey)}
-                  className="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <h3 className="text-lg font-semibold text-slate-900">{section.title}</h3>
-                    <span className="px-3 py-1 bg-purple-50 text-purple-700 text-sm font-medium rounded-full">
-                      {section.correct} / {section.total} correct
-                    </span>
-                  </div>
-                  <div className="text-slate-400">
-                    {expandedSections.has(sectionKey) ? "▼" : "▶"}
-                  </div>
-                </button>
+              <div className="space-y-4">
+                {data.sections && data.sections.find(s => s.type === selectedSection.type)?.questions.map((q, idx) => (
+                  <div
+                    key={q.id}
+                    className="p-4 border rounded-lg"
+                    style={{
+                      borderColor: q.isCorrect ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                      backgroundColor: q.isCorrect ? 'rgba(34, 197, 94, 0.05)' : 'rgba(239, 68, 68, 0.05)'
+                    }}
+                  >
+                    <div className="flex items-start gap-3">
+                      {q.isCorrect ? (
+                        <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                      ) : (
+                        <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                      )}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="font-semibold" style={{ color: '#303380' }}>
+                            Q{idx + 1}
+                          </span>
+                          <span className="text-xs px-2 py-1 rounded" style={{ 
+                            backgroundColor: 'rgba(48, 51, 128, 0.1)',
+                            color: 'rgba(48, 51, 128, 0.7)'
+                          }}>
+                            {q.qtype}
+                          </span>
+                        </div>
 
-                {expandedSections.has(sectionKey) && (
-                  <div className="px-6 pb-6 space-y-4">
-                    {section.questions.map((q, idx) => (
-                      <div
-                        key={q.id}
-                        className={`p-5 border-2 rounded-lg ${
-                          q.isCorrect
-                            ? "border-green-200 bg-green-50"
-                            : "border-red-200 bg-red-50"
-                        }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          {q.isCorrect ? (
-                            <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0" />
-                          ) : (
-                            <XCircle className="w-6 h-6 text-red-600 flex-shrink-0" />
-                          )}
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className="font-semibold text-slate-900">Q{idx + 1}</span>
-                              <span className="px-2 py-0.5 bg-slate-200 text-slate-700 text-xs rounded">
-                                {q.qtype}
-                              </span>
-                            </div>
-
-                            {/* Question Prompt */}
-                            {q.prompt?.passage && (
-                              <div className="mb-2 p-3 bg-white border border-slate-200 rounded-lg">
-                                <p className="text-sm text-slate-700 italic">{q.prompt.passage}</p>
-                              </div>
-                            )}
-                            {q.prompt?.transcript && (
-                              <div className="mb-2 p-3 bg-white border border-slate-200 rounded-lg">
-                                <p className="text-xs text-green-700 font-medium mb-1">🎧 Transcript:</p>
-                                <p className="text-sm text-slate-700">{q.prompt.transcript}</p>
-                              </div>
-                            )}
-                            <p className="font-medium text-slate-900 mb-3">
-                              {q.prompt?.text || "Question"}
+                        {/* Question Prompt */}
+                        {q.prompt?.passage && (
+                          <div className="mb-3 p-3 border rounded-lg" style={{
+                            backgroundColor: 'rgba(48, 51, 128, 0.02)',
+                            borderColor: 'rgba(48, 51, 128, 0.1)'
+                          }}>
+                            <p className="text-sm italic" style={{ color: 'rgba(48, 51, 128, 0.7)' }}>
+                              {q.prompt.passage}
                             </p>
-
-                            {/* Answers */}
-                            <div className="space-y-2">
-                              <div>
-                                <span className="text-xs font-medium text-slate-600 uppercase">Your Answer:</span>
-                                <p className="text-sm text-slate-900 mt-1">
-                                  {formatAnswer(q.qtype, q.studentAnswer, q.options)}
-                                </p>
-                              </div>
-                              <div>
-                                <span className="text-xs font-medium text-slate-600 uppercase">Correct Answer:</span>
-                                <p className="text-sm text-green-700 font-medium mt-1">
-                                  {formatAnswer(q.qtype, q.correctAnswer?.value ?? q.correctAnswer?.index ?? q.correctAnswer?.indices ?? q.correctAnswer?.answers?.[0] ?? q.correctAnswer?.order ?? q.correctAnswer?.blanks, q.options)}
-                                </p>
-                              </div>
-                              {q.explanation && (
-                                <div className="mt-3 p-3 bg-white border border-slate-200 rounded-lg">
-                                  <span className="text-xs font-medium text-slate-600 uppercase">Explanation:</span>
-                                  <p className="text-sm text-slate-700 mt-1">
-                                    {q.explanation.text || JSON.stringify(q.explanation)}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
                           </div>
+                        )}
+                        {q.prompt?.transcript && (
+                          <div className="mb-3 p-3 border rounded-lg" style={{
+                            backgroundColor: 'rgba(48, 51, 128, 0.02)',
+                            borderColor: 'rgba(48, 51, 128, 0.1)'
+                          }}>
+                            <p className="text-xs font-medium mb-1" style={{ color: 'rgba(48, 51, 128, 0.8)' }}>🎧 Transcript:</p>
+                            <p className="text-sm" style={{ color: 'rgba(48, 51, 128, 0.7)' }}>
+                              {q.prompt.transcript}
+                            </p>
+                          </div>
+                        )}
+                        <p className="font-medium mb-3" style={{ color: '#303380' }}>
+                          {q.prompt?.text || "Question"}
+                        </p>
+
+                        {/* Answers */}
+                        <div className="space-y-2">
+                          <div>
+                            <span className="text-xs font-medium uppercase" style={{ color: 'rgba(48, 51, 128, 0.6)' }}>
+                              Student Answer:
+                            </span>
+                            <p className="text-sm mt-1" style={{ color: 'rgba(48, 51, 128, 0.8)' }}>
+                              {formatAnswer(q.qtype, q.studentAnswer, q.options)}
+                            </p>
+                          </div>
+                          <div>
+                            <span className="text-xs font-medium uppercase" style={{ color: 'rgba(48, 51, 128, 0.6)' }}>
+                              Correct Answer:
+                            </span>
+                            <p className="text-sm font-medium mt-1" style={{ color: '#303380' }}>
+                              {formatAnswer(q.qtype, q.correctAnswer?.value ?? q.correctAnswer?.index ?? q.correctAnswer?.indices ?? q.correctAnswer?.answers?.[0] ?? q.correctAnswer?.order ?? q.correctAnswer?.blanks, q.options)}
+                            </p>
+                          </div>
+                          {q.explanation && (
+                            <div className="mt-3 p-3 border rounded-lg" style={{
+                              backgroundColor: 'rgba(48, 51, 128, 0.02)',
+                              borderColor: 'rgba(48, 51, 128, 0.1)'
+                            }}>
+                              <span className="text-xs font-medium uppercase" style={{ color: 'rgba(48, 51, 128, 0.6)' }}>
+                                Explanation:
+                              </span>
+                              <p className="text-sm mt-1" style={{ color: 'rgba(48, 51, 128, 0.7)' }}>
+                                {q.explanation.text || JSON.stringify(q.explanation)}
+                              </p>
+                            </div>
+                          )}
                         </div>
                       </div>
-                    ))}
+                    </div>
                   </div>
-                )}
+                ))}
               </div>
-              );
-            })}
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

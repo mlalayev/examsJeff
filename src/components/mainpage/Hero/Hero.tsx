@@ -12,17 +12,17 @@ export default function Hero() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
           <div>
             <h1 className="text-3xl md:text-5xl font-bold text-gray-900 leading-tight">
-              Take Real Mock Exams for IELTS, TOEFL & SAT — Anytime, Anywhere.
+              Jeff.az - Your Complete Exam Preparation Portal
             </h1>
             <p className="mt-4 text-lg text-gray-600 max-w-2xl">
-              Simulate the real exam environment, get instant results and teacher feedback.
+              Practice with real mock exams for IELTS, TOEFL, SAT, Duolingo, General English, and Math. Get instant results and detailed feedback.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/reading" className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700">
-                Start Free Mock
+              <Link href="/dashboard/student/exams" className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700">
+                Start Practice
                 <ArrowRight className="w-4 h-4" />
               </Link>
-              <Link href="/teachers" className="inline-flex items-center gap-2 bg-white text-gray-900 px-6 py-3 rounded-lg font-medium border border-gray-300 hover:bg-gray-50">
+              <Link href="/dashboard/teacher/classes" className="inline-flex items-center gap-2 bg-white text-gray-900 px-6 py-3 rounded-lg font-medium border border-gray-300 hover:bg-gray-50">
                 For Teachers
               </Link>
             </div>

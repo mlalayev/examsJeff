@@ -203,6 +203,7 @@ model Attempt {
   startedAt    DateTime?
   submittedAt  DateTime?
   bandOverall  Float?
+  answers      Json?       // For JSON-based exams (stores all answers)
   createdAt    DateTime    @default(now())
 
   sections AttemptSection[]

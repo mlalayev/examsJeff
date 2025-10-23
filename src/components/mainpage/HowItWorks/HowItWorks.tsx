@@ -4,10 +4,10 @@ import styles from './HowItWorks.module.css';
 
 export default function HowItWorks() {
   const steps = [
-    { step: '1️⃣', title: 'Choose your exam', desc: 'IELTS, TOEFL, SAT — more coming soon' },
-    { step: '2️⃣', title: 'Set your schedule', desc: 'Pick date/time and exam sections' },
-    { step: '3️⃣', title: 'Take the test', desc: 'Real exam environment with timer & autosave' },
-    { step: '4️⃣', title: 'Get feedback & improve', desc: 'Instant scoring + teacher feedback' },
+    { step: '1️⃣', title: 'Choose your exam', desc: 'IELTS, TOEFL, SAT, Duolingo, General English, Math' },
+    { step: '2️⃣', title: 'Start practice', desc: 'Take assigned exams or browse available tests' },
+    { step: '3️⃣', title: 'Complete the test', desc: 'Real exam environment with timer & autosave' },
+    { step: '4️⃣', title: 'Review results', desc: 'Instant scoring + detailed feedback and explanations' },
   ];
 
   return (

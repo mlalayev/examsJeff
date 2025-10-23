@@ -5,6 +5,27 @@
 import { QuestionType } from "@prisma/client";
 
 /**
+ * Normalize text for comparison (removes punctuation, extra spaces, converts to lowercase)
+ * Examples:
+ * - "was" → "was"
+ * - "wAs" → "was"
+ * - "/was" → "was"
+ * - "was." → "was"
+ * - "   was" → "was"
+ * - "is not" / "isn't" → "isnot"
+ */
+function normalizeText(text: string): string {
+  return text
+    .trim()
+    .toLowerCase()
+    // Remove common punctuation: . , ! ? / \ - _ : ; " ' ( )
+    .replace(/[.,!?\\/\-_:;"'()]/g, "")
+    // Replace multiple spaces with single space
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
  * Auto-scoring function for question types
  * Returns 1 for correct, 0 for incorrect
  * 
@@ -44,13 +65,23 @@ export function scoreQuestion(qtype: QuestionType, studentAnswer: any, answerKey
       return studentAnswer === correctIdx ? 1 : 0;
     }
     case "GAP": {
-      // Normalize (trim, lower); any-of answerKey.answers
+      // Normalize (trim, lower, remove punctuation); any-of answerKey.answers
       const acceptedAnswers = answerKey?.answers || [];
-      if (typeof studentAnswer !== "string") return 0;
-      const normalized = studentAnswer.trim().toLowerCase();
+      
+      // Handle both string and Record<string, string> formats
+      let studentText = "";
+      if (typeof studentAnswer === "string") {
+        studentText = studentAnswer;
+      } else if (typeof studentAnswer === "object" && studentAnswer !== null) {
+        // Handle { '0': 'answer' } format from QOpenText
+        studentText = studentAnswer['0'] || "";
+      }
+      
+      if (!studentText) return 0;
+      const normalized = normalizeText(studentText);
       return acceptedAnswers.some((a: string) => {
         if (typeof a !== "string") return false;
-        return a.trim().toLowerCase() === normalized;
+        return normalizeText(a) === normalized;
       }) ? 1 : 0;
     }
     case "ORDER_SENTENCE": {
@@ -61,13 +92,13 @@ export function scoreQuestion(qtype: QuestionType, studentAnswer: any, answerKey
       return studentAnswer.every((v, i) => v === correctOrder[i]) ? 1 : 0;
     }
     case "DND_GAP": {
-      // Each blank: filled === answerKey.blanks[i] (normalize lower-trim)
+      // Each blank: filled === answerKey.blanks[i] (normalize with punctuation removal)
       const correctBlanks = answerKey?.blanks || [];
       if (!Array.isArray(studentAnswer)) return 0;
       if (studentAnswer.length !== correctBlanks.length) return 0;
       return studentAnswer.every((v, i) => {
         if (typeof v !== "string" || typeof correctBlanks[i] !== "string") return false;
-        return v.trim().toLowerCase() === correctBlanks[i].trim().toLowerCase();
+        return normalizeText(v) === normalizeText(correctBlanks[i]);
       }) ? 1 : 0;
     }
     // Writing types (no autoscore)

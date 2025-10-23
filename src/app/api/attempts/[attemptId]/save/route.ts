@@ -66,9 +66,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
+    const stack = error instanceof Error ? error.stack : "";
     const isForbidden = message.toLowerCase().includes("forbidden") || message.toLowerCase().includes("unauthorized");
     if (isForbidden) return NextResponse.json({ error: message }, { status: 403 });
-    console.error("Save attempt answers error:", error);
-    return NextResponse.json({ error: "Failed to save answers" }, { status: 500 });
+    console.error("Save attempt answers error:", { error, message, stack });
+    return NextResponse.json({ error: `Failed to save answers: ${message}` }, { status: 500 });
   }
 }

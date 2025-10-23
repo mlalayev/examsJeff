@@ -5,12 +5,12 @@ import { Brain, Timer, LineChart, Users2, GraduationCap } from 'lucide-react';
 
 export default function Features() {
   const features = [
-    { icon: <Timer className="w-5 h-5 text-blue-600" />, title: 'Auto-Scoring', desc: 'Reading/Listening automatic scoring' },
-    { icon: <Timer className="w-5 h-5 text-indigo-600" />, title: 'Real-time Timer & Autosave', desc: 'Never lose progress' },
-    { icon: <Brain className="w-5 h-5 text-purple-600" />, title: 'AI + Teacher Grading', desc: 'Writing/Speaking dual review' },
-    { icon: <LineChart className="w-5 h-5 text-emerald-600" />, title: 'Progress & Analytics', desc: 'Track band/score growth' },
-    { icon: <Users2 className="w-5 h-5 text-orange-600" />, title: 'Multi-Exam Dashboard', desc: 'One place for all exams' },
-    { icon: <GraduationCap className="w-5 h-5 text-rose-600" />, title: 'Teacher Classrooms', desc: 'Assign mocks, export reports' },
+    { icon: <Timer className="w-5 h-5 text-blue-600" />, title: 'Multiple Exam Types', desc: 'IELTS, TOEFL, SAT, Duolingo, General English, Math' },
+    { icon: <Brain className="w-5 h-5 text-indigo-600" />, title: 'Instant Auto-Scoring', desc: 'Get immediate results for objective questions' },
+    { icon: <LineChart className="w-5 h-5 text-purple-600" />, title: 'Progress Tracking', desc: 'Monitor your improvement over time' },
+    { icon: <Users2 className="w-5 h-5 text-emerald-600" />, title: 'Teacher Feedback', desc: 'Detailed feedback on writing and speaking tasks' },
+    { icon: <GraduationCap className="w-5 h-5 text-orange-600" />, title: 'Real Exam Conditions', desc: 'Practice under authentic test conditions' },
+    { icon: <Timer className="w-5 h-5 text-rose-600" />, title: 'Flexible Scheduling', desc: 'Take exams anytime, anywhere' },
   ];
 
   return (

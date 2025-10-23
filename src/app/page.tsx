@@ -21,7 +21,6 @@ import HowItWorks from "@/components/mainpage/HowItWorks/HowItWorks";
 import Features from "@/components/mainpage/Features/Features";
 import ForTeachers from "@/components/mainpage/ForTeachers/ForTeachers";
 import Testimonials from "@/components/mainpage/Testimonials/Testimonials";
-import Pricing from "@/components/mainpage/Pricing/Pricing";
 import FAQ from "@/components/mainpage/FAQ/FAQ";
 import Footer from "@/components/mainpage/Footer/Footer";
 
@@ -37,7 +36,6 @@ export default function Home() {
       <Features />
       <ForTeachers />
       <Testimonials />
-      <Pricing />
       <FAQ />
       <Footer />
     </div>
