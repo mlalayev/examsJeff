@@ -255,7 +255,11 @@ export default function StudentResultsPage({ params }: { params: { attemptId: st
                                   .trim()
                                   .replace(/^./, (str) => str.toUpperCase())}
                               </p>
-                              <p className="text-xl font-bold text-blue-600">{value}</p>
+                              <p className="text-xl font-bold text-blue-600">
+                                {typeof value === "string" || typeof value === "number"
+                                  ? value
+                                  : JSON.stringify(value)}
+                              </p>
                             </div>
                           ))}
                         </div>

@@ -274,17 +274,9 @@ function transformItem(item: any, partType: string, order: number, passage?: str
     };
   }
   
-  if (partType === "multiple_choice" || item.choices) {
-    return {
-      ...base,
-      qtype: "MCQ_SINGLE",
-      prompt: { text: item.prompt, passage },
-      options: { choices: item.choices },
-      answerKey: { index: item.answer },
-    };
-  }
-  
   // Handle gap_fill_options - uses inline select (for questions with options provided or verb questions)
+  // Check this FIRST to avoid confusion with multiple_choice
+  // For gap_fill_options, we use "options" field, NOT "choices"
   if (partType === "gap_fill_options" || partType === "gap_fill_verbs" || partType === "short_answer") {
     const promptText = item.prompt || '';
     
@@ -422,9 +414,12 @@ function transformItem(item: any, partType: string, order: number, passage?: str
                               promptText.toLowerCase().includes('time expression');
     
     // Check if this is short answers question (am/is/are)
+    // Pattern: "Yes, I ___" or "No, he ___" or similar short answer patterns
+    const shortAnswerPattern = /(yes|no),\s+(i|you|he|she|it|we|they)\s+_+/i;
     const isShortAnswers = partTitle?.toLowerCase().includes('short answer') ||
                            partTitle?.toLowerCase().includes('am / is / are') ||
-                           (promptText.toLowerCase().includes('yes') && promptText.toLowerCase().includes('no'));
+                           partTitle?.toLowerCase().includes("'to be'") ||
+                           shortAnswerPattern.test(promptText);
     
     if (isPrepositionTime) {
       // Generate word bank with prepositions/time expressions
@@ -487,6 +482,21 @@ function transformItem(item: any, partType: string, order: number, passage?: str
       prompt: { text: item.prompt, passage },
       answerKey: { answers: answers },
     };
+  }
+  
+  // Handle multiple_choice - supports both "choices" and "options" fields for backward compatibility
+  if (partType === "multiple_choice" || item.choices || (item.options && partType !== "gap_fill_options")) {
+    // Check both choices and options fields (options only if not gap_fill_options)
+    const choices = item.choices || (item.options && partType !== "gap_fill_options" ? item.options : null);
+    if (choices && Array.isArray(choices)) {
+      return {
+        ...base,
+        qtype: "MCQ_SINGLE",
+        prompt: { text: item.prompt, passage },
+        options: { choices: choices },
+        answerKey: { index: item.answer },
+      };
+    }
   }
   
   return {

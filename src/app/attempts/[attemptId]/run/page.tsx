@@ -511,17 +511,25 @@ export default function AttemptRunnerPage() {
                    </div>
                  )}
 
-                 {/* Grouped DnD for preposition/time expression parts */}
-                 {currentSection?.title?.toLowerCase().includes("preposition") || currentSection?.title?.toLowerCase().includes("time expression") ? (
-                   <div className="space-y-5">
-                     <QDndGroup
-                       questions={currentSection.questions}
-                       values={answers[currentSection.type] || {}}
-                       onChange={(qid, v) => setAnswer(currentSection.type, qid, v)}
-                       readOnly={lockedSections.has(currentSection.type)}
-                     />
-                   </div>
-                 ) : (
+                {/* Grouped DnD for preposition/time expression and short answer parts */}
+                {currentSection?.title?.toLowerCase().includes("preposition") || 
+                 currentSection?.title?.toLowerCase().includes("time expression") ||
+                 currentSection?.title?.toLowerCase().includes("short form") ||
+                 currentSection?.title?.toLowerCase().includes("'to be'") ? (
+                  <div className="bg-white rounded-xl border shadow-sm transition-all duration-200 hover:shadow-md"
+                       style={{
+                         borderColor: 'rgba(15, 17, 80, 0.63)'
+                       }}>
+                    <div className="p-6">
+                      <QDndGroup
+                        questions={currentSection.questions}
+                        values={answers[currentSection.type] || {}}
+                        onChange={(qid, v) => setAnswer(currentSection.type, qid, v)}
+                        readOnly={lockedSections.has(currentSection.type)}
+                      />
+                    </div>
+                  </div>
+                ) : (
                    <div className="space-y-5">
                    {currentSection?.questions?.map((q, idx) => {
                      const value = answers[currentSection.type]?.[q.id];
@@ -532,7 +540,7 @@ export default function AttemptRunnerPage() {
                          key={q.id}
                          className="bg-white rounded-xl border shadow-sm transition-all duration-200 hover:shadow-md"
                          style={{
-                           borderColor: 'rgba(48, 51, 128, 0.12)'
+                           borderColor: 'rgba(15, 17, 80, 0.63)'
                          }}
                        >
                          <div className="p-6">
@@ -561,7 +569,7 @@ export default function AttemptRunnerPage() {
                            {q.qtype === "INLINE_SELECT" || q.qtype === "MCQ_SINGLE" || q.qtype === "DND_GAP" ? (
                              <>
                                {/* Number and question text in same div with items-center */}
-                               <div className="flex items-center gap-4 mb-4">
+                               <div className="flex items-center gap-4">
                                  <div className="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm shadow-sm"
                                       style={{ 
                                         backgroundColor: '#303380',
@@ -584,17 +592,17 @@ export default function AttemptRunnerPage() {
                                    )}
                                  </div>
                                </div>
-                               {/* Options in separate div for MCQ_SINGLE */}
-                               {q.qtype === "MCQ_SINGLE" && (
-                                 <div>
-                                   {renderQuestionComponent(
-                                     q,
-                                     value,
-                                     (v) => setAnswer(currentSection.type, q.id, v),
-                                     isLocked
-                                   )}
-                                 </div>
-                               )}
+                              {/* Options in separate div for MCQ_SINGLE */}
+                              {q.qtype === "MCQ_SINGLE" && (
+                                <div className="mt-3">
+                                  {renderQuestionComponent(
+                                    q,
+                                    value,
+                                    (v) => setAnswer(currentSection.type, q.id, v),
+                                    isLocked
+                                  )}
+                                </div>
+                              )}
                              </>
                            ) : (
                              <div className="flex items-start gap-4 mb-4">
@@ -608,10 +616,10 @@ export default function AttemptRunnerPage() {
                                <div className="flex-1 pt-0.5">
                             {(() => {
                               const isPrepositionDnD =
-                                q.qtype === "GAP" &&
+                                (q.qtype === "GAP" || q.qtype === "DND_GAP") &&
                                 typeof q.prompt?.text === "string" &&
                                 q.prompt.text.includes("________");
-                              // Hide prompt text when the GAP is rendered via drag-and-drop so sentence is not duplicated
+                              // Hide prompt text when the GAP/DND_GAP is rendered via drag-and-drop so sentence is not duplicated
                               if (isPrepositionDnD) return null;
                               return (
                                      <p className="text-gray-800 text-base leading-relaxed font-normal mb-4" style={{ lineHeight: '1.6' }}>

@@ -6,6 +6,7 @@ interface QuestionLike {
   id: string;
   prompt: any;
   answerKey: any;
+  options?: { bank?: string[] };
 }
 
 interface QDndGroupProps {
@@ -21,9 +22,31 @@ export default function QDndGroup({ questions, values, onChange, readOnly }: QDn
     return questions.map((q) => String(q.prompt?.text || "")).map((s) => s.trim());
   }, [questions]);
 
-  // Build chip counts from union of expected answers (first accepted answer per question)
+  // Build chip counts from word bank if available, otherwise from answers
   type Chip = { id: string; label: string };
   const chips: Chip[] = useMemo(() => {
+    // Check if any question has a word bank (options.bank)
+    const hasWordBank = questions.some(q => q.options?.bank && Array.isArray(q.options.bank) && q.options.bank.length > 0);
+    
+    if (hasWordBank) {
+      // Use word bank from the first question that has it (they should all have the same bank)
+      const wordBank = questions.find(q => q.options?.bank)?.options?.bank || [];
+      const expanded: Chip[] = [];
+      wordBank.forEach((label: string, idx: number) => {
+        expanded.push({ id: `${label}-${idx}`, label: String(label) });
+      });
+      
+      // Shuffle once per mount
+      for (let i = expanded.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const t = expanded[i];
+        expanded[i] = expanded[j];
+        expanded[j] = t;
+      }
+      return expanded;
+    }
+    
+    // Otherwise, use the old logic: build from answers
     const counts: Record<string, number> = {};
     questions.forEach((q, idx) => {
       const answers: string[] = Array.isArray(q.answerKey?.answers)
@@ -89,13 +112,19 @@ export default function QDndGroup({ questions, values, onChange, readOnly }: QDn
           const parts = sentence.split(/___+|________+/);
           const value = values?.[q.id];
           return (
-            <div key={q.id} className="group">
-              <div className="flex items-center space-x-2 text-sm">
-                <span className="flex-shrink-0 font-medium" style={{ color: 'rgba(48, 51, 128, 0.6)' }}>{idx + 1}.</span>
-                <div className="flex items-center space-x-1 flex-wrap flex-1">
+            <div key={q.id} className="group mb-4">
+              <div className="flex items-center gap-4">
+                <div className="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm shadow-sm"
+                     style={{
+                       backgroundColor: '#303380',
+                       color: 'white'
+                     }}>
+                  {idx + 1}
+                </div>
+                <div className="flex items-center space-x-1 flex-wrap flex-1" style={{ lineHeight: '1.7' }}>
                   {parts.map((part, pIdx) => (
                     <div key={pIdx} className="flex items-center space-x-1">
-                      <span className="text-gray-900">{part}</span>
+                      <span className="text-gray-900 text-base">{part}</span>
                       {pIdx < parts.length - 1 && (
                         <span
                           onDrop={(e) => handleDrop(q.id, e)}

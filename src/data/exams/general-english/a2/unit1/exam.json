@@ -23,7 +23,7 @@
         {"prompt": "Charlotte is reading ____ new book.", "options": ["a", "an"], "answer": ["a"]},
         {"prompt": "Where is ____ hometown?", "options": ["you", "your"], "answer": ["your"]}
       ]
-    },    
+    },
     {
       "id": "part2",
       "title": "Choose the correct written form of the number",
@@ -76,39 +76,35 @@
       "title": "Match the countries with the nationalities",
       "type": "gap_fill_options",
       "items": [
-        {"prompt": "France", "options": ["French", "Spainish", "German", "Italian"], "answer": ["French"]},
-        {"prompt": "Spain", "options": ["Spanish", "French", "Italian", "German"], "answer": ["Spanish"]},
-        {"prompt": "Australia", "options": ["Australian", "Austrian", "American", "Canadian"], "answer": ["Australian"]},
-        {"prompt": "Egypt", "options": ["Egyptian", "Indian", "Moroccan", "Turkish"], "answer": ["Egyptian"]},
-        {"prompt": "Germany", "options": ["German", "French", "Spanish", "Polish"], "answer": ["German"]},
-        {"prompt": "Brazil", "options": ["Brazilian", "Argentinian", "Portuguese", "Mexican"], "answer": ["Brazilian"]},
-        {"prompt": "Canada", "options": ["Canadian", "American", "English", "Australian"], "answer": ["Canadian"]},
-        {"prompt": "Japan", "options": ["Japanese", "Chinese", "Korean", "Thai"], "answer": ["Japanese"]},
-        {"prompt": "Italy", "options": ["Italian", "French", "Greek", "Spanish"], "answer": ["Italian"]},
-        {"prompt": "China", "options": ["Chinese", "Japanese", "Vietnamese", "Korean"], "answer": ["Chinese"]}
-      ]
-    },    
-    {
-      "id": "part6",
-      "title": "Complete sentences using correct preposition or time expression",
-      "type": "gap_fill",
-      "points": 8,
-      "items": [
-        { "prompt": "My brother has a new job. He works ________ the evening.", "answer": ["in"] },
-        { "prompt": "My parents moved back to England ___ I was five.", "answer": ["when"] },
-        { "prompt": "I left college three years ___.", "answer": ["ago"] },
-        { "prompt": "We’re going to have a picnic ________ Saturday afternoon.", "answer": ["on"] },
-        { "prompt": "Are there any holidays ________ October?", "answer": ["in"] },
-        { "prompt": "I usually go home ___ the weekend.", "answer": ["at"] },
-        { "prompt": "When is the meeting? Is it ________ 2:00?", "answer": ["at"] },
-        { "prompt": "Tom’s birthday is next week, ________ January 14.", "answer": ["on"] },
-        { "prompt": "My grandfather was born ________ the 1950s.", "answer": ["in"] },
-        { "prompt": "My family and I like to ski ________ winter.", "answer": ["in"] },
-        { "prompt": "They arrived ___three o'clock in the afternoon.", "answer": ["at"] },
-        { "prompt": "____ we got home, we listened to some music.", "answer": ["When"] },
-        { "prompt": "___the morning, we went for a walk.", "answer": ["In"] }
+        {"prompt": " Choose the correct nationality for France ____.", "options": ["French", "Franch", "Frinch", "Frensh"], "answer": ["French"]},
+        {"prompt": " Choose the correct nationality for Spain ____.", "options": ["Spanish", "Spainish", "Spanich", "Spanis"], "answer": ["Spanish"]},
+        {"prompt": " Choose the correct nationality for Australia ____.", "options": ["Australian", "Austrian", "Australien", "Austrilian"], "answer": ["Australian"]},
+        {"prompt": " Choose the correct nationality for Egypt ____.", "options": ["Egyptian", "Egyptan", "Egiptian", "Egyptyan"], "answer": ["Egyptian"]},
+        {"prompt": " Choose the correct nationality for Germany ____.", "options": ["German", "Germen", "Germin", "Germain"], "answer": ["German"]},
+        {"prompt": " Choose the correct nationality for Brazil ____.", "options": ["Brazilian", "Brasilian", "Brazillian", "Brazialian"], "answer": ["Brazilian"]},
+        {"prompt": " Choose the correct nationality for Canada ____.", "options": ["Canadian", "Canadien", "Canadan", "Canadan"], "answer": ["Canadian"]},
+        {"prompt": " Choose the correct nationality for Japan ____.", "options": ["Japanese", "Japanes", "Japanise", "Japaneese"], "answer": ["Japanese"]},
+        {"prompt": " Choose the correct nationality for Italy ____.", "options": ["Italian", "Italien", "Italyan", "Italean"], "answer": ["Italian"]},
+        {"prompt": " Choose the correct nationality for China ____.", "options": ["Chinese", "Chineese", "Chines", "Chinise"], "answer": ["Chinese"]}
       ]
     },
+    {
+      "id": "part6",
+      "title": "Answer the questions using short forms of 'to be' (Present Simple)",
+      "type": "gap_fill",
+      "items": [
+        { "prompt": "Is your name John? Yes, it ___", "answer": ["is"] },
+        { "prompt": "Is he a student? No, he ___", "answer": ["isn't"] },
+        { "prompt": "Are you from Canada? Yes, I ___", "answer": ["am"] },
+        { "prompt": "Is she your teacher? Yes, she ___", "answer": ["is"] },
+        { "prompt": "Are they from Spain? No, they ___", "answer": ["aren't"] },
+        { "prompt": "Is it cold today? No, it ___", "answer": ["isn't"] },
+        { "prompt": "Are we late? Yes, we ___", "answer": ["are"] },
+        { "prompt": "Is your house big? Yes, it ___", "answer": ["is"] },
+        { "prompt": "Are you tired? No, I ___", "answer": ["am not"] },
+        { "prompt": "Is he at school? Yes, he ___", "answer": ["is"] }
+      ]
+    },   
     {
       "id": "part7",
       "title": "Reading: Laura’s Daily Routine",
@@ -118,7 +114,7 @@
         {
           "id": "part7_tf",
           "title": "True/False",
-          "type": "true_false",
+          "type": "multiple_choice",
           "items": [
             { "prompt": "Laura's breakfast usually includes eggs and bacon.", "choices": ["True", "False"], "answer": 1 },
             { "prompt": "Laura works from 9:00 a.m. to 5:00 p.m.", "choices": ["True", "False"], "answer": 0 },
@@ -140,7 +136,7 @@
           ]
         }
       ]
-    },   
+    },
     {
       "id": "part12",
       "title": "Listening: The Gift of the Magi (questions only)",
@@ -156,7 +152,7 @@
           "items": [
             { "prompt": "Why does Della sell her hair?", "options": ["To buy food","To pay rent","To buy a Christmas gift for Jim","To get new clothes"], "answer": 2 },
             { "prompt": "What gift does Jim buy for Della?", "options": ["A gold watch","A chain for her hair","A set of combs","A pair of shoes"], "answer": 2 },
-            { "prompt": "What did Jim sell to buy Della’s gift?", "options": ["His coat","His watch","His shoes","His hat"], "answer": 1 },
+            { "prompt": "What did Jim sell to buy Della's gift?", "options": ["His coat","His watch","His shoes","His hat"], "answer": 1 },
             { "prompt": "Why do Jim and Della have a happy Christmas?", "options": ["Because they bought each other expensive gifts","Because they understand the true meaning of giving","Because they live in a big apartment","Because they sold everything they had"], "answer": 1 }
           ]
         },
@@ -167,7 +163,7 @@
           "points": 6,
           "items": [
             { "prompt": "Choose the correct synonym for 'special' in the story context.", "options": ["Common","Unique","Cheap","Old"], "answer": 1 },
-            { "prompt": "Which word best describes Della’s feeling when she sells her hair?", "options": ["Angry","Sad","Nervous","Excited"], "answer": 2 },
+            { "prompt": "Which word best describes Della's feeling when she sells her hair?", "options": ["Angry","Sad","Nervous","Excited"], "answer": 2 },
             { "prompt": "What does 'chain' mean in the story?", "options": ["A necklace for Della","A rope for Jim's coat","A decorative item for Jim's watch","A link for his shoes"], "answer": 2 }
           ]
         },
@@ -177,10 +173,10 @@
           "type": "mixed",
           "points": 8,
           "items": [
-            { "kind": "question_tag", "prompt": "Della didn’t have much money for a gift, ______?", "options": ["does she","did she","didn’t she","isn’t she"], "answer": 1 },
-            { "kind": "preposition", "prompt": "Della was worried ______ Jim’s reaction when he saw her short hair.", "options": ["at","on","about","of"], "answer": 2 },
+            { "kind": "question_tag", "prompt": "Della didn't have much money for a gift, ______?", "options": ["does she","did she","didn't she","isn't she"], "answer": 1 },
+            { "kind": "preposition", "prompt": "Della was worried ______ Jim's reaction when he saw her short hair.", "options": ["at","on","about","of"], "answer": 2 },
             { "kind": "verb_form", "prompt": "Della decided ______ (cut) her hair to buy Jim a gift.", "options": ["cutting","to cut"], "answer": 1 },
-            { "kind": "articles", "prompt": "Della wanted to buy ______ special gift, but she didn’t have ______ money for it.", "answer": ["a","the"], "options": null }
+            { "kind": "articles", "prompt": "Della wanted to buy ______ special gift, but she didn't have ______ money for it.", "answer": ["a","the"], "options": null }
           ]
         }
       ]
