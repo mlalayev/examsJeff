@@ -19,32 +19,27 @@ export function QOpenText({ question, value, onChange, readOnly }: BaseQuestionP
   };
 
   return (
-    <div className="space-y-3">
+    <div>
       <input
         type="text"
         value={currentValue}
         onChange={handleChange}
         disabled={readOnly}
-        className="w-full px-4 py-3 border rounded-lg text-sm focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full px-4 py-3.5 border rounded-lg text-base font-medium focus:outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed bg-white shadow-sm hover:shadow"
         style={{
-          borderColor: 'rgba(48, 51, 128, 0.2)',
-          backgroundColor: 'rgba(48, 51, 128, 0.02)'
+          borderColor: currentValue ? '#303380' : 'rgba(48, 51, 128, 0.2)',
+          backgroundColor: currentValue ? 'rgba(48, 51, 128, 0.04)' : 'white',
+          color: '#303380'
         }}
         onFocus={(e) => {
           e.target.style.borderColor = '#303380';
-          e.target.style.backgroundColor = 'rgba(48, 51, 128, 0.05)';
           e.target.style.boxShadow = '0 0 0 3px rgba(48, 51, 128, 0.1)';
         }}
         onBlur={(e) => {
-          e.target.style.borderColor = 'rgba(48, 51, 128, 0.2)';
-          e.target.style.backgroundColor = 'rgba(48, 51, 128, 0.02)';
           e.target.style.boxShadow = 'none';
         }}
         placeholder="Type your answer here..."
       />
-      <p className="text-xs" style={{ color: 'rgba(48, 51, 128, 0.6)' }}>
-        Write your answer in the box above
-      </p>
     </div>
   );
 }

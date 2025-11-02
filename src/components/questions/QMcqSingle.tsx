@@ -11,24 +11,45 @@ export function QMcqSingle({ question, value, onChange, readOnly }: BaseQuestion
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {choices.map((choice: string, idx: number) => (
         <button
           key={idx}
           onClick={() => handleChange(idx)}
           disabled={readOnly}
-          className={`w-full text-left flex items-center space-x-3 px-4 py-2.5 rounded-lg border transition-all ${
+          className={`w-full text-left flex items-center space-x-4 px-5 py-3.5 rounded-lg border transition-all shadow-sm ${
             value === idx
-              ? "bg-gray-900 border-gray-900 text-white"
-              : "bg-white border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50"
-          } ${readOnly ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+              ? "border-transparent shadow-md"
+              : "bg-white hover:shadow border-gray-200"
+          } ${readOnly ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
+          style={value === idx ? {
+            backgroundColor: '#303380',
+            color: 'white',
+            borderColor: '#303380'
+          } : {
+            backgroundColor: 'white',
+            color: '#374151',
+            borderColor: 'rgba(48, 51, 128, 0.15)'
+          }}
+          onMouseEnter={(e) => {
+            if (value !== idx && !readOnly) {
+              e.currentTarget.style.borderColor = 'rgba(48, 51, 128, 0.3)';
+              e.currentTarget.style.backgroundColor = 'rgba(48, 51, 128, 0.02)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (value !== idx && !readOnly) {
+              e.currentTarget.style.borderColor = 'rgba(48, 51, 128, 0.15)';
+              e.currentTarget.style.backgroundColor = 'white';
+            }
+          }}
         >
-          <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+          <div className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
             value === idx ? "border-white" : "border-gray-300"
           }`}>
-            {value === idx && <div className="w-2 h-2 rounded-full bg-white"></div>}
+            {value === idx && <div className="w-2.5 h-2.5 rounded-full bg-white"></div>}
           </div>
-          <span className="text-sm">{choice}</span>
+          <span className="text-base font-medium">{choice}</span>
         </button>
       ))}
     </div>

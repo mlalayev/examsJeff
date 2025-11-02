@@ -19,6 +19,7 @@ import {
   QMcqSingle,
   QMcqMulti,
   QSelect,
+  QInlineSelect,
   QGap,
   QOrderSentence,
   QDndGap,
@@ -187,6 +188,8 @@ export default function AttemptRunnerPage() {
         return <QMcqMulti {...props} />;
       case "SELECT":
         return <QSelect {...props} />;
+      case "INLINE_SELECT":
+        return <QInlineSelect {...props} />;
       case "GAP":
         // For gap_fill_verbs type questions, use QOpenText instead of QGap
         if (q.prompt?.text && q.prompt.text.includes('(') && q.prompt.text.includes(')')) {
@@ -298,7 +301,16 @@ export default function AttemptRunnerPage() {
                     <span>Progress</span>
                     <span>
                       {Object.values(answers).reduce((total, sectionAnswers) => 
-                        total + Object.keys(sectionAnswers).length, 0
+                        total + Object.values(sectionAnswers).filter(answer => {
+                          if (answer === null || answer === undefined || answer === "") return false;
+                          if (typeof answer === "object") {
+                            if (Array.isArray(answer)) {
+                              return answer.length > 0;
+                            }
+                            return Object.keys(answer).length > 0;
+                          }
+                          return true;
+                        }).length, 0
                       )} / {data.sections?.reduce((total, section) => total + section.questions.length, 0)} questions
                     </span>
                   </div>
@@ -309,7 +321,16 @@ export default function AttemptRunnerPage() {
                        style={{
                          backgroundColor: '#303380',
                          width: `${(Object.values(answers).reduce((total, sectionAnswers) => 
-                           total + Object.keys(sectionAnswers).length, 0
+                          total + Object.values(sectionAnswers).filter(answer => {
+                            if (answer === null || answer === undefined || answer === "") return false;
+                            if (typeof answer === "object") {
+                              if (Array.isArray(answer)) {
+                                return answer.length > 0;
+                              }
+                              return Object.keys(answer).length > 0;
+                            }
+                            return true;
+                          }).length, 0
                          ) / (data.sections?.reduce((total, section) => total + section.questions.length, 0) || 1)) * 100}%`
                        }}
                      ></div>
@@ -342,7 +363,16 @@ export default function AttemptRunnerPage() {
                 {data.sections?.map((section) => {
                   const isActive = activeSection === section.type;
                   const isLocked = lockedSections.has(section.type);
-                  const answeredCount = Object.keys(answers[section.type] || {}).length;
+                  const answeredCount = Object.values(answers[section.type] || {}).filter(answer => {
+                    if (answer === null || answer === undefined || answer === "") return false;
+                    if (typeof answer === "object") {
+                      if (Array.isArray(answer)) {
+                        return answer.length > 0;
+                      }
+                      return Object.keys(answer).length > 0;
+                    }
+                    return true;
+                  }).length;
                   const totalCount = section.questions.length;
 
                   return (
@@ -483,7 +513,7 @@ export default function AttemptRunnerPage() {
 
                  {/* Grouped DnD for preposition/time expression parts */}
                  {currentSection?.title?.toLowerCase().includes("preposition") || currentSection?.title?.toLowerCase().includes("time expression") ? (
-                   <div className="space-y-6">
+                   <div className="space-y-5">
                      <QDndGroup
                        questions={currentSection.questions}
                        values={answers[currentSection.type] || {}}
@@ -492,7 +522,7 @@ export default function AttemptRunnerPage() {
                      />
                    </div>
                  ) : (
-                   <div className="space-y-6">
+                   <div className="space-y-5">
                    {currentSection?.questions?.map((q, idx) => {
                      const value = answers[currentSection.type]?.[q.id];
                      const isLocked = lockedSections.has(currentSection.type);
@@ -500,53 +530,82 @@ export default function AttemptRunnerPage() {
                      return (
                        <div
                          key={q.id}
-                         className="p-5 border rounded-lg transition-all duration-200"
+                         className="bg-white rounded-xl border shadow-sm transition-all duration-200 hover:shadow-md"
                          style={{
-                           backgroundColor: 'rgba(48, 51, 128, 0.02)',
-                           borderColor: 'rgba(48, 51, 128, 0.1)'
-                         }}
-                         onMouseEnter={(e) => {
-                           e.currentTarget.style.backgroundColor = 'rgba(48, 51, 128, 0.05)';
-                           e.currentTarget.style.borderColor = 'rgba(48, 51, 128, 0.2)';
-                           e.currentTarget.style.boxShadow = '0 1px 3px rgba(48, 51, 128, 0.1)';
-                         }}
-                         onMouseLeave={(e) => {
-                           e.currentTarget.style.backgroundColor = 'rgba(48, 51, 128, 0.02)';
-                           e.currentTarget.style.borderColor = 'rgba(48, 51, 128, 0.1)';
-                           e.currentTarget.style.boxShadow = 'none';
+                           borderColor: 'rgba(48, 51, 128, 0.12)'
                          }}
                        >
-                         <div className="flex items-start gap-3">
-                           <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm"
-                                style={{ 
-                                  backgroundColor: 'rgba(48, 51, 128, 0.1)',
-                                  color: '#303380'
-                                }}>
-                             {idx + 1}
-                           </div>
-                           <div className="flex-1">
-                             {/* Question Prompt - Hide passage for READING section as it's shown above */}
-                             {false && q.prompt?.passage && (
-                               <div className="mb-3 p-4 rounded-lg"
-                                    style={{
-                                      backgroundColor: 'rgba(48, 51, 128, 0.05)',
-                                      borderColor: 'rgba(48, 51, 128, 0.15)',
-                                      border: '1px solid'
-                                    }}>
-                                 <p className="text-sm text-slate-700 italic">{q.prompt.passage}</p>
+                         <div className="p-6">
+                           {/* Question Prompt - Hide passage for READING section as it's shown above */}
+                           {false && q.prompt?.passage && (
+                             <div className="mb-4 p-4 rounded-lg border"
+                                  style={{
+                                    backgroundColor: 'rgba(48, 51, 128, 0.03)',
+                                    borderColor: 'rgba(48, 51, 128, 0.12)'
+                                  }}>
+                               <p className="text-sm text-gray-700 italic leading-relaxed">{q.prompt.passage}</p>
+                             </div>
+                           )}
+                           {q.prompt?.transcript && (
+                             <div className="mb-4 p-4 rounded-lg border"
+                                  style={{
+                                    backgroundColor: 'rgba(48, 51, 128, 0.03)',
+                                    borderColor: 'rgba(48, 51, 128, 0.12)'
+                                  }}>
+                               <p className="text-xs font-semibold mb-2 uppercase tracking-wide" style={{ color: '#303380' }}>🎧 Transcript</p>
+                               <p className="text-sm text-gray-700 leading-relaxed">{q.prompt.transcript}</p>
+                             </div>
+                           )}
+                           
+                           {/* For INLINE_SELECT, MCQ_SINGLE, and DND_GAP, show number and question in same flex container */}
+                           {q.qtype === "INLINE_SELECT" || q.qtype === "MCQ_SINGLE" || q.qtype === "DND_GAP" ? (
+                             <>
+                               {/* Number and question text in same div with items-center */}
+                               <div className="flex items-center gap-4 mb-4">
+                                 <div className="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm shadow-sm"
+                                      style={{ 
+                                        backgroundColor: '#303380',
+                                        color: 'white'
+                                      }}>
+                                   {idx + 1}
+                                 </div>
+                                 <div className="flex-1">
+                                   {q.qtype === "MCQ_SINGLE" ? (
+                                     <p className="text-gray-800 text-base leading-relaxed font-normal" style={{ lineHeight: '1.6', margin: 0 }}>
+                                       {q.prompt?.text || "Question"}
+                                     </p>
+                                   ) : (
+                                     renderQuestionComponent(
+                                       q,
+                                       value,
+                                       (v) => setAnswer(currentSection.type, q.id, v),
+                                       isLocked
+                                     )
+                                   )}
+                                 </div>
                                </div>
-                             )}
-                             {q.prompt?.transcript && (
-                               <div className="mb-3 p-4 rounded-lg"
+                               {/* Options in separate div for MCQ_SINGLE */}
+                               {q.qtype === "MCQ_SINGLE" && (
+                                 <div>
+                                   {renderQuestionComponent(
+                                     q,
+                                     value,
+                                     (v) => setAnswer(currentSection.type, q.id, v),
+                                     isLocked
+                                   )}
+                                 </div>
+                               )}
+                             </>
+                           ) : (
+                             <div className="flex items-start gap-4 mb-4">
+                               <div className="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm shadow-sm"
                                     style={{
-                                      backgroundColor: 'rgba(48, 51, 128, 0.05)',
-                                      borderColor: 'rgba(48, 51, 128, 0.15)',
-                                      border: '1px solid'
+                                      backgroundColor: '#303380',
+                                      color: 'white'
                                     }}>
-                                 <p className="text-xs font-medium mb-1" style={{ color: '#303380' }}>🎧 Transcript:</p>
-                                 <p className="text-sm text-slate-700">{q.prompt.transcript}</p>
+                                 {idx + 1}
                                </div>
-                             )}
+                               <div className="flex-1 pt-0.5">
                             {(() => {
                               const isPrepositionDnD =
                                 q.qtype === "GAP" &&
@@ -555,21 +614,24 @@ export default function AttemptRunnerPage() {
                               // Hide prompt text when the GAP is rendered via drag-and-drop so sentence is not duplicated
                               if (isPrepositionDnD) return null;
                               return (
-                                <p className="text-slate-900 font-medium mb-3">
+                                     <p className="text-gray-800 text-base leading-relaxed font-normal mb-4" style={{ lineHeight: '1.6' }}>
                                   {q.prompt?.text || "Question"}
                                 </p>
                               );
                             })()}
 
                              {/* Question Component */}
+                                 <div className="mt-4">
                              {renderQuestionComponent(
                                q,
                                value,
                                (v) => setAnswer(currentSection.type, q.id, v),
                                isLocked
                              )}
-                             
                           </div>
+                               </div>
+                             </div>
+                           )}
                         </div>
                       </div>
                     );

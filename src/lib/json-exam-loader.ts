@@ -274,19 +274,47 @@ function transformItem(item: any, partType: string, order: number, passage?: str
     };
   }
   
-  if (partType === "multiple_choice" || item.options) {
+  if (partType === "multiple_choice" || item.choices) {
     return {
       ...base,
       qtype: "MCQ_SINGLE",
       prompt: { text: item.prompt, passage },
-      options: { choices: item.options },
+      options: { choices: item.choices },
       answerKey: { index: item.answer },
     };
   }
   
-  // Handle gap_fill and gap_fill_verbs - both use dropdown/select
-  if (partType === "gap_fill" || partType === "gap_fill_verbs" || partType === "short_answer") {
+  // Handle gap_fill_options - uses inline select (for questions with options provided or verb questions)
+  if (partType === "gap_fill_options" || partType === "gap_fill_verbs" || partType === "short_answer") {
     const promptText = item.prompt || '';
+    
+    // If options are provided in JSON (like part1 for gap_fill_options), use them directly
+    if (item.options && Array.isArray(item.options)) {
+      const answers = Array.isArray(item.answer) ? item.answer : [item.answer].filter(Boolean);
+      const options = item.options;
+      
+      // Find the index of the correct answer
+      let correctIndex = -1;
+      for (let i = 0; i < options.length; i++) {
+        if (answers.some(ans => ans.trim().toLowerCase() === options[i].trim().toLowerCase())) {
+          correctIndex = i;
+          break;
+        }
+      }
+      
+      // Use prompt as-is (should already have ____ marker in JSON)
+      // If no blank marker, keep prompt as-is (QInlineSelect will handle it)
+      
+      return {
+        ...base,
+        qtype: "INLINE_SELECT",
+        prompt: { text: promptText, passage },
+        options: { choices: options },
+        answerKey: { index: correctIndex >= 0 ? correctIndex : 0 },
+      };
+    }
+    
+    // Otherwise, handle verb forms generation (old behavior)
     const verbMatch = promptText.match(/\(([^)]+)\)/);
     let baseVerb = verbMatch ? verbMatch[1].trim() : '';
     
@@ -375,10 +403,89 @@ function transformItem(item: any, partType: string, order: number, passage?: str
     
     return {
       ...base,
-      qtype: "SELECT",
-      prompt: { text: item.prompt, passage },
+      qtype: "INLINE_SELECT",
+      prompt: { text: promptText, passage },
       options: { choices: options },
       answerKey: { index: correctIndex >= 0 ? correctIndex : 0 },
+    };
+  }
+  
+  // Handle gap_fill - uses drag and drop (for preposition/time expression questions and short answers)
+  if (partType === "gap_fill") {
+    const promptText = item.prompt || '';
+    const answers = Array.isArray(item.answer) ? item.answer : [item.answer].filter(Boolean);
+    
+    // Check if this is preposition/time expression question
+    const isPrepositionTime = partTitle?.toLowerCase().includes('preposition') || 
+                              partTitle?.toLowerCase().includes('time expression') ||
+                              promptText.toLowerCase().includes('preposition') ||
+                              promptText.toLowerCase().includes('time expression');
+    
+    // Check if this is short answers question (am/is/are)
+    const isShortAnswers = partTitle?.toLowerCase().includes('short answer') ||
+                           partTitle?.toLowerCase().includes('am / is / are') ||
+                           (promptText.toLowerCase().includes('yes') && promptText.toLowerCase().includes('no'));
+    
+    if (isPrepositionTime) {
+      // Generate word bank with prepositions/time expressions
+      const optionsSet = new Set<string>();
+      
+      // Always include correct answers
+      answers.forEach(answer => optionsSet.add(answer.trim()));
+      
+      // Add common prepositions and time expressions
+      ['in', 'on', 'at', 'when', 'ago', 'next', 'last', 'before', 'after', 'during', 'for', 'since', 'until', 'by', 'from', 'to', 'In', 'When']
+        .forEach(opt => optionsSet.add(opt));
+      
+      const wordBank = Array.from(optionsSet).sort();
+      
+      // Replace blank markers in prompt (___, ___, or ________)
+      const textWithBlanks = promptText.replace(/___+|__+/g, '________');
+      
+      return {
+        ...base,
+        qtype: "DND_GAP",
+        prompt: { 
+          text: textWithBlanks,
+          passage 
+        },
+        options: { bank: wordBank },
+        answerKey: { answers: answers },
+      };
+    } else if (isShortAnswers) {
+      // Generate word bank with am/is/are forms
+      const optionsSet = new Set<string>();
+      
+      // Always include correct answers
+      answers.forEach(answer => optionsSet.add(answer.trim()));
+      
+      // Add common short answer forms
+      ['am', 'is', 'are', 'am not', 'is not', 'are not', "isn't", "aren't"]
+        .forEach(opt => optionsSet.add(opt));
+      
+      const wordBank = Array.from(optionsSet).sort();
+      
+      // Replace blank markers in prompt (______)
+      const textWithBlanks = promptText.replace(/___+/g, '________');
+      
+      return {
+        ...base,
+        qtype: "DND_GAP",
+        prompt: { 
+          text: textWithBlanks,
+          passage 
+        },
+        options: { bank: wordBank },
+        answerKey: { answers: answers },
+      };
+    }
+    
+    // For other gap_fill types, use regular GAP type
+    return {
+      ...base,
+      qtype: "GAP",
+      prompt: { text: item.prompt, passage },
+      answerKey: { answers: answers },
     };
   }
   

@@ -124,59 +124,56 @@ export function QDndGap({ question, value, onChange, readOnly }: BaseQuestionPro
     
     return (
       <div key={index} className="mb-3 group">
-        <div className="flex items-start space-x-2 text-sm">
-          <span className="flex-shrink-0 font-medium text-gray-500">{index + 1}.</span>
-          <div className="flex items-center space-x-1 flex-wrap flex-1">
-            {parts.map((part, partIndex) => (
-              <div key={partIndex} className="flex items-center space-x-1">
-                <span className="text-gray-900">{part}</span>
-                {partIndex < parts.length - 1 && (
-                  <span
-                    onDrop={(e) => handleDrop(`${index}-${partIndex}`, e)}
-                    onDragOver={handleDragOver}
-                    className={`relative inline-block min-w-[80px] px-3 py-1 rounded-lg border group/gap transition-all ${
-                      !readOnly ? "cursor-pointer" : ""
-                    }`}
-                    style={currentAnswers[`${index}-${partIndex}`] ? {
-                      borderColor: '#303380',
-                      backgroundColor: '#303380',
-                      color: 'white'
-                    } : {
-                      borderColor: 'rgba(48, 51, 128, 0.2)',
-                      backgroundColor: 'rgba(48, 51, 128, 0.02)',
-                      color: 'rgba(48, 51, 128, 0.6)',
-                      borderStyle: 'dashed'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!readOnly && !currentAnswers[`${index}-${partIndex}`]) {
-                        e.currentTarget.style.borderColor = 'rgba(48, 51, 128, 0.3)';
-                        e.currentTarget.style.backgroundColor = 'rgba(48, 51, 128, 0.05)';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!readOnly && !currentAnswers[`${index}-${partIndex}`]) {
-                        e.currentTarget.style.borderColor = 'rgba(48, 51, 128, 0.2)';
-                        e.currentTarget.style.backgroundColor = 'rgba(48, 51, 128, 0.02)';
-                      }
-                    }}
-                  >
-                    {currentAnswers[`${index}-${partIndex}`] || (sentence.includes('________') ? "________" : "___")}
-                    {currentAnswers[`${index}-${partIndex}`] && !readOnly && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          removeAnswer(`${index}-${partIndex}`);
-                        }}
-                        className="ml-2 text-gray-300 hover:text-white text-xs"
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
+        <div className="flex items-center space-x-1 flex-wrap">
+          {parts.map((part, partIndex) => (
+            <div key={partIndex} className="flex items-center space-x-1">
+              <span className="text-gray-900 text-base leading-relaxed" style={{ lineHeight: '1.7' }}>{part}</span>
+              {partIndex < parts.length - 1 && (
+                <span
+                  onDrop={(e) => handleDrop(`${index}-${partIndex}`, e)}
+                  onDragOver={handleDragOver}
+                  className={`relative inline-block min-w-[80px] px-3 py-1 rounded-lg border group/gap transition-all ${
+                    !readOnly ? "cursor-pointer" : ""
+                  }`}
+                  style={currentAnswers[`${index}-${partIndex}`] ? {
+                    borderColor: '#303380',
+                    backgroundColor: '#303380',
+                    color: 'white'
+                  } : {
+                    borderColor: 'rgba(48, 51, 128, 0.2)',
+                    backgroundColor: 'rgba(48, 51, 128, 0.02)',
+                    color: 'rgba(48, 51, 128, 0.6)',
+                    borderStyle: 'dashed'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!readOnly && !currentAnswers[`${index}-${partIndex}`]) {
+                      e.currentTarget.style.borderColor = 'rgba(48, 51, 128, 0.3)';
+                      e.currentTarget.style.backgroundColor = 'rgba(48, 51, 128, 0.05)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!readOnly && !currentAnswers[`${index}-${partIndex}`]) {
+                      e.currentTarget.style.borderColor = 'rgba(48, 51, 128, 0.2)';
+                      e.currentTarget.style.backgroundColor = 'rgba(48, 51, 128, 0.02)';
+                    }
+                  }}
+                >
+                  {currentAnswers[`${index}-${partIndex}`] || (sentence.includes('________') ? "________" : "___")}
+                  {currentAnswers[`${index}-${partIndex}`] && !readOnly && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeAnswer(`${index}-${partIndex}`);
+                      }}
+                      className="ml-2 text-gray-300 hover:text-white text-xs"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </span>
+              )}
+            </div>
+          ))}
         </div>
       </div>
     );

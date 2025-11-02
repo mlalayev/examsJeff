@@ -90,7 +90,7 @@ export default function QDndGroup({ questions, values, onChange, readOnly }: QDn
           const value = values?.[q.id];
           return (
             <div key={q.id} className="group">
-              <div className="flex items-start space-x-2 text-sm">
+              <div className="flex items-center space-x-2 text-sm">
                 <span className="flex-shrink-0 font-medium" style={{ color: 'rgba(48, 51, 128, 0.6)' }}>{idx + 1}.</span>
                 <div className="flex items-center space-x-1 flex-wrap flex-1">
                   {parts.map((part, pIdx) => (

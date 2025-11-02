@@ -9,205 +9,138 @@
   "parts": [
     {
       "id": "part1",
-      "title": "Complete sentences using Present Simple or Past Simple",
-      "type": "gap_fill",
-      "points": 5,
+      "title": "Complete the sentences with the correct word",
+      "type": "gap_fill_options",
       "items": [
-        { "prompt": "I ____ (be) at the cinema last night.", "answer": ["was"], "points": 0.33 },
-        { "prompt": "She ____ (work) at a store and helps customers.", "answer": ["works"], "points": 0.34 },
-        { "prompt": "My father ____ (make) a cake for us last weekend.", "answer": ["made"], "points": 0.33 },
-        { "prompt": "They ____ (like) to eat pizza, especially on the weekends.", "answer": ["like"], "points": 0.33 },
-        { "prompt": "____ (be) you happy yesterday?", "answer": ["were"], "points": 0.34 },
-        { "prompt": "She ____ (not/ be) my sister. You are wrong.", "answer": ["is not","isn't"], "points": 0.33 },
-        { "prompt": "He ____ (watch) TV in the evening.", "answer": ["watches"], "points": 0.33 },
-        { "prompt": "I ____ (drink) milk before sleeping last night.", "answer": ["drank"], "points": 0.33 },
-        { "prompt": "They ____ (go) to a concert three days ago.", "answer": ["went"], "points": 0.33 },
-        { "prompt": "I sometimes ____ (read) books for fun.", "answer": ["read"], "points": 0.34 },
-        { "prompt": "I ____ (find) a wallet yesterday.", "answer": ["found"], "points": 0.33 },
-        { "prompt": "They ____ (not/be) on holiday last September.", "answer": ["were not","weren't"], "points": 0.33 },
-        { "prompt": "They still ____ (live) in a small house.", "answer": ["live"], "points": 0.33 },
-        { "prompt": "She ____ (be) a teacher when she moved to London.", "answer": ["was"], "points": 0.33 },
-        { "prompt": "The wind ____ (be) strong last week.", "answer": ["was"], "points": 0.34 }
+        {"prompt": "Hi, my name is Tom. ____ am from Italy.", "options": ["I", "My"], "answer": ["I"]},
+        {"prompt": "What is ____ phone number?", "options": ["you", "your"], "answer": ["your"]},
+        {"prompt": "Lisa is my friend. ____ works at a bookstore.", "options": ["He", "She", "It", "They"], "answer": ["She"]},
+        {"prompt": "I'm John. ____ am 30 years old.", "options": ["I", "He", "She", "They"], "answer": ["I"]},
+        {"prompt": "Tony works at a company. He ____ a graphic designer.", "options": ["am", "is", "are", "be"], "answer": ["is"]},
+        {"prompt": "This is Kathrine. She is ____ best friend.", "options": ["my", "I"], "answer": ["my"]},
+        {"prompt": "I have 2 cats. They ____ very friendly.", "options": ["am", "is", "are"], "answer": ["are"]},
+        {"prompt": "What ____ the name of your favorite movie?", "options": ["am", "is", "are"], "answer": ["is"]},
+        {"prompt": "Charlotte is reading ____ new book.", "options": ["a", "an"], "answer": ["a"]},
+        {"prompt": "Where is ____ hometown?", "options": ["you", "your"], "answer": ["your"]}
       ]
-    },
+    },    
     {
       "id": "part2",
-      "title": "Match with have got / has got",
+      "title": "Choose the correct written form of the number",
       "type": "multiple_choice",
-      "points": 3,
       "items": [
-        { "prompt": "I _______ a new friend.", "options": ["have got","has got"], "answer": 0 },
-        { "prompt": "She _______ a beautiful dress.", "options": ["have got","has got"], "answer": 1 },
-        { "prompt": "They _______ a big garden.", "options": ["have got","has got"], "answer": 0 },
-        { "prompt": "He _______ a new phone.", "options": ["have got","has got"], "answer": 1 },
-        { "prompt": "We _______ a lot of books.", "options": ["have got","has got"], "answer": 0 },
-        { "prompt": "You _______ a nice car.", "options": ["have got","has got"], "answer": 0 },
-        { "prompt": "It _______ a long tail.", "options": ["have got","has got"], "answer": 1 },
-        { "prompt": "They _______ a new house.", "options": ["have got","has got"], "answer": 0 },
-        { "prompt": "She _______ a red bicycle.", "options": ["have got","has got"], "answer": 1 },
-        { "prompt": "We _______ a big family.", "options": ["have got","has got"], "answer": 0 }
+        {"prompt": "Choose the correct text form of \"17\" ", "choices": ["seventeen", "seventy", "seven", "seventeenth"], "answer": 0},
+        {"prompt": "Choose the correct text form of \"42\" ", "choices": ["fourteen", "forty-two", "fourty two", "forty"], "answer": 1},
+        {"prompt": "Choose the correct text form of \"8\" ", "choices": ["ate", "eight", "eighty", "height"], "answer": 1},
+        {"prompt": "Choose the correct text form of \"65\" ", "choices": ["sixty-five", "sixteen five", "sixty", "fifty-six"], "answer": 0},
+        {"prompt": "Choose the correct text form of \"29\" ", "choices": ["twenty-nine", "twenty nineth", "nineteen", "ninety-two"], "answer": 0},
+        {"prompt": "Choose the correct text form of \"53\" ", "choices": ["fifty-three", "fifteen-three", "thirty-five", "fifty"], "answer": 0},
+        {"prompt": "Choose the correct text form of \"91\" ", "choices": ["nineteen-one", "ninety-one", "ninety-first", "nineteen"], "answer": 1},
+        {"prompt": "Choose the correct text form of \"34\" ", "choices": ["thirty-four", "forty-three", "thirty", "fourty-four"], "answer": 0},
+        {"prompt": "Choose the correct text form of \"76\" ", "choices": ["seventy-six", "sixteen-seven", "sixty-seven", "seventeen-six"], "answer": 0},
+        {"prompt": "Choose the correct text form of \"100\" ", "choices": ["hundred", "an hundred", "handred", "hundreds"], "answer": 2}
       ]
-    },
+    },    
     {
-      "id": "part4",
-      "title": "Choose the correct variant",
-      "type": "multiple_choice",
-      "points": 3,
+      "id": "part3",
+      "title": "Complete the sentences with the forms of 'to be'",
+      "type": "gap_fill_options",
       "items": [
-        { "prompt": "Thomas wants to travel to Europe next summer. He should saves/should save his money.", "options": ["should saves","should save"], "answer": 1 },
-        { "prompt": "Should he go to school today? Yes, he should going/should go.", "options": ["should going","should go"], "answer": 1 },
-        { "prompt": "Should I fix the sink? No, you shouldn`t fix/ shouldn`t to fix the sink.", "options": ["shouldn't fix","shouldn't to fix"], "answer": 0 },
-        { "prompt": "Oh, no! I have a really big problem. What I should do/ should I do?", "options": ["What I should do","What should I do"], "answer": 1 },
-        { "prompt": "Should when I/ When should I meet you at the store? - At six o’clock.", "options": ["Should when I","When should I"], "answer": 1 },
-        { "prompt": "If you stay next to / under the sun for a long time, you may have a terrible sunburn.", "options": ["next to","under"], "answer": 1 },
-        { "prompt": "Marilyn is sitting next to /in front of her brother Peter and they are watching TV.", "options": ["next to","in front of"], "answer": 0 },
-        { "prompt": "The bees are flying over /in front of the honey pot.", "options": ["over","in front of"], "answer": 0 },
-        { "prompt": "The man in the yellow car is very unhappy because his car is behind / between two other cars.", "options": ["behind","between"], "answer": 1 },
-        { "prompt": "Mr. Jefferson is hiding under / opposite the bed because he is afraid of injections.", "options": ["under","opposite"], "answer": 0 },
-        { "prompt": "There is any/some honey in the jar.", "options": ["any","some"], "answer": 1 },
-        { "prompt": "There aren't any/some apples in the basket.", "options": ["any","some"], "answer": 0 },
-        { "prompt": "There is some/an egg on my plate.", "options": ["some","an"], "answer": 1 },
-        { "prompt": "There isn't any/some water in the glass.", "options": ["any","some"], "answer": 0 },
-        { "prompt": "Do you want to eat some/an orange?", "options": ["some","an"], "answer": 1 }
+        {"prompt": "She ____ at home with her family.", "options": ["am", "is", "are"], "answer": ["is"]},
+        {"prompt": "You ____ right.", "options": ["am", "is", "are"], "answer": ["are"]},
+        {"prompt": "Susan ____ good at tennis.", "options": ["am", "is", "are"], "answer": ["is"]},
+        {"prompt": "They ____ in the house.", "options": ["am", "is", "are"], "answer": ["are"]},
+        {"prompt": "I ____ 24 years old.", "options": ["am", "is", "are"], "answer": ["am"]},
+        {"prompt": "His T-shirts ____ cool.", "options": ["am", "is", "are"], "answer": ["are"]},
+        {"prompt": "My sister ____ a good swimmer.", "options": ["am", "is", "are"], "answer": ["is"]},
+        {"prompt": "She ____ in Italy.", "options": ["am", "is", "are"], "answer": ["is"]},
+        {"prompt": "We ____ in the park.", "options": ["am", "is", "are"], "answer": ["are"]},
+        {"prompt": "Peter ____ my older brother.", "options": ["am", "is", "are"], "answer": ["is"]}
+      ]
+    },{
+      "id": "part4",
+      "title": "Which sentence is correct?",
+      "type": "multiple_choice",
+      "items": [
+        {"prompt": "Which sentence is correct?", "choices": ["My name is John and I be from New York.", "My name is John and I am from New York.", "My name is John and I is from New York."], "answer": 1},
+        {"prompt": "Which sentence is correct?", "choices": ["I am Sarah, 25 years olds.", "I am Sarah, 25 year old.", "I am Sarah, 25 years old."], "answer": 2},
+        {"prompt": "Which sentence is correct?", "choices": ["He be a student at the university.", "He is a student at the university.", "He are a student at the university."], "answer": 1},
+        {"prompt": "Which sentence is correct?", "choices": ["My name is Anna my hobby is painting.", "My name is Anna my hobbies is painting.", "My name is Anna. My hobby is painting."], "answer": 2},
+        {"prompt": "Which sentence is correct?", "choices": ["I from London.", "I am from London.", "I from London am."], "answer": 1},
+        {"prompt": "Which sentence is correct?", "choices": ["What’s your name?", "What your name?", "What name is your?"], "answer": 0},
+        {"prompt": "Which sentence is correct?", "choices": ["I live in Brazil", "I living in Brzail", "I am live in Brazil."], "answer": 0}
       ]
     },
     {
       "id": "part5",
+      "title": "Match the countries with the nationalities",
+      "type": "gap_fill_options",
+      "items": [
+        {"prompt": "France", "options": ["French", "Spainish", "German", "Italian"], "answer": ["French"]},
+        {"prompt": "Spain", "options": ["Spanish", "French", "Italian", "German"], "answer": ["Spanish"]},
+        {"prompt": "Australia", "options": ["Australian", "Austrian", "American", "Canadian"], "answer": ["Australian"]},
+        {"prompt": "Egypt", "options": ["Egyptian", "Indian", "Moroccan", "Turkish"], "answer": ["Egyptian"]},
+        {"prompt": "Germany", "options": ["German", "French", "Spanish", "Polish"], "answer": ["German"]},
+        {"prompt": "Brazil", "options": ["Brazilian", "Argentinian", "Portuguese", "Mexican"], "answer": ["Brazilian"]},
+        {"prompt": "Canada", "options": ["Canadian", "American", "English", "Australian"], "answer": ["Canadian"]},
+        {"prompt": "Japan", "options": ["Japanese", "Chinese", "Korean", "Thai"], "answer": ["Japanese"]},
+        {"prompt": "Italy", "options": ["Italian", "French", "Greek", "Spanish"], "answer": ["Italian"]},
+        {"prompt": "China", "options": ["Chinese", "Japanese", "Vietnamese", "Korean"], "answer": ["Chinese"]}
+      ]
+    },    
+    {
+      "id": "part6",
       "title": "Complete sentences using correct preposition or time expression",
       "type": "gap_fill",
       "points": 8,
       "items": [
-        { "prompt": "My brother has a new job. He works ________ the evening.", "answer": ["in"], "points": 0.62 },
-        { "prompt": "My parents moved back to England ___ I was five.", "answer": ["when"], "points": 0.62 },
-        { "prompt": "I left college three years ___.", "answer": ["ago"], "points": 0.61 },
-        { "prompt": "We’re going to have a picnic ________ Saturday afternoon.", "answer": ["on"], "points": 0.61 },
-        { "prompt": "Are there any holidays ________ October?", "answer": ["in"], "points": 0.61 },
-        { "prompt": "I usually go home ___ the weekend.", "answer": ["at"], "points": 0.64 },
-        { "prompt": "When is the meeting? Is it ________ 2:00?", "answer": ["at"], "points": 0.63 },
-        { "prompt": "Tom’s birthday is next week, ________ January 14.", "answer": ["on"], "points": 0.62 },
-        { "prompt": "My grandfather was born ________ the 1950s.", "answer": ["in"], "points": 0.62 },
-        { "prompt": "My family and I like to ski ________ winter.", "answer": ["in"], "points": 0.62 },
-        { "prompt": "They arrived ___three o'clock in the afternoon.", "answer": ["at"], "points": 0.62 },
-        { "prompt": "____ we got home, we listened to some music.", "answer": ["When"], "points": 0.62 },
-        { "prompt": "___the morning, we went for a walk.", "answer": ["In"], "points": 0.62 }
+        { "prompt": "My brother has a new job. He works ________ the evening.", "answer": ["in"] },
+        { "prompt": "My parents moved back to England ___ I was five.", "answer": ["when"] },
+        { "prompt": "I left college three years ___.", "answer": ["ago"] },
+        { "prompt": "We’re going to have a picnic ________ Saturday afternoon.", "answer": ["on"] },
+        { "prompt": "Are there any holidays ________ October?", "answer": ["in"] },
+        { "prompt": "I usually go home ___ the weekend.", "answer": ["at"] },
+        { "prompt": "When is the meeting? Is it ________ 2:00?", "answer": ["at"] },
+        { "prompt": "Tom’s birthday is next week, ________ January 14.", "answer": ["on"] },
+        { "prompt": "My grandfather was born ________ the 1950s.", "answer": ["in"] },
+        { "prompt": "My family and I like to ski ________ winter.", "answer": ["in"] },
+        { "prompt": "They arrived ___three o'clock in the afternoon.", "answer": ["at"] },
+        { "prompt": "____ we got home, we listened to some music.", "answer": ["When"] },
+        { "prompt": "___the morning, we went for a walk.", "answer": ["In"] }
       ]
     },
     {
-      "id": "part6",
-      "title": "Write the verbs in the correct verb pattern",
-      "type": "gap_fill",
-      "points": 4,
-      "items": [
-        { "prompt": "I enjoy _______  books in my free time.", "answer": ["reading"], "points": 0.4 },
-        { "prompt": "She wants _______  to the park this afternoon.", "answer": ["to go"], "points": 0.4 },
-        { "prompt": "They decided _______  their grandparents next weekend.", "answer": ["to visit"], "points": 0.4 },
-        { "prompt": "He loves _______  soccer with his friends.", "answer": ["playing","to play"], "points": 0.4 },
-        { "prompt": "We need _______  some groceries for dinner.", "answer": ["to buy"], "points": 0.4 },
-        { "prompt": "She started _______  Spanish last month.", "answer": ["learning","to learn"], "points": 0.4 },
-        { "prompt": "I hope _______  you at the party tonight.", "answer": ["to see"], "points": 0.4 },
-        { "prompt": "They plan _______  to Japan next year.", "answer": ["to travel"], "points": 0.4 },
-        { "prompt": "He finished _______  his homework before dinner.", "answer": ["doing"], "points": 0.4 },
-        { "prompt": "We like _______  movies on Friday nights.", "answer": ["watching","to watch"], "points": 0.4 }
-      ]
-    },
-    {
-      "id": "part8",
-      "title": "Choose the correct variant (collocations)",
-      "type": "multiple_choice",
-      "points": 5,
-      "items": [
-        { "prompt": "She made a _______.", "options": ["decision","walk"], "answer": 0 },
-        { "prompt": "He takes _______ every morning.", "options": ["a nap","a shower"], "answer": 1 },
-        { "prompt": "They had a _______ last night.", "options": ["party","coffee"], "answer": 0 },
-        { "prompt": "I usually drink _______ in the morning.", "options": ["soda","coffee"], "answer": 1 },
-        { "prompt": "She gave me a _______ for my birthday.", "options": ["call","gift"], "answer": 1 },
-        { "prompt": "He always does his _______ after school.", "options": ["breakfast","homework"], "answer": 1 },
-        { "prompt": "We went on a _______ to the mountains.", "options": ["trip","walk"], "answer": 0 },
-        { "prompt": "She takes _______ of beautiful landscapes.", "options": ["photos","notes"], "answer": 0 },
-        { "prompt": "He made a _______ in his calculations.", "options": ["mistake","decision"], "answer": 0 },
-        { "prompt": "They have a _______ every Monday morning.", "options": ["game","meeting"], "answer": 1 }
-      ]
-    },
-    {
-      "id": "part9",
-      "title": "Use adjective or adverb in the gaps",
-      "type": "gap_fill",
-      "points": 5,
-      "items": [
-        { "prompt": "He __ reads a book. (quick)", "answer": ["quickly"], "points": 0.5 },
-        { "prompt": "Mandy is a ___ girl. (pretty)", "answer": ["pretty"], "points": 0.5 },
-        { "prompt": "The class is ___ loud today. (terrible)", "answer": ["terribly"], "points": 0.5 },
-        { "prompt": "Max is a  ___ singer. (good)", "answer": ["good"], "points": 0.5 },
-        { "prompt": "You can ___  open this tin. (easy)", "answer": ["easily"], "points": 0.5 },
-        { "prompt": "It's a ___ day today. (terrible)", "answer": ["terrible"], "points": 0.5 },
-        { "prompt": "She sings the song ___. (good)", "answer": ["well"], "points": 0.5 },
-        { "prompt": "He is a ___ driver. (careful)", "answer": ["careful"], "points": 0.5 },
-        { "prompt": "He drives the car ___ . (careful)", "answer": ["carefully"], "points": 0.5 },
-        { "prompt": "The dog barks ___. (loud)", "answer": ["loudly"], "points": 0.5 }
-      ]
-    },
-    {
-      "id": "part10",
-      "title": "Fill in the blanks with the correct word from the word bank",
-      "type": "word_bank",
-      "points": 7,
-      "wordBank": ["cold","headache","allergy","fever","sore throat","stomach-ache","bump","sunburn","nose"],
-      "items": [
-        { "prompt": "Sally sneezes whenever she smells flowers. She has an ______.", "answer": ["allergy"] },
-        { "prompt": "Jane is really hot. I think she has a ______.", "answer": ["fever"] },
-        { "prompt": "George eats lots of candies and snacks. He will have a ______.", "answer": ["stomach-ache","stomachache"] },
-        { "prompt": "My throat is so itchy and dry. I have a ______.", "answer": ["sore throat"] },
-        { "prompt": "Alex is using the knife and he isn’t careful. He has a ______ on his finger.", "answer": ["bump","cut"] },
-        { "prompt": "Stella was at the beach all day. She has a ______.", "answer": ["sunburn"] },
-        { "prompt": "Richard uses a lot of tissue papers because he has ______.", "answer": ["cold","runny nose","nose"] },
-        { "prompt": "Kevin fell off his bike and hit his head. Now he says that I have a ______.", "answer": ["headache","bump"] },
-        { "prompt": "I have fever; I cough. Sneeze all day. Doctor says that I have _____.", "answer": ["cold"] },
-        { "prompt": "My mom can’t speak right now because she has terrible _____.", "answer": ["sore throat"] }
-      ]
-    },
-    {
-      "id": "part11",
-      "title": "Reading: Sammy-Jo and Chelsea",
+      "id": "part7",
+      "title": "Reading: Laura’s Daily Routine",
       "type": "reading_comprehension",
-      "points": 25,
-      "text": "Sammy-Jo and Chelsea are best friends. They spend a lot of time together. They are in the same class at school and live on the same street. At school, they sit beside each other, but sometimes they talk too much, and their teacher tells them to stop talking. They help each other with homework and walk to school together. They love school work and their teacher, but they never listen! Sometimes, they do their homework together. Usually, Sammy-Jo goes to Chelsea’s house because Chelsea has no brothers or sisters. Sammy-Jo has two sisters and a brother.\nWhen they are not together, they talk on their phones and message each other. On Saturdays, they usually go into town together. If it rains, they take the bus. In the morning, they look at the shops and do a bit of shopping. In the afternoon, sometimes they go to the cinema or just chill in the park.\nThey see each other on Sundays too. Sometimes, they watch a film together in Chelsea’s bedroom or play computer games. They dress the same: both like jeans and T-shirts. They even swap clothes sometimes. Pizza is their favorite dish. They have one difference: Chelsea loves dogs, but Sammy-Jo loves cats.",
+      "text": "Hello! My name is Laura. I am 26 years old. I am from Australia, and I live in Sydney. I work as a graphic designer. My daily routine is quite simple. I wake up at 7:00 a.m. and have breakfast. My breakfast is usually toast and coffee. At 8:00 a.m., I go to work. My office is near my home. I work from 9:00 a.m. to 5:00 p.m. After work, I go to the gym. My workout is important to me. In the evening, I cook dinner and watch TV. I usually go to bed at 10:00 p.m. I have a small family. My father is a teacher, and my mother is a nurse. They are very supportive. I have one younger brother. He is 22 years old and studies engineering at the university. We often have dinner together and enjoy spending time as a family.",
       "subparts": [
         {
-          "id": "part11_tf",
+          "id": "part7_tf",
           "title": "True/False",
           "type": "true_false",
-          "points": 6,
           "items": [
-            { "prompt": "Sammy-Jo has no siblings.", "answer": false },
-            { "prompt": "Sammy-Jo goes to Chelsea’s house because she has two sisters.", "answer": true },
-            { "prompt": "The girls dislike shopping.", "answer": false }
+            { "prompt": "Laura's breakfast usually includes eggs and bacon.", "choices": ["True", "False"], "answer": 1 },
+            { "prompt": "Laura works from 9:00 a.m. to 5:00 p.m.", "choices": ["True", "False"], "answer": 0 },
+            { "prompt": "Laura's father is a nurse.", "choices": ["True", "False"], "answer": 1 },
+            { "prompt": "Laura's younger brother studies engineering at the university.", "choices": ["True", "False"], "answer": 0 },
+            { "prompt": "Laura often has dinner with her family.", "choices": ["True", "False"], "answer": 0 }
           ]
         },
         {
-          "id": "part11_mc",
+          "id": "part7_mc",
           "title": "Multiple Choice",
           "type": "multiple_choice",
-          "points": 8,
           "items": [
-            { "prompt": "What do Sammy-Jo and Chelsea do if it rains?", "options": ["Walk to town","Take the bus","Stay home"], "answer": 1 },
-            { "prompt": "What is one activity that Sammy-Jo does not enjoy?", "options": ["Watching films","Playing computer games","Being with dogs"], "answer": 2 },
-            { "prompt": "What do both girls like wearing?", "options": ["Dresses","Jeans and T-shirts","Jumpers"], "answer": 1 }
-          ]
-        },
-        {
-          "id": "part11_grammar",
-          "title": "Grammar Exercises",
-          "type": "gap_fill",
-          "points": 11,
-          "items": [
-            { "prompt": "They sit beside each other ___ school.", "answer": ["at"], "points": 0.5 },
-            { "prompt": "They go into town ___ Saturdays.", "answer": ["on"], "points": 0.5 },
-            { "prompt": "They go to ___ cinema or just chill in ___ park.", "answer": ["the","the"], "points": 0.5 },
-            { "prompt": "They have ___ favorite dish.", "answer": ["a"], "points": 0.5 }
+            { "prompt": "How old is Laura?", "choices": ["30", "26", "22"], "answer": 1 },
+            { "prompt": "What is Laura's job?", "choices": ["Teacher", "Nurse", "Graphic designer"], "answer": 2 },
+            { "prompt": "Where does Laura live?", "choices": ["Melbourne", "Brisbane", "Sydney"], "answer": 2 },
+            { "prompt": "What time does Laura usually go to bed?", "choices": ["10:00 p.m", "11:00 p.m", "9:00 p.m"], "answer": 0 },
+            { "prompt": "What does Laura do after work?", "choices": ["Goes to the park", "Goes to the gym", "Reads a book"], "answer": 1 }
           ]
         }
       ]
-    },
+    },   
     {
       "id": "part12",
       "title": "Listening: The Gift of the Magi (questions only)",
