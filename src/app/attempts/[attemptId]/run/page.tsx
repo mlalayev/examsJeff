@@ -300,8 +300,10 @@ export default function AttemptRunnerPage() {
                        style={{ color: 'rgba(48, 51, 128, 0.7)' }}>
                     <span>Progress</span>
                     <span>
-                      {Object.values(answers).reduce((total, sectionAnswers) => 
-                        total + Object.values(sectionAnswers).filter(answer => {
+                      {data.sections?.reduce((total, section) => {
+                        const sectionAnswers = answers[section.type] || {};
+                        const answered = section.questions.filter(q => {
+                          const answer = sectionAnswers[q.id];
                           if (answer === null || answer === undefined || answer === "") return false;
                           if (typeof answer === "object") {
                             if (Array.isArray(answer)) {
@@ -310,8 +312,9 @@ export default function AttemptRunnerPage() {
                             return Object.keys(answer).length > 0;
                           }
                           return true;
-                        }).length, 0
-                      )} / {data.sections?.reduce((total, section) => total + section.questions.length, 0)} questions
+                        }).length;
+                        return total + answered;
+                      }, 0) || 0} / {data.sections?.reduce((total, section) => total + section.questions.length, 0)} questions
                     </span>
                   </div>
                    <div className="w-full rounded-full h-2"
@@ -320,18 +323,21 @@ export default function AttemptRunnerPage() {
                        className="h-2 rounded-full transition-all duration-300"
                        style={{
                          backgroundColor: '#303380',
-                         width: `${(Object.values(answers).reduce((total, sectionAnswers) => 
-                          total + Object.values(sectionAnswers).filter(answer => {
-                            if (answer === null || answer === undefined || answer === "") return false;
-                            if (typeof answer === "object") {
-                              if (Array.isArray(answer)) {
-                                return answer.length > 0;
-                              }
-                              return Object.keys(answer).length > 0;
-                            }
-                            return true;
-                          }).length, 0
-                         ) / (data.sections?.reduce((total, section) => total + section.questions.length, 0) || 1)) * 100}%`
+                         width: `${((data.sections?.reduce((total, section) => {
+                           const sectionAnswers = answers[section.type] || {};
+                           const answered = section.questions.filter(q => {
+                             const answer = sectionAnswers[q.id];
+                             if (answer === null || answer === undefined || answer === "") return false;
+                             if (typeof answer === "object") {
+                               if (Array.isArray(answer)) {
+                                 return answer.length > 0;
+                               }
+                               return Object.keys(answer).length > 0;
+                             }
+                             return true;
+                           }).length;
+                           return total + answered;
+                         }, 0) || 0) / (data.sections?.reduce((total, section) => total + section.questions.length, 0) || 1)) * 100}%`
                        }}
                      ></div>
                    </div>
