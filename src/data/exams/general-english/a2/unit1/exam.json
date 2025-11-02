@@ -10,7 +10,7 @@
     {
       "id": "part1",
       "title": "Complete sentences using Present Simple or Past Simple",
-      "type": "gap_fill_verbs",
+      "type": "gap_fill",
       "points": 5,
       "items": [
         { "prompt": "I ____ (be) at the cinema last night.", "answer": ["was"], "points": 0.33 },
@@ -46,24 +46,6 @@
         { "prompt": "They _______ a new house.", "options": ["have got","has got"], "answer": 0 },
         { "prompt": "She _______ a red bicycle.", "options": ["have got","has got"], "answer": 1 },
         { "prompt": "We _______ a big family.", "options": ["have got","has got"], "answer": 0 }
-      ]
-    },
-    {
-      "id": "part3",
-      "title": "Write sentences using correct form of Present Tense",
-      "type": "short_answer",
-      "points": 5,
-      "items": [
-        { "prompt": "(you/come) tonight?", "answer": ["Are you coming tonight?","Do you come tonight?"], "points": 0.5 },
-        { "prompt": "(he/eat) rice every day?", "answer": ["Does he eat rice every day?"], "points": 0.5 },
-        { "prompt": "I (work) at the moment.", "answer": ["I am working at the moment."], "points": 0.5 },
-        { "prompt": "(he/come) to London often?", "answer": ["Does he come to London often?"], "points": 0.5 },
-        { "prompt": "He (play) tennis now.", "answer": ["He is playing tennis now."], "points": 0.5 },
-        { "prompt": "(you/come) to the cinema later?", "answer": ["Are you coming to the cinema later?","Will you come to the cinema later?"], "points": 0.5 },
-        { "prompt": "They (not/come) to the party tomorrow.", "answer": ["They are not coming to the party tomorrow.","They aren't coming to the party tomorrow."], "points": 0.5 },
-        { "prompt": "He (not/play) golf now.", "answer": ["He is not playing golf now.","He isn't playing golf now."], "points": 0.5 },
-        { "prompt": "They (go) to a restaurant every Saturday.", "answer": ["They go to a restaurant every Saturday."], "points": 0.5 },
-        { "prompt": "I (study) every day.", "answer": ["I study every day."], "points": 0.5 }
       ]
     },
     {
@@ -113,7 +95,7 @@
     {
       "id": "part6",
       "title": "Write the verbs in the correct verb pattern",
-      "type": "gap_fill_verbs",
+      "type": "gap_fill",
       "points": 4,
       "items": [
         { "prompt": "I enjoy _______  books in my free time.", "answer": ["reading"], "points": 0.4 },
@@ -126,24 +108,6 @@
         { "prompt": "They plan _______  to Japan next year.", "answer": ["to travel"], "points": 0.4 },
         { "prompt": "He finished _______  his homework before dinner.", "answer": ["doing"], "points": 0.4 },
         { "prompt": "We like _______  movies on Friday nights.", "answer": ["watching","to watch"], "points": 0.4 }
-      ]
-    },
-    {
-      "id": "part7",
-      "title": "Write the sentences in Present Perfect Tense",
-      "type": "short_answer",
-      "points": 5,
-      "items": [
-        { "prompt": "(you / keep a pet for three years).", "answer": ["Have you kept a pet for three years?"], "points": 0.5 },
-        { "prompt": "(you / eat Thai food before)?", "answer": ["Have you eaten Thai food before?"], "points": 0.5 },
-        { "prompt": "(it / rain all day)?", "answer": ["Has it rained all day?"], "points": 0.5 },
-        { "prompt": "(who / we / forget to invite)?", "answer": ["Who have we forgotten to invite?"], "points": 0.5 },
-        { "prompt": "(we / not / hear that song before).", "answer": ["We haven't heard that song before."], "points": 0.5 },
-        { "prompt": "(he / not / forget his books).", "answer": ["He hasn't forgotten his books."], "points": 0.5 },
-        { "prompt": "(she / steal all the chocolate).", "answer": ["She has stolen all the chocolate."], "points": 0.5 },
-        { "prompt": "(I / explain it well)?", "answer": ["Have I explained it well?"], "points": 0.5 },
-        { "prompt": "(who / he / meet recently)?", "answer": ["Who has he met recently?"], "points": 0.5 },
-        { "prompt": "(I / know him for three months).", "answer": ["I have known him for three months."], "points": 0.5 }
       ]
     },
     {

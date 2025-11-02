@@ -140,6 +140,123 @@ function determineSectionType(title: string, partId: string): string {
   return 'GRAMMAR';
 }
 
+// Generate verb forms for gap_fill_verbs questions
+function generateVerbForms(baseVerb: string, correctAnswers: string[]): string[] {
+  const verb = baseVerb.toLowerCase();
+  const forms = new Set<string>();
+  
+  // Always include correct answers
+  correctAnswers.forEach(answer => forms.add(answer.trim().toLowerCase()));
+  
+  // Common irregular verb forms
+  const irregularVerbs: Record<string, string[]> = {
+    'be': ['am', 'is', 'are', 'was', 'were', 'been', 'being'],
+    'have': ['have', 'has', 'had', 'having'],
+    'do': ['do', 'does', 'did', 'done', 'doing'],
+    'go': ['go', 'goes', 'went', 'gone', 'going'],
+    'get': ['get', 'gets', 'got', 'gotten', 'getting'],
+    'make': ['make', 'makes', 'made', 'making'],
+    'take': ['take', 'takes', 'took', 'taken', 'taking'],
+    'come': ['come', 'comes', 'came', 'coming'],
+    'see': ['see', 'sees', 'saw', 'seen', 'seeing'],
+    'know': ['know', 'knows', 'knew', 'known', 'knowing'],
+    'think': ['think', 'thinks', 'thought', 'thinking'],
+    'give': ['give', 'gives', 'gave', 'given', 'giving'],
+    'say': ['say', 'says', 'said', 'saying'],
+    'find': ['find', 'finds', 'found', 'finding'],
+    'tell': ['tell', 'tells', 'told', 'telling'],
+    'work': ['work', 'works', 'worked', 'working'],
+    'call': ['call', 'calls', 'called', 'calling'],
+    'try': ['try', 'tries', 'tried', 'trying'],
+    'ask': ['ask', 'asks', 'asked', 'asking'],
+    'need': ['need', 'needs', 'needed', 'needing'],
+    'want': ['want', 'wants', 'wanted', 'wanting'],
+    'like': ['like', 'likes', 'liked', 'liking'],
+    'help': ['help', 'helps', 'helped', 'helping'],
+    'live': ['live', 'lives', 'lived', 'living'],
+    'play': ['play', 'plays', 'played', 'playing'],
+    'look': ['look', 'looks', 'looked', 'looking'],
+    'watch': ['watch', 'watches', 'watched', 'watching'],
+    'read': ['read', 'reads', 'reading'],
+    'write': ['write', 'writes', 'wrote', 'written', 'writing'],
+    'drink': ['drink', 'drinks', 'drank', 'drunk', 'drinking'],
+    'eat': ['eat', 'eats', 'ate', 'eaten', 'eating'],
+    'sleep': ['sleep', 'sleeps', 'slept', 'sleeping'],
+    'run': ['run', 'runs', 'ran', 'running'],
+    'walk': ['walk', 'walks', 'walked', 'walking'],
+    'talk': ['talk', 'talks', 'talked', 'talking'],
+    'study': ['study', 'studies', 'studied', 'studying'],
+    'learn': ['learn', 'learns', 'learned', 'learnt', 'learning'],
+    'teach': ['teach', 'teaches', 'taught', 'teaching'],
+    'buy': ['buy', 'buys', 'bought', 'buying'],
+    'sell': ['sell', 'sells', 'sold', 'selling'],
+    'meet': ['meet', 'meets', 'met', 'meeting'],
+    'leave': ['leave', 'leaves', 'left', 'leaving'],
+    'travel': ['travel', 'travels', 'travelled', 'traveled', 'travelling', 'traveling'],
+    'visit': ['visit', 'visits', 'visited', 'visiting'],
+    'enjoy': ['enjoy', 'enjoys', 'enjoyed', 'enjoying'],
+    'finish': ['finish', 'finishes', 'finished', 'finishing'],
+    'start': ['start', 'starts', 'started', 'starting'],
+    'stop': ['stop', 'stops', 'stopped', 'stopping'],
+    'decide': ['decide', 'decides', 'decided', 'deciding'],
+    'plan': ['plan', 'plans', 'planned', 'planning'],
+    'hope': ['hope', 'hopes', 'hoped', 'hoping'],
+    'love': ['love', 'loves', 'loved', 'loving'],
+    'hate': ['hate', 'hates', 'hated', 'hating'],
+    'prefer': ['prefer', 'prefers', 'preferred', 'preferring'],
+  };
+  
+  // Check if it's an irregular verb
+  if (irregularVerbs[verb]) {
+    irregularVerbs[verb].forEach(form => forms.add(form));
+  } else {
+    // Regular verb patterns
+    // Present forms
+    if (verb.endsWith('y')) {
+      const base = verb.slice(0, -1);
+      forms.add(verb); // base form
+      forms.add(base + 'ies'); // third person singular
+      forms.add(base + 'ied'); // past/past participle
+      forms.add(base + 'ying'); // -ing form
+    } else if (verb.endsWith('e')) {
+      const base = verb.slice(0, -1);
+      forms.add(verb); // base form
+      forms.add(verb + 's'); // third person singular
+      forms.add(verb + 'd'); // past/past participle
+      forms.add(base + 'ing'); // -ing form
+    } else if (verb.match(/[bcdfghjklmnpqrstvwxz]$/)) {
+      // Ends with consonant - double last letter for -ing
+      forms.add(verb); // base form
+      forms.add(verb + 's'); // third person singular
+      forms.add(verb + 'ed'); // past/past participle
+      forms.add(verb + verb.slice(-1) + 'ing'); // -ing form (doubled)
+    } else {
+      // Default pattern
+      forms.add(verb); // base form
+      forms.add(verb + 's'); // third person singular
+      forms.add(verb + 'ed'); // past/past participle
+      forms.add(verb + 'ing'); // -ing form
+    }
+  }
+  
+  // Also handle contractions
+  if (forms.has("is not")) forms.add("isn't");
+  if (forms.has("are not")) forms.add("aren't");
+  if (forms.has("was not")) forms.add("wasn't");
+  if (forms.has("were not")) forms.add("weren't");
+  if (forms.has("do not")) forms.add("don't");
+  if (forms.has("does not")) forms.add("doesn't");
+  if (forms.has("did not")) forms.add("didn't");
+  
+  // Add any correct answers that might be contractions or variations
+  correctAnswers.forEach(answer => {
+    const clean = answer.trim().toLowerCase();
+    forms.add(clean);
+  });
+  
+  return Array.from(forms).sort();
+}
+
 function transformItem(item: any, partType: string, order: number, passage?: string, partTitle?: string) {
   const base: any = {
     id: `q-${order}`,
@@ -167,13 +284,101 @@ function transformItem(item: any, partType: string, order: number, passage?: str
     };
   }
   
-  if (partType === "gap_fill" || partType === "short_answer" || partType === "gap_fill_verbs") {
+  // Handle gap_fill and gap_fill_verbs - both use dropdown/select
+  if (partType === "gap_fill" || partType === "gap_fill_verbs" || partType === "short_answer") {
+    const promptText = item.prompt || '';
+    const verbMatch = promptText.match(/\(([^)]+)\)/);
+    let baseVerb = verbMatch ? verbMatch[1].trim() : '';
+    
+    // Handle "not/ be" or "not/be" patterns - extract just the verb part
+    if (baseVerb.includes('/')) {
+      const parts = baseVerb.split('/').map(p => p.trim());
+      baseVerb = parts[parts.length - 1]; // Take the last part after "/"
+    }
+    
     const answers = Array.isArray(item.answer) ? item.answer : [item.answer].filter(Boolean);
+    let options: string[] = [];
+    
+    // Check if this is adjective/adverb question (should not use verb forms)
+    const isAdjectiveAdverb = partTitle?.toLowerCase().includes('adjective') || 
+                              partTitle?.toLowerCase().includes('adverb') ||
+                              promptText.toLowerCase().includes('adjective') ||
+                              promptText.toLowerCase().includes('adverb');
+    
+    // If verb found in parentheses AND not adjective/adverb question, generate verb forms
+    if (baseVerb && verbMatch && !isAdjectiveAdverb) {
+      options = generateVerbForms(baseVerb, answers);
+    } else {
+      // For non-verb gap_fill (prepositions, adjectives, etc.), create options from answers and common alternatives
+      const optionsSet = new Set<string>();
+      
+      // Always include correct answers
+      answers.forEach(answer => optionsSet.add(answer.trim().toLowerCase()));
+      
+      // Add common alternatives based on prompt content
+      const promptLower = promptText.toLowerCase();
+      if (promptLower.includes('preposition') || promptLower.includes('time expression')) {
+        // Common prepositions and time expressions
+        ['in', 'on', 'at', 'when', 'ago', 'next', 'last', 'before', 'after', 'during', 'for', 'since', 'until', 'by', 'from', 'to']
+          .forEach(opt => optionsSet.add(opt));
+      } else if (promptLower.includes('adjective') || promptLower.includes('adverb')) {
+        // For adjective/adverb questions, add the base form variations
+        answers.forEach(answer => {
+          const base = answer.trim().toLowerCase();
+          if (base.endsWith('ly')) {
+            // Remove 'ly' to get adjective form
+            const adj = base.slice(0, -2);
+            optionsSet.add(adj);
+            optionsSet.add(base); // adverb form
+          } else {
+            // Add 'ly' to get adverb form
+            optionsSet.add(base);
+            optionsSet.add(base + 'ly');
+          }
+        });
+        // Common adjective/adverb pairs
+        ['good', 'well', 'bad', 'badly', 'quick', 'quickly', 'slow', 'slowly', 
+         'careful', 'carefully', 'easy', 'easily', 'terrible', 'terribly']
+          .forEach(opt => optionsSet.add(opt));
+      } else {
+        // Generic case - just use answers and add some variations
+        answers.forEach(answer => optionsSet.add(answer.trim().toLowerCase()));
+      }
+      
+      options = Array.from(optionsSet).sort();
+    }
+    
+    // Find the index of the correct answer (normalize for comparison)
+    let correctIndex = -1;
+    for (let i = 0; i < options.length; i++) {
+      const normalizedOption = options[i].trim().toLowerCase();
+      if (answers.some(ans => ans.trim().toLowerCase() === normalizedOption)) {
+        correctIndex = i;
+        break;
+      }
+    }
+    
+    // If exact match not found, add correct answers to options
+    if (correctIndex === -1 && answers.length > 0) {
+      answers.forEach(answer => {
+        const normalized = answer.trim().toLowerCase();
+        if (!options.includes(normalized)) {
+          options.push(normalized);
+        }
+      });
+      // Sort again and find index
+      options.sort();
+      correctIndex = options.findIndex(opt => 
+        answers.some(ans => ans.trim().toLowerCase() === opt.toLowerCase())
+      );
+    }
+    
     return {
       ...base,
-      qtype: "GAP",
+      qtype: "SELECT",
       prompt: { text: item.prompt, passage },
-      answerKey: { answers: answers },
+      options: { choices: options },
+      answerKey: { index: correctIndex >= 0 ? correctIndex : 0 },
     };
   }
   
