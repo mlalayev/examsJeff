@@ -9,24 +9,164 @@
   "parts": [
     {
       "id": "part1",
-      "title": "Complete the sentences with the correct word",
+      "title": "Prepositions: in / on / at",
+      "type": "multiple_choice",
+      "items": [
+        { "prompt": "My birthday is ___ May.", "choices": ["in", "on", "at"], "answer": 0 },
+        { "prompt": "The meeting starts ___ 9 a.m.", "choices": ["in", "on", "at"], "answer": 2 },
+        { "prompt": "We usually go swimming ___ Sundays.", "choices": ["in", "on", "at"], "answer": 1 },
+        { "prompt": "The cat is sleeping ___ the sofa.", "choices": ["in", "on", "at"], "answer": 1 },
+        { "prompt": "I was born ___ 2002.", "choices": ["in", "on", "at"], "answer": 0 },
+        { "prompt": "Let's meet ___ the bus stop.", "choices": ["in", "on", "at"], "answer": 2 },
+        { "prompt": "She lives ___ London.", "choices": ["in", "on", "at"], "answer": 0 },
+        { "prompt": "We eat dinner ___ the evening.", "choices": ["in", "on", "at"], "answer": 0 },
+        { "prompt": "The picture is hanging ___ the wall.", "choices": ["in", "on", "at"], "answer": 1 },
+        { "prompt": "I will see you ___ Friday.", "choices": ["in", "on", "at"], "answer": 1 }
+      ]
+    },    
+    {
+      "id": "part2",
+      "title": "Present Simple - Choose the correct verb form",
       "type": "inline_select",
       "items": [
-        {"prompt": "I have ____ apple in my bag.", "options": ["a", "an"], "answer": ["an"]},
-        {"prompt": "She is ____ teacher.", "options": ["a", "an"], "answer": ["a"]},
-        {"prompt": "We need ____ umbrella today.", "options": ["a", "an"], "answer": ["an"]},
-        {"prompt": "He has ____ car.", "options": ["a", "an"], "answer": ["a"]}
+        { "prompt": "She __________ breakfast every day.", "choices": ["eat", "eats"], "answer": 1 },
+        { "prompt": "He __________ English at school.", "choices": ["study", "studies"], "answer": 1 },
+        { "prompt": "It __________ like a beautiful day.", "choices": ["look", "looks"], "answer": 1 },
+        { "prompt": "She __________ a new bike.", "choices": ["have", "has"], "answer": 1 },
+        { "prompt": "He __________ emails every morning.", "choices": ["write", "writes"], "answer": 1 },
+        { "prompt": "It __________ very quiet here.", "choices": ["seem", "seems"], "answer": 1 },
+        { "prompt": "She __________ to dance.", "choices": ["love", "loves"], "answer": 1 },
+        { "prompt": "He __________ the guitar.", "choices": ["play", "plays"], "answer": 1 },
+        { "prompt": "It __________ brightly in the sky.", "choices": ["shine", "shines"], "answer": 1 },
+        { "prompt": "She __________ books every night.", "choices": ["read", "reads"], "answer": 1 }
       ]
     },
     {
-      "id": "part2",
-      "title": "Choose the correct answer",
+      "id": "part3",
+      "title": "There is / There are",
+      "type": "inline_select",
+      "items": [
+        { "prompt": "_________ a cat in the garden.", "choices": ["There is", "There are"], "answer": 0 },
+        { "prompt": "_________ three books on the table.", "choices": ["There is", "There are"], "answer": 1 },
+        { "prompt": "_________ a big window in the living room.", "choices": ["There is", "There are"], "answer": 0 },
+        { "prompt": "_________ many interesting museums in the city.", "choices": ["There is", "There are"], "answer": 1 },
+        { "prompt": "_________ a delicious cake on the kitchen counter.", "choices": ["There is", "There are"], "answer": 0 },
+        { "prompt": "_________ two computers in the office.", "choices": ["There is", "There are"], "answer": 1 },
+        { "prompt": "_________ a nice restaurant near my house.", "choices": ["There is", "There are"], "answer": 0 },
+        { "prompt": "_________ some apples in the fridge.", "choices": ["There is", "There are"], "answer": 1 },
+        { "prompt": "_________ a new movie on TV tonight.", "choices": ["There is", "There are"], "answer": 0 },
+        { "prompt": "_________ several parks in the neighborhood.", "choices": ["There is", "There are"], "answer": 1 }
+      ]
+    },
+    {
+      "id": "part4",
+      "title": "They are / There is / Their",
+      "type": "inline_select",
+      "items": [
+        { "prompt": "What is __________ favorite color?", "choices": ["they are", "there is", "their"], "answer": 2 },
+        { "prompt": "Can you tell me if __________ a good restaurant nearby?", "choices": ["they are", "there is", "their"], "answer": 1 },
+        { "prompt": "How do you think __________ feeling today?", "choices": ["they are", "there is", "their"], "answer": 0 },
+        { "prompt": "Do you know where __________ shoes are?", "choices": ["they are", "there is", "their"], "answer": 2 },
+        { "prompt": "__________ going to need a bigger car for the trip.", "choices": ["They are", "There is", "Their"], "answer": 0 },
+        { "prompt": "I think __________ a problem with the computer.", "choices": ["they are", "there is", "their"], "answer": 1 },
+        { "prompt": "__________ house is very beautiful.", "choices": ["They are", "There is", "Their"], "answer": 2 },
+        { "prompt": "__________ playing football in the park.", "choices": ["They are", "There is", "Their"], "answer": 0 },
+        { "prompt": "__________ a new student in our class.", "choices": ["They are", "There is", "Their"], "answer": 1 },
+        { "prompt": "I met __________ parents yesterday.", "choices": ["They are", "There is", "Their"], "answer": 2 }
+      ]
+    },
+    {
+      "id": "part5",
+      "title": "Prepositions of Time and Place (in / on / at)",
       "type": "multiple_choice",
       "items": [
-        {"prompt": "What do you do?", "choices": ["I am fine.", "I am a student.", "I am 25 years old."], "answer": 1},
-        {"prompt": "How are you?", "choices": ["I am from London.", "I am fine, thanks.", "I am a doctor."], "answer": 1}
+        {
+          "prompt": "She works __________ a cafe __________ the evening.",
+          "choices": ["at, in", "in, in", "in, at", "at, on"],
+          "answer": 0
+        },
+        {
+          "prompt": "I exercise __________ the morning __________ 6 AM.",
+          "choices": ["in, at", "in, on", "at, in", "on, in"],
+          "answer": 0
+        },
+        {
+          "prompt": "We study __________ school __________ weekdays.",
+          "choices": ["in, on", "at, on", "at, in", "in, at"],
+          "answer": 1
+        },
+        {
+          "prompt": "My parents go shopping __________ Sunday __________ the afternoon.",
+          "choices": ["in, on", "on, in", "at, on", "in, at"],
+          "answer": 1
+        },
+        {
+          "prompt": "He has English lessons __________ the morning __________ Tuesdays.",
+          "choices": ["at, on", "in, on", "on, in", "at, in"],
+          "answer": 1
+        },
+        {
+          "prompt": "The concert starts __________ 8 o’clock __________ Friday night.",
+          "choices": ["at, on", "in, at", "on, at", "at, in"],
+          "answer": 0
+        },
+        {
+          "prompt": "We often meet __________ the park __________ weekends.",
+          "choices": ["at, on", "in, on", "on, in", "in, at"],
+          "answer": 1
+        },
+        {
+          "prompt": "She goes jogging __________ the morning __________ the park.",
+          "choices": ["in, in", "at, at", "on, at", "in, at"],
+          "answer": 0
+        },
+        {
+          "prompt": "They usually travel __________ summer __________ plane.",
+          "choices": ["in, by", "on, by", "at, in", "in, at"],
+          "answer": 0
+        },
+        {
+          "prompt": "My birthday is __________ May __________ the 5th.",
+          "choices": ["in, on", "on, in", "at, in", "in, at"],
+          "answer": 0
+        }
+      ]
+    },
+    {
+      "id": "part6",
+      "title": "Family Members",
+      "type": "inline_select",
+      "items": [
+        { "prompt": "My __________ is my mother’s father.", "choices": ["grandfather", "uncle", "brother", "father"], "answer": 0 },
+        { "prompt": "My __________ is my father’s sister.", "choices": ["aunt", "mother", "grandmother", "cousin"], "answer": 0 },
+        { "prompt": "My __________ is my brother’s daughter.", "choices": ["niece", "sister", "cousin", "aunt"], "answer": 0 },
+        { "prompt": "My __________ is my mother’s son.", "choices": ["brother", "uncle", "cousin", "father"], "answer": 0 },
+        { "prompt": "My __________ is my father’s brother’s child.", "choices": ["cousin", "brother", "nephew", "aunt"], "answer": 0 },
+        { "prompt": "My __________ is my mother’s husband.", "choices": ["father", "uncle", "grandfather", "brother"], "answer": 0 },
+        { "prompt": "My __________ is my father’s father.", "choices": ["grandfather", "uncle", "brother", "cousin"], "answer": 0 },
+        { "prompt": "My __________ is my mother’s daughter.", "choices": ["sister", "niece", "cousin", "aunt"], "answer": 0 },
+        { "prompt": "My __________ is my sister’s son.", "choices": ["nephew", "brother", "uncle", "father"], "answer": 0 },
+        { "prompt": "My __________ is my aunt’s husband.", "choices": ["uncle", "father", "brother", "grandfather"], "answer": 0 }
+      ]
+    },
+    {
+      "id": "part7",
+      "title": "Do / Does Questions and Short Answers",
+      "type": "gap_fill",
+      "items": [
+        { "prompt": "___ you have a sister? No, ___", "answer": ["Do", "I don't"] },
+        { "prompt": "___ Ryan like basketball? Yes, ___", "answer": ["Does", "he does"] },
+        { "prompt": "___ they play football on weekends? Yes, ___", "answer": ["Do", "they do"] },
+        { "prompt": "___ your mother work in a bank? No, ___", "answer": ["Does", "she doesn't"] },
+        { "prompt": "___ you like ice cream? Yes, ___", "answer": ["Do", "I do"] },
+        { "prompt": "___ he watch TV every evening? No, ___", "answer": ["Does", "he doesn't"] },
+        { "prompt": "___ your friends live near here? Yes, ___", "answer": ["Do", "they do"] },
+        { "prompt": "___ she study English at school? Yes, ___", "answer": ["Does", "she does"] },
+        { "prompt": "___ you go to the gym every day? No, ___", "answer": ["Do", "I don't"] },
+        { "prompt": "___ it rain a lot in your city? Yes, ___", "answer": ["Does", "it does"] }
       ]
     }
+    
   ]
 }
 

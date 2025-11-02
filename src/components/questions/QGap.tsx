@@ -10,6 +10,7 @@ export function QGap({ question, value, onChange, readOnly }: BaseQuestionProps<
   const currentAnswers = value || {};
   const [draggedOption, setDraggedOption] = useState<string | null>(null);
   const [usedOptions, setUsedOptions] = useState<Set<string>>(new Set(Object.values(currentAnswers)));
+  const [optionsAtTop, setOptionsAtTop] = useState(false); // whether options are shown at the top
 
   const handleDrop = (sentenceIndex: number, e: React.DragEvent) => {
     e.preventDefault();
@@ -86,15 +87,12 @@ export function QGap({ question, value, onChange, readOnly }: BaseQuestionProps<
     );
   };
 
-  return (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        {sentences.map((sentence: string, index: number) => renderSentence(sentence, index))}
-      </div>
-      
+  const renderOptions = () => {
+    return (
       <div className="border-t border-gray-100 pt-4">
         <h4 className="text-xs font-medium text-gray-500 mb-3 uppercase tracking-wide">Options</h4>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex items-start gap-3">
+          <div className="flex flex-wrap gap-2 flex-1">
           {options.map((option: string) => {
             const isUsed = usedOptions.has(option);
             return (
@@ -112,8 +110,38 @@ export function QGap({ question, value, onChange, readOnly }: BaseQuestionProps<
               </div>
             );
           })}
+          </div>
+          <button
+            onClick={() => setOptionsAtTop(!optionsAtTop)}
+            className="flex items-center justify-center w-8 h-8 rounded-lg border transition-all hover:bg-gray-50 border-gray-200 text-gray-600 flex-shrink-0"
+            aria-label={optionsAtTop ? "Move options down" : "Move options up"}
+          >
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              strokeWidth={2} 
+              stroke="currentColor" 
+              className="w-4 h-4"
+              style={{ transform: optionsAtTop ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
+            </svg>
+          </button>
         </div>
       </div>
+    );
+  };
+
+  return (
+    <div className="space-y-6">
+      {optionsAtTop && renderOptions()}
+      
+      <div className="space-y-2">
+        {sentences.map((sentence: string, index: number) => renderSentence(sentence, index))}
+      </div>
+      
+      {!optionsAtTop && renderOptions()}
     </div>
   );
 }

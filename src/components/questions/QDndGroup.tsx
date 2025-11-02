@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
 
 interface QuestionLike {
   id: string;
@@ -17,10 +17,50 @@ interface QDndGroupProps {
 }
 
 export default function QDndGroup({ questions, values, onChange, readOnly }: QDndGroupProps) {
+  const questionsRef = useRef<HTMLDivElement>(null);
+  
   // Extract sentences (one blank per question expected)
   const sentences = useMemo(() => {
     return questions.map((q) => String(q.prompt?.text || "")).map((s) => s.trim());
   }, [questions]);
+  
+  const scrollToTop = () => {
+    if (questionsRef.current) {
+      const element = questionsRef.current;
+      
+      // Find the scrollable parent container (the one with overflow-y-auto)
+      let scrollContainer: HTMLElement | null = element.parentElement;
+      while (scrollContainer && scrollContainer !== document.body) {
+        const style = window.getComputedStyle(scrollContainer);
+        if (style.overflowY === 'auto' || style.overflowY === 'scroll' || 
+            scrollContainer.classList.contains('overflow-y-auto') ||
+            scrollContainer.classList.contains('custom-scrollbar')) {
+          break;
+        }
+        scrollContainer = scrollContainer.parentElement;
+      }
+      
+      if (scrollContainer) {
+        // Scroll within the container
+        const containerRect = scrollContainer.getBoundingClientRect();
+        const elementRect = element.getBoundingClientRect();
+        const scrollTop = elementRect.top - containerRect.top + scrollContainer.scrollTop - 20; // 20px offset
+        
+        scrollContainer.scrollTo({
+          top: scrollTop,
+          behavior: 'smooth'
+        });
+      } else {
+        // Fallback: scroll window
+        const rect = element.getBoundingClientRect();
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        window.scrollTo({
+          top: scrollTop + rect.top - 20,
+          behavior: 'smooth'
+        });
+      }
+    }
+  };
 
   // Build chip counts from word bank if available, otherwise from answers
   type Chip = { id: string; label: string };
@@ -112,7 +152,7 @@ export default function QDndGroup({ questions, values, onChange, readOnly }: QDn
   return (
     <div className="space-y-6">
       {/* Sentences list */}
-      <div className="space-y-2">
+      <div ref={questionsRef} className="space-y-2">
         {questions.map((q, idx) => {
           const sentence = sentences[idx] || "";
           const parts = sentence.split(/___+|________+/);
@@ -171,7 +211,32 @@ export default function QDndGroup({ questions, values, onChange, readOnly }: QDn
 
       {/* Options */}
       <div className="border-t pt-4" style={{ borderColor: 'rgba(48, 51, 128, 0.1)' }}>
-        <h4 className="text-xs font-medium mb-3 uppercase tracking-wide" style={{ color: 'rgba(48, 51, 128, 0.7)' }}>Options</h4>
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="text-xs font-medium uppercase tracking-wide" style={{ color: 'rgba(48, 51, 128, 0.7)' }}>Options</h4>
+          <button
+            onClick={scrollToTop}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:shadow-sm"
+            style={{
+              backgroundColor: 'rgba(48, 51, 128, 0.08)',
+              borderColor: 'rgba(48, 51, 128, 0.15)',
+              color: '#303380',
+              border: '1px solid'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(48, 51, 128, 0.12)';
+              e.currentTarget.style.borderColor = 'rgba(48, 51, 128, 0.25)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(48, 51, 128, 0.08)';
+              e.currentTarget.style.borderColor = 'rgba(48, 51, 128, 0.15)';
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M7 2.33333L7 11.6667M7 2.33333L3.5 5.83333M7 2.33333L10.5 5.83333" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span>Scroll to questions</span>
+          </button>
+        </div>
         <div className="flex flex-wrap gap-2">
           {(() => {
             const seenPerLabel: Record<string, number> = {};
