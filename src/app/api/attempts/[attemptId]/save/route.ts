@@ -40,10 +40,22 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
 
     if (isJsonExam) {
       // For JSON exams, merge answers into attempt.answers
+      // Structure: { sectionType1: { q1: answer1, q2: answer2 }, sectionType2: { q3: answer3 } }
       const currentAnswers = (attempt.answers as any) || {};
-      const updatedAnswers = { ...currentAnswers, ...answers };
+      const updatedAnswers = { 
+        ...currentAnswers, 
+        [sectionType]: { 
+          ...(currentAnswers[sectionType] || {}), 
+          ...answers 
+        } 
+      };
 
-      console.log('Saving JSON exam answers:', { currentCount: Object.keys(currentAnswers).length, newCount: Object.keys(answers).length, totalCount: Object.keys(updatedAnswers).length });
+      console.log('Saving JSON exam answers:', { 
+        sectionType, 
+        currentSectionCount: Object.keys(currentAnswers[sectionType] || {}).length, 
+        newCount: Object.keys(answers).length, 
+        totalSectionCount: Object.keys(updatedAnswers[sectionType]).length 
+      });
 
       await prisma.attempt.update({
         where: { id: attemptId },

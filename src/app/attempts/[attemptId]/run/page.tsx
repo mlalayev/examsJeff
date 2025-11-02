@@ -43,6 +43,7 @@ interface Section {
   questions: Question[];
   order: number;
   status?: string;
+  audio?: string | null;
 }
 
 interface AttemptData {
@@ -129,13 +130,13 @@ export default function AttemptRunnerPage() {
         [sectionType]: { ...(prev[sectionType] || {}), [questionId]: value },
       };
 
-      // Debounced autosave (8 seconds)
+      // Debounced autosave (3 seconds)
       if (autosaveTimerRef.current) {
         clearTimeout(autosaveTimerRef.current);
       }
       autosaveTimerRef.current = setTimeout(() => {
         saveSection(sectionType, newAnswers[sectionType]);
-      }, 8000);
+      }, 3000);
 
       return newAnswers;
     });
@@ -160,16 +161,27 @@ export default function AttemptRunnerPage() {
 
     setSubmitting(true);
     try {
+      // IMPORTANT: Save all sections before submitting
+      const savePromises = Object.keys(answers).map(sectionType => 
+        saveSection(sectionType, answers[sectionType] || {})
+      );
+      await Promise.all(savePromises);
+      
+      // Now submit
       const res = await fetch(`/api/attempts/${attemptId}/submit`, {
         method: "POST",
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to submit");
+      if (!res.ok) {
+        console.error("Submit error response:", json);
+        const errorMsg = json.details ? `${json.error}: ${json.details}` : (json.error || "Failed to submit");
+        throw new Error(errorMsg);
+      }
 
       alert("Exam submitted successfully!");
       router.push(`/attempts/${attemptId}/results`);
     } catch (err: any) {
-      console.error(err);
+      console.error("Submit error:", err);
       alert(err.message || "Failed to submit exam");
     } finally {
       setSubmitting(false);
@@ -384,7 +396,13 @@ export default function AttemptRunnerPage() {
                   return (
                     <button
                       key={section.type}
-                      onClick={() => setActiveSection(section.type)}
+                      onClick={async () => {
+                        // Save current section before switching
+                        if (activeSection && answers[activeSection]) {
+                          await saveSection(activeSection, answers[activeSection]);
+                        }
+                        setActiveSection(section.type);
+                      }}
                          className={`w-full text-left px-3 py-2.5 rounded-lg transition-all ${
                         isActive
                              ? "border"
@@ -479,9 +497,7 @@ export default function AttemptRunnerPage() {
                  </div>
 
                  {/* Audio Player for Listening Section */}
-                 {(currentSection.type === 'LISTENING' || 
-                   currentSection.type === 'listening' || 
-                   currentSection.title?.toLowerCase().includes('listening')) && (
+                 {currentSection.audio && (
                    <div className="mb-8">
                      <div className="text-center mb-4">
                        <h3 className="text-lg font-semibold mb-2" style={{ color: '#303380' }}>
@@ -492,7 +508,7 @@ export default function AttemptRunnerPage() {
                        </p>
                      </div>
                      <AudioPlayer 
-                       src="/audio/listening-sample.mp3" 
+                       src={currentSection.audio} 
                        className="w-full"
                      />
                    </div>
@@ -518,10 +534,11 @@ export default function AttemptRunnerPage() {
                  )}
 
                 {/* Grouped DnD for preposition/time expression and short answer parts */}
-                {currentSection?.title?.toLowerCase().includes("preposition") || 
-                 currentSection?.title?.toLowerCase().includes("time expression") ||
-                 currentSection?.title?.toLowerCase().includes("short form") ||
-                 currentSection?.title?.toLowerCase().includes("'to be'") ? (
+                {/* Only use QDndGroup for DND_GAP questions, NOT for INLINE_SELECT (gap_fill_options) */}
+                {currentSection?.questions?.[0]?.qtype === "DND_GAP" && 
+                 (currentSection?.title?.toLowerCase().includes("preposition") || 
+                  currentSection?.title?.toLowerCase().includes("time expression") ||
+                  currentSection?.title?.toLowerCase().includes("short form")) ? (
                   <div className="bg-white rounded-xl border shadow-sm transition-all duration-200 hover:shadow-md"
                        style={{
                          borderColor: 'rgba(15, 17, 80, 0.63)'

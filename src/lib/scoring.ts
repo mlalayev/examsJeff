@@ -59,7 +59,8 @@ export function scoreQuestion(qtype: QuestionType, studentAnswer: any, answerKey
       if (sorted.length !== correctSorted.length) return 0;
       return sorted.every((v, i) => v === correctSorted[i]) ? 1 : 0;
     }
-    case "SELECT": {
+    case "SELECT":
+    case "INLINE_SELECT": {
       // Selected === answerKey.index
       const correctIdx = answerKey?.index;
       return studentAnswer === correctIdx ? 1 : 0;

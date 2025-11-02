@@ -1,0 +1,30 @@
+{
+  "id": "general-english-a2-unit2",
+  "title": "General English A2 - Unit 2",
+  "category": "GENERAL_ENGLISH",
+  "track": "A2",
+  "unit": "Unit 2",
+  "locale": "en",
+  "totalPoints": 100,
+  "parts": [
+    {
+      "id": "part1",
+      "title": "Complete the sentences with the correct word",
+      "type": "inline_select",
+      "items": [
+        {"prompt": "I ____ to school every day.", "options": ["go", "goes", "going"], "answer": ["go"]},
+        {"prompt": "She ____ English very well.", "options": ["speak", "speaks", "speaking"], "answer": ["speaks"]}
+      ]
+    },
+    {
+      "id": "part2",
+      "title": "Choose the correct answer",
+      "type": "multiple_choice",
+      "items": [
+        {"prompt": "What time do you wake up?", "choices": ["I wake up at 7 AM.", "I am waking up.", "I woke up."], "answer": 0},
+        {"prompt": "Where do you live?", "choices": ["I live in Paris.", "I am living in Paris.", "I lived in Paris."], "answer": 0}
+      ]
+    }
+  ]
+}
+

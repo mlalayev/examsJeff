@@ -88,6 +88,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ atte
         durationMin: s.durationMin,
         order: s.order,
         questions: s.questions || [],
+        audio: s.audio || null,
       })),
       savedAnswers: (attempt.answers as any) || {},
     });

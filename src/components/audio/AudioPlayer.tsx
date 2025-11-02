@@ -2,22 +2,33 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, SkipBack, SkipForward, Volume2 } from 'lucide-react';
 
 interface AudioPlayerProps {
-  src: string;
+  src?: string | null;
   className?: string;
 }
 
-const AudioPlayer: React.FC<AudioPlayerProps> = ({  className = "" }) => {
+const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, className = "" }) => {
+  if (!src) {
+    return (
+      <div className={`bg-white rounded-lg border p-4 w-full ${className}`}>
+        <p className="text-gray-500 text-center">No audio available</p>
+      </div>
+    );
+  }
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
 
-  const src = "/audio/Alexander Rybak - Fairytale (Lyrics) Norway  Eurovision Winner 2009.mp3";
-
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio) return;
+    if (!audio || !src) return;
+
+    // Reset player when src changes
+    setIsPlaying(false);
+    setCurrentTime(0);
+    setDuration(0);
+    audio.load();
 
     const updateTime = () => setCurrentTime(audio.currentTime);
     const updateDuration = () => setDuration(audio.duration);
@@ -32,7 +43,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({  className = "" }) => {
       audio.removeEventListener('loadedmetadata', updateDuration);
       audio.removeEventListener('ended', handleEnded);
     };
-  }, []);
+  }, [src]);
 
   const togglePlayPause = () => {
     const audio = audioRef.current;

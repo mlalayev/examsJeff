@@ -94,11 +94,15 @@ export async function GET(
     // STUDENT VIEW: Summary only
     if (role === "STUDENT" && isOwner) {
       // For JSON exams, we may not have attempt.sections in DB, so compute from answers
-      const studentAnswers = (attempt.answers as any) || {};
+      // Structure: { sectionType: { questionId: answer } }
+      const allStudentAnswers = (attempt.answers as any) || {};
       
       const perSection = examWithSections.sections.map((examSection: any) => {
         const attemptSec = attempt.sections.find((as) => as.type === examSection.type);
         const totalQuestions = examSection.questions?.length || 0;
+        
+        // Get answers for this specific section
+        const studentAnswers = (attemptSec?.answers as Record<string, any>) || allStudentAnswers[examSection.type] || {};
         
         let correctCount = 0;
         if (attemptSec && attemptSec.rawScore !== null) {
@@ -112,7 +116,7 @@ export async function GET(
             
             if (q.qtype === "TF") {
               return studentAnswer === answerKey?.value;
-            } else if (q.qtype === "MCQ_SINGLE" || q.qtype === "SELECT") {
+            } else if (q.qtype === "MCQ_SINGLE" || q.qtype === "SELECT" || q.qtype === "INLINE_SELECT") {
               return studentAnswer === answerKey?.index;
             } else if (q.qtype === "MCQ_MULTI") {
               const sorted = Array.isArray(studentAnswer) ? [...studentAnswer].sort() : [];
@@ -170,6 +174,7 @@ export async function GET(
     // TEACHER VIEW: Full review
     if (isTeacher) {
       // For JSON exams, answers are stored in attempt.answers, not in attempt_sections
+      // Structure: { sectionType: { questionId: answer } }
       const allStudentAnswers = (attempt.answers as any) || {};
       
       const fullSections = await Promise.all(
@@ -178,8 +183,8 @@ export async function GET(
             (as) => as.type === examSection.type
           );
 
-          // Use attemptSection.answers if available (DB exam), otherwise use attempt.answers (JSON exam)
-          const studentAnswers = (attemptSection?.answers as Record<string, any>) || allStudentAnswers;
+          // Use attemptSection.answers if available (DB exam), otherwise use section-specific answers (JSON exam)
+          const studentAnswers = (attemptSection?.answers as Record<string, any>) || allStudentAnswers[examSection.type] || {};
 
           const questions = examSection.questions.map((q: any) => {
             const studentAnswer = studentAnswers[q.id];
@@ -189,7 +194,7 @@ export async function GET(
             let isCorrect = false;
             if (q.qtype === "TF") {
               isCorrect = studentAnswer === answerKey?.value;
-            } else if (q.qtype === "MCQ_SINGLE" || q.qtype === "SELECT") {
+            } else if (q.qtype === "MCQ_SINGLE" || q.qtype === "SELECT" || q.qtype === "INLINE_SELECT") {
               isCorrect = studentAnswer === answerKey?.index;
             } else if (q.qtype === "MCQ_MULTI") {
               const sorted = Array.isArray(studentAnswer) ? [...studentAnswer].sort() : [];
@@ -210,6 +215,44 @@ export async function GET(
               }
             }
 
+            // Format answers for display
+            let displayStudentAnswer = studentAnswer;
+            let displayCorrectAnswer: any = answerKey;
+            
+            // For INLINE_SELECT, MCQ_SINGLE, SELECT: show text instead of index
+            if (q.qtype === "INLINE_SELECT" || q.qtype === "MCQ_SINGLE" || q.qtype === "SELECT") {
+              const choices = q.options?.choices || [];
+              if (typeof studentAnswer === "number" && choices[studentAnswer]) {
+                displayStudentAnswer = choices[studentAnswer];
+              }
+              if (typeof answerKey?.index === "number" && choices[answerKey.index]) {
+                displayCorrectAnswer = choices[answerKey.index];
+              }
+            }
+            // For MCQ_MULTI: show array of text instead of indices
+            else if (q.qtype === "MCQ_MULTI") {
+              const choices = q.options?.choices || [];
+              if (Array.isArray(studentAnswer)) {
+                displayStudentAnswer = studentAnswer.map((idx: number) => choices[idx] || idx);
+              }
+              if (Array.isArray(answerKey?.indices)) {
+                displayCorrectAnswer = answerKey.indices.map((idx: number) => choices[idx] || idx);
+              }
+            }
+            // For DND_GAP: show the blanks
+            else if (q.qtype === "DND_GAP") {
+              displayCorrectAnswer = answerKey?.blanks || [];
+            }
+            // For GAP: show accepted answers
+            else if (q.qtype === "GAP") {
+              displayCorrectAnswer = answerKey?.answers?.[0] || answerKey?.answers || [];
+            }
+            // For TF: show boolean as text
+            else if (q.qtype === "TF") {
+              displayStudentAnswer = studentAnswer === true ? "True" : studentAnswer === false ? "False" : studentAnswer;
+              displayCorrectAnswer = answerKey?.value === true ? "True" : answerKey?.value === false ? "False" : answerKey?.value;
+            }
+            
             return {
               id: q.id,
               qtype: q.qtype,
@@ -217,8 +260,8 @@ export async function GET(
               options: q.options,
               order: q.order,
               maxScore: q.maxScore,
-              studentAnswer,
-              correctAnswer: answerKey,
+              studentAnswer: displayStudentAnswer,
+              correctAnswer: displayCorrectAnswer,
               isCorrect,
               explanation: q.explanation,
             };

@@ -70,10 +70,53 @@ function transformJsonExam(examJson: any) {
     // Handle regular parts
     else if (part.items) {
       // Special handling for parts that should be combined into single GAP questions
-      if (["part1", "part5", "part6", "part9"].includes(partId)) {
-        // Each item is a separate GAP question
-        for (const item of part.items) {
-          partQuestions.push(transformItem(item, part.type || 'gap_fill', globalQuestionOrder++, undefined, part.title));
+      // Note: part1, part3, part5 are inline_select, not gap_fill
+      if (["part6", "part9"].includes(partId)) {
+        // For short answer questions, build a shared word bank for all items
+        const isShortAnswerPart = part.title?.toLowerCase().includes("short form") || 
+                                  part.title?.toLowerCase().includes("'to be'");
+        
+        if (isShortAnswerPart) {
+          // Count all answers across all items
+          const answerCounts: Record<string, number> = {};
+          part.items.forEach((item: any) => {
+            const answers = Array.isArray(item.answer) ? item.answer : [item.answer].filter(Boolean);
+            answers.forEach((answer: string) => {
+              const trimmed = answer.trim();
+              answerCounts[trimmed] = (answerCounts[trimmed] || 0) + 1;
+            });
+          });
+          
+          // Build shared word bank - only include answers that are actually used
+          const sharedWordBank: string[] = [];
+          Object.entries(answerCounts).forEach(([answer, count]) => {
+            for (let i = 0; i < count; i++) {
+              sharedWordBank.push(answer);
+            }
+          });
+          
+          // Shuffle
+          for (let i = sharedWordBank.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [sharedWordBank[i], sharedWordBank[j]] = [sharedWordBank[j], sharedWordBank[i]];
+          }
+          
+          // Transform each item with shared word bank
+          for (const item of part.items) {
+            const question = transformItem(item, part.type || 'gap_fill', globalQuestionOrder++, undefined, part.title);
+            // Override word bank with shared one
+            if (question.options) {
+              question.options.bank = sharedWordBank;
+            } else {
+              question.options = { bank: sharedWordBank };
+            }
+            partQuestions.push(question);
+          }
+        } else {
+          // Each item is a separate GAP question
+          for (const item of part.items) {
+            partQuestions.push(transformItem(item, part.type || 'gap_fill', globalQuestionOrder++, undefined, part.title));
+          }
         }
       } else if (partId === "part10" && part.wordBank) {
         // Each item is a separate GAP question with shared word bank
@@ -102,6 +145,7 @@ function transformJsonExam(examJson: any) {
         durationMin: Math.ceil(partQuestions.length * 1.5),
         order: sections.length,
         questions: partQuestions,
+        audio: part.audio || null, // Include audio path if available
       });
     }
   }
@@ -274,10 +318,10 @@ function transformItem(item: any, partType: string, order: number, passage?: str
     };
   }
   
-  // Handle gap_fill_options - uses inline select (for questions with options provided or verb questions)
+  // Handle inline_select (previously gap_fill_options) - uses inline select dropdown
   // Check this FIRST to avoid confusion with multiple_choice
-  // For gap_fill_options, we use "options" field, NOT "choices"
-  if (partType === "gap_fill_options" || partType === "gap_fill_verbs" || partType === "short_answer") {
+  // For inline_select, we use "options" field, NOT "choices"
+  if (partType === "inline_select" || partType === "gap_fill_options" || partType === "gap_fill_verbs" || partType === "short_answer") {
     const promptText = item.prompt || '';
     
     // If options are provided in JSON (like part1 for gap_fill_options), use them directly
@@ -395,7 +439,7 @@ function transformItem(item: any, partType: string, order: number, passage?: str
     
     return {
       ...base,
-      qtype: "INLINE_SELECT",
+      qtype: "SELECT",
       prompt: { text: promptText, passage },
       options: { choices: options },
       answerKey: { index: correctIndex >= 0 ? correctIndex : 0 },
@@ -445,20 +489,38 @@ function transformItem(item: any, partType: string, order: number, passage?: str
           passage 
         },
         options: { bank: wordBank },
-        answerKey: { answers: answers },
+        answerKey: { blanks: answers },
       };
     } else if (isShortAnswers) {
       // Generate word bank with am/is/are forms
-      const optionsSet = new Set<string>();
+      // Count how many times each answer appears
+      const answerCounts: Record<string, number> = {};
+      answers.forEach(answer => {
+        const trimmed = answer.trim();
+        answerCounts[trimmed] = (answerCounts[trimmed] || 0) + 1;
+      });
       
-      // Always include correct answers
-      answers.forEach(answer => optionsSet.add(answer.trim()));
+      // Build word bank with correct counts
+      const wordBank: string[] = [];
+      Object.entries(answerCounts).forEach(([answer, count]) => {
+        for (let i = 0; i < count; i++) {
+          wordBank.push(answer);
+        }
+      });
       
-      // Add common short answer forms
-      ['am', 'is', 'are', 'am not', 'is not', 'are not', "isn't", "aren't"]
-        .forEach(opt => optionsSet.add(opt));
+      // Add some extra distractors (but not duplicates of correct answers)
+      const extraOptions = ['am', 'is', 'are', 'am not', 'is not', 'are not', "isn't", "aren't"];
+      extraOptions.forEach(opt => {
+        if (!answerCounts[opt]) {
+          wordBank.push(opt);
+        }
+      });
       
-      const wordBank = Array.from(optionsSet).sort();
+      // Shuffle the word bank
+      for (let i = wordBank.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [wordBank[i], wordBank[j]] = [wordBank[j], wordBank[i]];
+      }
       
       // Replace blank markers in prompt (______)
       const textWithBlanks = promptText.replace(/___+/g, '________');
@@ -471,7 +533,7 @@ function transformItem(item: any, partType: string, order: number, passage?: str
           passage 
         },
         options: { bank: wordBank },
-        answerKey: { answers: answers },
+        answerKey: { blanks: answers },
       };
     }
     

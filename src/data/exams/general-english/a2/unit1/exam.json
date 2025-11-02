@@ -10,7 +10,7 @@
     {
       "id": "part1",
       "title": "Complete the sentences with the correct word",
-      "type": "gap_fill_options",
+      "type": "inline_select",
       "items": [
         {"prompt": "Hi, my name is Tom. ____ am from Italy.", "options": ["I", "My"], "answer": ["I"]},
         {"prompt": "What is ____ phone number?", "options": ["you", "your"], "answer": ["your"]},
@@ -44,7 +44,7 @@
     {
       "id": "part3",
       "title": "Complete the sentences with the forms of 'to be'",
-      "type": "gap_fill_options",
+      "type": "inline_select",
       "items": [
         {"prompt": "She ____ at home with her family.", "options": ["am", "is", "are"], "answer": ["is"]},
         {"prompt": "You ____ right.", "options": ["am", "is", "are"], "answer": ["are"]},
@@ -57,7 +57,8 @@
         {"prompt": "We ____ in the park.", "options": ["am", "is", "are"], "answer": ["are"]},
         {"prompt": "Peter ____ my older brother.", "options": ["am", "is", "are"], "answer": ["is"]}
       ]
-    },{
+    },
+    {
       "id": "part4",
       "title": "Which sentence is correct?",
       "type": "multiple_choice",
@@ -74,7 +75,7 @@
     {
       "id": "part5",
       "title": "Match the countries with the nationalities",
-      "type": "gap_fill_options",
+      "type": "inline_select",
       "items": [
         {"prompt": " Choose the correct nationality for France ____.", "options": ["French", "Franch", "Frinch", "Frensh"], "answer": ["French"]},
         {"prompt": " Choose the correct nationality for Spain ____.", "options": ["Spanish", "Spainish", "Spanich", "Spanis"], "answer": ["Spanish"]},
@@ -138,49 +139,64 @@
       ]
     },
     {
-      "id": "part12",
-      "title": "Listening: The Gift of the Magi (questions only)",
+      "id": "part8",
+      "title": "Listening: The Classroom Description",
       "type": "listening_comprehension",
-      "points": 25,
-      "audio": null,
+      "audio": "/audio/general-english/a1/unit1/general-english-a1-u1.mp3",
       "subparts": [
         {
-          "id": "part12_mc1",
+          "id": "part12_tf",
+          "title": "True/False",
+          "type": "multiple_choice",
+          "items": [
+            { "prompt": "The classroom is full of brightly colored pictures.", "choices": ["True", "False"], "answer": 0 },
+            { "prompt": "The teacher often writes on the blackboards.", "choices": ["True", "False"], "answer": 1 },
+            { "prompt": "The students cover their ears when the chalk squeaks.", "choices": ["True", "False"], "answer": 0 },
+            { "prompt": "There are many books in the classroom.", "choices": ["True", "False"], "answer": 1 },
+            { "prompt": "The students use paints or crayons to make pictures during art class.", "choices": ["True", "False"], "answer": 0 }
+          ]
+        },
+        {
+          "id": "part12_mc",
           "title": "Multiple Choice",
           "type": "multiple_choice",
-          "points": 11,
           "items": [
-            { "prompt": "Why does Della sell her hair?", "options": ["To buy food","To pay rent","To buy a Christmas gift for Jim","To get new clothes"], "answer": 2 },
-            { "prompt": "What gift does Jim buy for Della?", "options": ["A gold watch","A chain for her hair","A set of combs","A pair of shoes"], "answer": 2 },
-            { "prompt": "What did Jim sell to buy Della's gift?", "options": ["His coat","His watch","His shoes","His hat"], "answer": 1 },
-            { "prompt": "Why do Jim and Della have a happy Christmas?", "options": ["Because they bought each other expensive gifts","Because they understand the true meaning of giving","Because they live in a big apartment","Because they sold everything they had"], "answer": 1 }
-          ]
-        },
-        {
-          "id": "part12_vocab",
-          "title": "Vocabulary",
-          "type": "multiple_choice",
-          "points": 6,
-          "items": [
-            { "prompt": "Choose the correct synonym for 'special' in the story context.", "options": ["Common","Unique","Cheap","Old"], "answer": 1 },
-            { "prompt": "Which word best describes Della's feeling when she sells her hair?", "options": ["Angry","Sad","Nervous","Excited"], "answer": 2 },
-            { "prompt": "What does 'chain' mean in the story?", "options": ["A necklace for Della","A rope for Jim's coat","A decorative item for Jim's watch","A link for his shoes"], "answer": 2 }
-          ]
-        },
-        {
-          "id": "part12_grammar",
-          "title": "Grammar",
-          "type": "mixed",
-          "points": 8,
-          "items": [
-            { "kind": "question_tag", "prompt": "Della didn't have much money for a gift, ______?", "options": ["does she","did she","didn't she","isn't she"], "answer": 1 },
-            { "kind": "preposition", "prompt": "Della was worried ______ Jim's reaction when he saw her short hair.", "options": ["at","on","about","of"], "answer": 2 },
-            { "kind": "verb_form", "prompt": "Della decided ______ (cut) her hair to buy Jim a gift.", "options": ["cutting","to cut"], "answer": 1 },
-            { "kind": "articles", "prompt": "Della wanted to buy ______ special gift, but she didn't have ______ money for it.", "answer": ["a","the"], "options": null }
+            {
+              "prompt": "Where are the blackboards located in the classroom?",
+              "options": [
+                "In the middle of the room",
+                "At the front of the room",
+                "At the back of the room",
+                "On the sides of the room"
+              ],
+              "answer": 1
+            },
+            {
+              "prompt": "What do the students do when the chalk squeaks on the blackboard?",
+              "options": ["They cover their ears", "They leave the room", "They laugh", "They ignore it"],
+              "answer": 0
+            },
+            {
+              "prompt": "What types of books does the student like to read?",
+              "options": ["History and science", "Romance and drama", "Science fiction and fantasy", "Mysteries and biographies"],
+              "answer": 2
+            },
+            {
+              "prompt": "What do the students do with the erasers after school?",
+              "options": ["They throw them away", "They leave them in the classroom", "They wash them", "They clap them together to get the chalk dust out"],
+              "answer": 3
+            },
+            {
+              "prompt": "Where do the students do their artwork?",
+              "options": ["In the library", "Outside the classroom", "At the tables at the back of the room", "At their desks"],
+              "answer": 2
+            }
           ]
         }
       ]
     }
+    
+    
   ]
 }
 

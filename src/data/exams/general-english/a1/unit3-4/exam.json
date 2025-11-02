@@ -1,0 +1,150 @@
+{
+  "id": "general-english-a1-unit3-4",
+  "title": "General English A1 - Unit 3-4",
+  "category": "GENERAL_ENGLISH",
+  "track": "A1",
+  "unit": "Unit 3-4",
+  "locale": "en",
+  "totalPoints": 100,
+  "parts": [
+    {
+        "id": "part1",
+        "title": "Match the adjectives to their opposites",
+        "type": "inline_select",
+        "items": [
+          {"prompt": "bad", "options": ["good", "worse", "ugly", "happy"], "answer": ["good"]},
+          {"prompt": "cheap", "options": ["expensive", "poor", "fast", "slow"], "answer": ["expensive"]},
+          {"prompt": "similar", "options": ["different", "same", "alike", "equal"], "answer": ["different"]},
+          {"prompt": "right", "options": ["wrong", "false", "bad", "incorrect"], "answer": ["wrong"]},
+          {"prompt": "false", "options": ["true", "right", "real", "honest"], "answer": ["true"]},
+          {"prompt": "terrible", "options": ["wonderful", "bad", "horrible", "sad"], "answer": ["wonderful"]},
+          {"prompt": "dangerous", "options": ["safe", "strong", "hard", "weak"], "answer": ["safe"]},
+          {"prompt": "easy", "options": ["difficult", "hard", "complex", "tough"], "answer": ["difficult"]},
+          {"prompt": "small", "options": ["big", "tall", "long", "wide"], "answer": ["big"]},
+          {"prompt": "high", "options": ["low", "short", "tiny", "deep"], "answer": ["low"]}
+        ]
+      },      
+      {
+        "id": "part2",
+        "title": "Complete the sentences with the correct adjectives",
+        "type": "gap_fill",
+        "items": [
+          { "prompt": "Don’t play with that knife. It isn’t ___", "answer": ["safe"] },
+          { "prompt": "£500 for a jacket? That’s ___!", "answer": ["expensive"] },
+          { "prompt": "The shelf is very ___. I have to stand on a chair to reach it.", "answer": ["high"] },
+          { "prompt": "Well done! All the answers in your test are ___", "answer": ["different"] },
+          { "prompt": "British English is a bit ___ from American English.", "answer": ["different"] },
+          { "prompt": "That calculation is very ___. I can’t do it.", "answer": ["difficult"] },
+          { "prompt": "Joe says he’s seventeen. But that isn’t ___. He’s only fifteen.", "answer": ["true"] },
+          { "prompt": "The answer you gave is ___. Please check again.", "answer": ["wrong"] },
+          { "prompt": "This room looks ___. Let’s add some colorful posters!", "answer": ["boring"] },
+          { "prompt": "Be careful on the road. It’s very ___ today.", "answer": ["dangerous"] }
+        ]
+      },
+    {
+        "id": "part3",
+        "title": "Match the adjectives with the nouns they could describe",
+        "type": "inline_select",
+        "items": [
+          { "prompt": "green", "options": ["tree", "sky", "apple", "car"], "answer": ["tree"] },
+          { "prompt": "soft", "options": ["pillow", "stone", "table", "door"], "answer": ["pillow"] },
+          { "prompt": "loud", "options": ["music", "flower", "book", "pen"], "answer": ["music"] },
+          { "prompt": "bright", "options": ["light", "cloud", "shadow", "leaf"], "answer": ["light"] },
+          { "prompt": "tall", "options": ["building", "cup", "chair", "table"], "answer": ["building"] },
+          { "prompt": "cold", "options": ["drink", "fire", "blanket", "oven"], "answer": ["drink"] },
+          { "prompt": "large", "options": ["room", "mouse", "coin", "pen"], "answer": ["room"] },
+          { "prompt": "smooth", "options": ["surface", "mountain", "rock", "leaf"], "answer": ["surface"] },
+          { "prompt": "sweet", "options": ["cake", "water", "sand", "bread"], "answer": ["cake"] },
+          { "prompt": "heavy", "options": ["box", "feather", "paper", "pillow"], "answer": ["box"] }
+        ]
+      },
+      {
+        "id": "part4",
+        "title": "Days of the Week - Multiple Choice Questions",
+        "type": "multiple_choice",
+        "items": [
+          { "prompt": "What day comes after Thursday?", "options": ["Wednesday", "Tuesday", "Friday", "Monday"], "answer": 2 },
+          { "prompt": "Which day is the last day of the week?", "options": ["Friday", "Saturday", "Sunday", "Thursday"], "answer": 2 },
+          { "prompt": "What day comes before Wednesday?", "options": ["Monday", "Friday", "Tuesday", "Thursday"], "answer": 0 },
+          { "prompt": "Which of the following is not a weekday?", "options": ["Tuesday", "Saturday", "Wednesday", "Thursday"], "answer": 1 },
+          { "prompt": "What is the 4th day of the week?", "options": ["Monday", "Tuesday", "Wednesday", "Thursday"], "answer": 3 },
+          { "prompt": "Which day comes between Monday and Wednesday?", "options": ["Sunday", "Tuesday", "Thursday", "Friday"], "answer": 1 },
+          { "prompt": "What day comes after Sunday?", "options": ["Monday", "Tuesday", "Wednesday", "Friday"], "answer": 0 },
+          { "prompt": "Which day is known as the middle of the week?", "options": ["Monday", "Wednesday", "Friday", "Sunday"], "answer": 1 },
+          { "prompt": "What day comes before Friday?", "options": ["Thursday", "Wednesday", "Saturday", "Tuesday"], "answer": 0 },
+          { "prompt": "How many days are there in a week?", "options": ["5", "6", "7", "8"], "answer": 2 }
+        ]
+      },
+      {
+        "id": "part5",
+        "title": "Complete the sentences with 'don't' or 'doesn't'",
+        "type": "gap_fill",
+        "items": [
+          { "prompt": "She ___ like chocolate.", "answer": ["doesn't"] },
+          { "prompt": "They ___ go to school on Saturdays.", "answer": ["don't"] },
+          { "prompt": "He ___ play the guitar.", "answer": ["doesn't"] },
+          { "prompt": "We ___ have a car.", "answer": ["don't"] },
+          { "prompt": "The cat ___ drink milk.", "answer": ["doesn't"] },
+          { "prompt": "I ___ like getting up early.", "answer": ["don't"] },
+          { "prompt": "My brother ___ watch TV every day.", "answer": ["doesn't"] },
+          { "prompt": "You ___ need to bring your laptop today.", "answer": ["don't"] },
+          { "prompt": "It ___ rain much in the summer here.", "answer": ["doesn't"] },
+          { "prompt": "We ___ eat fast food very often.", "answer": ["don't"] }
+        ]
+      },
+      {
+        "id": "part6",
+        "title": "Match the following sentences in the negative form",
+        "type": "inline_select",
+        "items": [
+          { "prompt": "They are at the party.", "options": ["They are not at the party.", "They is not at the party."], "answer": ["They are not at the party."] },
+          { "prompt": "The students are in the classroom.", "options": ["The students aren’t in the classroom.", "The students isn’t in the classroom."], "answer": ["The students aren’t in the classroom."] },
+          { "prompt": "We are excited about the trip.", "options": ["We aren’t excited about the trip.", "We isn’t excited about the trip."], "answer": ["We aren’t excited about the trip."] },
+          { "prompt": "I am learning English.", "options": ["I am not learning English.", "I isn’t learning English."], "answer": ["I am not learning English."] },
+          { "prompt": "The cat is on the roof.", "options": ["The cat isn’t on the roof.", "The cat aren’t on the roof."], "answer": ["The cat isn’t on the roof."] },
+          { "prompt": "She is very tall.", "options": ["She isn’t very tall.", "She aren’t very tall."], "answer": ["She isn’t very tall."] },
+          { "prompt": "We are at home.", "options": ["We aren’t at home.", "We isn’t at home."], "answer": ["We aren’t at home."] },
+          { "prompt": "He is hungry.", "options": ["He isn’t hungry.", "He aren’t hungry."], "answer": ["He isn’t hungry."] },
+          { "prompt": "I am late for work.", "options": ["I am not late for work.", "I aren’t late for work."], "answer": ["I am not late for work."] },
+          { "prompt": "It is cold today.", "options": ["It isn’t cold today.", "It aren’t cold today."], "answer": ["It isn’t cold today."] }
+        ]
+      },
+      {
+        "id": "part7",
+        "title": "Choose the correct possessive form of the sentence",
+        "type": "multiple_choice",
+        "items": [
+          { "prompt": "The laptop of Sarah is on the table.", "options": ["The Sarah laptop is on the table.", "Sarah's laptop is on the table.", "The laptop's Sarah is on the table.", "Laptop of Sarah's is on the table."], "answer": 1 },
+          { "prompt": "The toys of the children are scattered around.", "options": ["The children's toys are scattered around.", "The toy's children are scattered around.", "Children toy's are scattered around.", "The toys are the children's around."], "answer": 0 },
+          { "prompt": "The house of my parents is big.", "options": ["The parents house is big.", "My parents' house is big.", "The parents' house of mine is big.", "The house's parents are big."], "answer": 1 },
+          { "prompt": "The car of John is red.", "options": ["The John car is red.", "John's car is red.", "Car's John is red.", "The red car of John's."], "answer": 1 },
+          { "prompt": "The room of the girls is clean.", "options": ["The girl's room is clean.", "The girls' room is clean.", "The rooms' girls are clean.", "Girls room is clean."], "answer": 1 },
+          { "prompt": "The shoes of my brother are new.", "options": ["My brother's shoes are new.", "Brother's my shoes are new.", "The shoes' my brother are new.", "The shoes are my brother's new."], "answer": 0 },
+          { "prompt": "The name of the dog is Max.", "options": ["Dog name's is Max.", "The dog's name is Max.", "Dog's the name is Max.", "Name of dog’s is Max."], "answer": 1 },
+          { "prompt": "The homework of the students is difficult.", "options": ["The students' homework is difficult.", "The student's homework are difficult.", "Students homework's are difficult.", "Homework of students are difficult."], "answer": 0 },
+          { "prompt": "The phone of Lisa is ringing.", "options": ["Lisa phone's is ringing.", "Lisa's phone is ringing.", "Phone Lisa's is ringing.", "The phone Lisa's ringing."], "answer": 1 },
+          { "prompt": "The paintings of the artist are beautiful.", "options": ["The artist's paintings are beautiful.", "The artists paintings are beautiful.", "Artist's the paintings are beautiful.", "Paintings artist's are beautiful."], "answer": 0 }
+        ]
+      },
+      {
+        "id": "part8",
+        "title": "Reading: My Trip to London",
+        "type": "reading_comprehension",
+        "text": "Hi Taylor, I hope you're doing well! I just got back from my trip to London, and I wanted to tell you all about it. London is an amazing city! I visited so many famous places, like the Tower of London, Buckingham Palace, and the British Museum. The weather was a bit cold, but I didn’t mind because there was so much to see and do. I also went on a boat tour along the River Thames. The view of the city from the river was beautiful. I took lots of pictures that I can’t wait to show you. The food in London was great too! I tried fish and chips, which is a popular dish there. It was delicious! One of the best parts of my trip was going to see a musical in the West End. The show was incredible, and the actors were so talented. I really enjoyed it. I bought a few souvenirs for you, and I can’t wait to give them to you when we meet. Let’s catch up soon! Take care, Kelly.",
+        "items": [
+          { "prompt": "Kelly recently went on a trip to Paris.", "choices": ["True", "False"], "answer": 1 },
+          { "prompt": "Kelly visited the British Museum while in London.", "choices": ["True", "False"], "answer": 0 },
+          { "prompt": "The weather in London was warm during Kelly's visit.", "choices": ["True", "False"], "answer": 1 },
+          { "prompt": "Kelly tried a popular dish called fish and chips.", "choices": ["True", "False"], "answer": 0 },
+          { "prompt": "Kelly saw a play in the West End.", "choices": ["True", "False"], "answer": 0 },
+          { "prompt": "Which city did Kelly visit?", "choices": ["Rome", "London", "Paris", "New York"], "answer": 1 },
+          { "prompt": "What did Kelly do along the River Thames?", "choices": ["Had a picnic", "Took a boat tour", "Went swimming", "Rode a bicycle"], "answer": 1 },
+          { "prompt": "What dish did Kelly try in London?", "choices": ["Fish and chips", "Pizza", "Tacos", "Sushi"], "answer": 0 },
+          { "prompt": "Where did Kelly go to see a musical?", "choices": ["Covent Garden", "The Royal Opera House", "The West End", "Broadway"], "answer": 2 },
+          { "prompt": "What did Kelly bring back for Taylor?", "choices": ["Food", "Clothes", "Books", "Souvenirs"], "answer": 3 }
+        ]
+      }
+      
+    ]
+}
+

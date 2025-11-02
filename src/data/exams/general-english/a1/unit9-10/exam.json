@@ -1,0 +1,32 @@
+{
+  "id": "general-english-a1-unit9-10",
+  "title": "General English A1 - Unit 9-10",
+  "category": "GENERAL_ENGLISH",
+  "track": "A1",
+  "unit": "Unit 9-10",
+  "locale": "en",
+  "totalPoints": 100,
+  "parts": [
+    {
+      "id": "part1",
+      "title": "Complete the sentences with the correct word",
+      "type": "inline_select",
+      "items": [
+        {"prompt": "I have ____ apple in my bag.", "options": ["a", "an"], "answer": ["an"]},
+        {"prompt": "She is ____ teacher.", "options": ["a", "an"], "answer": ["a"]},
+        {"prompt": "We need ____ umbrella today.", "options": ["a", "an"], "answer": ["an"]},
+        {"prompt": "He has ____ car.", "options": ["a", "an"], "answer": ["a"]}
+      ]
+    },
+    {
+      "id": "part2",
+      "title": "Choose the correct answer",
+      "type": "multiple_choice",
+      "items": [
+        {"prompt": "What do you do?", "choices": ["I am fine.", "I am a student.", "I am 25 years old."], "answer": 1},
+        {"prompt": "How are you?", "choices": ["I am from London.", "I am fine, thanks.", "I am a doctor."], "answer": 1}
+      ]
+    }
+  ]
+}
+

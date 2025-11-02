@@ -52,14 +52,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
     }
 
     // Map attempt section answers
-    // For JSON exams, all answers are in attempt.answers
+    // For JSON exams, answers are stored as { sectionType: { questionId: answer } }
     // For DB exams, answers are in attempt.sections[].answers
     const allAnswers = (attempt.answers as any) || {};
-    const answersByType: Record<string, AnswersByQuestionId> = {};
+    let answersByType: Record<string, AnswersByQuestionId> = {};
     
     if (isJsonExam) {
-      // For JSON exams, all answers are in one place
-      answersByType['ALL'] = allAnswers;
+      // For JSON exams, answers are organized by section type
+      // Structure: { GRAMMAR_PART1: { q1: answer1 }, GRAMMAR_PART2: { q2: answer2 } }
+      answersByType = allAnswers;
     } else {
       // For DB exams, answers are per section
       for (const as of attempt.sections) {
@@ -80,25 +81,30 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
       let sectionMax = 0;
 
       // Get answers for this section
-      const sectionAnswers = isJsonExam ? answersByType['ALL'] : (answersByType[sectionType] || {});
+      const sectionAnswers = answersByType[sectionType] || {};
 
       // For writing, don't auto-score; calculate maxScore but keep raw null
       if (!isWriting) {
         for (const q of section.questions) {
-          const qtype = q.qtype as QuestionType;
-          // Only auto types
-          const auto = qtype !== "SHORT_TEXT" && qtype !== "ESSAY";
-          if (!auto) continue;
+          try {
+            const qtype = q.qtype as QuestionType;
+            // Only auto types
+            const auto = qtype !== "SHORT_TEXT" && qtype !== "ESSAY";
+            if (!auto) continue;
 
-          const answer = sectionAnswers[q.id];
-          const correct = scoreQuestion(qtype, answer, q.answerKey);
-          // Each question's maxScore may be >1; scale with correct (0/1)
-          if (typeof q.maxScore === "number") {
-            sectionRaw += correct ? q.maxScore : 0;
-            sectionMax += q.maxScore;
-          } else {
-            sectionRaw += correct;
-            sectionMax += 1;
+            const answer = sectionAnswers[q.id];
+            const correct = scoreQuestion(qtype, answer, q.answerKey);
+            // Each question's maxScore may be >1; scale with correct (0/1)
+            if (typeof q.maxScore === "number") {
+              sectionRaw += correct ? q.maxScore : 0;
+              sectionMax += q.maxScore;
+            } else {
+              sectionRaw += correct;
+              sectionMax += 1;
+            }
+          } catch (qError) {
+            console.error(`Error scoring question ${q.id}:`, qError);
+            throw new Error(`Failed to score question ${q.id}: ${qError instanceof Error ? qError.message : 'Unknown error'}`);
           }
         }
         totalRaw += sectionRaw;
@@ -142,10 +148,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
     return NextResponse.json({ success: true, attemptId, resultsUrl: `/attempt/${attemptId}/results` });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
+    const stack = error instanceof Error ? error.stack : "";
     const isForbidden = message.toLowerCase().includes("forbidden") || message.toLowerCase().includes("unauthorized");
     if (isForbidden) return NextResponse.json({ error: message }, { status: 403 });
     console.error("Submit attempt error:", error);
-    return NextResponse.json({ error: "Failed to submit attempt" }, { status: 500 });
+    console.error("Error stack:", stack);
+    return NextResponse.json({ 
+      error: "Failed to submit attempt", 
+      details: message,
+      stack: process.env.NODE_ENV === 'development' ? stack : undefined 
+    }, { status: 500 });
   }
 }
 

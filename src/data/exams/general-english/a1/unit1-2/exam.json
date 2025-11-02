@@ -1,0 +1,191 @@
+{
+    "id": "general-english-a1-unit1-2",
+    "title": "General English A1 - Unit 1-2",
+    "category": "GENERAL_ENGLISH",
+    "track": "A1",
+    "unit": "Unit 1-2",
+    "locale": "en",
+    "totalPoints": 100,
+    "parts": [
+      {
+        "id": "part1",
+        "title": "Complete the sentences with the correct word",
+        "type": "inline_select",
+        "items": [
+          {"prompt": "Hi, my name is Tom. ____ am from Italy.", "options": ["I", "My"], "answer": ["I"]},
+          {"prompt": "What is ____ phone number?", "options": ["you", "your"], "answer": ["your"]},
+          {"prompt": "Lisa is my friend. ____ works at a bookstore.", "options": ["He", "She", "It", "They"], "answer": ["She"]},
+          {"prompt": "I'm John. ____ am 30 years old.", "options": ["I", "He", "She", "They"], "answer": ["I"]},
+          {"prompt": "Tony works at a company. He ____ a graphic designer.", "options": ["am", "is", "are", "be"], "answer": ["is"]},
+          {"prompt": "This is Kathrine. She is ____ best friend.", "options": ["my", "I"], "answer": ["my"]},
+          {"prompt": "I have 2 cats. They ____ very friendly.", "options": ["am", "is", "are"], "answer": ["are"]},
+          {"prompt": "What ____ the name of your favorite movie?", "options": ["am", "is", "are"], "answer": ["is"]},
+          {"prompt": "Charlotte is reading ____ new book.", "options": ["a", "an"], "answer": ["a"]},
+          {"prompt": "Where is ____ hometown?", "options": ["you", "your"], "answer": ["your"]}
+        ]
+      },
+      {
+        "id": "part2",
+        "title": "Choose the correct written form of the number",
+        "type": "multiple_choice",
+        "items": [
+          {"prompt": "Choose the correct text form of \"17\" ", "choices": ["seventeen", "seventy", "seven", "seventeenth"], "answer": 0},
+          {"prompt": "Choose the correct text form of \"42\" ", "choices": ["fourteen", "forty-two", "fourty two", "forty"], "answer": 1},
+          {"prompt": "Choose the correct text form of \"8\" ", "choices": ["ate", "eight", "eighty", "height"], "answer": 1},
+          {"prompt": "Choose the correct text form of \"65\" ", "choices": ["sixty-five", "sixteen five", "sixty", "fifty-six"], "answer": 0},
+          {"prompt": "Choose the correct text form of \"29\" ", "choices": ["twenty-nine", "twenty nineth", "nineteen", "ninety-two"], "answer": 0},
+          {"prompt": "Choose the correct text form of \"53\" ", "choices": ["fifty-three", "fifteen-three", "thirty-five", "fifty"], "answer": 0},
+          {"prompt": "Choose the correct text form of \"91\" ", "choices": ["nineteen-one", "ninety-one", "ninety-first", "nineteen"], "answer": 1},
+          {"prompt": "Choose the correct text form of \"34\" ", "choices": ["thirty-four", "forty-three", "thirty", "fourty-four"], "answer": 0},
+          {"prompt": "Choose the correct text form of \"76\" ", "choices": ["seventy-six", "sixteen-seven", "sixty-seven", "seventeen-six"], "answer": 0},
+          {"prompt": "Choose the correct text form of \"100\" ", "choices": ["hundred", "an hundred", "handred", "hundreds"], "answer": 2}
+        ]
+      },    
+      {
+        "id": "part3",
+        "title": "Complete the sentences with the forms of 'to be'",
+        "type": "inline_select",
+        "items": [
+          {"prompt": "She ____ at home with her family.", "options": ["am", "is", "are"], "answer": ["is"]},
+          {"prompt": "You ____ right.", "options": ["am", "is", "are"], "answer": ["are"]},
+          {"prompt": "Susan ____ good at tennis.", "options": ["am", "is", "are"], "answer": ["is"]},
+          {"prompt": "They ____ in the house.", "options": ["am", "is", "are"], "answer": ["are"]},
+          {"prompt": "I ____ 24 years old.", "options": ["am", "is", "are"], "answer": ["am"]},
+          {"prompt": "His T-shirts ____ cool.", "options": ["am", "is", "are"], "answer": ["are"]},
+          {"prompt": "My sister ____ a good swimmer.", "options": ["am", "is", "are"], "answer": ["is"]},
+          {"prompt": "She ____ in Italy.", "options": ["am", "is", "are"], "answer": ["is"]},
+          {"prompt": "We ____ in the park.", "options": ["am", "is", "are"], "answer": ["are"]},
+          {"prompt": "Peter ____ my older brother.", "options": ["am", "is", "are"], "answer": ["is"]}
+        ]
+      },
+      {
+        "id": "part4",
+        "title": "Which sentence is correct?",
+        "type": "multiple_choice",
+        "items": [
+          {"prompt": "Which sentence is correct?", "choices": ["My name is John and I be from New York.", "My name is John and I am from New York.", "My name is John and I is from New York."], "answer": 1},
+          {"prompt": "Which sentence is correct?", "choices": ["I am Sarah, 25 years olds.", "I am Sarah, 25 year old.", "I am Sarah, 25 years old."], "answer": 2},
+          {"prompt": "Which sentence is correct?", "choices": ["He be a student at the university.", "He is a student at the university.", "He are a student at the university."], "answer": 1},
+          {"prompt": "Which sentence is correct?", "choices": ["My name is Anna my hobby is painting.", "My name is Anna my hobbies is painting.", "My name is Anna. My hobby is painting."], "answer": 2},
+          {"prompt": "Which sentence is correct?", "choices": ["I from London.", "I am from London.", "I from London am."], "answer": 1},
+          {"prompt": "Which sentence is correct?", "choices": ["What’s your name?", "What your name?", "What name is your?"], "answer": 0},
+          {"prompt": "Which sentence is correct?", "choices": ["I live in Brazil", "I living in Brzail", "I am live in Brazil."], "answer": 0},
+          {"prompt": "Which sentence is correct?", "choices": ["She is teacher.", "She is a teacher.", "She is teacher a."], "answer": 1},
+          {"prompt": "Which sentence is correct?", "choices": ["Where you from?", "Where are you from?", "Where do you from?"], "answer": 1},
+          {"prompt": "Which sentence is correct?", "choices": ["They are friends.", "They is friends.", "They am friends."], "answer": 0}
+        ]
+      },
+      {
+        "id": "part5",
+        "title": "Match the countries with the nationalities",
+        "type": "inline_select",
+        "items": [
+          {"prompt": " Choose the correct nationality for France ____.", "options": ["French", "Franch", "Frinch", "Frensh"], "answer": ["French"]},
+          {"prompt": " Choose the correct nationality for Spain ____.", "options": ["Spanish", "Spainish", "Spanich", "Spanis"], "answer": ["Spanish"]},
+          {"prompt": " Choose the correct nationality for Australia ____.", "options": ["Australian", "Austrian", "Australien", "Austrilian"], "answer": ["Australian"]},
+          {"prompt": " Choose the correct nationality for Egypt ____.", "options": ["Egyptian", "Egyptan", "Egiptian", "Egyptyan"], "answer": ["Egyptian"]},
+          {"prompt": " Choose the correct nationality for Germany ____.", "options": ["German", "Germen", "Germin", "Germain"], "answer": ["German"]},
+          {"prompt": " Choose the correct nationality for Brazil ____.", "options": ["Brazilian", "Brasilian", "Brazillian", "Brazialian"], "answer": ["Brazilian"]},
+          {"prompt": " Choose the correct nationality for Canada ____.", "options": ["Canadian", "Canadien", "Canadan", "Canadan"], "answer": ["Canadian"]},
+          {"prompt": " Choose the correct nationality for Japan ____.", "options": ["Japanese", "Japanes", "Japanise", "Japaneese"], "answer": ["Japanese"]},
+          {"prompt": " Choose the correct nationality for Italy ____.", "options": ["Italian", "Italien", "Italyan", "Italean"], "answer": ["Italian"]},
+          {"prompt": " Choose the correct nationality for China ____.", "options": ["Chinese", "Chineese", "Chines", "Chinise"], "answer": ["Chinese"]}
+        ]
+      },
+      {
+        "id": "part6",
+        "title": "Answer the questions using short forms of 'to be' (Present Simple)",
+        "type": "gap_fill",
+        "items": [
+          { "prompt": "Is your name John? Yes, it ___", "answer": ["is"] },
+          { "prompt": "Is he a student? No, he ___", "answer": ["isn't"] },
+          { "prompt": "Are you from Canada? Yes, I ___", "answer": ["am"] },
+          { "prompt": "Is she your teacher? Yes, she ___", "answer": ["is"] },
+          { "prompt": "Are they from Spain? No, they ___", "answer": ["aren't"] },
+          { "prompt": "Is it cold today? No, it ___", "answer": ["isn't"] },
+          { "prompt": "Are we late? Yes, we ___", "answer": ["are"] },
+          { "prompt": "Is your house big? Yes, it ___", "answer": ["is"] },
+          { "prompt": "Are you tired? No, I ___", "answer": ["am not"] },
+          { "prompt": "Is he at school? Yes, he ___", "answer": ["is"] }
+        ]
+      },   
+      {
+        "id": "part7",
+        "title": "Reading: Laura's Daily Routine",
+        "type": "reading_comprehension",
+        "text": "Hello! My name is Laura. I am 26 years old. I am from Australia, and I live in Sydney. I work as a graphic designer. My daily routine is quite simple. I wake up at 7:00 a.m. and have breakfast. My breakfast is usually toast and coffee. At 8:00 a.m., I go to work. My office is near my home. I work from 9:00 a.m. to 5:00 p.m. After work, I go to the gym. My workout is important to me. In the evening, I cook dinner and watch TV. I usually go to bed at 10:00 p.m. I have a small family. My father is a teacher, and my mother is a nurse. They are very supportive. I have one younger brother. He is 22 years old and studies engineering at the university. We often have dinner together and enjoy spending time as a family.",
+        "items": [
+              { "prompt": "Laura's breakfast usually includes eggs and bacon.", "choices": ["True", "False"], "answer": 1 },
+              { "prompt": "Laura works from 9:00 a.m. to 5:00 p.m.", "choices": ["True", "False"], "answer": 0 },
+              { "prompt": "Laura's father is a nurse.", "choices": ["True", "False"], "answer": 1 },
+              { "prompt": "Laura's younger brother studies engineering at the university.", "choices": ["True", "False"], "answer": 0 },
+              { "prompt": "Laura often has dinner with her family.", "choices": ["True", "False"], "answer": 0 },
+              { "prompt": "How old is Laura?", "choices": ["30", "26", "22"], "answer": 1 },
+              { "prompt": "What is Laura's job?", "choices": ["Teacher", "Nurse", "Graphic designer"], "answer": 2 },
+              { "prompt": "Where does Laura live?", "choices": ["Melbourne", "Brisbane", "Sydney"], "answer": 2 },
+              { "prompt": "What time does Laura usually go to bed?", "choices": ["10:00 p.m", "11:00 p.m", "9:00 p.m"], "answer": 0 },
+              { "prompt": "What does Laura do after work?", "choices": ["Goes to the park", "Goes to the gym", "Reads a book"], "answer": 1 }
+            ]
+      },
+      {
+        "id": "part8",
+        "title": "Listening: The Classroom Description",
+        "type": "listening_comprehension",
+        "audio": "/audio/general-english/a1/unit1/general-english-a1-u1.mp3",
+        "subparts": [
+          {
+            "id": "part12_tf",
+            "title": "True/False",
+            "type": "multiple_choice",
+            "items": [
+              { "prompt": "The classroom is full of brightly colored pictures.", "choices": ["True", "False"], "answer": 0 },
+              { "prompt": "The teacher often writes on the blackboards.", "choices": ["True", "False"], "answer": 1 },
+              { "prompt": "The students cover their ears when the chalk squeaks.", "choices": ["True", "False"], "answer": 0 },
+              { "prompt": "There are many books in the classroom.", "choices": ["True", "False"], "answer": 1 },
+              { "prompt": "The students use paints or crayons to make pictures during art class.", "choices": ["True", "False"], "answer": 0 }
+            ]
+          },
+          {
+            "id": "part12_mc",
+            "title": "Multiple Choice",
+            "type": "multiple_choice",
+            "items": [
+              {
+                "prompt": "Where are the blackboards located in the classroom?",
+                "options": [
+                  "In the middle of the room",
+                  "At the front of the room",
+                  "At the back of the room",
+                  "On the sides of the room"
+                ],
+                "answer": 1
+              },
+              {
+                "prompt": "What do the students do when the chalk squeaks on the blackboard?",
+                "options": ["They cover their ears", "They leave the room", "They laugh", "They ignore it"],
+                "answer": 0
+              },
+              {
+                "prompt": "What types of books does the student like to read?",
+                "options": ["History and science", "Romance and drama", "Science fiction and fantasy", "Mysteries and biographies"],
+                "answer": 2
+              },
+              {
+                "prompt": "What do the students do with the erasers after school?",
+                "options": ["They throw them away", "They leave them in the classroom", "They wash them", "They clap them together to get the chalk dust out"],
+                "answer": 3
+              },
+              {
+                "prompt": "Where do the students do their artwork?",
+                "options": ["In the library", "Outside the classroom", "At the tables at the back of the room", "At their desks"],
+                "answer": 2
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+  
+  
+  

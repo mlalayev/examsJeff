@@ -79,9 +79,13 @@ export default function QDndGroup({ questions, values, onChange, readOnly }: QDn
   // Compute used counts by label from current values
   const usedCountByLabel = useMemo(() => {
     const counts: Record<string, number> = {};
-    Object.values(values || {}).forEach((label) => {
-      if (!label) return;
-      counts[label as string] = (counts[label as string] || 0) + 1;
+    Object.values(values || {}).forEach((val) => {
+      // DND_GAP values are arrays
+      const labels = Array.isArray(val) ? val : [val];
+      labels.forEach((label) => {
+        if (!label) return;
+        counts[label as string] = (counts[label as string] || 0) + 1;
+      });
     });
     return counts;
   }, [values]);
@@ -89,7 +93,8 @@ export default function QDndGroup({ questions, values, onChange, readOnly }: QDn
   const handleDrop = (questionId: string, e: React.DragEvent) => {
     e.preventDefault();
     if (readOnly || !draggedLabel) return;
-    onChange(questionId, draggedLabel);
+    // DND_GAP expects an array of answers (even for single blank)
+    onChange(questionId, [draggedLabel]);
     setDraggedLabel(null);
   };
 
@@ -100,7 +105,8 @@ export default function QDndGroup({ questions, values, onChange, readOnly }: QDn
 
   const removeAnswer = (questionId: string) => {
     if (readOnly) return;
-    onChange(questionId, undefined);
+    // Clear answer (set to empty array for DND_GAP)
+    onChange(questionId, []);
   };
 
   return (
@@ -110,7 +116,9 @@ export default function QDndGroup({ questions, values, onChange, readOnly }: QDn
         {questions.map((q, idx) => {
           const sentence = sentences[idx] || "";
           const parts = sentence.split(/___+|________+/);
-          const value = values?.[q.id];
+          // DND_GAP value is an array, get first element for single blank
+          const valueArray = values?.[q.id];
+          const value = Array.isArray(valueArray) ? valueArray[0] : valueArray;
           return (
             <div key={q.id} className="group mb-4">
               <div className="flex items-center gap-4">

@@ -57,7 +57,7 @@ export default function StudentResultsPage({ params }: { params: { attemptId: st
   const fetchResults = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/attempts/${params.attemptId}/review`);
+      const response = await fetch(`/api/attempts/${params.attemptId}/results`);
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || "Failed to fetch results");

@@ -262,30 +262,27 @@ export default function Sidebar() {
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-72 bg-white/80 backdrop-blur-xl border-r border-slate-200/50 overflow-y-auto shadow-xl">
-      {/* Logo Section */}
-      <div className="h-20 flex items-center px-6 border-b border-slate-200/50">
-        <Link href="/" className="flex items-center gap-3 group">
+      {/* Combined Logo & User Section */}
+      <div className="px-6 py-5 border-b border-slate-200/50">
+        <Link href="/" className="flex items-center gap-3 group mb-4 pb-4 border-b border-slate-100">
           <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform duration-200">
             <span className="text-white font-bold text-lg">J</span>
           </div>
           <div>
-            <span className="font-bold text-slate-900 text-lg">JEFF Exams</span>
+            <span className="font-bold text-slate-900 text-lg block">JEFF Exams</span>
             <p className="text-xs text-slate-500">Dashboard</p>
           </div>
         </Link>
-      </div>
-
-      {/* User Info Section */}
-      <div className="px-6 py-4 border-b border-slate-200/50">
+        
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center text-white font-medium">
+          <div className="w-9 h-9 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center text-white font-medium text-sm">
             {session?.user?.name?.charAt(0).toUpperCase() || session?.user?.email?.charAt(0).toUpperCase() || "U"}
           </div>
-          <div>
-            <p className="font-semibold text-slate-900 text-sm">
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-slate-900 text-sm truncate">
               {session?.user?.name || session?.user?.email?.split('@')[0] || "User"}
             </p>
-            <p className="text-xs text-slate-500 capitalize">
+            <p className="text-xs text-slate-500 capitalize truncate">
               {role?.toLowerCase().replace('_', ' ') || "User"}
             </p>
           </div>
