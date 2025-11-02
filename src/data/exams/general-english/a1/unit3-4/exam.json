@@ -143,7 +143,70 @@
           { "prompt": "Where did Kelly go to see a musical?", "choices": ["Covent Garden", "The Royal Opera House", "The West End", "Broadway"], "answer": 2 },
           { "prompt": "What did Kelly bring back for Taylor?", "choices": ["Food", "Clothes", "Books", "Souvenirs"], "answer": 3 }
         ]
+      },
+      {
+        "id": "part9",
+        "title": "Listening: Mary's Conversation",
+        "type": "listening_comprehension",
+        "audio": "/audio/general-english/a1/unit3-4/general-english-a1-u3-4.mp3",
+        "subparts": [
+          {
+            "id": "part9_tf",
+            "title": "True/False Questions",
+            "type": "multiple_choice",
+            "items": [
+              { "prompt": "Mary Jones is twelve years old.", "choices": ["True", "False"], "answer": 0 },
+              { "prompt": "Mary accepts rides from strangers.", "choices": ["True", "False"], "answer": 1 },
+              { "prompt": "The directions to Main Street include turning left at the next corner.", "choices": ["True", "False"], "answer": 0 },
+              { "prompt": "Mary’s favorite color is blue.", "choices": ["True", "False"], "answer": 1 },
+              { "prompt": "Mary has seen the movie mentioned in the conversation.", "choices": ["True", "False"], "answer": 0 }
+            ]
+          },
+          {
+            "id": "part9_mc",
+            "title": "Multiple Choice Questions",
+            "type": "multiple_choice",
+            "items": [
+              {
+                "prompt": "How does Mary respond when asked about the weather?",
+                "options": ["Yes, it is a lovely day.", "It is raining heavily.", "No, it is very cold.", "I don’t know."],
+                "answer": 0
+              },
+              {
+                "prompt": "What does Mary say when asked if she would like a ride to school?",
+                "options": ["No, thank you. I never accept rides from strangers.", "I don’t need a ride.", "Yes, please.", "Maybe later."],
+                "answer": 0
+              },
+              {
+                "prompt": "How does Mary give directions to Main Street?",
+                "options": [
+                  "Go straight and turn left after three blocks.",
+                  "Turn left at the next corner and walk one block.",
+                  "Turn right and walk one block.",
+                  "Turn right at the next corner and walk about two blocks."
+                ],
+                "answer": 3
+              },
+              {
+                "prompt": "What is Mary’s response when asked if she has seen the movie?",
+                "options": ["I have no idea.", "No, but I have heard that it is very good.", "I don’t like movies.", "Yes, I have seen it."],
+                "answer": 1
+              },
+              {
+                "prompt": "What does Mary say when asked if her father is home?",
+                "options": [
+                  "Yes, just a minute, I will get him for you.",
+                  "No, he is not home.",
+                  "I don’t know where he is.",
+                  "He is busy right now."
+                ],
+                "answer": 0
+              }
+            ]
+          }
+        ]
       }
+      
       
     ]
 }

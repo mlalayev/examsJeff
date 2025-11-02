@@ -127,63 +127,31 @@
               { "prompt": "What does Laura do after work?", "choices": ["Goes to the park", "Goes to the gym", "Reads a book"], "answer": 1 }
             ]
       },
-      {
-        "id": "part8",
-        "title": "Listening: The Classroom Description",
-        "type": "listening_comprehension",
-        "audio": "/audio/general-english/a1/unit1/general-english-a1-u1.mp3",
-        "subparts": [
-          {
-            "id": "part12_tf",
-            "title": "True/False",
-            "type": "multiple_choice",
-            "items": [
-              { "prompt": "The classroom is full of brightly colored pictures.", "choices": ["True", "False"], "answer": 0 },
-              { "prompt": "The teacher often writes on the blackboards.", "choices": ["True", "False"], "answer": 1 },
-              { "prompt": "The students cover their ears when the chalk squeaks.", "choices": ["True", "False"], "answer": 0 },
-              { "prompt": "There are many books in the classroom.", "choices": ["True", "False"], "answer": 1 },
-              { "prompt": "The students use paints or crayons to make pictures during art class.", "choices": ["True", "False"], "answer": 0 }
-            ]
-          },
-          {
-            "id": "part12_mc",
-            "title": "Multiple Choice",
-            "type": "multiple_choice",
-            "items": [
-              {
-                "prompt": "Where are the blackboards located in the classroom?",
-                "options": [
-                  "In the middle of the room",
-                  "At the front of the room",
-                  "At the back of the room",
-                  "On the sides of the room"
-                ],
-                "answer": 1
-              },
-              {
-                "prompt": "What do the students do when the chalk squeaks on the blackboard?",
-                "options": ["They cover their ears", "They leave the room", "They laugh", "They ignore it"],
-                "answer": 0
-              },
-              {
-                "prompt": "What types of books does the student like to read?",
-                "options": ["History and science", "Romance and drama", "Science fiction and fantasy", "Mysteries and biographies"],
-                "answer": 2
-              },
-              {
-                "prompt": "What do the students do with the erasers after school?",
-                "options": ["They throw them away", "They leave them in the classroom", "They wash them", "They clap them together to get the chalk dust out"],
-                "answer": 3
-              },
-              {
-                "prompt": "Where do the students do their artwork?",
-                "options": ["In the library", "Outside the classroom", "At the tables at the back of the room", "At their desks"],
-                "answer": 2
-              }
-            ]
-          }
-        ]
-      }
+        {
+          "id": "part8",
+          "title": "Listening: The Classroom Description",
+          "type": "listening_comprehension",
+          "audio": "/audio/general-english/a1/unit1-2/general-english-a1-u1-2.mp3",
+          "subparts": [
+            {
+              "id": "part12_tf",
+              "title": "True/False",
+              "type": "multiple_choice",
+              "items": [
+                { "prompt": "The classroom is full of brightly colored pictures.", "choices": ["True", "False"], "answer": 0 },
+                { "prompt": "The teacher often writes on the blackboards.", "choices": ["True", "False"], "answer": 1 },
+                { "prompt": "The students cover their ears when the chalk squeaks.", "choices": ["True", "False"], "answer": 0 },
+                { "prompt": "There are many books in the classroom.", "choices": ["True", "False"], "answer": 1 },
+                { "prompt": "The students use paints or crayons to make pictures during art class.", "choices": ["True", "False"], "answer": 0 },
+                { "prompt": "Where are the blackboards located in the classroom?", "options": ["In the middle of the room", "At the front of the room", "At the back of the room", "On the sides of the room"], "answer": 1 },
+                { "prompt": "What do the students do when the chalk squeaks on the blackboard?", "options": ["They cover their ears", "They leave the room", "They laugh", "They ignore it"], "answer": 0 },
+                { "prompt": "What types of books does the student like to read?", "options": ["History and science", "Romance and drama", "Science fiction and fantasy", "Mysteries and biographies"], "answer": 2 },
+                { "prompt": "What do the students do with the erasers after school?", "options": ["They throw them away", "They leave them in the classroom", "They wash them", "They clap them together to get the chalk dust out"], "answer": 3 },
+                { "prompt": "Where do the students do their artwork?", "options": ["In the library", "Outside the classroom", "At the tables at the back of the room", "At their desks"], "answer": 2 }
+              ]
+            }
+          ]
+        }
     ]
   }
   
