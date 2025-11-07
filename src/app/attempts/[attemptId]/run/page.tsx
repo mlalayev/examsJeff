@@ -11,17 +11,12 @@ import {
   Save,
   Send
 } from "lucide-react";
-import Loading from "@/components/loading/Loading";
+import UnifiedLoading from "@/components/loading/UnifiedLoading";
 import AudioPlayer from "@/components/audio/AudioPlayer";
 import QDndGroup from "@/components/questions/QDndGroup";
 import {
-  QTF,
   QMcqSingle,
-  QMcqMulti,
-  QSelect,
   QInlineSelect,
-  QGap,
-  QOrderSentence,
   QDndGap,
 } from "@/components/questions";
 import { QOpenText } from "@/components/questions/QOpenText";
@@ -192,33 +187,23 @@ export default function AttemptRunnerPage() {
     const props = { question: q, value, onChange, readOnly };
 
     switch (q.qtype) {
-      case "TF":
-        return <QTF {...props} />;
       case "MCQ_SINGLE":
         return <QMcqSingle {...props} />;
-      case "MCQ_MULTI":
-        return <QMcqMulti {...props} />;
-      case "SELECT":
-        return <QSelect {...props} />;
       case "INLINE_SELECT":
         return <QInlineSelect {...props} />;
       case "GAP":
-        // For gap_fill_verbs type questions, use QOpenText instead of QGap
-        if (q.prompt?.text && q.prompt.text.includes('(') && q.prompt.text.includes(')')) {
-          return <QOpenText {...props} />;
-        }
-        // For preposition/time expression questions, use QDndGap
-        if (q.prompt?.text && (q.prompt.text.includes('preposition') || q.prompt.text.includes('time expression') || q.prompt.text.includes('________'))) {
+        // Normal gap_fill uses QOpenText (text input field)
+        // For preposition/time expression questions with multiple blanks, use QDndGap
+        if (q.prompt?.text && q.prompt.text.includes('________')) {
           return <QDndGap {...props} />;
         }
-        return <QGap {...props} />;
-      case "ORDER_SENTENCE":
-        return <QOrderSentence {...props} />;
-       case "DND_GAP":
-         return <QDndGap {...props} />;
-       case "OPEN_TEXT":
-       case "SHORT_TEXT":
-         return <QOpenText {...props} />;
+        // All other GAP questions use QOpenText for text input
+        return <QOpenText {...props} />;
+      case "DND_GAP":
+        return <QDndGap {...props} />;
+      case "OPEN_TEXT":
+      case "SHORT_TEXT":
+        return <QOpenText {...props} />;
        case "ESSAY":
          return (
            <textarea
@@ -261,9 +246,7 @@ export default function AttemptRunnerPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loading size="lg" variant="spinner" />
-      </div>
+      <UnifiedLoading type="fullpage" variant="spinner" size="lg" fullScreen />
     );
   }
 
@@ -291,11 +274,11 @@ export default function AttemptRunnerPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-3 pb-3">
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Section Tabs - Sidebar on desktop, horizontal on mobile */}
           <div className="lg:w-64 flex-shrink-0">
-             <div className="rounded-xl shadow-sm border p-4 sticky top-24 flex flex-col h-[calc(100vh-8rem)]"
+             <div className="rounded-xl shadow-sm border p-4 sticky top-3 flex flex-col h-[calc(100vh-1.5rem)]"
                   style={{
                     backgroundColor: 'rgba(48, 51, 128, 0.01)',
                     borderColor: 'rgba(48, 51, 128, 0.1)'
@@ -471,7 +454,7 @@ export default function AttemptRunnerPage() {
                  >
                   {submitting ? (
                     <>
-                      <Loading size="sm" variant="dots" />
+                      <UnifiedLoading type="spinner" variant="dots" size="sm" />
                       Submitting...
                     </>
                   ) : (
@@ -588,8 +571,9 @@ export default function AttemptRunnerPage() {
                              </div>
                            )}
                            
-                           {/* For INLINE_SELECT, MCQ_SINGLE, and DND_GAP, show number and question in same flex container */}
-                           {q.qtype === "INLINE_SELECT" || q.qtype === "MCQ_SINGLE" || q.qtype === "DND_GAP" ? (
+                           {/* For INLINE_SELECT, MCQ_SINGLE, DND_GAP, and GAP with blank markers, show number and question in same flex container */}
+                           {q.qtype === "INLINE_SELECT" || q.qtype === "MCQ_SINGLE" || q.qtype === "DND_GAP" || 
+                            (q.qtype === "GAP" && q.prompt?.text && (q.prompt.text.includes("____") || q.prompt.text.includes("___"))) ? (
                              <>
                                {/* Number and question text in same div with items-center */}
                                <div className="flex items-center gap-4">
@@ -642,8 +626,12 @@ export default function AttemptRunnerPage() {
                                 (q.qtype === "GAP" || q.qtype === "DND_GAP") &&
                                 typeof q.prompt?.text === "string" &&
                                 q.prompt.text.includes("________");
-                              // Hide prompt text when the GAP/DND_GAP is rendered via drag-and-drop so sentence is not duplicated
-                              if (isPrepositionDnD) return null;
+                              // Hide prompt text when GAP has blank markers (QOpenText renders it inline) or DND_GAP
+                              const isGapWithBlanks = 
+                                q.qtype === "GAP" &&
+                                typeof q.prompt?.text === "string" &&
+                                (q.prompt.text.includes("____") || q.prompt.text.includes("___"));
+                              if (isPrepositionDnD || isGapWithBlanks) return null;
                               return (
                                      <p className="text-gray-800 text-base leading-relaxed font-normal mb-4" style={{ lineHeight: '1.6' }}>
                                   {q.prompt?.text || "Question"}

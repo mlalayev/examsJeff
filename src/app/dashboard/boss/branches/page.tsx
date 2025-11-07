@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Building2, Users, UserCheck, Plus, Edit, Search } from "lucide-react";
-import Loading from "@/components/loading/Loading";
+import UnifiedLoading from "@/components/loading/UnifiedLoading";
 
 export default function BossBranchesPage() {
   const [branches, setBranches] = useState<any[]>([]);
@@ -145,7 +145,7 @@ export default function BossBranchesPage() {
       <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center h-32">
-            <Loading size="md" variant="dots" />
+            <UnifiedLoading type="spinner" variant="dots" size="md" />
         </div>
       ) : (
           <div className="overflow-x-auto pb-6">

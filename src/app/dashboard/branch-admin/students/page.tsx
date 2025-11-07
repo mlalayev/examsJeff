@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Toaster } from "react-hot-toast";
 import PaymentModal from "@/components/PaymentModal";
-import SkeletonLoading from "@/components/loading/SkeletonLoading";
+import UnifiedLoading from "@/components/loading/UnifiedLoading";
 
 export default function BranchAdminStudentsPage() {
   const [students, setStudents] = useState<any[]>([]);
@@ -410,7 +410,7 @@ export default function BranchAdminStudentsPage() {
       </div>
 
       {loading ? (
-        <SkeletonLoading variant="table" count={1} />
+        <UnifiedLoading type="skeleton" variant="table" count={1} />
       ) : (
         <>
           {/* Students Tab */}

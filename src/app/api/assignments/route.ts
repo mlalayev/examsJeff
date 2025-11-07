@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireTeacher } from "@/lib/auth-utils";
+import { requireAdminOrBoss, assertSameBranchOrBoss } from "@/lib/auth-utils";
 import { z } from "zod";
 
 const assignmentSchema = z.object({
@@ -12,18 +12,16 @@ const assignmentSchema = z.object({
 });
 
 // POST /api/assignments { unitExamId, studentId, classId?, startAt?, dueAt? }
+// Only ADMIN and BOSS can assign exams
 export async function POST(request: Request) {
   try {
-    const teacher = await requireTeacher();
-    if ((teacher as any).role === "TEACHER" && !(teacher as any).approved) {
-      return NextResponse.json({ error: "Approval required" }, { status: 403 });
-    }
+    const user = await requireAdminOrBoss();
 
     const body = await request.json();
     const { unitExamId, studentId, classId, startAt, dueAt } = assignmentSchema.parse(body);
 
-    const teacherId = (teacher as any).id as string;
-    const branchId = (teacher as any).branchId ?? null;
+    const userId = (user as any).id as string;
+    const branchId = (user as any).branchId ?? null;
 
     // Verify unitExam exists and exam is active
     const unitExam = await prisma.unitExam.findUnique({
@@ -39,35 +37,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid student" }, { status: 400 });
     }
 
-    // Branch consistency: teacher and student must share branch (unless elevated role handled by requireTeacher already)
-    if (branchId && student.branchId && branchId !== student.branchId) {
-      return NextResponse.json({ error: "Cross-branch assignment is not allowed" }, { status: 403 });
+    // Check branch access
+    if (student.branchId) {
+      assertSameBranchOrBoss(user, student.branchId);
     }
 
-    // If classId provided, verify the class belongs to the teacher and student is enrolled
+    // If classId provided, verify the class exists and student is enrolled
     if (classId) {
-      const klass = await prisma.class.findFirst({
-        where: {
-          id: classId,
-          teacherId: teacherId,
-          ...(branchId ? { branchId } : {}),
-        },
+      const klass = await prisma.class.findUnique({
+        where: { id: classId },
       });
       if (!klass) return NextResponse.json({ error: "Class not found" }, { status: 404 });
+
+      // Check branch access for class
+      if (klass.branchId) {
+        assertSameBranchOrBoss(user, klass.branchId);
+      }
 
       const enrolled = await prisma.classStudent.findFirst({
         where: { classId, studentId },
       });
       if (!enrolled) {
         return NextResponse.json({ error: "Student is not in this class" }, { status: 400 });
-      }
-    } else {
-      // If no classId, still require the student to be in any class of this teacher
-      const inTeacherClass = await prisma.classStudent.findFirst({
-        where: { studentId, class: { teacherId } },
-      });
-      if (!inTeacherClass) {
-        return NextResponse.json({ error: "Student is not in your classes" }, { status: 403 });
       }
     }
 
@@ -81,9 +72,9 @@ export async function POST(request: Request) {
       data: {
         unitExamId,
         studentId,
-        teacherId,
+        teacherId: null, // Admin-assigned exams don't need a teacher
         classId: classId ?? null,
-        branchId,
+        branchId: branchId ?? student.branchId ?? null,
         startAt: parsedStart,
         dueAt: parsedDue,
         status: "ASSIGNED",

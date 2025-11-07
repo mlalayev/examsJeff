@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAuth, requireTeacher } from "@/lib/auth-utils";
+import { requireAuth, requireAdminOrBoss, getScopedBranchId, assertSameBranchOrBoss } from "@/lib/auth-utils";
 import { z } from "zod";
 
 const createBookingSchema = z.object({
@@ -12,12 +12,10 @@ const createBookingSchema = z.object({
 });
 
 // POST /api/bookings - Create a new booking (assign exam to student)
+// Only ADMIN and BOSS can assign exams
 export async function POST(request: Request) {
   try {
-    const user = await requireTeacher();
-    if ((user as any).role === "TEACHER" && !(user as any).approved) {
-      return NextResponse.json({ error: "Approval required" }, { status: 403 });
-    }
+    const user = await requireAdminOrBoss();
     const body = await request.json();
     
     const validatedData = createBookingSchema.parse(body);
@@ -44,21 +42,13 @@ export async function POST(request: Request) {
       );
     }
     
-    // Verify the student is in one of the teacher's classes
-    const classEnrollment = await prisma.classStudent.findFirst({
-      where: {
-        studentId: validatedData.studentId,
-        class: {
-          teacherId: (user as any).id,
-        }
-      }
-    });
+    // For ADMIN/BOSS: verify student exists and check branch access
+    const userRole = (user as any).role;
+    const userBranchId = (user as any).branchId ?? null;
     
-    if (!classEnrollment) {
-      return NextResponse.json(
-        { error: "Student is not enrolled in any of your classes" },
-        { status: 403 }
-      );
+    // Check branch access for BRANCH_ADMIN/BRANCH_BOSS (if they exist in future)
+    if (student.branchId) {
+      assertSameBranchOrBoss(user, student.branchId);
     }
     
     // Verify the exam exists
@@ -113,15 +103,16 @@ export async function POST(request: Request) {
     }
     
     // Create the booking
+    // For ADMIN/BOSS, teacherId can be null or set to the assigning admin
     const booking = await prisma.booking.create({
       data: {
         studentId: validatedData.studentId,
-        teacherId: (user as any).id,
+        teacherId: null, // Admin-assigned exams don't need a teacher
         examId: validatedData.examId,
         sections: validatedData.sections,
         startAt,
         status: validatedData.status,
-        branchId: (user as any).branchId ?? null,
+        branchId: userBranchId ?? student.branchId ?? null,
       },
       include: {
         student: {

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { FileText, User, Calendar, CheckCircle, Clock, ChevronRight } from "lucide-react";
+import UnifiedLoading from "@/components/loading/UnifiedLoading";
 
 interface QueueItem {
   attemptId: string;
@@ -98,9 +99,7 @@ export default function TeacherGradingPage() {
 
       {/* Loading State */}
       {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        </div>
+        <UnifiedLoading type="spinner" variant="spinner" size="lg" />
       ) : queue.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
           <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />

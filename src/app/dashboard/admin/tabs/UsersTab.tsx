@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Search } from "lucide-react";
+import UnifiedLoading from "@/components/loading/UnifiedLoading";
 
 interface User {
   id: string;
@@ -63,7 +64,7 @@ export default function UsersTab() {
     }
   };
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) return <UnifiedLoading type="spinner" variant="spinner" size="md" />;
 
   return (
     <div>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { DollarSign, TrendingUp, TrendingDown, Users, Building2, Calendar, Search } from "lucide-react";
-import Loading from "@/components/loading/Loading";
+import UnifiedLoading from "@/components/loading/UnifiedLoading";
 
 type TabType = "overview" | "monthly" | "branches" | "courses";
 
@@ -75,7 +75,7 @@ export default function BossFinanceV2Page() {
     return (
       <div className="p-8">
         <div className="flex justify-center items-center h-64">
-          <Loading size="md" variant="spinner" />
+          <UnifiedLoading type="spinner" variant="spinner" size="md" />
         </div>
       </div>
     );

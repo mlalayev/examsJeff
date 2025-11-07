@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Users, Calendar, Clock } from "lucide-react";
-import Loading from "@/components/loading/Loading";
+import UnifiedLoading from "@/components/loading/UnifiedLoading";
 
 interface Class {
   id: string;
@@ -126,9 +126,7 @@ export default function AssignExamPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loading size="lg" variant="spinner" />
-      </div>
+      <UnifiedLoading type="fullpage" variant="spinner" size="lg" fullScreen />
     );
   }
 

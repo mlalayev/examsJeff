@@ -77,6 +77,7 @@ export function getScopedBranchId(user: any): string | null {
   if (user.role === "BOSS" || user.role === "ADMIN") {
     return null; // BOSS/ADMIN see all branches
   }
+  // BRANCH_ADMIN, BRANCH_BOSS, and TEACHER see only their branch
   return user.branchId || null;
 }
 
@@ -85,6 +86,49 @@ export function assertSameBranchOrBoss(current: any, targetBranchId: string | nu
   const currentBranchId = (current as any).branchId ?? null;
   if (role === "BOSS") return;
   if (role === "BRANCH_ADMIN" && currentBranchId && targetBranchId && currentBranchId === targetBranchId) return;
+  if (role === "BRANCH_BOSS" && currentBranchId && targetBranchId && currentBranchId === targetBranchId) return;
   throw new Error("Forbidden: Cross-branch access");
+}
+
+/**
+ * Require ADMIN or BOSS role (for exam assignment, creation, etc.)
+ */
+export async function requireAdminOrBoss() {
+  const user = await requireAuth();
+  const role = (user as any).role;
+  
+  if (role !== "ADMIN" && role !== "BOSS") {
+    throw new Error("Forbidden: Admin or Boss access required");
+  }
+  
+  return user;
+}
+
+/**
+ * Require BRANCH_ADMIN or BRANCH_BOSS role (for branch-scoped operations)
+ */
+export async function requireBranchAdminOrBoss() {
+  const user = await requireAuth();
+  const role = (user as any).role;
+  
+  if (role !== "BRANCH_ADMIN" && role !== "BRANCH_BOSS" && role !== "ADMIN" && role !== "BOSS") {
+    throw new Error("Forbidden: Branch admin, branch boss, admin, or boss access required");
+  }
+  
+  return user;
+}
+
+/**
+ * Require BRANCH_BOSS role (for branch-level full access)
+ */
+export async function requireBranchBoss() {
+  const user = await requireAuth();
+  const role = (user as any).role;
+  
+  if (role !== "BRANCH_BOSS" && role !== "BOSS") {
+    throw new Error("Forbidden: Branch boss or boss access required");
+  }
+  
+  return user;
 }
 

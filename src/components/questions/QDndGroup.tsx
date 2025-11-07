@@ -18,47 +18,57 @@ interface QDndGroupProps {
 
 export default function QDndGroup({ questions, values, onChange, readOnly }: QDndGroupProps) {
   const questionsRef = useRef<HTMLDivElement>(null);
+  const [wordBankOnTop, setWordBankOnTop] = useState(false);
   
   // Extract sentences (one blank per question expected)
   const sentences = useMemo(() => {
     return questions.map((q) => String(q.prompt?.text || "")).map((s) => s.trim());
   }, [questions]);
   
+  const toggleLayout = () => {
+    setWordBankOnTop(!wordBankOnTop);
+  };
+  
   const scrollToTop = () => {
-    if (questionsRef.current) {
-      const element = questionsRef.current;
-      
-      // Find the scrollable parent container (the one with overflow-y-auto)
-      let scrollContainer: HTMLElement | null = element.parentElement;
-      while (scrollContainer && scrollContainer !== document.body) {
-        const style = window.getComputedStyle(scrollContainer);
-        if (style.overflowY === 'auto' || style.overflowY === 'scroll' || 
-            scrollContainer.classList.contains('overflow-y-auto') ||
-            scrollContainer.classList.contains('custom-scrollbar')) {
-          break;
-        }
-        scrollContainer = scrollContainer.parentElement;
+    if (!questionsRef.current) return;
+    
+    const element = questionsRef.current;
+    
+    // Find all scrollable containers up the tree
+    let currentElement: HTMLElement | null = element;
+    const scrollContainers: HTMLElement[] = [];
+    
+    while (currentElement && currentElement !== document.body) {
+      const style = window.getComputedStyle(currentElement);
+      if (style.overflowY === 'auto' || style.overflowY === 'scroll' ||
+          currentElement.classList.contains('overflow-y-auto') ||
+          currentElement.classList.contains('custom-scrollbar') ||
+          currentElement.classList.contains('overflow-auto')) {
+        scrollContainers.push(currentElement);
       }
+      currentElement = currentElement.parentElement;
+    }
+    
+    // If we found scrollable containers, scroll the closest one
+    if (scrollContainers.length > 0) {
+      const container = scrollContainers[0]; // Closest scrollable parent
+      const elementRect = element.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
       
-      if (scrollContainer) {
-        // Scroll within the container
-        const containerRect = scrollContainer.getBoundingClientRect();
-        const elementRect = element.getBoundingClientRect();
-        const scrollTop = elementRect.top - containerRect.top + scrollContainer.scrollTop - 20; // 20px offset
-        
-        scrollContainer.scrollTo({
-          top: scrollTop,
-          behavior: 'smooth'
-        });
-      } else {
-        // Fallback: scroll window
-        const rect = element.getBoundingClientRect();
-        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-        window.scrollTo({
-          top: scrollTop + rect.top - 20,
-          behavior: 'smooth'
-        });
-      }
+      // Calculate scroll position
+      const scrollPosition = container.scrollTop + (elementRect.top - containerRect.top) - 20;
+      
+      container.scrollTo({
+        top: Math.max(0, scrollPosition),
+        behavior: 'smooth'
+      });
+    } else {
+      // No scrollable container found, use scrollIntoView
+      element.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'start',
+        inline: 'nearest'
+      });
     }
   };
 
@@ -149,10 +159,91 @@ export default function QDndGroup({ questions, values, onChange, readOnly }: QDn
     onChange(questionId, []);
   };
 
-  return (
-    <div className="space-y-6">
-      {/* Sentences list */}
-      <div ref={questionsRef} className="space-y-2">
+  // Word bank section component
+  const WordBankSection = () => (
+    <div className="pb-4 border-b" style={{ borderColor: 'rgba(48, 51, 128, 0.1)' }}>
+      <div className="flex items-center justify-between mb-3">
+        <h4 className="text-xs font-medium uppercase tracking-wide" style={{ color: 'rgba(48, 51, 128, 0.7)' }}>Options</h4>
+        <button
+          onClick={toggleLayout}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:shadow-sm"
+          style={{
+            backgroundColor: 'rgba(48, 51, 128, 0.08)',
+            borderColor: 'rgba(48, 51, 128, 0.15)',
+            color: '#303380',
+            border: '1px solid'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(48, 51, 128, 0.12)';
+            e.currentTarget.style.borderColor = 'rgba(48, 51, 128, 0.25)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(48, 51, 128, 0.08)';
+            e.currentTarget.style.borderColor = 'rgba(48, 51, 128, 0.15)';
+          }}
+        >
+          {wordBankOnTop ? (
+            // Word bank yuxarıda - arrow aşağı baxır (↓)
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M7 11.6667L7 2.33333M7 11.6667L3.5 8.16667M7 11.6667L10.5 8.16667" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          ) : (
+            // Word bank aşağıda - arrow yuxarı baxır (↑)
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M7 2.33333L7 11.6667M7 2.33333L3.5 5.83333M7 2.33333L10.5 5.83333" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          )}
+          <span>Toggle layout</span>
+        </button>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {(() => {
+          const seenPerLabel: Record<string, number> = {};
+          return chips.map((chip) => {
+            const seen = seenPerLabel[chip.label] || 0;
+            const used = usedCountByLabel[chip.label] || 0;
+            const isUsed = seen < used ? (seenPerLabel[chip.label] = seen + 1, true) : false;
+            return (
+              <div
+                key={chip.id}
+                draggable={!readOnly && !isUsed}
+                onDragStart={(e) => { if (!isUsed && !readOnly) { setDraggedLabel(chip.label); e.dataTransfer.effectAllowed = 'move'; } }}
+                onDragEnd={() => setDraggedLabel(null)}
+                className={`px-3 py-1.5 rounded-lg border text-sm transition-all ${!readOnly && !isUsed ? 'cursor-move' : 'cursor-default'}`}
+                style={isUsed ? {
+                  backgroundColor: 'rgba(48, 51, 128, 0.05)',
+                  borderColor: 'rgba(48, 51, 128, 0.1)',
+                  color: 'rgba(48, 51, 128, 0.4)'
+                } : {
+                  backgroundColor: 'rgba(48, 51, 128, 0.02)',
+                  borderColor: 'rgba(48, 51, 128, 0.15)',
+                  color: '#303380'
+                }}
+                onMouseEnter={(e) => {
+                  if (!readOnly && !isUsed) {
+                    e.currentTarget.style.backgroundColor = 'rgba(48, 51, 128, 0.05)';
+                    e.currentTarget.style.borderColor = 'rgba(48, 51, 128, 0.2)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!readOnly && !isUsed) {
+                    e.currentTarget.style.backgroundColor = 'rgba(48, 51, 128, 0.02)';
+                    e.currentTarget.style.borderColor = 'rgba(48, 51, 128, 0.15)';
+                  }
+                }}
+              >
+                {chip.label}
+              </div>
+            );
+          });
+        })()}
+      </div>
+    </div>
+  );
+
+  // Questions section component
+  const QuestionsSection = () => (
+    <div ref={questionsRef} className="space-y-2">
         {questions.map((q, idx) => {
           const sentence = sentences[idx] || "";
           const parts = sentence.split(/___+|________+/);
@@ -207,79 +298,22 @@ export default function QDndGroup({ questions, values, onChange, readOnly }: QDn
             </div>
           );
         })}
-      </div>
+    </div>
+  );
 
-      {/* Options */}
-      <div className="border-t pt-4" style={{ borderColor: 'rgba(48, 51, 128, 0.1)' }}>
-        <div className="flex items-center justify-between mb-3">
-          <h4 className="text-xs font-medium uppercase tracking-wide" style={{ color: 'rgba(48, 51, 128, 0.7)' }}>Options</h4>
-          <button
-            onClick={scrollToTop}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:shadow-sm"
-            style={{
-              backgroundColor: 'rgba(48, 51, 128, 0.08)',
-              borderColor: 'rgba(48, 51, 128, 0.15)',
-              color: '#303380',
-              border: '1px solid'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(48, 51, 128, 0.12)';
-              e.currentTarget.style.borderColor = 'rgba(48, 51, 128, 0.25)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(48, 51, 128, 0.08)';
-              e.currentTarget.style.borderColor = 'rgba(48, 51, 128, 0.15)';
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M7 2.33333L7 11.6667M7 2.33333L3.5 5.83333M7 2.33333L10.5 5.83333" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <span>Scroll to questions</span>
-          </button>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {(() => {
-            const seenPerLabel: Record<string, number> = {};
-            return chips.map((chip) => {
-              const seen = seenPerLabel[chip.label] || 0;
-              const used = usedCountByLabel[chip.label] || 0;
-              const isUsed = seen < used ? (seenPerLabel[chip.label] = seen + 1, true) : false;
-              return (
-                <div
-                  key={chip.id}
-                  draggable={!readOnly && !isUsed}
-                  onDragStart={(e) => { if (!isUsed && !readOnly) { setDraggedLabel(chip.label); e.dataTransfer.effectAllowed = 'move'; } }}
-                  onDragEnd={() => setDraggedLabel(null)}
-                  className={`px-3 py-1.5 rounded-lg border text-sm transition-all ${!readOnly && !isUsed ? 'cursor-move' : 'cursor-default'}`}
-                  style={isUsed ? {
-                    backgroundColor: 'rgba(48, 51, 128, 0.05)',
-                    borderColor: 'rgba(48, 51, 128, 0.1)',
-                    color: 'rgba(48, 51, 128, 0.4)'
-                  } : {
-                    backgroundColor: 'rgba(48, 51, 128, 0.02)',
-                    borderColor: 'rgba(48, 51, 128, 0.15)',
-                    color: '#303380'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!readOnly && !isUsed) {
-                      e.currentTarget.style.backgroundColor = 'rgba(48, 51, 128, 0.05)';
-                      e.currentTarget.style.borderColor = 'rgba(48, 51, 128, 0.2)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!readOnly && !isUsed) {
-                      e.currentTarget.style.backgroundColor = 'rgba(48, 51, 128, 0.02)';
-                      e.currentTarget.style.borderColor = 'rgba(48, 51, 128, 0.15)';
-                    }
-                  }}
-                >
-                  {chip.label}
-                </div>
-              );
-            });
-          })()}
-        </div>
-      </div>
+  return (
+    <div className="space-y-6">
+      {wordBankOnTop ? (
+        <>
+          <WordBankSection />
+          <QuestionsSection />
+        </>
+      ) : (
+        <>
+          <QuestionsSection />
+          <WordBankSection />
+        </>
+      )}
     </div>
   );
 }

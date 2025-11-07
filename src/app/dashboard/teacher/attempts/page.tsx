@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Eye, Clock, CheckCircle, XCircle, Loader2 } from "lucide-react";
-import Loading from "@/components/loading/Loading";
+import UnifiedLoading from "@/components/loading/UnifiedLoading";
 
 interface AttemptItem {
   id: string;
@@ -113,7 +113,7 @@ export default function TeacherAttemptsPage() {
       <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center h-32">
-            <Loading size="md" variant="dots" />
+            <UnifiedLoading type="spinner" variant="dots" size="md" />
           </div>
         ) : filteredAttempts.length === 0 ? (
           <div className="text-center py-12 text-gray-500">

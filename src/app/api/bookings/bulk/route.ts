@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireTeacher } from "@/lib/auth-utils";
+import { requireAdminOrBoss, assertSameBranchOrBoss } from "@/lib/auth-utils";
 import { z } from "zod";
 
 const bulkBookingSchema = z.object({
@@ -10,12 +10,10 @@ const bulkBookingSchema = z.object({
   scheduledAt: z.string().datetime("Invalid date format"),
 });
 
+// Only ADMIN and BOSS can assign exams in bulk
 export async function POST(request: Request) {
   try {
-    const user = await requireTeacher();
-    if ((user as any).role === "TEACHER" && !(user as any).approved) {
-      return NextResponse.json({ error: "Approval required" }, { status: 403 });
-    }
+    const user = await requireAdminOrBoss();
 
     const body = await request.json();
     const validatedData = bulkBookingSchema.parse(body);
@@ -44,12 +42,9 @@ export async function POST(request: Request) {
     // Get all sections from the exam
     const examSections = exam.sections.map(s => s.type);
     
-    // Verify the class exists and teacher has access
-    const classData = await prisma.class.findFirst({
-      where: {
-        id: validatedData.classId,
-        teacherId: (user as any).id,
-      },
+    // Verify the class exists (for ADMIN/BOSS, no teacher ownership required)
+    const classData = await prisma.class.findUnique({
+      where: { id: validatedData.classId },
       include: {
         students: {
           where: {
@@ -60,7 +55,20 @@ export async function POST(request: Request) {
     });
     
     if (!classData) {
-      return NextResponse.json({ error: "Class not found or access denied" }, { status: 404 });
+      return NextResponse.json({ error: "Class not found" }, { status: 404 });
+    }
+    
+    // Check branch access for all students
+    const userBranchId = (user as any).branchId ?? null;
+    const students = await prisma.user.findMany({
+      where: { id: { in: validatedData.studentIds }, role: "STUDENT" },
+      select: { id: true, branchId: true }
+    });
+    
+    for (const student of students) {
+      if (student.branchId) {
+        assertSameBranchOrBoss(user, student.branchId);
+      }
     }
     
     // Check for conflicts for each student
@@ -99,16 +107,17 @@ export async function POST(request: Request) {
     
     // Create bookings for all students
     const bookings = await Promise.all(
-      validatedData.studentIds.map(studentId =>
-        prisma.booking.create({
+      validatedData.studentIds.map(studentId => {
+        const student = students.find(s => s.id === studentId);
+        return prisma.booking.create({
           data: {
             studentId,
-            teacherId: (user as any).id,
+            teacherId: null, // Admin-assigned exams don't need a teacher
             examId: validatedData.examId,
             sections: examSections,
             startAt,
             status: "CONFIRMED",
-            branchId: (user as any).branchId ?? null,
+            branchId: userBranchId ?? student?.branchId ?? null,
           },
           include: {
             student: { select: { id: true, name: true, email: true } },

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import Loading from "@/components/loading/Loading";
+import UnifiedLoading from "@/components/loading/UnifiedLoading";
 
 interface PaymentModalProps {
   student: any;
@@ -269,7 +269,7 @@ export default function PaymentModal({ student, teachers, onClose, onUpdate }: P
 
             {loading ? (
               <div className="flex justify-center items-center h-64">
-                <Loading size="md" variant="spinner" />
+                <UnifiedLoading type="spinner" variant="spinner" size="md" />
               </div>
             ) : (
               <>

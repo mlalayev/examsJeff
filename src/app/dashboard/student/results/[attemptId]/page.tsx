@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { ArrowLeft, Award, FileText, CheckCircle, XCircle, Clock, MessageSquare } from "lucide-react";
+import UnifiedLoading from "@/components/loading/UnifiedLoading";
 
 interface ReviewData {
   attemptId: string;
@@ -82,9 +83,7 @@ export default function StudentResultsPage({ params }: { params: { attemptId: st
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
+      <UnifiedLoading type="fullpage" variant="spinner" size="lg" fullScreen />
     );
   }
 

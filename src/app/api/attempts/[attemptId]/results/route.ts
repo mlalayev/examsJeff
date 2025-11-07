@@ -114,11 +114,15 @@ export async function GET(
             const studentAnswer = studentAnswers[q.id];
             const answerKey = q.answerKey as any;
             
+            // Legacy support: TF, SELECT, MCQ_MULTI, ORDER_SENTENCE converted to MCQ_SINGLE or INLINE_SELECT
             if (q.qtype === "TF") {
-              return studentAnswer === answerKey?.value;
+              // Convert TF to MCQ_SINGLE logic
+              const correctBool = answerKey?.value;
+              return studentAnswer === (correctBool === true ? 0 : 1);
             } else if (q.qtype === "MCQ_SINGLE" || q.qtype === "SELECT" || q.qtype === "INLINE_SELECT") {
               return studentAnswer === answerKey?.index;
             } else if (q.qtype === "MCQ_MULTI") {
+              // Legacy: treat as MCQ_SINGLE (just check first answer)
               const sorted = Array.isArray(studentAnswer) ? [...studentAnswer].sort() : [];
               const correctSorted = Array.isArray(answerKey?.indices) ? [...answerKey.indices].sort() : [];
               return JSON.stringify(sorted) === JSON.stringify(correctSorted);
@@ -127,7 +131,8 @@ export async function GET(
               const accepted = answerKey?.answers || [];
               return accepted.some((a: string) => a.trim().toLowerCase() === normalized);
             } else if (q.qtype === "ORDER_SENTENCE") {
-              return JSON.stringify(studentAnswer) === JSON.stringify(answerKey?.order);
+              // Legacy: treat as not supported, return false
+              return false;
             } else if (q.qtype === "DND_GAP") {
               const blanks = answerKey?.blanks || [];
               if (Array.isArray(studentAnswer) && studentAnswer.length === blanks.length) {
@@ -192,11 +197,15 @@ export async function GET(
 
             // Simple correctness check (could use scoring utility)
             let isCorrect = false;
+            // Legacy support: TF, SELECT, MCQ_MULTI, ORDER_SENTENCE converted to MCQ_SINGLE or INLINE_SELECT
             if (q.qtype === "TF") {
-              isCorrect = studentAnswer === answerKey?.value;
+              // Convert TF to MCQ_SINGLE logic
+              const correctBool = answerKey?.value;
+              isCorrect = studentAnswer === (correctBool === true ? 0 : 1);
             } else if (q.qtype === "MCQ_SINGLE" || q.qtype === "SELECT" || q.qtype === "INLINE_SELECT") {
               isCorrect = studentAnswer === answerKey?.index;
             } else if (q.qtype === "MCQ_MULTI") {
+              // Legacy: treat as MCQ_SINGLE (just check first answer)
               const sorted = Array.isArray(studentAnswer) ? [...studentAnswer].sort() : [];
               const correctSorted = Array.isArray(answerKey?.indices) ? [...answerKey.indices].sort() : [];
               isCorrect = JSON.stringify(sorted) === JSON.stringify(correctSorted);
@@ -205,7 +214,8 @@ export async function GET(
               const accepted = answerKey?.answers || [];
               isCorrect = accepted.some((a: string) => a.trim().toLowerCase() === normalized);
             } else if (q.qtype === "ORDER_SENTENCE") {
-              isCorrect = JSON.stringify(studentAnswer) === JSON.stringify(answerKey?.order);
+              // Legacy: treat as not supported, return false
+              isCorrect = false;
             } else if (q.qtype === "DND_GAP") {
               const blanks = answerKey?.blanks || [];
               if (Array.isArray(studentAnswer) && studentAnswer.length === blanks.length) {

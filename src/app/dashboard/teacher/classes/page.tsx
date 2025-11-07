@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Users, Search, Edit, BarChart3 } from "lucide-react";
-import Loading from "@/components/loading/Loading";
+import UnifiedLoading from "@/components/loading/UnifiedLoading";
 
 interface Class {
   id: string;
@@ -137,7 +137,7 @@ export default function ClassesPage() {
       <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
       {loading ? (
           <div className="flex items-center justify-center h-32">
-            <Loading size="md" variant="spinner" />
+            <UnifiedLoading type="spinner" variant="spinner" size="md" />
         </div>
       ) : (
           <div className="overflow-x-auto pb-6">

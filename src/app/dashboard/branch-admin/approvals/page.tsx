@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import UnifiedLoading from "@/components/loading/UnifiedLoading";
 
 export default function BranchAdminApprovalsPage() {
   const [pendingUsers, setPendingUsers] = useState<any[]>([]);
@@ -44,12 +45,7 @@ export default function BranchAdminApprovalsPage() {
       </div>
 
       {loading ? (
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-8 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-2 text-gray-600">Loading pending users...</p>
-          </div>
-        </div>
+        <UnifiedLoading type="spinner" variant="spinner" size="md" text="Loading pending users..." />
       ) : (
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="overflow-x-auto">

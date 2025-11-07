@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Clock, FileText, Users, Eye, UserPlus } from "lucide-react";
-import Loading from "@/components/loading/Loading";
+import UnifiedLoading from "@/components/loading/UnifiedLoading";
 
 interface ExamCard {
   id: string;
@@ -163,9 +163,7 @@ export default function CatalogPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loading size="lg" variant="spinner" />
-      </div>
+      <UnifiedLoading type="fullpage" variant="spinner" size="lg" fullScreen />
     );
   }
 

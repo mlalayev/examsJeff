@@ -27,7 +27,7 @@
       {
         "id": "part2",
         "title": "Complete the sentences with the correct adjectives",
-        "type": "gap_fill",
+        "type": "input_type",
         "items": [
           { "prompt": "Don’t play with that knife. It isn’t ___", "answer": ["safe"] },
           { "prompt": "£500 for a jacket? That’s ___!", "answer": ["expensive"] },
@@ -78,7 +78,7 @@
       {
         "id": "part5",
         "title": "Complete the sentences with 'don't' or 'doesn't'",
-        "type": "gap_fill",
+        "type": "input_type",
         "items": [
           { "prompt": "She ___ like chocolate.", "answer": ["doesn't"] },
           { "prompt": "They ___ go to school on Saturdays.", "answer": ["don't"] },

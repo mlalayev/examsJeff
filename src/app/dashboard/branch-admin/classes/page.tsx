@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import UnifiedLoading from "@/components/loading/UnifiedLoading";
 
 export default function BranchAdminClassesPage() {
   const [classes, setClasses] = useState<any[]>([]);
@@ -48,12 +49,7 @@ export default function BranchAdminClassesPage() {
       </div>
 
       {loading ? (
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-8 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-2 text-gray-600">Loading classes...</p>
-          </div>
-        </div>
+        <UnifiedLoading type="spinner" variant="spinner" size="md" text="Loading classes..." />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredClasses.map((classItem) => (

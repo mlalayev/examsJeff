@@ -152,7 +152,7 @@
     {
       "id": "part7",
       "title": "Do / Does Questions and Short Answers",
-      "type": "gap_fill",
+      "type": "input_type",
       "items": [
         { "prompt": "___ you have a sister? No, ___", "answer": ["Do", "I don't"] },
         { "prompt": "___ Ryan like basketball? Yes, ___", "answer": ["Does", "he does"] },

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Clock, FileText, Users, Eye } from "lucide-react";
-import Loading from "@/components/loading/Loading";
+import UnifiedLoading from "@/components/loading/UnifiedLoading";
 
 interface ExamSection {
   type: string;
@@ -55,9 +55,7 @@ export default function ExamPreviewPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loading size="lg" variant="spinner" />
-      </div>
+      <UnifiedLoading type="fullpage" variant="spinner" size="lg" fullScreen />
     );
   }
 

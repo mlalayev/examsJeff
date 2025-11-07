@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Plus, Trash2, Edit, Eye } from "lucide-react";
+import UnifiedLoading from "@/components/loading/UnifiedLoading";
 
 interface Exam {
   id: string;
@@ -76,7 +77,7 @@ export default function ExamsTab() {
   };
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <UnifiedLoading type="spinner" variant="spinner" size="md" />;
   }
 
   return (

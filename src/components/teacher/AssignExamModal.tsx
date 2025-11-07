@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { X, ChevronRight, ChevronLeft, BookOpen, Target, FileText, CheckCircle, Users, Clock, Calendar } from "lucide-react";
+import UnifiedLoading from "@/components/loading/UnifiedLoading";
 
 interface Student {
   id: string;
@@ -327,7 +328,7 @@ export default function AssignExamModal({
               
               {loadingExams ? (
                 <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-200 border-t-blue-600"></div>
+                  <UnifiedLoading type="spinner" variant="spinner" size="md" />
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

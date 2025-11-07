@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BookOpen, Calendar, Clock, Search, AlertCircle } from "lucide-react";
-import SkeletonLoading from "@/components/loading/SkeletonLoading";
+import UnifiedLoading from "@/components/loading/UnifiedLoading";
 
 type SectionType = "READING" | "LISTENING" | "WRITING" | "SPEAKING" | "GRAMMAR" | "VOCABULARY";
 
@@ -143,7 +143,7 @@ export default function StudentExamsPage() {
 
       <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
         {loading ? (
-          <SkeletonLoading variant="list" count={3} className="p-6" />
+          <UnifiedLoading type="skeleton" variant="list" count={3} className="p-6" />
         ) : filtered.length === 0 ? (
           <div className="px-6 py-10 text-center text-gray-500">
             <BookOpen className="w-8 h-8 mx-auto mb-2 text-gray-300" />

@@ -310,11 +310,15 @@ function transformItem(item: any, partType: string, order: number, passage?: str
   };
   
   if (partType === "true_false") {
+    // Convert true_false to MCQ_SINGLE with True/False choices
+    const choices = item.choices || ["True", "False"];
+    const correctIndex = item.answer === true || item.answer === 0 ? 0 : 1;
     return {
       ...base,
-      qtype: "TF",
+      qtype: "MCQ_SINGLE",
       prompt: { text: item.prompt, passage },
-      answerKey: { value: item.answer },
+      options: { choices },
+      answerKey: { index: correctIndex },
     };
   }
   
@@ -322,7 +326,7 @@ function transformItem(item: any, partType: string, order: number, passage?: str
   // Check this FIRST to avoid confusion with multiple_choice
   // For inline_select, we use "options" field, NOT "choices"
   if (partType === "inline_select" || partType === "gap_fill_options" || partType === "gap_fill_verbs" || partType === "short_answer") {
-    const promptText = item.prompt || '';
+    let promptText = item.prompt || '';
     
     // If options are provided in JSON (like part1 for gap_fill_options), use them directly
     if (item.options && Array.isArray(item.options)) {
@@ -338,8 +342,18 @@ function transformItem(item: any, partType: string, order: number, passage?: str
         }
       }
       
-      // Use prompt as-is (should already have ____ marker in JSON)
-      // If no blank marker, keep prompt as-is (QInlineSelect will handle it)
+      // If prompt doesn't have a blank marker (____ or ___), add one at the end
+      // This handles cases like "bad" -> "bad ____" or "They are at the party." -> "They are at the party. ____"
+      if (!promptText.includes('____') && !promptText.includes('___')) {
+        // Check if prompt ends with punctuation or is just a word
+        if (promptText.match(/[.!?]$/)) {
+          // If it ends with punctuation, add blank after it
+          promptText = promptText + ' ____';
+        } else {
+          // Otherwise, add blank after the word
+          promptText = promptText + ' ____';
+        }
+      }
       
       return {
         ...base,
@@ -439,17 +453,50 @@ function transformItem(item: any, partType: string, order: number, passage?: str
     
     return {
       ...base,
-      qtype: "SELECT",
+      qtype: "INLINE_SELECT",
       prompt: { text: promptText, passage },
       options: { choices: options },
       answerKey: { index: correctIndex >= 0 ? correctIndex : 0 },
     };
   }
   
-  // Handle gap_fill - uses drag and drop (for preposition/time expression questions and short answers)
-  if (partType === "gap_fill") {
-    const promptText = item.prompt || '';
+  // Handle input_type - text input for open questions
+  if (partType === "input_type") {
+    let promptText = item.prompt || '';
     const answers = Array.isArray(item.answer) ? item.answer : [item.answer].filter(Boolean);
+    
+    // If prompt doesn't have a blank marker, add one
+    if (!promptText.includes('____') && !promptText.includes('___')) {
+      // Add blank marker before any punctuation at the end, or at the end
+      if (promptText.match(/[.!?]$/)) {
+        promptText = promptText.replace(/([.!?])$/, ' ___$1');
+      } else {
+        promptText = promptText + ' ___';
+      }
+    }
+    
+    return {
+      ...base,
+      qtype: "GAP",
+      prompt: { text: promptText, passage },
+      answerKey: { answers: answers },
+    };
+  }
+  
+  // Handle gap_fill - uses drag and drop with word bank (for preposition/time expression questions and short answers)
+  if (partType === "gap_fill") {
+    let promptText = item.prompt || '';
+    const answers = Array.isArray(item.answer) ? item.answer : [item.answer].filter(Boolean);
+    
+    // If prompt doesn't have a blank marker, add one
+    if (!promptText.includes('____') && !promptText.includes('___')) {
+      // Add blank marker before any punctuation at the end, or at the end
+      if (promptText.match(/[.!?]$/)) {
+        promptText = promptText.replace(/([.!?])$/, ' ___$1');
+      } else {
+        promptText = promptText + ' ___';
+      }
+    }
     
     // Check if this is preposition/time expression question
     const isPrepositionTime = partTitle?.toLowerCase().includes('preposition') || 
@@ -537,12 +584,20 @@ function transformItem(item: any, partType: string, order: number, passage?: str
       };
     }
     
-    // For other gap_fill types, use regular GAP type
+    // If gap_fill doesn't match preposition/time/short answers, it should still have word bank
+    // This shouldn't happen - gap_fill is only for drag-and-drop with word bank
+    // But if it does, return DND_GAP with minimal word bank
+    const minimalBank = Array.from(new Set(answers.map((a: string) => a.trim()))).concat(['option1', 'option2', 'option3']);
+    
     return {
       ...base,
-      qtype: "GAP",
-      prompt: { text: item.prompt, passage },
-      answerKey: { answers: answers },
+      qtype: "DND_GAP",
+      prompt: { 
+        text: promptText.replace(/___+/g, '________'),
+        passage 
+      },
+      options: { bank: minimalBank },
+      answerKey: { blanks: answers },
     };
   }
   

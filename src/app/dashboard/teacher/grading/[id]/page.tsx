@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { ArrowLeft, User, FileText, Calendar, Loader2, CheckCircle } from "lucide-react";
+import UnifiedLoading from "@/components/loading/UnifiedLoading";
 
 interface SectionData {
   section: {
@@ -157,9 +158,7 @@ export default function GradeSectionPage({ params }: { params: { id: string } })
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
+      <UnifiedLoading type="fullpage" variant="spinner" size="lg" fullScreen />
     );
   }
 

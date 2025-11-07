@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
+import UnifiedLoading from "@/components/loading/UnifiedLoading";
 
 interface BandMap {
   id: string;
@@ -72,7 +73,7 @@ export default function BandMapTab() {
     }
   };
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) return <UnifiedLoading type="spinner" variant="spinner" size="md" />;
 
   return (
     <div>

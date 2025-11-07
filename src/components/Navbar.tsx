@@ -11,6 +11,7 @@ import {
   ChevronDown,
   LogOut
 } from "lucide-react";
+import UnifiedLoading from "@/components/loading/UnifiedLoading";
 
 interface Notification {
   id: string;
@@ -105,16 +106,7 @@ export default function Navbar() {
     return (
       <header className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-slate-200 rounded-lg animate-pulse"></div>
-              <div className="w-32 h-6 bg-slate-200 rounded animate-pulse"></div>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="w-8 h-8 bg-slate-200 rounded-full animate-pulse"></div>
-              <div className="w-8 h-8 bg-slate-200 rounded-full animate-pulse"></div>
-            </div>
-          </div>
+          <UnifiedLoading type="skeleton" variant="navbar" />
         </div>
       </header>
     );
@@ -158,7 +150,9 @@ export default function Navbar() {
                         <h3 className="font-semibold text-slate-900">Notifications</h3>
                       </div>
                       {loading ? (
-                        <div className="p-4 text-center text-sm text-slate-500">Loading...</div>
+                        <div className="p-4 text-center">
+                          <UnifiedLoading type="spinner" variant="spinner" size="sm" />
+                        </div>
                       ) : notifications.length === 0 ? (
                         <div className="p-4 text-center text-sm text-slate-500">
                           No notifications yet

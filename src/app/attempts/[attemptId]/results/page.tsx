@@ -10,7 +10,7 @@ import {
   Lock,
   X
 } from "lucide-react";
-import Loading from "@/components/loading/Loading";
+import UnifiedLoading from "@/components/loading/UnifiedLoading";
 import Sidebar from "@/components/dashboard/Sidebar";
 
 interface ResultsData {
@@ -130,8 +130,8 @@ export default function AttemptResultsPage() {
     return (
       <div className="min-h-screen bg-gray-50">
         <Sidebar />
-        <main className="ml-72 flex items-center justify-center min-h-screen">
-          <Loading size="lg" variant="spinner" />
+        <main className="ml-72">
+          <UnifiedLoading type="fullpage" variant="spinner" size="lg" fullScreen />
         </main>
       </div>
     );
