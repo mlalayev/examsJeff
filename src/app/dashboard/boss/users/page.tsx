@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import UnifiedLoading from "@/components/loading/UnifiedLoading";
 
-type UserRole = "STUDENT" | "TEACHER" | "ADMIN" | "BRANCH_ADMIN";
+type UserRole = "STUDENT" | "TEACHER" | "ADMIN" | "BRANCH_ADMIN" | "BRANCH_BOSS";
 type ViewMode = "all" | "branch" | "role";
 type FilterType = "all" | UserRole;
 
@@ -85,7 +85,7 @@ export default function BossUsersPage() {
       students: users.filter(u => u.role === "STUDENT").length,
       teachers: users.filter(u => u.role === "TEACHER").length,
       admins: users.filter(u => u.role === "ADMIN").length,
-      branchAdmins: users.filter(u => u.role === "BRANCH_ADMIN").length,
+      branchAdmins: users.filter(u => u.role === "BRANCH_ADMIN" || u.role === "BRANCH_BOSS").length,
       approved: users.filter(u => u.approved).length,
       pending: users.filter(u => !u.approved).length,
     };
@@ -103,6 +103,8 @@ export default function BossUsersPage() {
         return { icon: Shield, color: "from-purple-500 to-purple-600", bgColor: "bg-purple-50", textColor: "text-purple-700" };
       case "BRANCH_ADMIN":
         return { icon: Crown, color: "from-orange-500 to-orange-600", bgColor: "bg-orange-50", textColor: "text-orange-700" };
+      case "BRANCH_BOSS":
+        return { icon: Crown, color: "from-red-500 to-red-600", bgColor: "bg-red-50", textColor: "text-red-700" };
       default:
         return { icon: Users, color: "from-gray-500 to-gray-600", bgColor: "bg-gray-50", textColor: "text-gray-700" };
     }
@@ -243,6 +245,7 @@ export default function BossUsersPage() {
           <option value="STUDENT">Students</option>
           <option value="TEACHER">Teachers</option>
           <option value="BRANCH_ADMIN">Branch Admins</option>
+          <option value="BRANCH_BOSS">Branch Boss</option>
           <option value="ADMIN">Admins</option>
         </select>
         <select
@@ -366,6 +369,7 @@ export default function BossUsersPage() {
                     <option value="TEACHER">Teacher</option>
                     <option value="ADMIN">Admin</option>
                     <option value="BRANCH_ADMIN">Branch Admin</option>
+                    <option value="BRANCH_BOSS">Branch Boss</option>
                 </select>
               </div>
 

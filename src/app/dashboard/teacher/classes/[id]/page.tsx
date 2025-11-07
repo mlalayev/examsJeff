@@ -48,6 +48,7 @@ export default function ClassRosterPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [studentEmail, setStudentEmail] = useState("");
   const [adding, setAdding] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
   
   // Assign Exam state (simplified for new modal)
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -62,7 +63,20 @@ export default function ClassRosterPage() {
 
   useEffect(() => {
     fetchRoster();
+    fetchUserRole();
   }, [classId]);
+
+  const fetchUserRole = async () => {
+    try {
+      const res = await fetch("/api/auth/me");
+      if (res.ok) {
+        const data = await res.json();
+        setUserRole(data.role);
+      }
+    } catch (error) {
+      console.error("Error fetching user role:", error);
+    }
+  };
 
   const fetchRoster = async () => {
     try {
@@ -386,13 +400,15 @@ export default function ClassRosterPage() {
                       {new Date(item.enrolledAt).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3 text-sm">
-                      <button
-                        onClick={() => openAssignModal(item.student)}
-                        className="text-gray-400 hover:text-gray-600"
-                        title="Assign Exam"
-                      >
-                        <BookOpen className="w-4 h-4" />
-                      </button>
+                      {(userRole === "ADMIN" || userRole === "BOSS") && (
+                        <button
+                          onClick={() => openAssignModal(item.student)}
+                          className="text-gray-400 hover:text-gray-600"
+                          title="Assign Exam"
+                        >
+                          <BookOpen className="w-4 h-4" />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

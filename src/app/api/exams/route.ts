@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireTeacher } from "@/lib/auth-utils";
+import { requireTeacher, requireAdminOrBranchAdmin } from "@/lib/auth-utils";
 
 export async function GET(request: Request) {
   try {
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const user = await requireTeacher();
+    const user = await requireAdminOrBranchAdmin();
     const body = await request.json();
 
     const title = (body?.title || "").trim();
@@ -52,6 +52,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ exam });
   } catch (error) {
+    if (error instanceof Error && error.message.includes("Forbidden")) {
+      return NextResponse.json({ error: "Admin or Branch Admin access required" }, { status: 403 });
+    }
     console.error("Create exam error:", error);
     return NextResponse.json({ error: "Failed to create exam" }, { status: 500 });
   }

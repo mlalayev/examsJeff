@@ -5,20 +5,21 @@ import { z } from "zod";
 
 const updateExamSchema = z.object({
   title: z.string().min(1).max(200).optional(),
-  examType: z.string().optional(),
+  category: z.string().optional(),
   isActive: z.boolean().optional(),
 });
 
 // GET /api/admin/exams/[id] - Get single exam
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     await requireAdmin();
     
     const exam = await prisma.exam.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         createdBy: {
           select: {
@@ -61,16 +62,17 @@ export async function GET(
 // PATCH /api/admin/exams/[id] - Update exam
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await requireAdmin();
+    const { id } = await params;
     const body = await request.json();
     
     const validatedData = updateExamSchema.parse(body);
     
     const exam = await prisma.exam.update({
-      where: { id: params.id },
+      where: { id },
       data: validatedData,
       include: {
         createdBy: {
@@ -108,14 +110,15 @@ export async function PATCH(
 // DELETE /api/admin/exams/[id] - Delete exam
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await requireAdmin();
+    const { id } = await params;
     
     // Check if exam has bookings
     const exam = await prisma.exam.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         _count: {
           select: { bookings: true }
@@ -135,7 +138,7 @@ export async function DELETE(
     }
     
     await prisma.exam.delete({
-      where: { id: params.id }
+      where: { id }
     });
     
     return NextResponse.json({ message: "Exam deleted successfully" });

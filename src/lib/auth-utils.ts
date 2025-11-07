@@ -132,3 +132,17 @@ export async function requireBranchBoss() {
   return user;
 }
 
+/**
+ * Require ADMIN or BRANCH_ADMIN role (for exam management)
+ */
+export async function requireAdminOrBranchAdmin() {
+  const user = await requireAuth();
+  const role = (user as any).role;
+  
+  if (role !== "ADMIN" && role !== "BRANCH_ADMIN" && role !== "BOSS") {
+    throw new Error("Forbidden: Admin or Branch Admin access required");
+  }
+  
+  return user;
+}
+

@@ -5,13 +5,14 @@ import { z } from "zod";
 
 const schema = z.object({
   approved: z.boolean(),
-  role: z.enum(["STUDENT", "TEACHER", "ADMIN", "BOSS", "BRANCH_ADMIN"]).optional(),
+  role: z.enum(["STUDENT", "TEACHER", "ADMIN", "BOSS", "BRANCH_ADMIN", "BRANCH_BOSS"]).optional(),
   branchId: z.string().nullable().optional(),
 });
 
 // PATCH /api/admin/users/:id/approve
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const current = await requireAuth();
     const currentRole = (current as any).role as string;
     const currentBranchId = (current as any).branchId as string | null | undefined;
@@ -30,7 +31,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       }
     }
 
-    const target = await prisma.user.findUnique({ where: { id: params.id }, select: { id: true, branchId: true } });
+    const target = await prisma.user.findUnique({ where: { id }, select: { id: true, branchId: true } });
     if (!target) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     if (currentRole === "BRANCH_ADMIN") {
@@ -41,7 +42,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     }
 
     const updated = await prisma.user.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         approved,
         ...(role ? { role } : {}),

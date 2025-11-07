@@ -8,8 +8,12 @@ export default function BossBranchesPage() {
   const [branches, setBranches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedBranch, setSelectedBranch] = useState<any | null>(null);
   const [newBranchName, setNewBranchName] = useState("");
+  const [editBranchName, setEditBranchName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     loadBranches();
@@ -87,6 +91,49 @@ export default function BossBranchesPage() {
     setNewBranchName("");
     // Restore body scroll when modal is closed
     document.body.style.overflow = 'unset';
+  };
+
+  const openEditModal = (branch: any) => {
+    setSelectedBranch(branch);
+    setEditBranchName(branch.name);
+    setShowEditModal(true);
+    document.body.style.overflow = 'hidden';
+  };
+
+  const closeEditModal = () => {
+    setShowEditModal(false);
+    setSelectedBranch(null);
+    setEditBranchName("");
+    document.body.style.overflow = 'unset';
+  };
+
+  const updateBranch = async () => {
+    if (!selectedBranch || !editBranchName.trim()) {
+      alert("Branch name is required");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/boss/branches/${selectedBranch.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: editBranchName.trim() }),
+      });
+
+      if (res.ok) {
+        closeEditModal();
+        await loadBranches();
+      } else {
+        const error = await res.json();
+        alert(error.error || "Failed to update branch");
+      }
+    } catch (error) {
+      console.error("Failed to update branch:", error);
+      alert("Failed to update branch");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const stats = getBranchStats();
@@ -181,7 +228,10 @@ export default function BossBranchesPage() {
                     {new Date(branch.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3 text-sm">
-                      <button className="text-gray-400 hover:text-gray-600">
+                      <button 
+                        onClick={() => openEditModal(branch)}
+                        className="text-gray-400 hover:text-gray-600"
+                      >
                         <Edit className="w-4 h-4" />
                       </button>
                     </td>
@@ -247,6 +297,62 @@ export default function BossBranchesPage() {
                 className="px-4 py-2 text-sm font-medium text-white bg-gray-900 border border-transparent rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500"
               >
                 Create Branch
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Branch Modal */}
+      {showEditModal && selectedBranch && (
+        <div 
+          className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              closeEditModal();
+            }
+          }}
+        >
+          <div className="bg-white w-full max-w-md border border-gray-200 rounded-md shadow-lg">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-medium text-gray-900">Edit Branch</h3>
+              <p className="text-sm text-gray-500 mt-1">Update branch information</p>
+            </div>
+
+            {/* Modal Content */}
+            <div className="px-6 py-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Branch Name
+                </label>
+                <input
+                  type="text"
+                  value={editBranchName}
+                  onChange={(e) => setEditBranchName(e.target.value)}
+                  onKeyPress={(e) => e.key === "Enter" && updateBranch()}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+                  placeholder="e.g., Baku Center, Ganja Branch"
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+              <button
+                onClick={closeEditModal}
+                disabled={saving}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={updateBranch}
+                disabled={saving}
+                className="px-4 py-2 text-sm font-medium text-white bg-gray-900 border border-transparent rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50"
+              >
+                {saving ? "Saving..." : "Save Changes"}
               </button>
             </div>
           </div>

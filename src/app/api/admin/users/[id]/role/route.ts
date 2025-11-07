@@ -1,19 +1,20 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth-utils";
+import { requireAdminOrBoss } from "@/lib/auth-utils";
 import { z } from "zod";
 
 const roleSchema = z.object({
-  role: z.enum(["STUDENT", "TEACHER", "ADMIN", "BOSS", "BRANCH_ADMIN"])
+  role: z.enum(["STUDENT", "TEACHER", "ADMIN", "BOSS", "BRANCH_ADMIN", "BRANCH_BOSS"])
 });
 
 // PATCH /api/admin/users/[id]/role
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const current = await requireAdmin();
+    const { id } = await params;
+    const current = await requireAdminOrBoss();
     const body = await request.json();
     
     const { role } = roleSchema.parse(body);
@@ -24,7 +25,7 @@ export async function PATCH(
     }
     
     const user = await prisma.user.update({
-      where: { id: params.id },
+      where: { id },
       data: { role },
       select: {
         id: true,

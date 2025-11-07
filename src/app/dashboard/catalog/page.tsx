@@ -178,6 +178,8 @@ export default function CatalogPage() {
     );
   }
 
+  // Only ADMIN and BOSS can assign exams
+  const canAssign = data.userRole === "ADMIN" || data.userRole === "BOSS";
   const isTeacher = data.userRole === "TEACHER";
   const filtered = filteredData();
 
@@ -267,7 +269,7 @@ export default function CatalogPage() {
                         <ExamCard
                           key={exam.id}
                           exam={exam}
-                          isTeacher={isTeacher}
+                          canAssign={canAssign}
                           onAssign={() => handleAssignExam(exam.id)}
                           onPreview={() => handlePreviewExam(exam.id)}
                         />
@@ -294,12 +296,12 @@ export default function CatalogPage() {
 
 interface ExamCardProps {
   exam: ExamCard;
-  isTeacher: boolean;
+  canAssign: boolean;
   onAssign: () => void;
   onPreview: () => void;
 }
 
-function ExamCard({ exam, isTeacher, onAssign, onPreview }: ExamCardProps) {
+function ExamCard({ exam, canAssign, onAssign, onPreview }: ExamCardProps) {
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
       <div className="mb-4">
@@ -339,7 +341,7 @@ function ExamCard({ exam, isTeacher, onAssign, onPreview }: ExamCardProps) {
       </div>
       
       <div className="flex gap-2">
-        {isTeacher ? (
+        {canAssign ? (
           <button
             onClick={onAssign}
             className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"

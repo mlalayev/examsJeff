@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, BookOpen, Search, Edit, Calendar } from "lucide-react";
+import { BookOpen, Search } from "lucide-react";
+import UnifiedLoading from "@/components/loading/UnifiedLoading";
 
 interface Exam {
   id: string;
@@ -22,9 +23,6 @@ export default function ExamsPage() {
   const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [examTitle, setExamTitle] = useState("");
-  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     fetchExams();
@@ -56,46 +54,6 @@ export default function ExamsPage() {
   };
 
 
-  const handleCreateExam = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setCreating(true);
-
-    try {
-      const response = await fetch("/api/exams", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          title: examTitle,
-          isActive: true 
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to create exam");
-      }
-
-      setExams([data.exam, ...exams]);
-      setExamTitle("");
-      setShowCreateModal(false);
-    } catch (err) {
-      console.error("Error creating exam:", err);
-    } finally {
-      setCreating(false);
-    }
-  };
-
-  const openCreateModal = () => {
-    setShowCreateModal(true);
-    document.body.style.overflow = 'hidden';
-  };
-
-  const closeCreateModal = () => {
-    setShowCreateModal(false);
-    setExamTitle("");
-    document.body.style.overflow = 'unset';
-  };
 
   const filteredExams = exams.filter((exam) =>
     exam.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -108,15 +66,15 @@ export default function ExamsPage() {
   };
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       {/* Minimal Header */}
-      <div className="mb-12">
-        <h1 className="text-2xl font-medium text-gray-900">Exams</h1>
-        <p className="text-gray-500 mt-1">Create exam templates to assign to students</p>
+      <div className="mb-8 sm:mb-12">
+        <h1 className="text-xl sm:text-2xl font-medium text-gray-900">Exams</h1>
+        <p className="text-gray-500 mt-1 text-sm sm:text-base">View available exams</p>
       </div>
 
       {/* Compact Stats Row */}
-      <div className="flex items-center gap-8 mb-8 text-sm">
+      <div className="flex flex-wrap items-center gap-4 sm:gap-8 mb-6 sm:mb-8 text-sm">
         <div className="flex items-center gap-2">
           <span className="text-gray-500">Total Exams:</span>
           <span className="font-medium">{stats.total}</span>
@@ -132,7 +90,7 @@ export default function ExamsPage() {
       </div>
 
       {/* Simple Filters */}
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 mb-6">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
@@ -143,13 +101,6 @@ export default function ExamsPage() {
             className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
           />
         </div>
-        <button
-          onClick={openCreateModal}
-          className="px-4 py-2 text-sm font-medium text-white bg-gray-900 border border-transparent rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500"
-        >
-          <Plus className="w-4 h-4 mr-2 inline" />
-          Create Exam
-        </button>
       </div>
 
       {/* Simple Table */}
@@ -159,21 +110,20 @@ export default function ExamsPage() {
             <UnifiedLoading type="spinner" variant="pulse" size="md" />
         </div>
       ) : (
-          <div className="overflow-x-auto pb-6">
-            <table className="w-full">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px]">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Title</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Status</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Assignments</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Created</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Actions</th>
+                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Title</th>
+                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Status</th>
+                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Assignments</th>
+                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Created</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {filteredExams.map((exam) => (
                   <tr key={exam.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm">
+                    <td className="px-3 sm:px-4 py-3 text-sm">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-gray-100 rounded-md flex items-center justify-center">
                           <BookOpen className="w-4 h-4 text-gray-600" />
@@ -190,7 +140,7 @@ export default function ExamsPage() {
                   </div>
                 </div>
                     </td>
-                    <td className="px-4 py-3 text-sm">
+                    <td className="px-3 sm:px-4 py-3 text-sm">
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                   exam.isActive 
                     ? "bg-green-100 text-green-700" 
@@ -199,16 +149,11 @@ export default function ExamsPage() {
                   {exam.isActive ? "Active" : "Inactive"}
                 </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
+                    <td className="px-3 sm:px-4 py-3 text-sm text-gray-600">
                       {exam._count?.bookings || 0}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
+                    <td className="px-3 sm:px-4 py-3 text-sm text-gray-600">
                       {new Date(exam.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      <button className="text-gray-400 hover:text-gray-600">
-                        <Edit className="w-4 h-4" />
-                      </button>
                     </td>
                   </tr>
                 ))}
@@ -223,69 +168,6 @@ export default function ExamsPage() {
             </div>
         )}
         </div>
-
-      {/* Create Exam Modal */}
-      {showCreateModal && (
-        <div
-          className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              closeCreateModal();
-            }
-          }}
-        >
-          <div className="bg-white w-full max-w-md border border-gray-200 rounded-md shadow-lg">
-            {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">Create Exam</h3>
-              <p className="text-sm text-gray-500 mt-1">Create a new exam template</p>
-              </div>
-            
-            {/* Modal Content */}
-            <form onSubmit={handleCreateExam}>
-              <div className="px-6 py-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Exam Title
-                </label>
-                <input
-                  type="text"
-                  value={examTitle}
-                  onChange={(e) => setExamTitle(e.target.value)}
-                    onKeyPress={(e) => e.key === "Enter" && handleCreateExam(e)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
-                  placeholder="e.g., IELTS Academic Mock Exam #1"
-                    autoFocus
-                    required
-                  maxLength={200}
-                />
-                <p className="text-xs text-gray-500 mt-2">
-                  Create exam templates that you can assign to students with specific dates and sections
-                </p>
-                </div>
-              </div>
-              
-              {/* Modal Footer */}
-              <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={closeCreateModal}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={creating || !examTitle.trim()}
-                  className="px-4 py-2 text-sm font-medium text-white bg-gray-900 border border-transparent rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50"
-                >
-                  {creating ? "Creating..." : "Create Exam"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

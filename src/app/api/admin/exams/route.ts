@@ -3,18 +3,54 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-utils";
 import { z } from "zod";
 
+const questionSchema = z.object({
+  qtype: z.enum(["MCQ", "ORDER", "DND_MATCH", "TF", "MCQ_SINGLE", "MCQ_MULTI", "SELECT", "GAP", "ORDER_SENTENCE", "DND_GAP", "SHORT_TEXT", "ESSAY", "INLINE_SELECT"]),
+  order: z.number(),
+  prompt: z.any(),
+  options: z.any().optional(),
+  answerKey: z.any(),
+  maxScore: z.number().default(1),
+  explanation: z.any().optional(),
+  image: z.string().nullable().optional(),
+});
+
+const sectionSchema = z.object({
+  type: z.enum(["READING", "LISTENING", "WRITING", "SPEAKING", "GRAMMAR", "VOCABULARY"]),
+  title: z.string(),
+  instruction: z.string(),
+  durationMin: z.number(),
+  order: z.number(),
+  passage: z.string().nullable().optional(),
+  audio: z.string().nullable().optional(),
+  questions: z.array(questionSchema),
+});
+
 const createExamSchema = z.object({
   title: z.string().min(1).max(200),
-  examType: z.string().default("IELTS"),
+  category: z.enum(["IELTS", "TOEFL", "SAT", "GENERAL_ENGLISH", "MATH", "KIDS"]),
+  track: z.string().nullable().optional(),
   isActive: z.boolean().default(true),
+  sections: z.array(sectionSchema).optional(),
 });
 
 // GET /api/admin/exams - List all exams
-export async function GET() {
+export async function GET(request: Request) {
   try {
     await requireAdmin();
+    const { searchParams } = new URL(request.url);
+    const category = searchParams.get("category");
+    const isActive = searchParams.get("isActive");
+    
+    const where: any = {};
+    if (category) {
+      where.category = category;
+    }
+    if (isActive !== null) {
+      where.isActive = isActive === "true";
+    }
     
     const exams = await prisma.exam.findMany({
+      where,
       orderBy: { createdAt: "desc" },
       include: {
         createdBy: {
@@ -24,17 +60,34 @@ export async function GET() {
             email: true,
           }
         },
+        sections: {
+          include: {
+            _count: {
+              select: {
+                questions: true
+              }
+            }
+          }
+        },
         _count: {
           select: {
             sections: true,
-            questions: true,
             bookings: true,
           }
         }
       }
     });
     
-    return NextResponse.json({ exams });
+    // Calculate total questions for each exam
+    const examsWithCounts = exams.map(exam => ({
+      ...exam,
+      _count: {
+        ...exam._count,
+        questions: exam.sections.reduce((sum, section) => sum + section._count.questions, 0)
+      }
+    }));
+    
+    return NextResponse.json({ exams: examsWithCounts });
     
   } catch (error) {
     if (error instanceof Error && error.message.includes("Forbidden")) {
@@ -60,9 +113,47 @@ export async function POST(request: Request) {
     const exam = await prisma.exam.create({
       data: {
         title: validatedData.title,
-        examType: validatedData.examType,
-        isActive: validatedData.isActive,
+        category: validatedData.category,
+        track: validatedData.track,
+        isActive: validatedData.isActive ?? true,
         createdById: (user as any).id,
+        sections: validatedData.sections ? {
+          create: validatedData.sections.map((section) => {
+            // Store passage and audio in instruction as JSON string
+            const instructionData: any = {
+              text: section.instruction,
+            };
+            if (section.passage) {
+              instructionData.passage = section.passage;
+            }
+            if (section.audio) {
+              instructionData.audio = section.audio;
+            }
+            
+            return {
+              type: section.type,
+              title: section.title,
+              instruction: JSON.stringify(instructionData),
+              durationMin: section.durationMin,
+              order: section.order,
+              questions: {
+              create: section.questions.map((q) => ({
+                qtype: q.qtype,
+                order: q.order,
+                prompt: {
+                  ...q.prompt,
+                  // Add image to prompt if it exists
+                  ...(q.image ? { image: q.image } : {}),
+                },
+                options: q.options,
+                answerKey: q.answerKey,
+                maxScore: q.maxScore,
+                explanation: q.explanation,
+              })),
+            },
+            };
+          }),
+        } : undefined,
       },
       include: {
         createdBy: {
@@ -71,7 +162,12 @@ export async function POST(request: Request) {
             name: true,
             email: true,
           }
-        }
+        },
+        sections: {
+          include: {
+            questions: true,
+          },
+        },
       }
     });
     

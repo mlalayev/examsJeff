@@ -89,15 +89,15 @@ export default function ClassesPage() {
   };
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       {/* Minimal Header */}
-      <div className="mb-12">
-        <h1 className="text-2xl font-medium text-gray-900">Classes</h1>
-        <p className="text-gray-500 mt-1">Manage your classes and students</p>
+      <div className="mb-8 sm:mb-12">
+        <h1 className="text-xl sm:text-2xl font-medium text-gray-900">Classes</h1>
+        <p className="text-gray-500 mt-1 text-sm sm:text-base">Manage your classes and students</p>
       </div>
 
       {/* Compact Stats Row */}
-      <div className="flex items-center gap-8 mb-8 text-sm">
+      <div className="flex flex-wrap items-center gap-4 sm:gap-8 mb-6 sm:mb-8 text-sm">
         <div className="flex items-center gap-2">
           <span className="text-gray-500">Total Classes:</span>
           <span className="font-medium">{stats.total}</span>
@@ -113,7 +113,7 @@ export default function ClassesPage() {
       </div>
 
       {/* Simple Filters */}
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 mb-6">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
@@ -126,10 +126,11 @@ export default function ClassesPage() {
         </div>
         <button
           onClick={openCreateModal}
-          className="px-4 py-2 text-sm font-medium text-white bg-gray-900 border border-transparent rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500"
+          className="px-4 py-2 text-sm font-medium text-white bg-gray-900 border border-transparent rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 whitespace-nowrap"
         >
-          <Plus className="w-4 h-4 mr-2 inline" />
-          Create Class
+          <Plus className="w-4 h-4 sm:mr-2 inline" />
+          <span className="hidden sm:inline">Create Class</span>
+          <span className="sm:hidden">Create</span>
         </button>
       </div>
 
@@ -140,20 +141,20 @@ export default function ClassesPage() {
             <UnifiedLoading type="spinner" variant="spinner" size="md" />
         </div>
       ) : (
-          <div className="overflow-x-auto pb-6">
-            <table className="w-full">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px]">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Name</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Students</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Created</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Actions</th>
+                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Name</th>
+                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Students</th>
+                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Created</th>
+                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {filteredClasses.map((classItem) => (
                   <tr key={classItem.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm">
+                    <td className="px-3 sm:px-4 py-3 text-sm">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-gray-100 rounded-md flex items-center justify-center">
                           <Users className="w-4 h-4 text-gray-600" />
@@ -164,11 +165,11 @@ export default function ClassesPage() {
                 </div>
               </div>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{classItem._count.classStudents}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
+                    <td className="px-3 sm:px-4 py-3 text-sm text-gray-600">{classItem._count.classStudents}</td>
+                    <td className="px-3 sm:px-4 py-3 text-sm text-gray-600">
                       {new Date(classItem.createdAt).toLocaleDateString()}
                     </td>
-                    <td className="px-4 py-3 text-sm">
+                    <td className="px-3 sm:px-4 py-3 text-sm">
                       <div className="flex items-center gap-2">
                 <button
                   onClick={() => router.push(`/dashboard/teacher/classes/${classItem.id}`)}

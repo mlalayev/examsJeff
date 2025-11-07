@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth-utils";
+import { requireAdminOrBoss } from "@/lib/auth-utils";
 
 // GET /api/admin/users?role=...&search=...
 export async function GET(request: Request) {
   try {
-    const current = await requireAdmin();
+    const current = await requireAdminOrBoss();
     
     const { searchParams } = new URL(request.url);
     const roleFilter = searchParams.get("role");
@@ -23,6 +23,7 @@ export async function GET(request: Request) {
           ]
         }),
         // If admin is BRANCH_ADMIN, scope to same branch only
+        // BOSS and ADMIN can see all users
         ...(currentRole === "BRANCH_ADMIN" && currentBranchId
           ? { branchId: currentBranchId }
           : {})
