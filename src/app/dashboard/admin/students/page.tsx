@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Users, CheckCircle, XCircle, Search, Mail, Calendar } from "lucide-react";
+import { Users, Search } from "lucide-react";
+import UnifiedLoading from "@/components/loading/UnifiedLoading";
 
 interface Student {
   id: string;
@@ -79,177 +80,136 @@ export default function AdminStudentsPage() {
   const approvedCount = students.filter(s => s.approved).length;
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Students</h1>
-        <p className="text-gray-600">Manage student accounts and approvals</p>
+    <div className="p-4 sm:p-6 lg:p-8">
+      {/* Minimal Header */}
+      <div className="mb-8 sm:mb-12">
+        <h1 className="text-xl sm:text-2xl font-medium text-gray-900">Students</h1>
+        <p className="text-gray-500 mt-1 text-sm sm:text-base">Manage student accounts and approvals</p>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <div className="bg-white rounded-xl p-6 border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Total Students</p>
-              <p className="text-2xl font-bold text-gray-900">{students.length}</p>
-            </div>
-            <Users className="w-8 h-8 text-gray-400" />
-          </div>
+      {/* Compact Stats Row */}
+      <div className="flex flex-wrap items-center gap-4 sm:gap-8 mb-6 sm:mb-8 text-sm">
+        <div className="flex items-center gap-2">
+          <span className="text-gray-500">Total Students:</span>
+          <span className="font-medium">{students.length}</span>
         </div>
-        <div className="bg-white rounded-xl p-6 border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Pending Approval</p>
-              <p className="text-2xl font-bold text-orange-600">{pendingCount}</p>
-            </div>
-            <XCircle className="w-8 h-8 text-orange-400" />
-          </div>
+        <div className="flex items-center gap-2">
+          <span className="text-gray-500">Pending Approval:</span>
+          <span className="font-medium">{pendingCount}</span>
         </div>
-        <div className="bg-white rounded-xl p-6 border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Approved</p>
-              <p className="text-2xl font-bold text-green-600">{approvedCount}</p>
-            </div>
-            <CheckCircle className="w-8 h-8 text-green-400" />
-          </div>
+        <div className="flex items-center gap-2">
+          <span className="text-gray-500">Approved:</span>
+          <span className="font-medium">{approvedCount}</span>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-xl p-6 border border-gray-200 mb-6">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search by name or email..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setFilterApproved(null)}
-              className={`px-4 py-2 rounded-lg border transition-colors ${
-                filterApproved === null
-                  ? "bg-blue-600 text-white border-blue-600"
-                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-              }`}
-            >
-              All
-            </button>
-            <button
-              onClick={() => setFilterApproved(false)}
-              className={`px-4 py-2 rounded-lg border transition-colors ${
-                filterApproved === false
-                  ? "bg-orange-600 text-white border-orange-600"
-                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-              }`}
-            >
-              Pending
-            </button>
-            <button
-              onClick={() => setFilterApproved(true)}
-              className={`px-4 py-2 rounded-lg border transition-colors ${
-                filterApproved === true
-                  ? "bg-green-600 text-white border-green-600"
-                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-              }`}
-            >
-              Approved
-            </button>
-          </div>
+      {/* Simple Filters */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 mb-6">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search by name or email..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+          />
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setFilterApproved(null)}
+            className={`px-3 py-2 text-sm font-medium rounded-md border transition ${
+              filterApproved === null
+                ? "bg-gray-900 text-white border-gray-900"
+                : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+            }`}
+          >
+            All
+          </button>
+          <button
+            onClick={() => setFilterApproved(false)}
+            className={`px-3 py-2 text-sm font-medium rounded-md border transition ${
+              filterApproved === false
+                ? "bg-gray-900 text-white border-gray-900"
+                : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+            }`}
+          >
+            Pending
+          </button>
+          <button
+            onClick={() => setFilterApproved(true)}
+            className={`px-3 py-2 text-sm font-medium rounded-md border transition ${
+              filterApproved === true
+                ? "bg-gray-900 text-white border-gray-900"
+                : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+            }`}
+          >
+            Approved
+          </button>
         </div>
       </div>
 
-      {/* Students Table */}
-      {loading ? (
-        <div className="bg-white rounded-xl p-8 border border-gray-200 text-center">
-          <p className="text-gray-600">Loading students...</p>
-        </div>
-      ) : filteredStudents.length === 0 ? (
-        <div className="bg-white rounded-xl p-8 border border-gray-200 text-center">
-          <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600">No students found</p>
-        </div>
-      ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      {/* Simple Table */}
+      <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
+        {loading ? (
+          <div className="flex items-center justify-center h-32">
+            <UnifiedLoading type="spinner" variant="pulse" size="md" />
+          </div>
+        ) : filteredStudents.length === 0 ? (
+          <div className="text-center py-12 text-gray-500">
+            <Users className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+            <p>No students found</p>
+          </div>
+        ) : (
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full min-w-[800px]">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Student
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Email
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Branch
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Joined
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
+                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Student</th>
+                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Email</th>
+                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Branch</th>
+                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Status</th>
+                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Joined</th>
+                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="divide-y divide-gray-200">
                 {filteredStudents.map((student) => (
                   <tr key={student.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center text-white font-medium">
+                    <td className="px-3 sm:px-4 py-3 text-sm">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-700 font-medium text-xs flex-shrink-0">
                           {student.name?.charAt(0).toUpperCase() || student.email.charAt(0).toUpperCase()}
                         </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {student.name || "No name"}
-                          </div>
+                        <div className="font-medium text-gray-900">
+                          {student.name || "No name"}
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center text-sm text-gray-600">
-                        <Mail className="w-4 h-4 mr-2" />
-                        {student.email}
-                      </div>
+                    <td className="px-3 sm:px-4 py-3 text-sm text-gray-600">
+                      {student.email}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                    <td className="px-3 sm:px-4 py-3 text-sm text-gray-600">
                       {student.branch?.name || "No branch"}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {student.approved ? (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          <CheckCircle className="w-3 h-3 mr-1" />
-                          Approved
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                          <XCircle className="w-3 h-3 mr-1" />
-                          Pending
-                        </span>
-                      )}
+                    <td className="px-3 sm:px-4 py-3 text-sm">
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                        student.approved
+                          ? "bg-green-100 text-green-700"
+                          : "bg-orange-100 text-orange-700"
+                      }`}>
+                        {student.approved ? "Approved" : "Pending"}
+                      </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      <div className="flex items-center">
-                        <Calendar className="w-4 h-4 mr-2" />
-                        {new Date(student.createdAt).toLocaleDateString()}
-                      </div>
+                    <td className="px-3 sm:px-4 py-3 text-sm text-gray-600">
+                      {new Date(student.createdAt).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <td className="px-3 sm:px-4 py-3 text-sm">
                       {student.approved ? (
                         <button
                           onClick={() => handleApprove(student.id, false)}
                           disabled={updating === student.id}
-                          className="text-orange-600 hover:text-orange-900 disabled:opacity-50"
+                          className="px-2 py-1 text-xs font-medium text-orange-700 bg-orange-50 rounded hover:bg-orange-100 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {updating === student.id ? "Updating..." : "Revoke"}
                         </button>
@@ -257,7 +217,7 @@ export default function AdminStudentsPage() {
                         <button
                           onClick={() => handleApprove(student.id, true)}
                           disabled={updating === student.id}
-                          className="text-green-600 hover:text-green-900 disabled:opacity-50"
+                          className="px-2 py-1 text-xs font-medium text-green-700 bg-green-50 rounded hover:bg-green-100 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {updating === student.id ? "Updating..." : "Approve"}
                         </button>
@@ -268,8 +228,8 @@ export default function AdminStudentsPage() {
               </tbody>
             </table>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

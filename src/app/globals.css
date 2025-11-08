@@ -1,1 +1,27 @@
 @import "tailwindcss";
+
+@keyframes bounce-slow {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes typing {
+  0% { content: "e"; }
+  7.14% { content: "ed"; }
+  14.28% { content: "edi"; }
+  21.42% { content: "edit"; }
+  28.56% { content: "editi"; }
+  35.7% { content: "editin"; }
+  42.84% { content: "editing"; }
+  50% { content: "editin"; }
+  57.14% { content: "editi"; }
+  64.28% { content: "edit"; }
+  71.42% { content: "edi"; }
+  78.56% { content: "ed"; }
+  85.7% { content: "e"; }
+  92.84%, 100% { content: ""; }
+}

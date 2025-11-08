@@ -1,7 +1,6 @@
 'use client';
 
 import styles from './Testimonials.module.css';
-import { CheckCircle2 } from 'lucide-react';
 
 export default function Testimonials() {
   const testimonials = [
@@ -13,13 +12,12 @@ export default function Testimonials() {
   return (
     <section>
       <div className={styles.container}>
-        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 text-center">Success Stories</h2>
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <h2 className="text-xl sm:text-2xl font-medium text-gray-900 text-center mb-8 sm:mb-12">Success Stories</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
           {testimonials.map((t, i) => (
-            <div key={i} className="rounded-2xl border border-gray-200 bg-white p-6">
-              <div className="flex items-center gap-2 text-emerald-600"><CheckCircle2 className="w-4 h-4" /> Verified</div>
-              <p className="mt-3 text-gray-700">"{t.text}"</p>
-              <div className="mt-3 text-sm text-gray-500">— {t.name}</div>
+            <div key={i} className="bg-white border border-gray-200 rounded-md p-4 sm:p-6">
+              <p className="text-sm sm:text-base text-gray-700 leading-relaxed mb-4">"{t.text}"</p>
+              <div className="text-xs sm:text-sm text-gray-500 font-medium">— {t.name}</div>
             </div>
           ))}
         </div>

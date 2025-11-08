@@ -116,7 +116,7 @@ export default function CreateExamPage() {
       if (confirm("Changing category will remove sections that are not allowed for this exam type. Continue?")) {
         setSections([]);
         setCurrentSection(null);
-        setStep("sections");
+      setStep("sections");
       } else {
         return; // İstifadəçi ləğv etdi
       }
@@ -306,14 +306,14 @@ export default function CreateExamPage() {
             }
             
             return {
-              type: s.type,
-              title: s.title,
+            type: s.type,
+            title: s.title,
               instruction: JSON.stringify(instructionData),
-              durationMin: s.durationMin,
-              order: s.order,
+            durationMin: s.durationMin,
+            order: s.order,
               passage: s.passage || null,
               audio: s.audio || null,
-              questions: s.questions.map((q) => ({
+            questions: s.questions.map((q) => ({
               qtype: q.qtype,
               order: q.order,
               prompt: q.prompt,
@@ -547,12 +547,59 @@ export default function CreateExamPage() {
           {/* Editing Indicator */}
           <div className="absolute top-4 right-4 sm:top-6 sm:right-6 flex items-center gap-2">
             <div className="flex items-center gap-0.5">
-              <span className="w-1 h-1 bg-slate-900 rounded-full animate-bounce" style={{ animationDelay: '0ms', animationDuration: '1.4s' }}></span>
-              <span className="w-1 h-1 bg-slate-900 rounded-full animate-bounce" style={{ animationDelay: '200ms', animationDuration: '1.4s' }}></span>
-              <span className="w-1 h-1 bg-slate-900 rounded-full animate-bounce" style={{ animationDelay: '400ms', animationDuration: '1.4s' }}></span>
+              <span 
+                className="w-1.5 h-1.5 bg-slate-900 rounded-full" 
+                style={{ 
+                  animation: 'bounce-slow 1.2s infinite',
+                  animationDelay: '0s'
+                }}
+              ></span>
+              <span 
+                className="w-1.5 h-1.5 bg-slate-900 rounded-full" 
+                style={{ 
+                  animation: 'bounce-slow 1.2s infinite',
+                  animationDelay: '0.2s'
+                }}
+              ></span>
+              <span 
+                className="w-1.5 h-1.5 bg-slate-900 rounded-full" 
+                style={{ 
+                  animation: 'bounce-slow 1.2s infinite',
+                  animationDelay: '0.4s'
+                }}
+              ></span>
             </div>
-            <span className="text-xs sm:text-sm font-medium text-slate-900">Editing</span>
+            <span className="text-xs sm:text-sm font-medium text-slate-900 inline-block min-w-[60px]">
+              <span className="typing-text">Editing</span>
+            </span>
           </div>
+          
+          <style jsx>{`
+            .typing-text {
+              display: inline-block;
+              overflow: hidden;
+              white-space: nowrap;
+              animation: typing 3.5s steps(7, end) infinite;
+            }
+            
+            @keyframes typing {
+              0% { width: 0ch; }
+              7.14% { width: 1ch; }
+              14.28% { width: 2ch; }
+              21.42% { width: 3ch; }
+              28.56% { width: 4ch; }
+              35.7% { width: 5ch; }
+              42.84% { width: 6ch; }
+              50% { width: 7ch; }
+              57.14% { width: 6ch; }
+              64.28% { width: 5ch; }
+              71.42% { width: 4ch; }
+              78.56% { width: 3ch; }
+              85.7% { width: 2ch; }
+              92.84% { width: 1ch; }
+              100% { width: 0ch; }
+            }
+          `}</style>
 
           {/* Breadcrumb */}
           <div className="mb-4 pb-4 border-b border-gray-200">
@@ -916,26 +963,26 @@ export default function CreateExamPage() {
               </button>
             </div>
 
-            <div className="space-y-3 sm:space-y-4">
+            <div className="space-y-4 sm:space-y-5">
               {/* Question Type */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              <div className="p-4 bg-gray-50 border border-gray-200 rounded-md">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Question Type
                 </label>
-                <div className="px-3 py-2 bg-gray-50 rounded-md text-sm text-gray-600">
+                <div className="px-3 py-2 bg-white border border-gray-200 rounded-md text-sm text-gray-600">
                   {QUESTION_TYPE_LABELS[editingQuestion.qtype]}
                 </div>
               </div>
 
               {/* Image Upload (for SAT and MATH) */}
               {(selectedCategory === "SAT" || selectedCategory === "MATH") && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                <div className="p-4 bg-gray-50 border border-gray-200 rounded-md">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Question Image (Optional)
                   </label>
                   <div className="space-y-2">
                     {editingQuestion.image && (
-                      <div className="p-2 bg-gray-50 rounded-md text-sm text-gray-600">
+                      <div className="p-2 bg-white border border-gray-200 rounded-md text-sm text-gray-600">
                         Current: {editingQuestion.image}
                       </div>
                     )}
@@ -974,7 +1021,7 @@ export default function CreateExamPage() {
                         }
                       }}
                       disabled={uploadingImage}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 disabled:opacity-50"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 disabled:opacity-50 bg-white"
                     />
                     {uploadingImage && (
                       <p className="text-xs text-gray-500">Uploading...</p>
@@ -984,8 +1031,8 @@ export default function CreateExamPage() {
               )}
 
               {/* Prompt */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              <div className="p-4 bg-gray-50 border border-gray-200 rounded-md">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Question Text / Prompt *
                 </label>
                 {editingQuestion.qtype === "ORDER_SENTENCE" ? (
@@ -1001,7 +1048,7 @@ export default function CreateExamPage() {
                         });
                       }}
                       placeholder="Enter tokens (one per line)"
-                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
                       rows={5}
                     />
                     <p className="text-xs text-gray-500">Enter tokens one per line. They will be shuffled for students.</p>
@@ -1018,7 +1065,7 @@ export default function CreateExamPage() {
                         });
                       }}
                       placeholder="Enter text with blanks (use ___ for blanks)"
-                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
                     />
                     <p className="text-xs text-gray-500">Use ___ to indicate blanks where students will drag words.</p>
                   </div>
@@ -1032,7 +1079,7 @@ export default function CreateExamPage() {
                       });
                     }}
                     placeholder="Enter the question text"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
                     rows={3}
                   />
                 )}
@@ -1044,8 +1091,8 @@ export default function CreateExamPage() {
                 editingQuestion.qtype === "SELECT" ||
                 editingQuestion.qtype === "INLINE_SELECT" ||
                 editingQuestion.qtype === "DND_GAP") && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                <div className="p-4 bg-gray-50 border border-gray-200 rounded-md">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     {editingQuestion.qtype === "DND_GAP" ? "Word Bank" : "Options"}
                   </label>
                   <div className="space-y-2">
@@ -1065,7 +1112,7 @@ export default function CreateExamPage() {
                               },
                             });
                           }}
-                          className="flex-1 px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+                          className="flex-1 px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
                           placeholder={`Option ${idx + 1}`}
                         />
                         <button
@@ -1107,8 +1154,8 @@ export default function CreateExamPage() {
               )}
 
               {/* Answer Key */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              <div className="p-4 bg-gray-50 border border-gray-200 rounded-md">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Correct Answer *
                 </label>
                 {editingQuestion.qtype === "TF" && (
@@ -1120,7 +1167,7 @@ export default function CreateExamPage() {
                         answerKey: { value: e.target.value === "true" },
                       });
                     }}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
                   >
                     <option value="true">True</option>
                     <option value="false">False</option>
@@ -1137,7 +1184,7 @@ export default function CreateExamPage() {
                         answerKey: { index: parseInt(e.target.value) },
                       });
                     }}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
                   >
                     {(editingQuestion.options?.choices || []).map((opt: string, idx: number) => (
                       <option key={idx} value={idx}>
@@ -1147,9 +1194,9 @@ export default function CreateExamPage() {
                   </select>
                 )}
                 {editingQuestion.qtype === "MCQ_MULTI" && (
-                  <div className="space-y-2">
+                  <div className="space-y-2 p-3 bg-white border border-gray-200 rounded-md">
                     {(editingQuestion.options?.choices || []).map((opt: string, idx: number) => (
-                      <label key={idx} className="flex items-center gap-2">
+                      <label key={idx} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
                         <input
                           type="checkbox"
                           checked={(editingQuestion.answerKey?.indices || []).includes(idx)}
@@ -1168,7 +1215,7 @@ export default function CreateExamPage() {
                           }}
                           className="w-4 h-4"
                         />
-                        <span>{opt || `Option ${idx + 1}`}</span>
+                        <span className="text-sm">{opt || `Option ${idx + 1}`}</span>
                       </label>
                     ))}
                   </div>
@@ -1184,11 +1231,11 @@ export default function CreateExamPage() {
                       });
                     }}
                     placeholder="Correct answer"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
                   />
                 )}
                 {editingQuestion.qtype === "DND_GAP" && (
-                  <div className="space-y-2">
+                  <div className="space-y-2 p-3 bg-white border border-gray-200 rounded-md">
                     {(editingQuestion.prompt?.textWithBlanks || "").split("___").length > 1 &&
                       Array.from({ length: (editingQuestion.prompt?.textWithBlanks || "").split("___").length - 1 }).map((_, idx) => (
                         <input
@@ -1204,18 +1251,18 @@ export default function CreateExamPage() {
                             });
                           }}
                           placeholder={`Blank ${idx + 1} answer`}
-                          className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+                          className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
                         />
                       ))}
                   </div>
                 )}
                 {editingQuestion.qtype === "ORDER_SENTENCE" && (
-                  <div className="space-y-2">
+                  <div className="space-y-2 p-3 bg-white border border-gray-200 rounded-md">
                     <p className="text-xs sm:text-sm text-gray-500">
                       The correct order is determined by the token order. Students will see them shuffled.
                     </p>
                     {Array.isArray(editingQuestion.prompt?.tokens) && editingQuestion.prompt.tokens.length > 0 && (
-                      <div className="p-3 bg-gray-50 rounded-md">
+                      <div className="p-3 bg-gray-50 border border-gray-200 rounded-md">
                         <p className="text-xs font-medium text-gray-700 mb-2">Current order (correct answer):</p>
                         <div className="flex flex-wrap gap-2">
                           {editingQuestion.prompt.tokens.map((token: string, idx: number) => (
@@ -1234,8 +1281,8 @@ export default function CreateExamPage() {
               </div>
 
               {/* Max Score */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              <div className="p-4 bg-gray-50 border border-gray-200 rounded-md">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Max Score
                 </label>
                 <input
@@ -1248,7 +1295,7 @@ export default function CreateExamPage() {
                     });
                   }}
                   min="1"
-                  className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
                 />
               </div>
             </div>
