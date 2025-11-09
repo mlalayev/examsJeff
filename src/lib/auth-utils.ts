@@ -84,9 +84,17 @@ export function getScopedBranchId(user: any): string | null {
 export function assertSameBranchOrBoss(current: any, targetBranchId: string | null | undefined) {
   const role = (current as any).role;
   const currentBranchId = (current as any).branchId ?? null;
-  if (role === "BOSS") return;
-  if (role === "BRANCH_ADMIN" && currentBranchId && targetBranchId && currentBranchId === targetBranchId) return;
-  if (role === "BRANCH_BOSS" && currentBranchId && targetBranchId && currentBranchId === targetBranchId) return;
+  
+  // BOSS and ADMIN can access all branches
+  if (role === "BOSS" || role === "ADMIN") return;
+  
+  // If target has no branch, allow access (student might not be assigned to a branch yet)
+  if (!targetBranchId) return;
+  
+  // BRANCH_ADMIN and BRANCH_BOSS can only access their own branch
+  if (role === "BRANCH_ADMIN" && currentBranchId && currentBranchId === targetBranchId) return;
+  if (role === "BRANCH_BOSS" && currentBranchId && currentBranchId === targetBranchId) return;
+  
   throw new Error("Forbidden: Cross-branch access");
 }
 

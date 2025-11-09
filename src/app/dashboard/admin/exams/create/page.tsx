@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Plus, X, BookOpen, Save, Edit } from "lucide-react";
 
@@ -83,6 +83,7 @@ const SECTION_TYPE_LABELS: Record<SectionType, string> = {
 
 export default function CreateExamPage() {
   const router = useRouter();
+  const [loading, setLoading] = useState(true);
   const [step, setStep] = useState<"category" | "sections" | "questions">("category");
   const [examTitle, setExamTitle] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<ExamCategory | null>(null);
@@ -97,6 +98,14 @@ export default function CreateExamPage() {
   const [editingSection, setEditingSection] = useState<Section | null>(null);
   const [uploadingAudio, setUploadingAudio] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+
+  // Simulate page load
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   const categories: ExamCategory[] = ["IELTS", "TOEFL", "SAT", "GENERAL_ENGLISH", "MATH", "KIDS"];
 
@@ -157,11 +166,17 @@ export default function CreateExamPage() {
   const addQuestion = (qtype: QuestionType) => {
     if (!currentSection) return;
 
+    const defaultPrompt = getDefaultPrompt(qtype);
+    // For ORDER_SENTENCE, add rawText for display
+    if (qtype === "ORDER_SENTENCE" && Array.isArray(defaultPrompt.tokens)) {
+      defaultPrompt.rawText = defaultPrompt.tokens.join("\n");
+    }
+
     const newQuestion: Question = {
       id: `q-${Date.now()}`,
       qtype,
       order: currentSection.questions.length,
-      prompt: getDefaultPrompt(qtype),
+      prompt: defaultPrompt,
       options: getDefaultOptions(qtype),
       answerKey: getDefaultAnswerKey(qtype),
       maxScore: 1,
@@ -174,13 +189,25 @@ export default function CreateExamPage() {
   const saveQuestion = () => {
     if (!currentSection || !editingQuestion) return;
 
+    // Remove rawText from prompt before saving (it's only for display)
+    const questionToSave = {
+      ...editingQuestion,
+      prompt: editingQuestion.prompt?.rawText !== undefined
+        ? { ...editingQuestion.prompt, rawText: undefined }
+        : editingQuestion.prompt,
+    };
+    // Clean up undefined rawText
+    if (questionToSave.prompt && 'rawText' in questionToSave.prompt) {
+      delete (questionToSave.prompt as any).rawText;
+    }
+
     const updatedSections = sections.map((s) =>
       s.id === currentSection.id
         ? {
             ...s,
             questions: editingQuestion.id.startsWith("q-") && s.questions.find((q) => q.id === editingQuestion.id)
-              ? s.questions.map((q) => (q.id === editingQuestion.id ? editingQuestion : q))
-              : [...s.questions, editingQuestion],
+              ? s.questions.map((q) => (q.id === editingQuestion.id ? questionToSave : q))
+              : [...s.questions, questionToSave],
           }
         : s
     );
@@ -190,7 +217,15 @@ export default function CreateExamPage() {
   };
 
   const editQuestion = (question: Question) => {
-    setEditingQuestion({ ...question });
+    // If it's ORDER_SENTENCE and has tokens, set rawText for display
+    const questionToEdit = { ...question };
+    if (question.qtype === "ORDER_SENTENCE" && Array.isArray(question.prompt?.tokens)) {
+      questionToEdit.prompt = {
+        ...question.prompt,
+        rawText: question.prompt.tokens.join("\n"),
+      };
+    }
+    setEditingQuestion(questionToEdit);
   };
 
   const deleteQuestion = (questionId: string) => {
@@ -343,6 +378,33 @@ export default function CreateExamPage() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="p-4 sm:p-6 lg:p-8">
+        <div className="mb-8 sm:mb-12">
+          {/* Back Button Skeleton */}
+          <div className="flex items-center gap-2 mb-4">
+            <div className="h-4 w-4 bg-gray-400 rounded animate-pulse"></div>
+            <div className="h-4 bg-gray-400 rounded w-16 animate-pulse"></div>
+          </div>
+          {/* Header Skeleton */}
+          <div className="h-8 bg-gray-400 rounded w-48 mb-2 animate-pulse"></div>
+          <div className="h-5 bg-gray-400 rounded w-64 animate-pulse"></div>
+        </div>
+
+        {/* Categories Skeleton */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="p-4 sm:p-6 border border-gray-200 rounded-md">
+              <div className="h-6 bg-gray-400 rounded w-32 mb-2 animate-pulse"></div>
+              <div className="h-4 bg-gray-400 rounded w-full animate-pulse"></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   if (step === "category") {
     return (
       <div className="p-4 sm:p-6 lg:p-8">
@@ -416,13 +478,21 @@ export default function CreateExamPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 Track (Level) *
               </label>
-              <input
-                type="text"
+              <select
                 value={track}
                 onChange={(e) => setTrack(e.target.value)}
-                placeholder="e.g., A1, A2, B1, B1+, B2"
                 className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
-              />
+                required
+              >
+                <option value="">Select level</option>
+                <option value="A1">A1</option>
+                <option value="A2">A2</option>
+                <option value="B1">B1</option>
+                <option value="B1+">B1+</option>
+                <option value="B2">B2</option>
+                <option value="C1">C1</option>
+                <option value="C2">C2</option>
+              </select>
             </div>
           )}
         </div>
@@ -762,8 +832,8 @@ export default function CreateExamPage() {
             </div>
 
             <div className="space-y-4 sm:space-y-6">
-              {Object.entries(QUESTION_TYPE_GROUPS).map(([groupName, types]) => (
-                <div key={groupName}>
+              {Object.entries(QUESTION_TYPE_GROUPS).map(([groupName, types], groupIndex) => (
+                <div key={groupName} className={groupIndex > 0 ? "pt-4 sm:pt-6 border-t-2 border-gray-300" : ""}>
                   <h4 className="font-medium text-gray-900 mb-2 sm:mb-3 text-sm sm:text-base">{groupName}</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {types.map((type) => (
@@ -963,9 +1033,9 @@ export default function CreateExamPage() {
               </button>
             </div>
 
-            <div className="space-y-4 sm:space-y-5">
+            <div className="space-y-0">
               {/* Question Type */}
-              <div className="p-4 bg-gray-50 border border-gray-200 rounded-md">
+              <div className="p-4 bg-gray-50 border-2 border-gray-300 rounded-t-md">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Question Type
                 </label>
@@ -976,7 +1046,7 @@ export default function CreateExamPage() {
 
               {/* Image Upload (for SAT and MATH) */}
               {(selectedCategory === "SAT" || selectedCategory === "MATH") && (
-                <div className="p-4 bg-gray-50 border border-gray-200 rounded-md">
+                <div className="p-4 bg-gray-50 border-l-2 border-r-2 border-b-2 border-gray-300">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Question Image (Optional)
                   </label>
@@ -1031,24 +1101,32 @@ export default function CreateExamPage() {
               )}
 
               {/* Prompt */}
-              <div className="p-4 bg-gray-50 border border-gray-200 rounded-md">
+              <div className="p-4 bg-gray-50 border-l-2 border-r-2 border-b-2 border-gray-300">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Question Text / Prompt *
                 </label>
                 {editingQuestion.qtype === "ORDER_SENTENCE" ? (
                   <div className="space-y-2">
                     <textarea
-                      value={Array.isArray(editingQuestion.prompt?.tokens) ? editingQuestion.prompt.tokens.join("\n") : ""}
+                      value={editingQuestion.prompt?.rawText !== undefined 
+                        ? editingQuestion.prompt.rawText 
+                        : (Array.isArray(editingQuestion.prompt?.tokens) ? editingQuestion.prompt.tokens.join("\n") : "")}
                       onChange={(e) => {
-                        const tokens = e.target.value.split("\n").filter((t) => t.trim());
+                        // Store the raw text value to allow Enter key to work
+                        const rawText = e.target.value;
+                        // Split by newlines and filter out empty lines for storage
+                        const tokens = rawText.split("\n").filter((line) => line.trim() !== "");
                         setEditingQuestion({
                           ...editingQuestion,
-                          prompt: { tokens },
+                          prompt: { 
+                            tokens,
+                            rawText // Store raw text for display
+                          },
                           answerKey: { order: tokens.map((_, idx) => idx) },
                         });
                       }}
                       placeholder="Enter tokens (one per line)"
-                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white resize-y"
                       rows={5}
                     />
                     <p className="text-xs text-gray-500">Enter tokens one per line. They will be shuffled for students.</p>
@@ -1091,7 +1169,7 @@ export default function CreateExamPage() {
                 editingQuestion.qtype === "SELECT" ||
                 editingQuestion.qtype === "INLINE_SELECT" ||
                 editingQuestion.qtype === "DND_GAP") && (
-                <div className="p-4 bg-gray-50 border border-gray-200 rounded-md">
+                <div className="p-4 bg-gray-50 border-l-2 border-r-2 border-b-2 border-gray-300">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     {editingQuestion.qtype === "DND_GAP" ? "Word Bank" : "Options"}
                   </label>
@@ -1154,7 +1232,7 @@ export default function CreateExamPage() {
               )}
 
               {/* Answer Key */}
-              <div className="p-4 bg-gray-50 border border-gray-200 rounded-md">
+              <div className="p-4 bg-gray-50 border-l-2 border-r-2 border-b-2 border-gray-300 rounded-b-md">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Correct Answer *
                 </label>
@@ -1278,25 +1356,6 @@ export default function CreateExamPage() {
                     )}
                   </div>
                 )}
-              </div>
-
-              {/* Max Score */}
-              <div className="p-4 bg-gray-50 border border-gray-200 rounded-md">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Max Score
-                </label>
-                <input
-                  type="number"
-                  value={editingQuestion.maxScore}
-                  onChange={(e) => {
-                    setEditingQuestion({
-                      ...editingQuestion,
-                      maxScore: parseInt(e.target.value) || 1,
-                    });
-                  }}
-                  min="1"
-                  className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
-                />
               </div>
             </div>
 

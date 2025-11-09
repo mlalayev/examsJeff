@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-utils";
+import { loadJsonExam } from "@/lib/json-exam-loader";
 import { z } from "zod";
 
 const createJsonBookingSchema = z.object({
   studentId: z.string().min(1),
   examId: z.string().min(1), // JSON exam ID
-  sections: z.array(z.string()).min(1),
-  startAt: z.string().datetime(),
 });
 
 // POST /api/bookings/json - Create booking for JSON-based exam
@@ -21,8 +20,6 @@ export async function POST(request: Request) {
     const body = await request.json();
     const validatedData = createJsonBookingSchema.parse(body);
     
-    const startAt = new Date(validatedData.startAt);
-    
     // Verify student
     const student = await prisma.user.findUnique({
       where: { id: validatedData.studentId }
@@ -32,30 +29,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid student" }, { status: 400 });
     }
     
-    // Check for conflicts (within 1 minute)
-    const windowMs = 1 * 60 * 1000;
-    const windowBefore = new Date(startAt.getTime() - windowMs);
-    const windowAfter = new Date(startAt.getTime() + windowMs);
+    // Load JSON exam to get sections
+    const jsonExam = await loadJsonExam(validatedData.examId);
     
-    const conflictingBooking = await prisma.booking.findFirst({
-      where: {
-        studentId: validatedData.studentId,
-        startAt: {
-          gte: windowBefore,
-          lte: windowAfter,
-        },
-        status: {
-          in: ["CONFIRMED", "IN_PROGRESS"]
-        }
-      }
-    });
-    
-    if (conflictingBooking) {
+    if (!jsonExam || !jsonExam.sections || jsonExam.sections.length === 0) {
       return NextResponse.json(
-        { error: "Student already has a booking near this time" },
-        { status: 409 }
+        { error: "Exam not found or has no sections" },
+        { status: 404 }
       );
     }
+    
+    // Get sections from JSON exam
+    const examSections = jsonExam.sections.map((s: any) => s.type);
+    
+    // Use current time as startAt
+    const startAt = new Date();
     
     // Ensure a stub exam record exists in DB for foreign key constraint
     let exam = await prisma.exam.findUnique({ where: { id: validatedData.examId } });
@@ -64,7 +52,7 @@ export async function POST(request: Request) {
       exam = await prisma.exam.create({
         data: {
           id: validatedData.examId,
-          title: `JSON Exam: ${validatedData.examId}`,
+          title: jsonExam.title || `JSON Exam: ${validatedData.examId}`,
           category: "GENERAL_ENGLISH",
           isActive: true,
         }
@@ -76,7 +64,7 @@ export async function POST(request: Request) {
         studentId: validatedData.studentId,
         teacherId: (user as any).id,
         examId: validatedData.examId,
-        sections: validatedData.sections as any,
+        sections: examSections as any,
         startAt,
         status: "CONFIRMED",
         branchId: (user as any).branchId ?? null,

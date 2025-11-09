@@ -6,7 +6,7 @@ import { ArrowRight } from 'lucide-react';
 
 export default function ForTeachers() {
   return (
-    <section className="bg-indigo-50">
+    <section>
       <div className={styles.container}>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
           <div className="md:col-span-2">

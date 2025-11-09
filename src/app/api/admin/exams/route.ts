@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth-utils";
+import { requireAdmin, requireBranchAdminOrBoss } from "@/lib/auth-utils";
 import { z } from "zod";
 
 const questionSchema = z.object({
@@ -36,7 +36,12 @@ const createExamSchema = z.object({
 // GET /api/admin/exams - List all exams
 export async function GET(request: Request) {
   try {
-    await requireAdmin();
+    // Allow ADMIN, BOSS, BRANCH_ADMIN, and BRANCH_BOSS
+    try {
+      await requireAdmin();
+    } catch {
+      await requireBranchAdminOrBoss();
+    }
     const { searchParams } = new URL(request.url);
     const category = searchParams.get("category");
     const isActive = searchParams.get("isActive");

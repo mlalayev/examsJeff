@@ -416,7 +416,7 @@ export default function BossUsersPage() {
               </button>
               <button 
                 disabled={saving} 
-                className="px-4 py-2 text-sm font-medium text-white bg-gray-900 border border-transparent rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed" 
+                className="px-4 py-2 text-sm font-medium text-white bg-gray-90000 border border-transparent rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed" 
                 onClick={saveUser}
               >
                 {saving ? "Saving..." : "Save Changes"}

@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BookOpen, Search } from "lucide-react";
-import UnifiedLoading from "@/components/loading/UnifiedLoading";
 
 type SectionType = "READING" | "LISTENING" | "WRITING" | "SPEAKING" | "GRAMMAR" | "VOCABULARY";
 
@@ -163,8 +162,45 @@ export default function StudentExamsPage() {
       {/* Simple Table */}
       <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center h-32">
-            <UnifiedLoading type="spinner" variant="pulse" size="md" />
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px]">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Title</th>
+                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Category</th>
+                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Due Date</th>
+                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Status</th>
+                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <tr key={i} className="hover:bg-gray-50">
+                    <td className="px-3 sm:px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-gray-400 rounded-md animate-pulse"></div>
+                        <div className="space-y-2">
+                          <div className="h-4 bg-gray-400 rounded w-32 animate-pulse"></div>
+                          <div className="h-3 bg-gray-400 rounded w-20 animate-pulse"></div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-3 sm:px-4 py-3">
+                      <div className="h-4 bg-gray-400 rounded w-24 animate-pulse"></div>
+                    </td>
+                    <td className="px-3 sm:px-4 py-3">
+                      <div className="h-4 bg-gray-400 rounded w-20 animate-pulse"></div>
+                    </td>
+                    <td className="px-3 sm:px-4 py-3">
+                      <div className="h-6 bg-gray-400 rounded-full w-20 animate-pulse"></div>
+                    </td>
+                    <td className="px-3 sm:px-4 py-3">
+                      <div className="h-8 bg-gray-400 rounded-md w-24 animate-pulse"></div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-12 text-gray-500">

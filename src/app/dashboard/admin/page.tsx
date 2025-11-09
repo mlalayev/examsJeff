@@ -42,48 +42,36 @@ export default function AdminDashboard() {
       title: "Total Students",
       value: stats?.totalStudents ?? 0,
       icon: Users,
-      color: "from-purple-500 to-purple-600",
-      bgColor: "bg-purple-50",
       href: "/dashboard/admin/students"
     },
     {
       title: "Pending Approvals",
       value: stats?.pendingApprovals ?? 0,
       icon: CheckCircle,
-      color: "from-orange-500 to-orange-600",
-      bgColor: "bg-orange-50",
       href: "/dashboard/admin/students?tab=pending"
     },
     {
       title: "Total Exams",
       value: stats?.totalExams ?? 0,
       icon: BookOpen,
-      color: "from-emerald-500 to-emerald-600",
-      bgColor: "bg-emerald-50",
       href: "/dashboard/admin/exams"
     },
     {
       title: "Active Exams",
       value: stats?.activeExams ?? 0,
       icon: FileText,
-      color: "from-blue-500 to-blue-600",
-      bgColor: "bg-blue-50",
       href: "/dashboard/admin/exams?filter=active"
     },
     {
       title: "Total Attempts",
       value: stats?.totalAttempts ?? 0,
       icon: TrendingUp,
-      color: "from-cyan-500 to-cyan-600",
-      bgColor: "bg-cyan-50",
       href: "#"
     },
     {
       title: "Recent Attempts (24h)",
       value: stats?.recentAttempts ?? 0,
       icon: Clock,
-      color: "from-indigo-500 to-indigo-600",
-      bgColor: "bg-indigo-50",
       href: "#"
     }
   ];
@@ -93,67 +81,63 @@ export default function AdminDashboard() {
       title: "Manage Students",
       description: "View, approve, and manage student accounts",
       href: "/dashboard/admin/students",
-      icon: Users,
-      color: "from-purple-500 to-purple-600"
+      icon: Users
     },
     {
       title: "Manage Exams",
       description: "Create, edit, and upload exam content",
       href: "/dashboard/admin/exams",
-      icon: BookOpen,
-      color: "from-emerald-500 to-emerald-600"
+      icon: BookOpen
     },
     {
       title: "Assign Exams",
       description: "Assign exams to students",
       href: "/dashboard/catalog",
-      icon: FileText,
-      color: "from-blue-500 to-blue-600"
+      icon: FileText
     },
     {
       title: "Seed Demo Data",
       description: "Generate demo exams and test data",
       href: "/dashboard/admin/seed",
-      icon: CheckCircle,
-      color: "from-orange-500 to-orange-600"
+      icon: CheckCircle
     }
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+    <div className="p-4 sm:p-6 lg:p-8">
+      {/* Minimal Header */}
+      <div className="mb-8 sm:mb-12">
+        <h1 className="text-xl sm:text-2xl font-medium text-gray-900 mb-1">
           Welcome, {session?.user?.name || session?.user?.email?.split('@')[0] || "Admin"}!
         </h1>
-        <p className="text-gray-600">Manage students, exams, and platform content</p>
+        <p className="text-gray-500 text-sm sm:text-base">Manage students, exams, and platform content</p>
       </div>
 
       {/* Stats Grid */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="bg-white rounded-xl p-6 border border-gray-200 animate-pulse">
+            <div key={i} className="bg-white rounded-md p-4 sm:p-6 border border-gray-200 animate-pulse">
               <div className="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
               <div className="h-8 bg-gray-200 rounded w-1/3"></div>
             </div>
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8">
           {statCards.map((card, idx) => {
             const Icon = card.icon;
             return (
               <Link
                 key={idx}
                 href={card.href}
-                className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-lg transition-shadow"
+                className="bg-white rounded-md p-4 sm:p-6 border border-gray-200 hover:border-gray-300 transition"
               >
-                <div className="flex items-center justify-between mb-4">
-                  <div className={`w-12 h-12 rounded-lg bg-gradient-to-r ${card.color} flex items-center justify-center`}>
-                    <Icon className="w-6 h-6 text-white" />
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-10 h-10 rounded-md bg-gray-100 flex items-center justify-center">
+                    <Icon className="w-5 h-5 text-gray-700" />
                   </div>
-                  <div className={`px-3 py-1 rounded-full ${card.bgColor} text-sm font-medium`}>
+                  <div className="text-lg sm:text-xl font-medium text-gray-900">
                     {card.value}
                   </div>
                 </div>
@@ -165,22 +149,22 @@ export default function AdminDashboard() {
       )}
 
       {/* Quick Actions */}
-      <div className="mb-8">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div>
+        <h2 className="text-lg sm:text-xl font-medium text-gray-900 mb-4 sm:mb-6">Quick Actions</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           {quickActions.map((action, idx) => {
             const Icon = action.icon;
             return (
               <Link
                 key={idx}
                 href={action.href}
-                className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-lg transition-all group"
+                className="bg-white rounded-md p-4 sm:p-6 border border-gray-200 hover:border-gray-300 transition"
               >
-                <div className={`w-10 h-10 rounded-lg bg-gradient-to-r ${action.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                  <Icon className="w-5 h-5 text-white" />
+                <div className="w-10 h-10 rounded-md bg-gray-100 flex items-center justify-center mb-3">
+                  <Icon className="w-5 h-5 text-gray-700" />
                 </div>
-                <h3 className="font-semibold text-gray-900 mb-1">{action.title}</h3>
-                <p className="text-sm text-gray-600">{action.description}</p>
+                <h3 className="font-medium text-gray-900 mb-1 text-sm sm:text-base">{action.title}</h3>
+                <p className="text-xs sm:text-sm text-gray-600">{action.description}</p>
               </Link>
             );
           })}

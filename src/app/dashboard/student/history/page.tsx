@@ -58,7 +58,7 @@ export default function StudentHistoryPage() {
                   <div className="text-sm text-gray-500">Overall</div>
                   <div className="text-lg font-semibold text-gray-900">{a.overallPercent != null ? `${a.overallPercent}%` : "—"}</div>
                 </div>
-                <Link href={`/attempts/${a.id}/results`} className="px-4 py-2 rounded bg-gray-900 text-white hover:bg-gray-800">
+                <Link href={`/attempts/${a.id}/results`} className="px-4 py-2 rounded bg-gray-90000 text-white hover:bg-gray-800">
                   View Results
                 </Link>
               </div>

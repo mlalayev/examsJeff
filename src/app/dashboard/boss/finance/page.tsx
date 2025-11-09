@@ -193,7 +193,7 @@ export default function BossFinanceV2Page() {
               onClick={() => setActiveTab("branches")}
           className={`px-4 py-2 text-sm font-medium rounded-md ${
                 activeTab === "branches"
-              ? "bg-gray-900 text-white"
+              ? "bg-gray-90000 text-white"
               : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
               }`}
             >
@@ -203,7 +203,7 @@ export default function BossFinanceV2Page() {
               onClick={() => setActiveTab("courses")}
           className={`px-4 py-2 text-sm font-medium rounded-md ${
                 activeTab === "courses"
-              ? "bg-gray-900 text-white"
+              ? "bg-gray-90000 text-white"
               : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
               }`}
             >

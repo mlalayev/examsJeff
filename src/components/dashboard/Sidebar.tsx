@@ -37,7 +37,7 @@ type NavItem = {
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const role = (session?.user as any)?.role;
   const [isOpen, setIsOpen] = useState(false);
 
@@ -250,64 +250,85 @@ export default function Sidebar() {
               : "border-b border-slate-200"
           }`}
         >
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-slate-900 rounded-full flex items-center justify-center text-white font-medium text-xs flex-shrink-0">
-              {session?.user?.name?.charAt(0).toUpperCase() ||
-                session?.user?.email?.charAt(0).toUpperCase() ||
-                "U"}
+          {status === "loading" ? (
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-gray-400 rounded-full animate-pulse flex-shrink-0"></div>
+              <div className="flex-1 min-w-0 space-y-2">
+                <div className="h-4 bg-gray-400 rounded w-24 animate-pulse"></div>
+                <div className="h-3 bg-gray-400 rounded w-16 animate-pulse"></div>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-slate-900 text-sm truncate">
-                {session?.user?.name ||
-                  session?.user?.email?.split("@")[0] ||
-                  "User"}
-              </p>
-              <p className="text-xs text-slate-500 capitalize truncate">
-                {role?.toLowerCase().replace("_", " ") || "User"}
-              </p>
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-slate-900 rounded-full flex items-center justify-center text-white font-medium text-xs flex-shrink-0">
+                {session?.user?.name?.charAt(0).toUpperCase() ||
+                  session?.user?.email?.charAt(0).toUpperCase() ||
+                  "U"}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-slate-900 text-sm truncate">
+                  {session?.user?.name ||
+                    session?.user?.email?.split("@")[0] ||
+                    "User"}
+                </p>
+                <p className="text-xs text-slate-500 capitalize truncate">
+                  {role?.toLowerCase().replace("_", " ") || "User"}
+                </p>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Navigation */}
         <nav className="p-3 sm:p-4">
           <div className="space-y-1">
-            {navItems.map((item) => {
-              const isActive =
-                pathname === item.href || pathname.startsWith(item.href + "/");
-              const Icon = item.icon;
-              const isDisabled = item.disabled || item.comingSoon;
+            {status === "loading" ? (
+              <>
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="flex items-center gap-3 px-3 py-2">
+                    <div className="w-4 h-4 bg-gray-400 rounded animate-pulse"></div>
+                    <div className="h-4 bg-gray-400 rounded w-24 animate-pulse"></div>
+                  </div>
+                ))}
+              </>
+            ) : (
+              navItems.map((item) => {
+                const isActive =
+                  pathname === item.href || pathname.startsWith(item.href + "/");
+                const Icon = item.icon;
+                const isDisabled = item.disabled || item.comingSoon;
 
-              if (isDisabled) {
+                if (isDisabled) {
+                  return (
+                    <div
+                      key={item.href}
+                      className="flex items-center gap-3 px-3 py-2 rounded text-slate-400 cursor-not-allowed"
+                      title="Coming soon"
+                    >
+                      <Icon className="w-4 h-4" />
+                      <span className="text-sm text-slate-400">{item.label}</span>
+                      <span className="ml-auto text-xs text-slate-400">Soon</span>
+                    </div>
+                  );
+                }
+
                 return (
-                  <div
+                  <Link
                     key={item.href}
-                    className="flex items-center gap-3 px-3 py-2 rounded text-slate-400 cursor-not-allowed"
-                    title="Coming soon"
+                    href={item.href}
+                    onClick={() => setIsOpen(false)}
+                    className={`flex items-center gap-3 px-3 py-2 rounded transition ${
+                      isActive
+                        ? "bg-slate-900 text-white"
+                        : "text-slate-700 hover:bg-slate-50"
+                    }`}
                   >
                     <Icon className="w-4 h-4" />
-                    <span className="text-sm text-slate-400">{item.label}</span>
-                    <span className="ml-auto text-xs text-slate-400">Soon</span>
-                  </div>
+                    <span className="text-sm font-medium">{item.label}</span>
+                  </Link>
                 );
-              }
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setIsOpen(false)}
-                  className={`flex items-center gap-3 px-3 py-2 rounded transition ${
-                    isActive
-                      ? "bg-slate-900 text-white"
-                      : "text-slate-700 hover:bg-slate-50"
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  <span className="text-sm font-medium">{item.label}</span>
-                </Link>
-              );
-            })}
+              })
+            )}
           </div>
         </nav>
 

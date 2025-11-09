@@ -1,27 +1,28 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAuth, requireAdminOrBoss, getScopedBranchId, assertSameBranchOrBoss } from "@/lib/auth-utils";
+import { requireAuth, requireAdminOrBoss, requireBranchAdminOrBoss, getScopedBranchId, assertSameBranchOrBoss } from "@/lib/auth-utils";
 import { z } from "zod";
 
 const createBookingSchema = z.object({
   studentId: z.string().min(1, "Student ID is required"),
   examId: z.string().min(1, "Exam ID is required"),
-  sections: z.array(z.enum(["READING", "LISTENING", "WRITING", "SPEAKING", "GRAMMAR", "VOCABULARY"])).min(1, "At least one section is required"),
-  startAt: z.string().datetime("Invalid date format"), // ISO 8601 UTC
   status: z.string().optional().default("CONFIRMED"),
 });
 
 // POST /api/bookings - Create a new booking (assign exam to student)
-// Only ADMIN and BOSS can assign exams
+// ADMIN, BOSS, BRANCH_ADMIN, and BRANCH_BOSS can assign exams
 export async function POST(request: Request) {
   try {
-    const user = await requireAdminOrBoss();
+    // Try requireAdminOrBoss first, if fails try requireBranchAdminOrBoss
+    let user;
+    try {
+      user = await requireAdminOrBoss();
+    } catch {
+      user = await requireBranchAdminOrBoss();
+    }
     const body = await request.json();
     
     const validatedData = createBookingSchema.parse(body);
-    
-    // Parse the startAt date
-    const startAt = new Date(validatedData.startAt);
     
     // Verify the student exists and is a STUDENT
     const student = await prisma.user.findUnique({
@@ -46,14 +47,25 @@ export async function POST(request: Request) {
     const userRole = (user as any).role;
     const userBranchId = (user as any).branchId ?? null;
     
-    // Check branch access for BRANCH_ADMIN/BRANCH_BOSS (if they exist in future)
+    // Check branch access for BRANCH_ADMIN/BRANCH_BOSS
+    // If student has no branch, allow branch admin to assign (they will assign to their branch)
+    // If student has a branch, check that it matches the admin's branch (or admin is BOSS/ADMIN)
     if (student.branchId) {
       assertSameBranchOrBoss(user, student.branchId);
+    } else if (userRole === "BRANCH_ADMIN" || userRole === "BRANCH_BOSS") {
+      // If student has no branch and admin is branch admin, allow assignment
+      // The booking will be created with the admin's branchId
     }
     
-    // Verify the exam exists
+    // Verify the exam exists and get its sections
     const exam = await prisma.exam.findUnique({
-      where: { id: validatedData.examId }
+      where: { id: validatedData.examId },
+      include: {
+        sections: {
+          select: { type: true },
+          orderBy: { order: "asc" }
+        }
+      }
     });
     
     if (!exam) {
@@ -70,37 +82,18 @@ export async function POST(request: Request) {
       );
     }
     
-    // Check for conflicting bookings (within 1 minute window)
-    const windowMs = 1 * 60 * 1000; // 1 minute
-    const windowBefore = new Date(startAt.getTime() - windowMs);
-    const windowAfter = new Date(startAt.getTime() + windowMs);
+    // Get sections from exam
+    const examSections = exam.sections.map(s => s.type);
     
-    const conflictingBooking = await prisma.booking.findFirst({
-      where: {
-        studentId: validatedData.studentId,
-        startAt: {
-          gte: windowBefore,
-          lte: windowAfter,
-        },
-        status: {
-          in: ["CONFIRMED", "IN_PROGRESS"]
-        }
-      }
-    });
-    
-    if (conflictingBooking) {
+    if (examSections.length === 0) {
       return NextResponse.json(
-        { 
-          error: "Student already has a booking scheduled near this time",
-          conflict: {
-            id: conflictingBooking.id,
-            startAt: conflictingBooking.startAt,
-            status: conflictingBooking.status,
-          }
-        },
-        { status: 409 }
+        { error: "Exam has no sections" },
+        { status: 400 }
       );
     }
+    
+    // Use current time as startAt
+    const startAt = new Date();
     
     // Create the booking
     // For ADMIN/BOSS, teacherId can be null or set to the assigning admin
@@ -109,7 +102,7 @@ export async function POST(request: Request) {
         studentId: validatedData.studentId,
         teacherId: null, // Admin-assigned exams don't need a teacher
         examId: validatedData.examId,
-        sections: validatedData.sections,
+        sections: examSections,
         startAt,
         status: validatedData.status,
         branchId: userBranchId ?? student.branchId ?? null,

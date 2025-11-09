@@ -23,6 +23,7 @@ export default function AdminExamsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
   const [filterActive, setFilterActive] = useState<boolean | null>(null);
+  const [togglingExamId, setTogglingExamId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchExams();
@@ -47,6 +48,7 @@ export default function AdminExamsPage() {
   };
 
   const handleToggleActive = async (examId: string, currentStatus: boolean) => {
+    setTogglingExamId(examId);
     try {
       const res = await fetch(`/api/admin/exams/${examId}`, {
         method: "PATCH",
@@ -63,6 +65,8 @@ export default function AdminExamsPage() {
     } catch (error) {
       console.error("Error updating exam:", error);
       alert("Failed to update exam status");
+    } finally {
+      setTogglingExamId(null);
     }
   };
 
@@ -185,8 +189,53 @@ export default function AdminExamsPage() {
       {/* Simple Table */}
       <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center h-32">
-            <div className="text-gray-500">Loading...</div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[800px]">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Title</th>
+                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Category</th>
+                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Sections</th>
+                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Questions</th>
+                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Status</th>
+                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <tr key={i} className="hover:bg-gray-50">
+                    <td className="px-3 sm:px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-gray-400 rounded-md animate-pulse"></div>
+                        <div className="space-y-2">
+                          <div className="h-4 bg-gray-400 rounded w-32 animate-pulse"></div>
+                          <div className="h-3 bg-gray-400 rounded w-16 animate-pulse"></div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-3 sm:px-4 py-3">
+                      <div className="h-4 bg-gray-400 rounded w-20 animate-pulse"></div>
+                    </td>
+                    <td className="px-3 sm:px-4 py-3">
+                      <div className="h-4 bg-gray-400 rounded w-8 animate-pulse"></div>
+                    </td>
+                    <td className="px-3 sm:px-4 py-3">
+                      <div className="h-4 bg-gray-400 rounded w-8 animate-pulse"></div>
+                    </td>
+                    <td className="px-3 sm:px-4 py-3">
+                      <div className="h-6 bg-gray-400 rounded-full w-16 animate-pulse"></div>
+                    </td>
+                    <td className="px-3 sm:px-4 py-3">
+                      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                        <div className="h-6 bg-gray-400 rounded w-20 animate-pulse"></div>
+                        <div className="h-6 bg-gray-400 rounded w-16 animate-pulse"></div>
+                        <div className="h-6 bg-gray-400 rounded w-16 animate-pulse"></div>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -239,13 +288,14 @@ export default function AdminExamsPage() {
                       <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                         <button
                           onClick={() => handleToggleActive(exam.id, exam.isActive)}
-                          className={`px-2 py-1 text-xs font-medium rounded ${
+                          disabled={togglingExamId === exam.id}
+                          className={`px-2 py-1 text-xs font-medium rounded transition ${
                             exam.isActive
                               ? "bg-orange-100 text-orange-700 hover:bg-orange-200"
                               : "bg-green-100 text-green-700 hover:bg-green-200"
-                          }`}
+                          } disabled:opacity-50 disabled:cursor-not-allowed`}
                         >
-                          {exam.isActive ? "Deactivate" : "Activate"}
+                          {togglingExamId === exam.id ? "Updating..." : exam.isActive ? "Deactivate" : "Activate"}
                         </button>
                         <Link
                           href={`/dashboard/admin/exams/${exam.id}`}
