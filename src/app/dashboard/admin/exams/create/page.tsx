@@ -10,7 +10,6 @@ type QuestionType =
   | "MCQ_SINGLE" 
   | "MCQ_MULTI" 
   | "TF" 
-  | "SELECT" 
   | "GAP" 
   | "ORDER_SENTENCE" 
   | "DND_GAP" 
@@ -46,7 +45,6 @@ const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   MCQ_SINGLE: "Multiple Choice (Single)",
   MCQ_MULTI: "Multiple Choice (Multiple)",
   TF: "True/False",
-  SELECT: "Select (Dropdown)",
   INLINE_SELECT: "Inline Select",
   GAP: "Gap Fill (Text Input)",
   ORDER_SENTENCE: "Order Sentence (Drag & Drop)",
@@ -56,7 +54,7 @@ const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
 };
 
 const QUESTION_TYPE_GROUPS = {
-  "Variantlı sual": ["MCQ_SINGLE", "MCQ_MULTI", "TF", "SELECT", "INLINE_SELECT"],
+  "Variantlı sual": ["MCQ_SINGLE", "MCQ_MULTI", "TF", "INLINE_SELECT"],
   "Açıq sual": ["GAP", "SHORT_TEXT", "ESSAY"],
   "Drag and Drop": ["ORDER_SENTENCE", "DND_GAP"],
 };
@@ -257,11 +255,10 @@ export default function CreateExamPage() {
       case "MCQ_SINGLE":
       case "MCQ_MULTI":
         return { text: "Enter the question here" };
-      case "SELECT":
       case "INLINE_SELECT":
         return { text: "Enter the question here" };
       case "GAP":
-        return { text: "Enter the sentence with blanks (use ___ for blanks)" };
+        return { text: "Enter the question text here" };
       case "ORDER_SENTENCE":
         return { tokens: ["token1", "token2", "token3"] };
       case "DND_GAP":
@@ -279,11 +276,10 @@ export default function CreateExamPage() {
       case "MCQ_SINGLE":
       case "MCQ_MULTI":
         return { choices: ["Option 1", "Option 2", "Option 3", "Option 4"] };
-      case "SELECT":
       case "INLINE_SELECT":
         return { choices: ["Option 1", "Option 2", "Option 3"] };
       case "DND_GAP":
-        return { bank: ["word1", "word2", "word3"] };
+        return { bank: [] }; // Will be auto-generated from answers
       default:
         return undefined;
     }
@@ -294,7 +290,6 @@ export default function CreateExamPage() {
       case "TF":
         return { value: true };
       case "MCQ_SINGLE":
-      case "SELECT":
       case "INLINE_SELECT":
         return { index: 0 };
       case "MCQ_MULTI":
@@ -341,14 +336,12 @@ export default function CreateExamPage() {
             }
             
             return {
-            type: s.type,
-            title: s.title,
+              type: s.type,
+              title: s.title,
               instruction: JSON.stringify(instructionData),
-            durationMin: s.durationMin,
-            order: s.order,
-              passage: s.passage || null,
-              audio: s.audio || null,
-            questions: s.questions.map((q) => ({
+              durationMin: s.durationMin,
+              order: s.order,
+              questions: s.questions.map((q) => ({
               qtype: q.qtype,
               order: q.order,
               prompt: q.prompt,
@@ -1131,21 +1124,148 @@ export default function CreateExamPage() {
                     />
                     <p className="text-xs text-gray-500">Enter tokens one per line. They will be shuffled for students.</p>
                   </div>
-                ) : editingQuestion.qtype === "DND_GAP" ? (
-                  <div className="space-y-2">
-                    <input
-                      type="text"
-                      value={editingQuestion.prompt?.textWithBlanks || ""}
+                ) : editingQuestion.qtype === "GAP" ? (
+                  <div className="space-y-3">
+                    <textarea
+                      value={editingQuestion.prompt?.text || ""}
                       onChange={(e) => {
                         setEditingQuestion({
                           ...editingQuestion,
-                          prompt: { textWithBlanks: e.target.value },
+                          prompt: { ...editingQuestion.prompt, text: e.target.value },
                         });
                       }}
-                      placeholder="Enter text with blanks (use ___ for blanks)"
+                      placeholder="Enter the question text (e.g., 'What is the capital of France?')"
                       className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
+                      rows={3}
                     />
-                    <p className="text-xs text-gray-500">Use ___ to indicate blanks where students will drag words.</p>
+                    <div className="pt-3 border-t border-gray-200">
+                      <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                        Correct Answer (for auto-scoring)
+                      </label>
+                      <input
+                        type="text"
+                        value={Array.isArray(editingQuestion.answerKey?.answers) ? editingQuestion.answerKey.answers[0] : ""}
+                        onChange={(e) => {
+                          setEditingQuestion({
+                            ...editingQuestion,
+                            answerKey: { answers: [e.target.value] },
+                          });
+                        }}
+                        placeholder="Enter the correct answer"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
+                      />
+                    </div>
+                  </div>
+                ) : editingQuestion.qtype === "DND_GAP" ? (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                        Sentences (one per line, use ___ or ________ for each blank)
+                      </label>
+                      <textarea
+                        value={editingQuestion.prompt?.textWithBlanks || ""}
+                        onChange={(e) => {
+                          const textWithBlanks = e.target.value;
+                          // Split by newlines to get sentences
+                          const sentences = textWithBlanks.split('\n').filter(line => line.trim());
+                          
+                          // Count total blanks across all sentences
+                          let totalBlanks = 0;
+                          sentences.forEach(sentence => {
+                            const blanksInSentence = sentence.split(/___+|________+/).length - 1;
+                            totalBlanks += blanksInSentence;
+                          });
+                          
+                          // Initialize blanks array with existing values or empty strings
+                          const currentBlanks = Array.isArray(editingQuestion.answerKey?.blanks) 
+                            ? editingQuestion.answerKey.blanks 
+                            : [];
+                          const newBlanks = Array(totalBlanks).fill("").map((_, idx) => currentBlanks[idx] || "");
+                          
+                          // Auto-generate word bank from answers
+                          const wordBank = newBlanks.filter(b => b.trim() !== "");
+                          
+                          setEditingQuestion({
+                            ...editingQuestion,
+                            prompt: { textWithBlanks: textWithBlanks },
+                            answerKey: { blanks: newBlanks },
+                            options: { bank: wordBank }, // Auto-generate word bank from answers
+                          });
+                        }}
+                        placeholder="I ___ running.&#10;She ___ to school every day.&#10;___ this day, ___ the weekend I want to go cinema."
+                        className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white resize-y"
+                        rows={5}
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Enter one sentence per line. Each sentence can have multiple ___ blanks.
+                      </p>
+                    </div>
+                    
+                    {/* Show answer inputs for each blank in each sentence */}
+                    {(editingQuestion.prompt?.textWithBlanks || "").split('\n').filter(line => line.trim()).length > 0 && (
+                      <div className="pt-3 border-t border-gray-200">
+                        <label className="block text-xs font-medium text-gray-600 mb-2">
+                          Correct Answers (one per blank)
+                        </label>
+                        <div className="space-y-3">
+                          {(() => {
+                            const sentences = (editingQuestion.prompt?.textWithBlanks || "")
+                              .split('\n')
+                              .filter(line => line.trim());
+                            
+                            let blankIndex = 0;
+                            return sentences.map((sentence, sentenceIdx) => {
+                              const blanksInSentence = sentence.split(/___+|________+/).length - 1;
+                              const sentenceStartBlank = blankIndex;
+                              const blanksForThisSentence = [];
+                              
+                              for (let i = 0; i < blanksInSentence; i++) {
+                                blanksForThisSentence.push(blankIndex);
+                                blankIndex++;
+                              }
+                              
+                              return (
+                                <div key={sentenceIdx} className="bg-gray-50 p-3 rounded-lg space-y-2">
+                                  <div className="flex items-start gap-2">
+                                    <div className="flex-shrink-0 w-6 h-6 rounded bg-white flex items-center justify-center text-xs font-medium text-gray-700 mt-1">
+                                      {sentenceIdx + 1}
+                                    </div>
+                                    <div className="flex-1 text-xs text-gray-700 bg-white p-2 rounded">
+                                      {sentence.trim()}
+                                    </div>
+                                  </div>
+                                  {blanksForThisSentence.map((globalBlankIdx, localBlankIdx) => (
+                                    <div key={globalBlankIdx} className="flex items-center gap-2 ml-8">
+                                      <span className="text-xs text-gray-500 w-20">Blank {localBlankIdx + 1}:</span>
+                                      <input
+                                        type="text"
+                                        value={Array.isArray(editingQuestion.answerKey?.blanks) 
+                                          ? editingQuestion.answerKey.blanks[globalBlankIdx] || "" 
+                                          : ""}
+                                        onChange={(e) => {
+                                          const blanks = [...(editingQuestion.answerKey?.blanks || [])];
+                                          blanks[globalBlankIdx] = e.target.value;
+                                          // Auto-generate word bank from all answers
+                                          const wordBank = blanks.filter(b => b && b.trim() !== "");
+                                          
+                                          setEditingQuestion({
+                                            ...editingQuestion,
+                                            answerKey: { blanks },
+                                            options: { bank: wordBank }, // Auto-generate word bank
+                                          });
+                                        }}
+                                        placeholder={`Answer for blank ${localBlankIdx + 1}`}
+                                        className="flex-1 px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
+                                      />
+                                    </div>
+                                  ))}
+                                </div>
+                              );
+                            });
+                          })()}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <textarea
@@ -1163,30 +1283,28 @@ export default function CreateExamPage() {
                 )}
               </div>
 
-              {/* Options (for MCQ, SELECT, etc.) */}
+              {/* Options (for MCQ, INLINE_SELECT, etc.) */}
               {(editingQuestion.qtype === "MCQ_SINGLE" ||
                 editingQuestion.qtype === "MCQ_MULTI" ||
-                editingQuestion.qtype === "SELECT" ||
-                editingQuestion.qtype === "INLINE_SELECT" ||
-                editingQuestion.qtype === "DND_GAP") && (
+                editingQuestion.qtype === "INLINE_SELECT") && (
                 <div className="p-4 bg-gray-50 border-l-2 border-r-2 border-b-2 border-gray-300">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {editingQuestion.qtype === "DND_GAP" ? "Word Bank" : "Options"}
+                    Options
                   </label>
                   <div className="space-y-2">
-                    {(editingQuestion.options?.choices || editingQuestion.options?.bank || []).map((opt: string, idx: number) => (
+                    {(editingQuestion.options?.choices || []).map((opt: string, idx: number) => (
                       <div key={idx} className="flex gap-2">
                         <input
                           type="text"
                           value={opt}
                           onChange={(e) => {
-                            const newOptions = [...(editingQuestion.options?.choices || editingQuestion.options?.bank || [])];
+                            const newOptions = [...(editingQuestion.options?.choices || [])];
                             newOptions[idx] = e.target.value;
                             setEditingQuestion({
                               ...editingQuestion,
                               options: {
                                 ...editingQuestion.options,
-                                [editingQuestion.qtype === "DND_GAP" ? "bank" : "choices"]: newOptions,
+                                choices: newOptions,
                               },
                             });
                           }}
@@ -1195,13 +1313,13 @@ export default function CreateExamPage() {
                         />
                         <button
                           onClick={() => {
-                            const newOptions = [...(editingQuestion.options?.choices || editingQuestion.options?.bank || [])];
+                            const newOptions = [...(editingQuestion.options?.choices || [])];
                             newOptions.splice(idx, 1);
                             setEditingQuestion({
                               ...editingQuestion,
                               options: {
                                 ...editingQuestion.options,
-                                [editingQuestion.qtype === "DND_GAP" ? "bank" : "choices"]: newOptions,
+                                choices: newOptions,
                               },
                             });
                           }}
@@ -1213,12 +1331,12 @@ export default function CreateExamPage() {
                     ))}
                     <button
                       onClick={() => {
-                        const newOptions = [...(editingQuestion.options?.choices || editingQuestion.options?.bank || []), ""];
+                        const newOptions = [...(editingQuestion.options?.choices || []), ""];
                         setEditingQuestion({
                           ...editingQuestion,
                           options: {
                             ...editingQuestion.options,
-                            [editingQuestion.qtype === "DND_GAP" ? "bank" : "choices"]: newOptions,
+                            choices: newOptions,
                           },
                         });
                       }}
@@ -1252,7 +1370,6 @@ export default function CreateExamPage() {
                   </select>
                 )}
                 {(editingQuestion.qtype === "MCQ_SINGLE" ||
-                  editingQuestion.qtype === "SELECT" ||
                   editingQuestion.qtype === "INLINE_SELECT") && (
                   <select
                     value={editingQuestion.answerKey?.index ?? 0}
@@ -1298,40 +1415,23 @@ export default function CreateExamPage() {
                     ))}
                   </div>
                 )}
-                {editingQuestion.qtype === "GAP" && (
-                  <input
-                    type="text"
-                    value={Array.isArray(editingQuestion.answerKey?.answers) ? editingQuestion.answerKey.answers[0] : ""}
-                    onChange={(e) => {
-                      setEditingQuestion({
-                        ...editingQuestion,
-                        answerKey: { answers: [e.target.value] },
-                      });
-                    }}
-                    placeholder="Correct answer"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
-                  />
-                )}
                 {editingQuestion.qtype === "DND_GAP" && (
                   <div className="space-y-2 p-3 bg-white border border-gray-200 rounded-md">
-                    {(editingQuestion.prompt?.textWithBlanks || "").split("___").length > 1 &&
-                      Array.from({ length: (editingQuestion.prompt?.textWithBlanks || "").split("___").length - 1 }).map((_, idx) => (
-                        <input
-                          key={idx}
-                          type="text"
-                          value={Array.isArray(editingQuestion.answerKey?.blanks) ? editingQuestion.answerKey.blanks[idx] || "" : ""}
-                          onChange={(e) => {
-                            const blanks = [...(editingQuestion.answerKey?.blanks || [])];
-                            blanks[idx] = e.target.value;
-                            setEditingQuestion({
-                              ...editingQuestion,
-                              answerKey: { blanks },
-                            });
-                          }}
-                          placeholder={`Blank ${idx + 1} answer`}
-                          className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
-                        />
-                      ))}
+                    <p className="text-xs text-gray-500 mb-2">
+                      Word Bank will be automatically generated from the correct answers above.
+                    </p>
+                    {Array.isArray(editingQuestion.options?.bank) && editingQuestion.options.bank.length > 0 && (
+                      <div className="mt-3">
+                        <p className="text-xs font-medium text-gray-700 mb-2">Auto-generated Word Bank:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {editingQuestion.options.bank.map((word: string, idx: number) => (
+                            <span key={idx} className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-medium">
+                              {word}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
                 {editingQuestion.qtype === "ORDER_SENTENCE" && (

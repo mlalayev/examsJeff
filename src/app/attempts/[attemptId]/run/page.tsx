@@ -13,12 +13,13 @@ import {
 } from "lucide-react";
 import AudioPlayer from "@/components/audio/AudioPlayer";
 import QDndGroup from "@/components/questions/QDndGroup";
-import {
-  QMcqSingle,
-  QInlineSelect,
-  QDndGap,
-} from "@/components/questions";
 import { QOpenText } from "@/components/questions/QOpenText";
+import { QMcqSingle } from "@/components/questions/QMcqSingle";
+import { QMcqMulti } from "@/components/questions/QMcqMulti";
+import { QTF } from "@/components/questions/QTF";
+import { QInlineSelect } from "@/components/questions/QInlineSelect";
+import { QDndGap } from "@/components/questions/QDndGap";
+import { QOrderSentence } from "@/components/questions/QOrderSentence";
 
 interface Question {
   id: string;
@@ -182,12 +183,16 @@ export default function AttemptRunnerPage() {
     }
   };
 
-  const renderQuestionComponent = (q: Question, value: any, onChange: (v: any) => void, readOnly: boolean) => {
-    const props = { question: q, value, onChange, readOnly };
+  const renderQuestionComponent = (q: Question, value: any, onChange: (v: any) => void, readOnly: boolean, showWordBank?: boolean) => {
+    const props = { question: q, value, onChange, readOnly, showWordBank };
 
     switch (q.qtype) {
       case "MCQ_SINGLE":
         return <QMcqSingle {...props} />;
+      case "MCQ_MULTI":
+        return <QMcqMulti {...props} />;
+      case "TF":
+        return <QTF {...props} />;
       case "INLINE_SELECT":
         return <QInlineSelect {...props} />;
       case "GAP":
@@ -198,6 +203,8 @@ export default function AttemptRunnerPage() {
         }
         // All other GAP questions use QOpenText for text input
         return <QOpenText {...props} />;
+      case "ORDER_SENTENCE":
+        return <QOrderSentence {...props} />;
       case "DND_GAP":
         return <QDndGap {...props} />;
       case "OPEN_TEXT":
@@ -604,6 +611,89 @@ export default function AttemptRunnerPage() {
                      const value = answers[currentSection.type]?.[q.id];
                      const isLocked = lockedSections.has(currentSection.type);
 
+                     // Special handling for DND_GAP: split into separate question cards for each sentence
+                     if (q.qtype === "DND_GAP" && q.prompt?.textWithBlanks) {
+                       const text = q.prompt.textWithBlanks;
+                       let sentences: string[] = [];
+                       if (text.includes('\n')) {
+                         sentences = text.split('\n').filter((line: string) => line.trim());
+                       } else if (text.includes('1.') && text.includes('2.')) {
+                         sentences = text.split(/(?=\d+\.\s)/).filter((line: string) => line.trim());
+                       } else {
+                         sentences = text.split(/(?<=\.)\s+(?=[A-Z])/).filter((line: string) => line.trim());
+                       }
+
+                       // Calculate base question number (sum of all previous questions)
+                       let baseQuestionNum = 0;
+                       for (let i = 0; i < idx; i++) {
+                         const prevQ = currentSection.questions[i];
+                         if (prevQ.qtype === "DND_GAP" && prevQ.prompt?.textWithBlanks) {
+                           const prevText = prevQ.prompt.textWithBlanks;
+                           let prevSentences: string[] = [];
+                           if (prevText.includes('\n')) {
+                             prevSentences = prevText.split('\n').filter((line: string) => line.trim());
+                           } else if (prevText.includes('1.') && prevText.includes('2.')) {
+                             prevSentences = prevText.split(/(?=\d+\.\s)/).filter((line: string) => line.trim());
+                           } else {
+                             prevSentences = prevText.split(/(?<=\.)\s+(?=[A-Z])/).filter((line: string) => line.trim());
+                           }
+                           baseQuestionNum += prevSentences.length;
+                         } else {
+                           baseQuestionNum += 1;
+                         }
+                       }
+
+                       return (
+                         <div key={q.id} className="space-y-5">
+                           {sentences.map((sentence: string, sentenceIdx: number) => {
+                             const questionNum = baseQuestionNum + sentenceIdx + 1;
+                             const isLastSentence = sentenceIdx === sentences.length - 1;
+                             // Create a modified question object for this sentence
+                             const sentenceQuestion = {
+                               ...q,
+                               prompt: {
+                                 ...q.prompt,
+                                 textWithBlanks: sentence
+                               }
+                             };
+                             
+                             return (
+                               <div
+                                 key={`${q.id}-${sentenceIdx}`}
+                                 className="bg-white rounded-xl border shadow-sm transition-all duration-200 hover:shadow-md"
+                                 style={{
+                                   borderColor: 'rgba(15, 17, 80, 0.63)'
+                                 }}
+                               >
+                                 <div className="p-6">
+                                   {/* Number and question text in same flex container */}
+                                   <div className="flex items-center gap-4">
+                                     <div className="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm shadow-sm"
+                                          style={{ 
+                                            backgroundColor: '#303380',
+                                            color: 'white'
+                                          }}>
+                                       {questionNum}
+                                     </div>
+                                     <div className="flex-1">
+                                       {renderQuestionComponent(
+                                         sentenceQuestion,
+                                         value,
+                                         (v) => setAnswer(currentSection.type, q.id, v),
+                                         isLocked,
+                                         isLastSentence // Only show word bank on last sentence
+                                       )}
+                                     </div>
+                                   </div>
+                                 </div>
+                               </div>
+                             );
+                           })}
+                         </div>
+                       );
+                     }
+
+                     // Regular question rendering for non-DND_GAP questions
                      return (
                        <div
                          key={q.id}
@@ -634,8 +724,8 @@ export default function AttemptRunnerPage() {
                              </div>
                            )}
                            
-                           {/* For INLINE_SELECT, MCQ_SINGLE, DND_GAP, and GAP with blank markers, show number and question in same flex container */}
-                           {q.qtype === "INLINE_SELECT" || q.qtype === "MCQ_SINGLE" || q.qtype === "DND_GAP" || 
+                           {/* For INLINE_SELECT, MCQ_SINGLE, and GAP with blank markers, show number and question in same flex container */}
+                           {q.qtype === "INLINE_SELECT" || q.qtype === "MCQ_SINGLE" || 
                             (q.qtype === "GAP" && q.prompt?.text && (q.prompt.text.includes("____") || q.prompt.text.includes("___"))) ? (
                              <>
                                {/* Number and question text in same div with items-center */}

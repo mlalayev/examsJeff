@@ -93,11 +93,32 @@ export function scoreQuestion(qtype: QuestionType, studentAnswer: any, answerKey
       return studentAnswer.every((v, i) => v === correctOrder[i]) ? 1 : 0;
     }
     case "DND_GAP": {
-      // Each blank: filled === answerKey.blanks[i] (normalize with punctuation removal)
+      // Value format: { "0": ["on", "at"], "1": ["in"] } (sentence index → array of answers for each blank)
+      // answerKey format: { blanks: ["on", "at", "in"] } (flat array of all correct answers in order)
       const correctBlanks = answerKey?.blanks || [];
-      if (!Array.isArray(studentAnswer)) return 0;
-      if (studentAnswer.length !== correctBlanks.length) return 0;
-      return studentAnswer.every((v, i) => {
+      if (!studentAnswer || typeof studentAnswer !== "object") return 0;
+      
+      // Flatten student answers: { "0": ["on", "at"], "1": ["in"] } → ["on", "at", "in"]
+      const studentAnswersFlat: string[] = [];
+      const sentenceIndices = Object.keys(studentAnswer).sort((a, b) => parseInt(a) - parseInt(b));
+      
+      for (const sentenceIdx of sentenceIndices) {
+        const sentenceAnswers = studentAnswer[sentenceIdx];
+        if (Array.isArray(sentenceAnswers)) {
+          for (const answer of sentenceAnswers) {
+            if (answer !== undefined && answer !== null) {
+              studentAnswersFlat.push(answer);
+            } else {
+              studentAnswersFlat.push(""); // Missing blank
+            }
+          }
+        }
+      }
+      
+      if (studentAnswersFlat.length !== correctBlanks.length) return 0;
+      
+      // Check each blank answer
+      return studentAnswersFlat.every((v, i) => {
         if (typeof v !== "string" || typeof correctBlanks[i] !== "string") return false;
         return normalizeText(v) === normalizeText(correctBlanks[i]);
       }) ? 1 : 0;

@@ -17,11 +17,9 @@ const questionSchema = z.object({
 const sectionSchema = z.object({
   type: z.enum(["READING", "LISTENING", "WRITING", "SPEAKING", "GRAMMAR", "VOCABULARY"]),
   title: z.string(),
-  instruction: z.string(),
+  instruction: z.string(), // JSON string: {text, passage?, audio?}
   durationMin: z.number(),
   order: z.number(),
-  passage: z.string().nullable().optional(),
-  audio: z.string().nullable().optional(),
   questions: z.array(questionSchema),
 });
 
@@ -124,38 +122,27 @@ export async function POST(request: Request) {
         createdById: (user as any).id,
         sections: validatedData.sections ? {
           create: validatedData.sections.map((section) => {
-            // Store passage and audio in instruction as JSON string
-            const instructionData: any = {
-              text: section.instruction,
-            };
-            if (section.passage) {
-              instructionData.passage = section.passage;
-            }
-            if (section.audio) {
-              instructionData.audio = section.audio;
-            }
-            
             return {
               type: section.type,
               title: section.title,
-              instruction: JSON.stringify(instructionData),
+              instruction: section.instruction || null, // Already JSON string from frontend
               durationMin: section.durationMin,
               order: section.order,
               questions: {
-              create: section.questions.map((q) => ({
-                qtype: q.qtype,
-                order: q.order,
-                prompt: {
-                  ...q.prompt,
-                  // Add image to prompt if it exists
-                  ...(q.image ? { image: q.image } : {}),
-                },
-                options: q.options,
-                answerKey: q.answerKey,
-                maxScore: q.maxScore,
-                explanation: q.explanation,
-              })),
-            },
+                create: section.questions.map((q) => ({
+                  qtype: q.qtype,
+                  order: q.order,
+                  prompt: {
+                    ...q.prompt,
+                    // Add image to prompt if it exists
+                    ...(q.image ? { image: q.image } : {}),
+                  },
+                  options: q.options,
+                  answerKey: q.answerKey,
+                  maxScore: q.maxScore,
+                  explanation: q.explanation,
+                })),
+              },
             };
           }),
         } : undefined,
