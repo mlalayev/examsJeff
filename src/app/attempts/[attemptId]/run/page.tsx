@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { 
   BookOpen, 
@@ -9,7 +9,9 @@ import {
   Loader2,
   Lock,
   Save,
-  Send
+  Send,
+  ChevronUp,
+  ChevronDown
 } from "lucide-react";
 import AudioPlayer from "@/components/audio/AudioPlayer";
 import QDndGroup from "@/components/questions/QDndGroup";
@@ -62,6 +64,10 @@ export default function AttemptRunnerPage() {
   const [submitting, setSubmitting] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [lockedSections, setLockedSections] = useState<Set<string>>(new Set());
+  // Word bank position for DND_GAP questions: questionId -> position (after which sentence index)
+  const [wordBankPositions, setWordBankPositions] = useState<Record<string, number>>({});
+  // Dragged option for each question: questionId -> option label
+  const [draggedOptions, setDraggedOptions] = useState<Record<string, string | null>>({});
 
   const autosaveTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -183,8 +189,8 @@ export default function AttemptRunnerPage() {
     }
   };
 
-  const renderQuestionComponent = (q: Question, value: any, onChange: (v: any) => void, readOnly: boolean, showWordBank?: boolean) => {
-    const props = { question: q, value, onChange, readOnly, showWordBank };
+  const renderQuestionComponent = (q: Question, value: any, onChange: (v: any) => void, readOnly: boolean, showWordBank?: boolean, externalDraggedOption?: string | null, onDropComplete?: () => void) => {
+    const props = { question: q, value, onChange, readOnly, showWordBank, externalDraggedOption, onDropComplete };
 
     switch (q.qtype) {
       case "MCQ_SINGLE":
@@ -379,7 +385,24 @@ export default function AttemptRunnerPage() {
                           return true;
                         }).length;
                         return total + answered;
-                      }, 0) || 0} / {data.sections?.reduce((total, section) => total + section.questions.length, 0)} questions
+                        }, 0) || 0} / {data.sections?.reduce((total, section) => {
+                          // Count questions, but for DND_GAP count sentences instead
+                          return total + section.questions.reduce((qTotal, q) => {
+                            if (q.qtype === "DND_GAP" && q.prompt?.textWithBlanks) {
+                              const text = q.prompt.textWithBlanks;
+                              let sentences: string[] = [];
+                              if (text.includes('\n')) {
+                                sentences = text.split('\n').filter((line: string) => line.trim());
+                              } else if (text.includes('1.') && text.includes('2.')) {
+                                sentences = text.split(/(?=\d+\.\s)/).filter((line: string) => line.trim());
+                              } else {
+                                sentences = text.split(/(?<=\.)\s+(?=[A-Z])/).filter((line: string) => line.trim());
+                              }
+                              return qTotal + (sentences.length > 0 ? sentences.length : 1);
+                            }
+                            return qTotal + 1;
+                          }, 0);
+                        }, 0)} questions
                     </span>
                   </div>
                    <div className="w-full rounded-full h-2"
@@ -390,19 +413,56 @@ export default function AttemptRunnerPage() {
                          backgroundColor: '#303380',
                          width: `${((data.sections?.reduce((total, section) => {
                            const sectionAnswers = answers[section.type] || {};
-                           const answered = section.questions.filter(q => {
+                           const answered = section.questions.reduce((count, q) => {
                              const answer = sectionAnswers[q.id];
-                             if (answer === null || answer === undefined || answer === "") return false;
-                             if (typeof answer === "object") {
-                               if (Array.isArray(answer)) {
-                                 return answer.length > 0;
+                             if (q.qtype === "DND_GAP" && q.prompt?.textWithBlanks && answer) {
+                               // For DND_GAP, count how many sentences have at least one blank filled
+                               if (typeof answer === "object" && !Array.isArray(answer)) {
+                                 const sentenceIndices = Object.keys(answer);
+                                 let answeredSentences = 0;
+                                 sentenceIndices.forEach(sentenceIdx => {
+                                   const sentenceAnswers = answer[sentenceIdx];
+                                   if (Array.isArray(sentenceAnswers)) {
+                                     // Check if at least one blank is filled
+                                     if (sentenceAnswers.some(a => a !== undefined && a !== null && a !== "")) {
+                                       answeredSentences++;
+                                     }
+                                   }
+                                 });
+                                 return count + answeredSentences;
                                }
-                               return Object.keys(answer).length > 0;
+                               return count;
+                             } else {
+                               // Regular question
+                               if (answer === null || answer === undefined || answer === "") return count;
+                               if (typeof answer === "object") {
+                                 if (Array.isArray(answer)) {
+                                   return count + (answer.length > 0 ? 1 : 0);
+                                 }
+                                 return count + (Object.keys(answer).length > 0 ? 1 : 0);
+                               }
+                               return count + 1;
                              }
-                             return true;
-                           }).length;
-                           return total + answered;
-                         }, 0) || 0) / (data.sections?.reduce((total, section) => total + section.questions.length, 0) || 1)) * 100}%`
+                           }, 0);
+                          return total + answered;
+                        }, 0) || 0) / (data.sections?.reduce((total, section) => {
+                          // Count questions, but for DND_GAP count sentences instead
+                          return total + section.questions.reduce((qTotal, q) => {
+                            if (q.qtype === "DND_GAP" && q.prompt?.textWithBlanks) {
+                              const text = q.prompt.textWithBlanks;
+                              let sentences: string[] = [];
+                              if (text.includes('\n')) {
+                                sentences = text.split('\n').filter((line: string) => line.trim());
+                              } else if (text.includes('1.') && text.includes('2.')) {
+                                sentences = text.split(/(?=\d+\.\s)/).filter((line: string) => line.trim());
+                              } else {
+                                sentences = text.split(/(?<=\.)\s+(?=[A-Z])/).filter((line: string) => line.trim());
+                              }
+                              return qTotal + (sentences.length > 0 ? sentences.length : 1);
+                            }
+                            return qTotal + 1;
+                          }, 0);
+                        }, 0) || 1)) * 100}%`
                        }}
                      ></div>
                    </div>
@@ -434,17 +494,55 @@ export default function AttemptRunnerPage() {
                 {data.sections?.map((section) => {
                   const isActive = activeSection === section.type;
                   const isLocked = lockedSections.has(section.type);
-                  const answeredCount = Object.values(answers[section.type] || {}).filter(answer => {
-                    if (answer === null || answer === undefined || answer === "") return false;
-                    if (typeof answer === "object") {
-                      if (Array.isArray(answer)) {
-                        return answer.length > 0;
+                  // Count answered questions, but for DND_GAP count answered sentences
+                  const answeredCount = section.questions.reduce((count, q) => {
+                    const answer = answers[section.type]?.[q.id];
+                    if (q.qtype === "DND_GAP" && q.prompt?.textWithBlanks && answer) {
+                      // For DND_GAP, count how many sentences have at least one blank filled
+                      if (typeof answer === "object" && !Array.isArray(answer)) {
+                        const sentenceIndices = Object.keys(answer);
+                        let answeredSentences = 0;
+                        sentenceIndices.forEach(sentenceIdx => {
+                          const sentenceAnswers = answer[sentenceIdx];
+                          if (Array.isArray(sentenceAnswers)) {
+                            // Check if at least one blank is filled
+                            if (sentenceAnswers.some(a => a !== undefined && a !== null && a !== "")) {
+                              answeredSentences++;
+                            }
+                          }
+                        });
+                        return count + answeredSentences;
                       }
-                      return Object.keys(answer).length > 0;
+                      return count;
+                    } else {
+                      // Regular question
+                      if (answer === null || answer === undefined || answer === "") return count;
+                      if (typeof answer === "object") {
+                        if (Array.isArray(answer)) {
+                          return count + (answer.length > 0 ? 1 : 0);
+                        }
+                        return count + (Object.keys(answer).length > 0 ? 1 : 0);
+                      }
+                      return count + 1;
                     }
-                    return true;
-                  }).length;
-                  const totalCount = section.questions.length;
+                  }, 0);
+                  
+                  // Count total questions, but for DND_GAP count sentences
+                  const totalCount = section.questions.reduce((total, q) => {
+                    if (q.qtype === "DND_GAP" && q.prompt?.textWithBlanks) {
+                      const text = q.prompt.textWithBlanks;
+                      let sentences: string[] = [];
+                      if (text.includes('\n')) {
+                        sentences = text.split('\n').filter((line: string) => line.trim());
+                      } else if (text.includes('1.') && text.includes('2.')) {
+                        sentences = text.split(/(?=\d+\.\s)/).filter((line: string) => line.trim());
+                      } else {
+                        sentences = text.split(/(?<=\.)\s+(?=[A-Z])/).filter((line: string) => line.trim());
+                      }
+                      return total + (sentences.length > 0 ? sentences.length : 1);
+                    }
+                    return total + 1;
+                  }, 0);
 
                   return (
                     <button
@@ -643,11 +741,56 @@ export default function AttemptRunnerPage() {
                          }
                        }
 
+                       // Get word bank position for this question (default: after last sentence)
+                       const wordBankPosition = wordBankPositions[q.id] !== undefined 
+                         ? wordBankPositions[q.id] 
+                         : sentences.length - 1;
+                       
+                       // Get word bank chips
+                       const rawOptions: string[] = q.answerKey?.blanks?.filter((b: string) => b && b.trim() !== "") 
+                         || q.options?.bank 
+                         || [];
+                       type Chip = { id: string; label: string };
+                       const chips: Chip[] = [];
+                       rawOptions.forEach((opt, optIdx) => {
+                         const m = opt.match(/^\s*(.+?)\s*\((\d+)x\)\s*$/i);
+                         if (m) {
+                           const label = m[1];
+                           const count = Math.max(1, parseInt(m[2], 10));
+                           for (let i = 0; i < count; i++) {
+                             chips.push({ id: `${label}-${optIdx}-${i}`, label });
+                           }
+                         } else {
+                           chips.push({ id: `${opt}-${optIdx}-0`, label: opt });
+                         }
+                       });
+                       
+                       // Check if an option is used
+                       const currentAnswers = value || {};
+                       const isOptionUsed = (label: string) => {
+                         return Object.values(currentAnswers).some((sentenceAnswers: any) => {
+                           if (Array.isArray(sentenceAnswers)) {
+                             return sentenceAnswers.includes(label);
+                           }
+                           return false;
+                         });
+                       };
+                       
+                       const draggedOption = draggedOptions[q.id] || null;
+                       const handleDragStart = (label: string, e: React.DragEvent) => {
+                         if (isLocked) return;
+                         setDraggedOptions(prev => ({ ...prev, [q.id]: label }));
+                         e.dataTransfer.effectAllowed = "move";
+                         e.dataTransfer.setData('text/plain', label);
+                       };
+                       const handleDragEnd = () => {
+                         setDraggedOptions(prev => ({ ...prev, [q.id]: null }));
+                       };
+                       
                        return (
                          <div key={q.id} className="space-y-5">
                            {sentences.map((sentence: string, sentenceIdx: number) => {
                              const questionNum = baseQuestionNum + sentenceIdx + 1;
-                             const isLastSentence = sentenceIdx === sentences.length - 1;
                              // Create a modified question object for this sentence
                              const sentenceQuestion = {
                                ...q,
@@ -657,36 +800,172 @@ export default function AttemptRunnerPage() {
                                }
                              };
                              
+                             // Create a value wrapper that maps sentence index to 0 for this component
+                             // Original value: { "0": ["on", "at"], "1": ["in"] }
+                             // For sentence 0: { "0": ["on", "at"] }
+                             // For sentence 1: { "0": ["in"] } (but we need to map it correctly)
+                             const sentenceValue = (() => {
+                               const currentValue = value || {};
+                               // Get the answers for this specific sentence
+                               const sentenceAnswers = currentValue[sentenceIdx.toString()];
+                               // Return value in format { "0": [...] } for this sentence
+                               return sentenceAnswers ? { "0": sentenceAnswers } : {};
+                             })();
+                             
+                             // Create onChange wrapper that updates the correct sentence index
+                             const sentenceOnChange = (newValue: any) => {
+                               // newValue format: { "0": ["on", "at"] }
+                               // We need to update value[sentenceIdx] with newValue["0"]
+                               const currentValue = value || {};
+                               const updatedValue = { ...currentValue };
+                               if (newValue && newValue["0"]) {
+                                 updatedValue[sentenceIdx.toString()] = newValue["0"];
+                               } else {
+                                 // If newValue is empty, remove this sentence's answers
+                                 delete updatedValue[sentenceIdx.toString()];
+                               }
+                               setAnswer(currentSection.type, q.id, updatedValue);
+                             };
+                             
                              return (
-                               <div
-                                 key={`${q.id}-${sentenceIdx}`}
-                                 className="bg-white rounded-xl border shadow-sm transition-all duration-200 hover:shadow-md"
-                                 style={{
-                                   borderColor: 'rgba(15, 17, 80, 0.63)'
-                                 }}
-                               >
-                                 <div className="p-6">
-                                   {/* Number and question text in same flex container */}
-                                   <div className="flex items-center gap-4">
-                                     <div className="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm shadow-sm"
-                                          style={{ 
-                                            backgroundColor: '#303380',
-                                            color: 'white'
-                                          }}>
-                                       {questionNum}
-                                     </div>
-                                     <div className="flex-1">
-                                       {renderQuestionComponent(
-                                         sentenceQuestion,
-                                         value,
-                                         (v) => setAnswer(currentSection.type, q.id, v),
-                                         isLocked,
-                                         isLastSentence // Only show word bank on last sentence
-                                       )}
+                               <React.Fragment key={`${q.id}-${sentenceIdx}`}>
+                                 <div
+                                   className="bg-white rounded-xl border shadow-sm transition-all duration-200 hover:shadow-md"
+                                   style={{
+                                     borderColor: 'rgba(15, 17, 80, 0.63)'
+                                   }}
+                                 >
+                                   <div className="p-6">
+                                     {/* Number and question text in same flex container */}
+                                     <div className="flex items-center gap-4">
+                                       <div className="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm shadow-sm"
+                                            style={{ 
+                                              backgroundColor: '#303380',
+                                              color: 'white'
+                                            }}>
+                                         {questionNum}
+                                       </div>
+                                       <div className="flex-1">
+                                         {renderQuestionComponent(
+                                           sentenceQuestion,
+                                           sentenceValue, // Use sentence-specific value
+                                           sentenceOnChange, // Use sentence-specific onChange
+                                           isLocked,
+                                           false, // Never show word bank in component
+                                           draggedOption, // Pass external dragged option
+                                           () => setDraggedOptions(prev => ({ ...prev, [q.id]: null })) // Clear dragged option after drop
+                                         )}
+                                       </div>
                                      </div>
                                    </div>
                                  </div>
-                               </div>
+                                 
+                                 {/* Word Bank after this sentence if position matches */}
+                                 {sentenceIdx === wordBankPosition && (
+                                   <div
+                                     className="bg-white rounded-xl border shadow-sm transition-all duration-200 hover:shadow-md"
+                                     style={{
+                                       borderColor: 'rgba(15, 17, 80, 0.63)'
+                                     }}
+                                   >
+                                     <div className="p-6">
+                                       <div className="flex items-center justify-between mb-3">
+                                         <h4 className="text-xs font-medium uppercase tracking-wide"
+                                             style={{ color: 'rgba(48, 51, 128, 0.7)' }}>Word Bank</h4>
+                                         <div className="flex gap-1">
+                                           <button
+                                             onClick={() => {
+                                               if (wordBankPosition > 0) {
+                                                 setWordBankPositions(prev => ({
+                                                   ...prev,
+                                                   [q.id]: wordBankPosition - 1
+                                                 }));
+                                               }
+                                             }}
+                                             disabled={wordBankPosition === 0}
+                                             className={`p-1 rounded transition-all ${
+                                               wordBankPosition === 0 
+                                                 ? 'opacity-30 cursor-not-allowed' 
+                                                 : 'hover:bg-gray-100 cursor-pointer'
+                                             }`}
+                                             title="Move Word Bank up"
+                                           >
+                                             <ChevronUp size={16} style={{ color: '#303380' }} />
+                                           </button>
+                                           <button
+                                             onClick={() => {
+                                               if (wordBankPosition < sentences.length - 1) {
+                                                 setWordBankPositions(prev => ({
+                                                   ...prev,
+                                                   [q.id]: wordBankPosition + 1
+                                                 }));
+                                               }
+                                             }}
+                                             disabled={wordBankPosition === sentences.length - 1}
+                                             className={`p-1 rounded transition-all ${
+                                               wordBankPosition === sentences.length - 1 
+                                                 ? 'opacity-30 cursor-not-allowed' 
+                                                 : 'hover:bg-gray-100 cursor-pointer'
+                                             }`}
+                                             title="Move Word Bank down"
+                                           >
+                                             <ChevronDown size={16} style={{ color: '#303380' }} />
+                                           </button>
+                                         </div>
+                                       </div>
+                                       <div className="flex flex-wrap gap-2">
+                                         {chips.map((chip) => {
+                                           const used = isOptionUsed(chip.label);
+                                           const canDrag = !isLocked && !used;
+                                           return (
+                                             <div
+                                               key={chip.id}
+                                               draggable={canDrag}
+                                               onDragStart={(e) => {
+                                                 if (!canDrag) {
+                                                   e.preventDefault();
+                                                   return;
+                                                 }
+                                                 handleDragStart(chip.label, e);
+                                               }}
+                                               onDragEnd={(e) => {
+                                                 e.preventDefault();
+                                                 handleDragEnd();
+                                               }}
+                                               className={`px-3 py-1.5 rounded-lg border text-sm transition-all select-none ${
+                                                 canDrag ? "cursor-move" : "cursor-default"
+                                               }`}
+                                               style={used ? {
+                                                 backgroundColor: 'rgba(48, 51, 128, 0.05)',
+                                                 borderColor: 'rgba(48, 51, 128, 0.1)',
+                                                 color: 'rgba(48, 51, 128, 0.4)'
+                                               } : {
+                                                 backgroundColor: 'rgba(48, 51, 128, 0.02)',
+                                                 borderColor: 'rgba(48, 51, 128, 0.15)',
+                                                 color: '#303380'
+                                               }}
+                                               onMouseEnter={(e) => {
+                                                 if (canDrag) {
+                                                   e.currentTarget.style.backgroundColor = 'rgba(48, 51, 128, 0.05)';
+                                                   e.currentTarget.style.borderColor = 'rgba(48, 51, 128, 0.2)';
+                                                 }
+                                               }}
+                                               onMouseLeave={(e) => {
+                                                 if (canDrag) {
+                                                   e.currentTarget.style.backgroundColor = 'rgba(48, 51, 128, 0.02)';
+                                                   e.currentTarget.style.borderColor = 'rgba(48, 51, 128, 0.15)';
+                                                 }
+                                               }}
+                                             >
+                                               {chip.label}
+                                             </div>
+                                           );
+                                         })}
+                                       </div>
+                                     </div>
+                                   </div>
+                                 )}
+                               </React.Fragment>
                              );
                            })}
                          </div>

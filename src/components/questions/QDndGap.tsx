@@ -3,7 +3,7 @@
 import { BaseQuestionProps } from "./types";
 import { useMemo, useState } from "react";
 
-export function QDndGap({ question, value, onChange, readOnly, showWordBank = true }: BaseQuestionProps<Record<string, string>> & { showWordBank?: boolean }) {
+export function QDndGap({ question, value, onChange, readOnly, showWordBank = true, externalDraggedOption = null, onDropComplete }: BaseQuestionProps<Record<string, string>> & { showWordBank?: boolean; externalDraggedOption?: string | null; onDropComplete?: () => void }) {
   let sentences: string[] = [];
   
   // Handle single sentence with blanks (for preposition/time expression questions)
@@ -72,7 +72,9 @@ export function QDndGap({ question, value, onChange, readOnly, showWordBank = tr
 
   const handleDrop = (sentenceIndex: number, blankIndex: number, e: React.DragEvent) => {
     e.preventDefault();
-    if (readOnly || !draggedOption) return;
+    // Use external dragged option if available, otherwise use internal state
+    const activeDraggedOption = externalDraggedOption || draggedOption;
+    if (readOnly || !activeDraggedOption) return;
     
     const newAnswers = { ...currentAnswers };
     const sentenceAnswers = newAnswers[sentenceIndex.toString()] || [];
@@ -84,11 +86,18 @@ export function QDndGap({ question, value, onChange, readOnly, showWordBank = tr
     
     // Set the answer for this specific blank
     const updatedSentenceAnswers = [...(Array.isArray(newAnswers[sentenceIndex.toString()]) ? newAnswers[sentenceIndex.toString()] : [])];
-    updatedSentenceAnswers[blankIndex] = draggedOption;
+    updatedSentenceAnswers[blankIndex] = activeDraggedOption;
     newAnswers[sentenceIndex.toString()] = updatedSentenceAnswers;
     
     onChange(newAnswers);
-    setDraggedOption(null);
+    if (!externalDraggedOption) {
+      setDraggedOption(null);
+    } else {
+      // If using external dragged option, notify parent to clear it
+      if (onDropComplete) {
+        onDropComplete();
+      }
+    }
   };
 
   const handleDragStart = (optionLabel: string, e: React.DragEvent) => {
@@ -189,57 +198,10 @@ export function QDndGap({ question, value, onChange, readOnly, showWordBank = tr
             </div>
           ))}
         </div>
-        
-        {/* Word Bank - only show if showWordBank is true */}
-        {showWordBank && (
-          <div className="border-t pt-4 mt-4"
-               style={{ borderColor: 'rgba(48, 51, 128, 0.1)' }}>
-            <h4 className="text-xs font-medium mb-3 uppercase tracking-wide"
-                style={{ color: 'rgba(48, 51, 128, 0.7)' }}>Word Bank</h4>
-            <div className="flex flex-wrap gap-2">
-              {chips.map((chip) => {
-                const used = isOptionUsed(chip.label);
-                return (
-                  <div
-                    key={chip.id}
-                    draggable={!readOnly && !used}
-                    onDragStart={(e) => handleDragStart(chip.label, e)}
-                    onDragEnd={handleDragEnd}
-                    className={`px-3 py-1.5 rounded-lg border text-sm transition-all ${
-                      !readOnly && !used ? "cursor-move" : "cursor-default"
-                    }`}
-                    style={used ? {
-                      backgroundColor: 'rgba(48, 51, 128, 0.05)',
-                      borderColor: 'rgba(48, 51, 128, 0.1)',
-                      color: 'rgba(48, 51, 128, 0.4)'
-                    } : {
-                      backgroundColor: 'rgba(48, 51, 128, 0.02)',
-                      borderColor: 'rgba(48, 51, 128, 0.15)',
-                      color: '#303380'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!readOnly && !used) {
-                        e.currentTarget.style.backgroundColor = 'rgba(48, 51, 128, 0.05)';
-                        e.currentTarget.style.borderColor = 'rgba(48, 51, 128, 0.2)';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!readOnly && !used) {
-                        e.currentTarget.style.backgroundColor = 'rgba(48, 51, 128, 0.02)';
-                        e.currentTarget.style.borderColor = 'rgba(48, 51, 128, 0.15)';
-                      }
-                    }}
-                  >
-                    {chip.label}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
       </div>
     );
   };
+  
 
   // Render each sentence (without individual word banks) - for multiple sentences
   const renderSentence = (sentence: string, index: number) => {
