@@ -373,20 +373,54 @@ export default function AttemptRunnerPage() {
                     <span>
                       {data.sections?.reduce((total, section) => {
                         const sectionAnswers = answers[section.type] || {};
-                        const answered = section.questions.filter(q => {
+                        const answered = section.questions.reduce((count, q) => {
                           const answer = sectionAnswers[q.id];
-                          if (answer === null || answer === undefined || answer === "") return false;
-                          if (typeof answer === "object") {
-                            if (Array.isArray(answer)) {
-                              return answer.length > 0;
+                          if (q.qtype === "DND_GAP" && q.prompt?.textWithBlanks) {
+                            // For DND_GAP, count how many blanks are filled (each blank = 1 task)
+                            const text = q.prompt.textWithBlanks;
+                            let sentences: string[] = [];
+                            if (text.includes('\n')) {
+                              sentences = text.split('\n').filter((line: string) => line.trim());
+                            } else if (text.includes('1.') && text.includes('2.')) {
+                              sentences = text.split(/(?=\d+\.\s)/).filter((line: string) => line.trim());
+                            } else {
+                              sentences = text.split(/(?<=\.)\s+(?=[A-Z])/).filter((line: string) => line.trim());
                             }
-                            return Object.keys(answer).length > 0;
+                            
+                            if (answer && typeof answer === "object" && !Array.isArray(answer)) {
+                              let answeredBlanks = 0;
+                              sentences.forEach((sentence, sentenceIdx) => {
+                                // Count blanks in this sentence
+                                const blanksInSentence = sentence.split(/___+|________+/).length - 1;
+                                const sentenceAnswers = answer[sentenceIdx.toString()];
+                                if (Array.isArray(sentenceAnswers)) {
+                                  // Count how many blanks are filled in this sentence
+                                  for (let blankIdx = 0; blankIdx < blanksInSentence; blankIdx++) {
+                                    const blankAnswer = sentenceAnswers[blankIdx];
+                                    if (blankAnswer !== undefined && blankAnswer !== null && blankAnswer !== "") {
+                                      answeredBlanks++;
+                                    }
+                                  }
+                                }
+                              });
+                              return count + answeredBlanks;
+                            }
+                            return count;
+                          } else {
+                            // Regular question
+                            if (answer === null || answer === undefined || answer === "") return count;
+                            if (typeof answer === "object") {
+                              if (Array.isArray(answer)) {
+                                return count + (answer.length > 0 ? 1 : 0);
+                              }
+                              return count + (Object.keys(answer).length > 0 ? 1 : 0);
+                            }
+                            return count + 1;
                           }
-                          return true;
-                        }).length;
+                        }, 0);
                         return total + answered;
                         }, 0) || 0} / {data.sections?.reduce((total, section) => {
-                          // Count questions, but for DND_GAP count sentences instead
+                          // Count questions, but for DND_GAP count blanks (each blank = 1 task)
                           return total + section.questions.reduce((qTotal, q) => {
                             if (q.qtype === "DND_GAP" && q.prompt?.textWithBlanks) {
                               const text = q.prompt.textWithBlanks;
@@ -398,7 +432,14 @@ export default function AttemptRunnerPage() {
                               } else {
                                 sentences = text.split(/(?<=\.)\s+(?=[A-Z])/).filter((line: string) => line.trim());
                               }
-                              return qTotal + (sentences.length > 0 ? sentences.length : 1);
+                              
+                              // Count total blanks across all sentences
+                              let totalBlanks = 0;
+                              sentences.forEach(sentence => {
+                                const blanksInSentence = sentence.split(/___+|________+/).length - 1;
+                                totalBlanks += blanksInSentence;
+                              });
+                              return qTotal + (totalBlanks > 0 ? totalBlanks : 1);
                             }
                             return qTotal + 1;
                           }, 0);
@@ -413,40 +454,54 @@ export default function AttemptRunnerPage() {
                          backgroundColor: '#303380',
                          width: `${((data.sections?.reduce((total, section) => {
                            const sectionAnswers = answers[section.type] || {};
-                           const answered = section.questions.reduce((count, q) => {
-                             const answer = sectionAnswers[q.id];
-                             if (q.qtype === "DND_GAP" && q.prompt?.textWithBlanks && answer) {
-                               // For DND_GAP, count how many sentences have at least one blank filled
-                               if (typeof answer === "object" && !Array.isArray(answer)) {
-                                 const sentenceIndices = Object.keys(answer);
-                                 let answeredSentences = 0;
-                                 sentenceIndices.forEach(sentenceIdx => {
-                                   const sentenceAnswers = answer[sentenceIdx];
-                                   if (Array.isArray(sentenceAnswers)) {
-                                     // Check if at least one blank is filled
-                                     if (sentenceAnswers.some(a => a !== undefined && a !== null && a !== "")) {
-                                       answeredSentences++;
-                                     }
-                                   }
-                                 });
-                                 return count + answeredSentences;
-                               }
-                               return count;
-                             } else {
-                               // Regular question
-                               if (answer === null || answer === undefined || answer === "") return count;
-                               if (typeof answer === "object") {
-                                 if (Array.isArray(answer)) {
-                                   return count + (answer.length > 0 ? 1 : 0);
-                                 }
-                                 return count + (Object.keys(answer).length > 0 ? 1 : 0);
-                               }
-                               return count + 1;
-                             }
-                           }, 0);
+                          const answered = section.questions.reduce((count, q) => {
+                            const answer = sectionAnswers[q.id];
+                            if (q.qtype === "DND_GAP" && q.prompt?.textWithBlanks) {
+                              // For DND_GAP, count how many blanks are filled (each blank = 1 task)
+                              const text = q.prompt.textWithBlanks;
+                              let sentences: string[] = [];
+                              if (text.includes('\n')) {
+                                sentences = text.split('\n').filter((line: string) => line.trim());
+                              } else if (text.includes('1.') && text.includes('2.')) {
+                                sentences = text.split(/(?=\d+\.\s)/).filter((line: string) => line.trim());
+                              } else {
+                                sentences = text.split(/(?<=\.)\s+(?=[A-Z])/).filter((line: string) => line.trim());
+                              }
+                              
+                              if (answer && typeof answer === "object" && !Array.isArray(answer)) {
+                                let answeredBlanks = 0;
+                                sentences.forEach((sentence, sentenceIdx) => {
+                                  // Count blanks in this sentence
+                                  const blanksInSentence = sentence.split(/___+|________+/).length - 1;
+                                  const sentenceAnswers = answer[sentenceIdx.toString()];
+                                  if (Array.isArray(sentenceAnswers)) {
+                                    // Count how many blanks are filled in this sentence
+                                    for (let blankIdx = 0; blankIdx < blanksInSentence; blankIdx++) {
+                                      const blankAnswer = sentenceAnswers[blankIdx];
+                                      if (blankAnswer !== undefined && blankAnswer !== null && blankAnswer !== "") {
+                                        answeredBlanks++;
+                                      }
+                                    }
+                                  }
+                                });
+                                return count + answeredBlanks;
+                              }
+                              return count;
+                            } else {
+                              // Regular question
+                              if (answer === null || answer === undefined || answer === "") return count;
+                              if (typeof answer === "object") {
+                                if (Array.isArray(answer)) {
+                                  return count + (answer.length > 0 ? 1 : 0);
+                                }
+                                return count + (Object.keys(answer).length > 0 ? 1 : 0);
+                              }
+                              return count + 1;
+                            }
+                          }, 0);
                           return total + answered;
                         }, 0) || 0) / (data.sections?.reduce((total, section) => {
-                          // Count questions, but for DND_GAP count sentences instead
+                          // Count questions, but for DND_GAP count blanks (each blank = 1 task)
                           return total + section.questions.reduce((qTotal, q) => {
                             if (q.qtype === "DND_GAP" && q.prompt?.textWithBlanks) {
                               const text = q.prompt.textWithBlanks;
@@ -458,7 +513,14 @@ export default function AttemptRunnerPage() {
                               } else {
                                 sentences = text.split(/(?<=\.)\s+(?=[A-Z])/).filter((line: string) => line.trim());
                               }
-                              return qTotal + (sentences.length > 0 ? sentences.length : 1);
+                              
+                              // Count total blanks across all sentences
+                              let totalBlanks = 0;
+                              sentences.forEach(sentence => {
+                                const blanksInSentence = sentence.split(/___+|________+/).length - 1;
+                                totalBlanks += blanksInSentence;
+                              });
+                              return qTotal + (totalBlanks > 0 ? totalBlanks : 1);
                             }
                             return qTotal + 1;
                           }, 0);
@@ -494,24 +556,38 @@ export default function AttemptRunnerPage() {
                 {data.sections?.map((section) => {
                   const isActive = activeSection === section.type;
                   const isLocked = lockedSections.has(section.type);
-                  // Count answered questions, but for DND_GAP count answered sentences
+                  // Count answered questions, but for DND_GAP count answered blanks (each blank = 1 task)
                   const answeredCount = section.questions.reduce((count, q) => {
                     const answer = answers[section.type]?.[q.id];
-                    if (q.qtype === "DND_GAP" && q.prompt?.textWithBlanks && answer) {
-                      // For DND_GAP, count how many sentences have at least one blank filled
-                      if (typeof answer === "object" && !Array.isArray(answer)) {
-                        const sentenceIndices = Object.keys(answer);
-                        let answeredSentences = 0;
-                        sentenceIndices.forEach(sentenceIdx => {
-                          const sentenceAnswers = answer[sentenceIdx];
+                    if (q.qtype === "DND_GAP" && q.prompt?.textWithBlanks) {
+                      // For DND_GAP, count how many blanks are filled (each blank = 1 task)
+                      const text = q.prompt.textWithBlanks;
+                      let sentences: string[] = [];
+                      if (text.includes('\n')) {
+                        sentences = text.split('\n').filter((line: string) => line.trim());
+                      } else if (text.includes('1.') && text.includes('2.')) {
+                        sentences = text.split(/(?=\d+\.\s)/).filter((line: string) => line.trim());
+                      } else {
+                        sentences = text.split(/(?<=\.)\s+(?=[A-Z])/).filter((line: string) => line.trim());
+                      }
+                      
+                      if (answer && typeof answer === "object" && !Array.isArray(answer)) {
+                        let answeredBlanks = 0;
+                        sentences.forEach((sentence, sentenceIdx) => {
+                          // Count blanks in this sentence
+                          const blanksInSentence = sentence.split(/___+|________+/).length - 1;
+                          const sentenceAnswers = answer[sentenceIdx.toString()];
                           if (Array.isArray(sentenceAnswers)) {
-                            // Check if at least one blank is filled
-                            if (sentenceAnswers.some(a => a !== undefined && a !== null && a !== "")) {
-                              answeredSentences++;
+                            // Count how many blanks are filled in this sentence
+                            for (let blankIdx = 0; blankIdx < blanksInSentence; blankIdx++) {
+                              const blankAnswer = sentenceAnswers[blankIdx];
+                              if (blankAnswer !== undefined && blankAnswer !== null && blankAnswer !== "") {
+                                answeredBlanks++;
+                              }
                             }
                           }
                         });
-                        return count + answeredSentences;
+                        return count + answeredBlanks;
                       }
                       return count;
                     } else {
@@ -527,7 +603,7 @@ export default function AttemptRunnerPage() {
                     }
                   }, 0);
                   
-                  // Count total questions, but for DND_GAP count sentences
+                  // Count total questions, but for DND_GAP count blanks (each blank = 1 task)
                   const totalCount = section.questions.reduce((total, q) => {
                     if (q.qtype === "DND_GAP" && q.prompt?.textWithBlanks) {
                       const text = q.prompt.textWithBlanks;
@@ -539,7 +615,14 @@ export default function AttemptRunnerPage() {
                       } else {
                         sentences = text.split(/(?<=\.)\s+(?=[A-Z])/).filter((line: string) => line.trim());
                       }
-                      return total + (sentences.length > 0 ? sentences.length : 1);
+                      
+                      // Count total blanks across all sentences
+                      let totalBlanks = 0;
+                      sentences.forEach(sentence => {
+                        const blanksInSentence = sentence.split(/___+|________+/).length - 1;
+                        totalBlanks += blanksInSentence;
+                      });
+                      return total + (totalBlanks > 0 ? totalBlanks : 1);
                     }
                     return total + 1;
                   }, 0);
@@ -764,6 +847,14 @@ export default function AttemptRunnerPage() {
                            chips.push({ id: `${opt}-${optIdx}-0`, label: opt });
                          }
                        });
+                       
+                       // Shuffle chips deterministically
+                       for (let i = chips.length - 1; i > 0; i--) {
+                         const j = Math.floor(Math.random() * (i + 1));
+                         const t = chips[i];
+                         chips[i] = chips[j];
+                         chips[j] = t;
+                       }
                        
                        // Check if an option is used
                        const currentAnswers = value || {};
