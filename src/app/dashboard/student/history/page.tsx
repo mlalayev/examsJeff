@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import UnifiedLoading from "@/components/loading/UnifiedLoading";
+import { Calendar, Clock, CheckCircle, FileText, BookOpen } from "lucide-react";
 
 interface AttemptItem {
   id: string;
@@ -10,7 +10,7 @@ interface AttemptItem {
   createdAt: string;
   submittedAt: string | null;
   overallPercent: number | null;
-  exam: { id: string; title: string; category: string; track?: string | null };
+  exam: { id: string; title: string; category: string; track?: string | null } | null;
   class: { id: string; name: string; teacher?: { id: string; name?: string | null } } | null;
   sections: { type: string; rawScore: number | null; maxScore: number | null }[];
 }
@@ -37,30 +37,174 @@ export default function StudentHistoryPage() {
     load();
   }, []);
 
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "SUBMITTED":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+            <CheckCircle className="w-3 h-3" />
+            Submitted
+          </span>
+        );
+      case "IN_PROGRESS":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+            <Clock className="w-3 h-3" />
+            In Progress
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+            {status}
+          </span>
+        );
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const getCategoryColor = (category: string) => {
+    const colors: Record<string, string> = {
+      IELTS: "bg-blue-100 text-blue-800",
+      TOEFL: "bg-purple-100 text-purple-800",
+      SAT: "bg-orange-100 text-orange-800",
+      GENERAL_ENGLISH: "bg-green-100 text-green-800",
+      MATH: "bg-red-100 text-red-800",
+      KIDS: "bg-pink-100 text-pink-800",
+    };
+    return colors[category] || "bg-gray-100 text-gray-800";
+  };
+
   return (
-    <div className="max-w-5xl mx-auto px-6 py-8">
-      <h1 className="text-2xl font-semibold text-gray-900 mb-6">My Exam History</h1>
+    <div className="p-4 sm:p-6 lg:p-8">
+      {/* Minimal Header */}
+      <div className="mb-8 sm:mb-12">
+        <h1 className="text-xl sm:text-2xl font-medium text-gray-900">My Exam History</h1>
+        <p className="text-gray-500 mt-1 text-sm sm:text-base">View all your past exam attempts and results</p>
+      </div>
+
       {loading ? (
-        <UnifiedLoading type="spinner" variant="spinner" size="lg" />
-      ) : attempts.length === 0 ? (
-        <div className="text-gray-600">No attempts yet.</div>
-      ) : (
-        <div className="space-y-3">
-          {attempts.map((a) => (
-            <div key={a.id} className="border rounded bg-white p-4 flex items-center justify-between">
-              <div>
-                <div className="text-sm text-gray-500">{a.exam.category}{a.exam.track ? ` · ${a.exam.track}` : ""}</div>
-                <div className="text-lg font-medium text-gray-900">{a.exam.title}</div>
-                <div className="text-xs text-gray-500">{a.class ? `Class: ${a.class.name} ${a.class.teacher?.name ? ` · Teacher: ${a.class.teacher?.name}` : ""}` : "—"}</div>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <div className="text-sm text-gray-500">Overall</div>
-                  <div className="text-lg font-semibold text-gray-900">{a.overallPercent != null ? `${a.overallPercent}%` : "—"}</div>
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-white border border-gray-200 rounded-md p-4 sm:p-6">
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex-1 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="h-6 bg-gray-400 rounded w-20 animate-pulse"></div>
+                    <div className="h-6 bg-gray-400 rounded w-24 animate-pulse"></div>
+                  </div>
+                  <div className="h-6 bg-gray-400 rounded w-3/4 animate-pulse"></div>
+                  <div className="h-4 bg-gray-400 rounded w-1/2 animate-pulse"></div>
                 </div>
-                <Link href={`/attempts/${a.id}/results`} className="px-4 py-2 rounded bg-gray-90000 text-white hover:bg-gray-800">
-                  View Results
-                </Link>
+                <div className="text-right ml-4">
+                  <div className="h-4 bg-gray-400 rounded w-20 mb-2 animate-pulse"></div>
+                  <div className="h-8 bg-gray-400 rounded w-16 animate-pulse"></div>
+                </div>
+              </div>
+              <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                <div className="flex items-center gap-4">
+                  <div className="h-4 bg-gray-400 rounded w-32 animate-pulse"></div>
+                  <div className="h-4 bg-gray-400 rounded w-36 animate-pulse"></div>
+                </div>
+                <div className="h-9 bg-gray-400 rounded-md w-28 animate-pulse"></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : attempts.length === 0 ? (
+        <div className="bg-white border border-gray-200 rounded-md p-12 text-center">
+          <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">No Exam History</h3>
+          <p className="text-gray-600 mb-6">You haven't taken any exams yet.</p>
+          <Link
+            href="/dashboard/student/exams"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800 transition-colors text-sm font-medium"
+          >
+            <BookOpen className="w-4 h-4" />
+            Browse Available Exams
+          </Link>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {attempts.map((a) => (
+            <div
+              key={a.id}
+              className="bg-white border border-gray-200 rounded-md hover:border-gray-300 transition-colors"
+            >
+              <div className="p-4 sm:p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 sm:gap-3 mb-2 flex-wrap">
+                      {a.exam && (
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${getCategoryColor(a.exam.category)}`}>
+                          {a.exam.category}
+                          {a.exam.track && ` · ${a.exam.track}`}
+                        </span>
+                      )}
+                      {getStatusBadge(a.status)}
+                    </div>
+                    <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">
+                      {a.exam?.title || "Unknown Exam"}
+                    </h3>
+                    {a.class && (
+                      <div className="flex items-center gap-4 text-sm text-gray-600 flex-wrap">
+                        {a.class.name && (
+                          <span className="flex items-center gap-1">
+                            <BookOpen className="w-4 h-4" />
+                            {a.class.name}
+                          </span>
+                        )}
+                        {a.class.teacher?.name && (
+                          <span>Teacher: {a.class.teacher.name}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {a.overallPercent !== null && (
+                    <div className="text-right ml-4">
+                      <div className="text-xs sm:text-sm text-gray-500 mb-1">Overall Score</div>
+                      <div className={`text-2xl sm:text-3xl font-medium ${
+                        a.overallPercent >= 75 ? "text-green-600" : 
+                        a.overallPercent >= 50 ? "text-yellow-600" : 
+                        "text-red-600"
+                      }`}>
+                        {a.overallPercent}%
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-4 border-t border-gray-200">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 text-sm text-gray-600">
+                    <div className="flex items-center gap-1.5">
+                      <Calendar className="w-4 h-4" />
+                      <span>Started: {formatDate(a.createdAt)}</span>
+                    </div>
+                    {a.submittedAt && (
+                      <div className="flex items-center gap-1.5">
+                        <CheckCircle className="w-4 h-4" />
+                        <span>Submitted: {formatDate(a.submittedAt)}</span>
+                      </div>
+                    )}
+                  </div>
+                  <Link
+                    href={`/attempts/${a.id}/results`}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800 transition-colors text-sm font-medium"
+                  >
+                    <FileText className="w-4 h-4" />
+                    View Results
+                  </Link>
+                </div>
               </div>
             </div>
           ))}

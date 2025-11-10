@@ -217,11 +217,33 @@ export async function GET(
               // Legacy: treat as not supported, return false
               isCorrect = false;
             } else if (q.qtype === "DND_GAP") {
-              const blanks = answerKey?.blanks || [];
-              if (Array.isArray(studentAnswer) && studentAnswer.length === blanks.length) {
-                isCorrect = studentAnswer.every((v: string, i: number) =>
-                  v.trim().toLowerCase() === blanks[i].trim().toLowerCase()
-                );
+              // DND_GAP value format: { "0": ["on", "at"], "1": ["in"] } (sentence index → array of answers)
+              // answerKey format: { blanks: ["on", "at", "in"] } (flat array of all correct answers)
+              const correctBlanks = answerKey?.blanks || [];
+              if (studentAnswer && typeof studentAnswer === "object" && !Array.isArray(studentAnswer)) {
+                // Flatten student answers: { "0": ["on", "at"], "1": ["in"] } → ["on", "at", "in"]
+                const studentAnswersFlat: string[] = [];
+                const sentenceIndices = Object.keys(studentAnswer).sort((a, b) => parseInt(a) - parseInt(b));
+                
+                for (const sentenceIdx of sentenceIndices) {
+                  const sentenceAnswers = studentAnswer[sentenceIdx];
+                  if (Array.isArray(sentenceAnswers)) {
+                    for (const answer of sentenceAnswers) {
+                      if (answer !== undefined && answer !== null) {
+                        studentAnswersFlat.push(answer);
+                      } else {
+                        studentAnswersFlat.push(""); // Missing blank
+                      }
+                    }
+                  }
+                }
+                
+                if (studentAnswersFlat.length === correctBlanks.length) {
+                  isCorrect = studentAnswersFlat.every((v: string, i: number) => {
+                    if (typeof v !== "string" || typeof correctBlanks[i] !== "string") return false;
+                    return v.trim().toLowerCase() === correctBlanks[i].trim().toLowerCase();
+                  });
+                }
               }
             }
 
@@ -277,14 +299,86 @@ export async function GET(
             };
           });
 
-          const correctCount = questions.filter((q) => q.isCorrect).length;
+          // Count correct and total, but for DND_GAP count blanks (each blank = 1 task)
+          let correctCount = 0;
+          let totalCount = 0;
+          
+          questions.forEach((q: any) => {
+            if (q.qtype === "DND_GAP" && q.prompt?.textWithBlanks) {
+              // Count blanks in this question
+              const text = q.prompt.textWithBlanks;
+              let sentences: string[] = [];
+              if (text.includes('\n')) {
+                sentences = text.split('\n').filter((line: string) => line.trim());
+              } else if (text.includes('1.') && text.includes('2.')) {
+                sentences = text.split(/(?=\d+\.\s)/).filter((line: string) => line.trim());
+              } else {
+                sentences = text.split(/(?<=\.)\s+(?=[A-Z])/).filter((line: string) => line.trim());
+              }
+              
+              // Count total blanks
+              let totalBlanks = 0;
+              sentences.forEach(sentence => {
+                const blanksInSentence = sentence.split(/___+|________+/).length - 1;
+                totalBlanks += blanksInSentence;
+              });
+              
+              totalCount += (totalBlanks > 0 ? totalBlanks : 1);
+              
+              // Count correct blanks
+              if (q.isCorrect) {
+                // If entire question is correct, all blanks are correct
+                correctCount += (totalBlanks > 0 ? totalBlanks : 1);
+              } else {
+                // Count how many individual blanks are correct
+                const correctBlanks = q.correctAnswer || [];
+                const studentAnswers = q.studentAnswer;
+                
+                if (studentAnswers && typeof studentAnswers === "object" && !Array.isArray(studentAnswers)) {
+                  // Flatten student answers
+                  const studentAnswersFlat: string[] = [];
+                  const sentenceIndices = Object.keys(studentAnswers).sort((a, b) => parseInt(a) - parseInt(b));
+                  
+                  for (const sentenceIdx of sentenceIndices) {
+                    const sentenceAnswers = studentAnswers[sentenceIdx];
+                    if (Array.isArray(sentenceAnswers)) {
+                      for (const answer of sentenceAnswers) {
+                        if (answer !== undefined && answer !== null) {
+                          studentAnswersFlat.push(answer);
+                        } else {
+                          studentAnswersFlat.push("");
+                        }
+                      }
+                    }
+                  }
+                  
+                  // Count correct blanks
+                  if (Array.isArray(correctBlanks) && studentAnswersFlat.length === correctBlanks.length) {
+                    studentAnswersFlat.forEach((v: string, i: number) => {
+                      if (typeof v === "string" && typeof correctBlanks[i] === "string") {
+                        if (v.trim().toLowerCase() === correctBlanks[i].trim().toLowerCase()) {
+                          correctCount++;
+                        }
+                      }
+                    });
+                  }
+                }
+              }
+            } else {
+              // Regular question
+              totalCount += 1;
+              if (q.isCorrect) {
+                correctCount += 1;
+              }
+            }
+          });
 
           return {
             type: examSection.type,
             title: examSection.title,
             correct: correctCount,
-            total: questions.length,
-            percentage: questions.length > 0 ? Math.round((correctCount / questions.length) * 100) : 0,
+            total: totalCount,
+            percentage: totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0,
             questions,
           };
         })
