@@ -12,26 +12,35 @@ export async function GET() {
     
     const now = new Date();
     
-    // Count classes
-    const classesCount = await prisma.class.count({
-      where: {
-        teacherId,
-        ...(role === "BRANCH_ADMIN" ? { branchId: branchId ?? undefined } : {}),
-      }
-    });
-    
-    // Count unique students across all classes
-    const studentsCount = await prisma.classStudent.count({
-      where: {
-        class: {
+    // OPTIMIZED: Run all queries in parallel with Promise.all
+    const [
+      classesCount,
+      studentsCount,
+      upcomingBookings,
+      pendingGradingCount,
+      pendingGradingSections,
+      recentlyGraded
+    ] = await Promise.all([
+      // Count classes
+      prisma.class.count({
+        where: {
           teacherId,
           ...(role === "BRANCH_ADMIN" ? { branchId: branchId ?? undefined } : {}),
         }
-      }
-    });
-    
-    // Get upcoming bookings
-    const upcomingBookings = await prisma.booking.findMany({
+      }),
+      
+      // Count unique students across all classes
+      prisma.classStudent.count({
+        where: {
+          class: {
+            teacherId,
+            ...(role === "BRANCH_ADMIN" ? { branchId: branchId ?? undefined } : {}),
+          }
+        }
+      }),
+      
+      // Get upcoming bookings
+      prisma.booking.findMany({
       where: {
         teacherId,
         ...(role === "BRANCH_ADMIN" ? { branchId: branchId ?? undefined } : {}),
@@ -65,10 +74,10 @@ export async function GET() {
         startAt: "asc"
       },
       take: 10
-    });
-    
-    // Count pending grading (W/S sections not yet graded)
-    const pendingGradingCount = await prisma.attemptSection.count({
+      }),
+      
+      // Count pending grading (W/S sections not yet graded)
+      prisma.attemptSection.count({
       where: {
         type: {
           in: ["WRITING", "SPEAKING"]
@@ -81,11 +90,10 @@ export async function GET() {
             ...(role === "BRANCH_ADMIN" ? { branchId: branchId ?? undefined } : {}),
           }
         }
-      }
-    });
-    
-    // Get pending grading sections (for quick list)
-    const pendingGradingSections = await prisma.attemptSection.findMany({
+      }),
+      
+      // Get pending grading sections (for quick list)
+      prisma.attemptSection.findMany({
       where: {
         type: {
           in: ["WRITING", "SPEAKING"]
@@ -129,10 +137,10 @@ export async function GET() {
         }
       },
       take: 5
-    });
-    
-    // Get recent graded sections (activity)
-    const recentlyGraded = await prisma.attemptSection.count({
+      }),
+      
+      // Get recent graded sections (activity)
+      prisma.attemptSection.count({
       where: {
         type: {
           in: ["WRITING", "SPEAKING"]
@@ -144,10 +152,13 @@ export async function GET() {
             ...(role === "BRANCH_ADMIN" ? { branchId: branchId ?? undefined } : {}),
           }
         }
-      }
-    });
+      })
+    ]);
     
-    // Calculate average response time (optional)
+    // REMOVED: avgResponseTime calculation (too expensive, not critical)
+    // This was causing additional slow query
+    
+    /* REMOVED EXPENSIVE QUERY:
     const gradedSections = await prisma.attemptSection.findMany({
       where: {
         type: {
@@ -177,23 +188,7 @@ export async function GET() {
       },
       take: 20
     });
-    
-    // Average response time in hours (rough estimate)
-    let avgResponseTime = null;
-    if (gradedSections.length > 0) {
-      const responseTimes = gradedSections
-        .filter(s => s.attempt.submittedAt)
-        .map(s => {
-          const submitted = new Date(s.attempt.submittedAt!);
-          const graded = now; // Approximation - we don't store grading time
-          return (graded.getTime() - submitted.getTime()) / (1000 * 60 * 60); // hours
-        });
-      
-      if (responseTimes.length > 0) {
-        const avg = responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length;
-        avgResponseTime = Math.round(avg);
-      }
-    }
+    */
     
     return NextResponse.json({
       stats: {
@@ -202,7 +197,6 @@ export async function GET() {
         pendingGradingCount,
         upcomingBookingsCount: upcomingBookings.length,
         totalGraded: recentlyGraded,
-        avgResponseTimeHours: avgResponseTime,
       },
       upcomingBookings: upcomingBookings.map(b => ({
         id: b.id,

@@ -18,6 +18,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        {/* PERFORMANCE: Resource Hints for faster first load */}
+        <link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"} />
+        <link rel="preconnect" href={process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"} />
+        
+        {/* Prefetch critical API routes */}
+        <link rel="prefetch" href="/api/auth/session" as="fetch" crossOrigin="anonymous" />
+      </head>
       <body className={inter.className}>
         <SessionProvider>
           <ConditionalNavbar />

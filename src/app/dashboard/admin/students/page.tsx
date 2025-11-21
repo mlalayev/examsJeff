@@ -67,17 +67,11 @@ export default function AdminStudentsPage() {
 
   const fetchExams = async () => {
     try {
-      const [dbRes, jsonRes] = await Promise.all([
-        fetch("/api/admin/exams?isActive=true"),
-        fetch("/api/exams/json"),
-      ]);
+      // OPTIMIZED: Remove JSON exams API call (legacy, not used anymore)
+      const dbRes = await fetch("/api/admin/exams?isActive=true");
       if (dbRes.ok) {
         const dbData = await dbRes.json();
         setExams(dbData.exams || []);
-      }
-      if (jsonRes.ok) {
-        const jsonData = await jsonRes.json();
-        setJsonExams(jsonData.exams || []);
       }
     } catch (error) {
       console.error("Error fetching exams:", error);

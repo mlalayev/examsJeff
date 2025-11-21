@@ -63,22 +63,37 @@ export const authOptions: NextAuthOptions = {
         (token as any).approved = (user as any).approved ?? false;
         (token as any).branchId = (user as any).branchId ?? null;
       } else if (token?.id) {
-        // Keep token in sync with DB so approvals/role changes apply without re-login
-        try {
-          const dbUser = await prisma.user.findUnique({
-            where: { id: token.id as string },
-            select: { name: true, role: true, email: true, branchId: true, },
-          });
-          if (dbUser) {
-            token.name = dbUser.name ?? token.name;
-            token.email = dbUser.email ?? token.email;
-            (token as any).branchId = dbUser.branchId ?? null;
-            token.role = dbUser.role as any;
-            // approved is not selected above; fetch explicitly to avoid extra data on token size concerns
-            const approvedOnly = await prisma.user.findUnique({ where: { id: token.id as string }, select: { approved: true } });
-            (token as any).approved = approvedOnly?.approved ?? (token as any).approved ?? false;
+        // OPTIMIZED: Only sync with DB every 5 minutes instead of every request
+        const lastSyncTime = (token as any).lastSync || 0;
+        const now = Date.now();
+        const FIVE_MINUTES = 5 * 60 * 1000;
+        
+        if (now - lastSyncTime > FIVE_MINUTES) {
+          try {
+            // Fetch user data in a single query (optimized)
+            const dbUser = await prisma.user.findUnique({
+              where: { id: token.id as string },
+              select: { 
+                name: true, 
+                role: true, 
+                email: true, 
+                branchId: true,
+                approved: true,  // Get approved in same query
+              },
+            });
+            
+            if (dbUser) {
+              token.name = dbUser.name ?? token.name;
+              token.email = dbUser.email ?? token.email;
+              (token as any).branchId = dbUser.branchId ?? null;
+              token.role = dbUser.role as any;
+              (token as any).approved = dbUser.approved ?? (token as any).approved ?? false;
+              (token as any).lastSync = now;  // Update last sync time
+            }
+          } catch {
+            // Keep existing token data on error
           }
-        } catch {}
+        }
       }
       return token;
     },

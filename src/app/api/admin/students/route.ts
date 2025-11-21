@@ -16,9 +16,17 @@ export async function GET(request: Request) {
       where.approved = approved === "true";
     }
 
+    // OPTIMIZED: use select instead of include, add limit
     const students = await prisma.user.findMany({
       where,
-      include: {
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        approved: true,
+        branchId: true,
+        createdAt: true,
         branch: {
           select: {
             id: true,
@@ -28,7 +36,8 @@ export async function GET(request: Request) {
       },
       orderBy: {
         createdAt: "desc"
-      }
+      },
+      take: 200, // Limit to 200 most recent students
     });
 
     return NextResponse.json({ students });

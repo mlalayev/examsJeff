@@ -27,15 +27,13 @@ export default function Navbar() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [notificationsFetched, setNotificationsFetched] = useState(false);
   
   const notificationsRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (session) {
-      fetchNotifications();
-    }
-  }, [session]);
+  // OPTIMIZED: Remove auto-fetch on mount (was causing 3-5 sec delay)
+  // Notifications will only be fetched when user clicks the bell icon
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -52,17 +50,28 @@ export default function Navbar() {
   }, []);
 
   const fetchNotifications = async () => {
+    if (notificationsFetched) return; // Already fetched
+    
     try {
       setLoading(true);
       const response = await fetch("/api/notifications?limit=10");
       if (!response.ok) throw new Error("Failed to fetch notifications");
       const data = await response.json();
       setNotifications(data.notifications);
+      setNotificationsFetched(true);
     } catch (error) {
       console.error("Error fetching notifications:", error);
     } finally {
       setLoading(false);
     }
+  };
+  
+  const handleNotificationsClick = async () => {
+    if (!showNotifications && !notificationsFetched) {
+      // Fetch notifications only when opening dropdown for the first time
+      await fetchNotifications();
+    }
+    setShowNotifications(!showNotifications);
   };
 
   const getDashboardLink = () => {
@@ -131,7 +140,7 @@ export default function Navbar() {
                 {/* Notifications */}
                 <div className="relative" ref={notificationsRef}>
                   <button
-                    onClick={() => setShowNotifications(!showNotifications)}
+                    onClick={handleNotificationsClick}
                     className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-all duration-200"
                     title="Notifications"
                   >
