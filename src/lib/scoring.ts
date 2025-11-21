@@ -34,10 +34,10 @@ function normalizeText(text: string): string {
  * - MCQ_SINGLE: selected index === answerKey.index
  * - MCQ_MULTI: set(indices) === set(answerKey.indices)
  * - SELECT: selected === answerKey.index
- * - GAP: normalize(trim, lower); any-of answerKey.answers
+ * - SHORT_TEXT: normalize(trim, lower); any-of answerKey.answers
  * - ORDER_SENTENCE: order array deep-equal
  * - DND_GAP: each blank filled === answerKey.blanks[i] (normalize lower-trim)
- * - SHORT_TEXT/ESSAY: no autoscore (returns 0)
+ * - ESSAY: no autoscore (returns 0)
  */
 export function scoreQuestion(qtype: QuestionType, studentAnswer: any, answerKey: any): number {
   switch (qtype) {
@@ -65,7 +65,8 @@ export function scoreQuestion(qtype: QuestionType, studentAnswer: any, answerKey
       const correctIdx = answerKey?.index;
       return studentAnswer === correctIdx ? 1 : 0;
     }
-    case "GAP": {
+    case "GAP": // Legacy support - same as SHORT_TEXT
+    case "SHORT_TEXT": {
       // Normalize (trim, lower, remove punctuation); any-of answerKey.answers
       const acceptedAnswers = answerKey?.answers || [];
       
@@ -123,8 +124,7 @@ export function scoreQuestion(qtype: QuestionType, studentAnswer: any, answerKey
         return normalizeText(v) === normalizeText(correctBlanks[i]);
       }) ? 1 : 0;
     }
-    // Writing types (no autoscore)
-    case "SHORT_TEXT":
+    // Essay requires manual grading (no autoscore)
     case "ESSAY":
     default:
       return 0;

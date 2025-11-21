@@ -126,7 +126,14 @@ export default function ClassesPage() {
         </div>
         <button
           onClick={openCreateModal}
-          className="px-4 py-2 text-sm font-medium text-white bg-gray-90000 border border-transparent rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 whitespace-nowrap"
+          className="px-4 py-2 text-sm font-medium text-white border border-transparent rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 whitespace-nowrap"
+          style={{ backgroundColor: "#303380" }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = "#252a6b";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = "#303380";
+          }}
         >
           <Plus className="w-4 h-4 sm:mr-2 inline" />
           <span className="hidden sm:inline">Create Class</span>
@@ -250,7 +257,18 @@ export default function ClassesPage() {
                 <button
                   type="submit"
                   disabled={creating || !newClassName.trim()}
-                  className="px-4 py-2 text-sm font-medium text-white bg-gray-900 border border-transparent rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50"
+                  className="px-4 py-2 text-sm font-medium text-white border border-transparent rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50"
+                  style={{ backgroundColor: "#303380" }}
+                  onMouseEnter={(e) => {
+                    if (!e.currentTarget.disabled) {
+                      e.currentTarget.style.backgroundColor = "#252a6b";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!e.currentTarget.disabled) {
+                      e.currentTarget.style.backgroundColor = "#303380";
+                    }
+                  }}
                 >
                   {creating ? "Creating..." : "Create Class"}
                 </button>

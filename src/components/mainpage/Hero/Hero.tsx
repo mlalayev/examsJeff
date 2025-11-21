@@ -18,7 +18,17 @@ export default function Hero() {
               Practice with real mock exams for IELTS, TOEFL, SAT, Duolingo, General English, and Math. Get instant results and detailed feedback.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/dashboard/student/exams" className="inline-flex items-center gap-2 bg-gray-900 text-white px-6 py-3 rounded-lg font-medium hover:bg-gray-800">
+              <Link 
+                href="/dashboard/student/exams" 
+                className="inline-flex items-center gap-2 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                style={{ backgroundColor: "#303380" }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "#252a6b";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "#303380";
+                }}
+              >
                 Start Practice
                 <ArrowRight className="w-4 h-4" />
               </Link>

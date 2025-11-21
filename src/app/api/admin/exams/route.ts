@@ -52,10 +52,18 @@ export async function GET(request: Request) {
       where.isActive = isActive === "true";
     }
     
+    // Optimized: use select instead of include, limit to 100 exams
     const exams = await prisma.exam.findMany({
       where,
       orderBy: { createdAt: "desc" },
-      include: {
+      take: 100, // Limit to 100 most recent exams
+      select: {
+        id: true,
+        title: true,
+        category: true,
+        track: true,
+        isActive: true,
+        createdAt: true,
         createdBy: {
           select: {
             id: true,
@@ -64,7 +72,11 @@ export async function GET(request: Request) {
           }
         },
         sections: {
-          include: {
+          select: {
+            id: true,
+            type: true,
+            title: true,
+            order: true,
             _count: {
               select: {
                 questions: true

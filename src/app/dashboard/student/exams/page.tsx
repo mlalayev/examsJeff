@@ -254,14 +254,21 @@ export default function StudentExamsPage() {
                     </td>
                     <td className="px-3 sm:px-4 py-3 text-sm">
                       {starting === item.id ? (
-                        <div className="px-3 py-1.5 text-sm rounded-md text-white bg-slate-900 flex items-center gap-2">
+                        <div className="px-3 py-1.5 text-sm rounded-md text-white flex items-center gap-2" style={{ backgroundColor: "#303380" }}>
                           <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                           <span className="font-medium">Starting...</span>
                         </div>
                       ) : (
                         <button
                           onClick={() => handleStart(item.id)}
-                          className="px-3 py-1.5 text-sm font-medium text-white bg-slate-900 rounded-md hover:bg-slate-800 transition"
+                          className="px-3 py-1.5 text-sm font-medium text-white rounded-md transition"
+                          style={{ backgroundColor: "#303380" }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = "#252a6b";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = "#303380";
+                          }}
                         >
                           Start Exam
                         </button>

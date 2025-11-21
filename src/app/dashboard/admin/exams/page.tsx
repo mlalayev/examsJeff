@@ -178,7 +178,14 @@ export default function AdminExamsPage() {
           </Link>
           <Link
             href="/dashboard/admin/exams/create"
-            className="px-3 sm:px-4 py-2 text-sm font-medium text-white bg-gray-900 border border-transparent rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 whitespace-nowrap"
+            className="px-3 sm:px-4 py-2 text-sm font-medium text-white border border-transparent rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 whitespace-nowrap"
+            style={{ backgroundColor: "#303380" }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "#252a6b";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "#303380";
+            }}
           >
             <Plus className="w-4 h-4 sm:mr-2 inline" />
             <span className="hidden sm:inline">Create Exam</span>

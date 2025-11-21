@@ -16,13 +16,13 @@ interface Section {
 interface ExamSidebarProps {
   examTitle: string;
   sections: Section[];
-  activeSection: string;
-  lockedSections: Set<string>;
+  activeSection: string; // Now stores section.id
+  lockedSections: Set<string>; // Now stores section.id
   progressStats: { answered: number; total: number; percentage: number };
-  sectionStats: Record<string, { answered: number; total: number }>;
+  sectionStats: Record<string, { answered: number; total: number }>; // Key is section.id now
   submitting: boolean;
-  onSectionClick: (sectionType: string) => Promise<void>;
-  onSubmit: () => Promise<void>;
+  onSectionClick: (sectionId: string) => Promise<void>;
+  onSubmit: () => void | Promise<void>;
   getShortSectionTitle: (title: string) => string;
 }
 
@@ -92,22 +92,22 @@ export const ExamSidebar = React.memo(function ExamSidebar({
           `}</style>
           <div className="space-y-2 pr-1">
             {sections.map((section) => {
-              const isActive = activeSection === section.type;
-              const isLocked = lockedSections.has(section.type);
-              const stats = sectionStats[section.type] || {
+              const isActive = activeSection === section.id;
+              const isLocked = lockedSections.has(section.id);
+              const stats = sectionStats[section.id] || {
                 answered: 0,
                 total: 0,
               };
 
               return (
                 <SectionListItem
-                  key={section.type}
+                  key={section.id}
                   section={section}
                   isActive={isActive}
                   isLocked={isLocked}
                   answeredCount={stats.answered}
                   totalCount={stats.total}
-                  onClick={() => onSectionClick(section.type)}
+                  onClick={() => onSectionClick(section.id)}
                   getShortSectionTitle={getShortSectionTitle}
                 />
               );

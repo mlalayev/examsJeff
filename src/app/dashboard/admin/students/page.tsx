@@ -43,8 +43,8 @@ export default function AdminStudentsPage() {
   const [jsonExams, setJsonExams] = useState<any[]>([]);
 
   useEffect(() => {
-    fetchStudents();
-    fetchExams();
+    // Optimize: fetch both in parallel
+    Promise.all([fetchStudents(), fetchExams()]);
   }, [filterApproved]);
 
   const fetchStudents = async () => {
@@ -285,9 +285,22 @@ export default function AdminStudentsPage() {
             onClick={() => setFilterApproved(null)}
             className={`px-3 py-2 text-sm font-medium rounded-md border transition ${
               filterApproved === null
-                ? "bg-gray-900 text-white border-gray-900"
+                ? "text-white"
                 : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
             }`}
+            style={filterApproved === null ? { backgroundColor: "#303380", borderColor: "#303380" } : {}}
+            onMouseEnter={(e) => {
+              if (filterApproved === null) {
+                e.currentTarget.style.backgroundColor = "#252a6b";
+                e.currentTarget.style.borderColor = "#252a6b";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (filterApproved === null) {
+                e.currentTarget.style.backgroundColor = "#303380";
+                e.currentTarget.style.borderColor = "#303380";
+              }
+            }}
           >
             All
           </button>
@@ -295,9 +308,22 @@ export default function AdminStudentsPage() {
             onClick={() => setFilterApproved(false)}
             className={`px-3 py-2 text-sm font-medium rounded-md border transition ${
               filterApproved === false
-                ? "bg-gray-900 text-white border-gray-900"
+                ? "text-white"
                 : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
             }`}
+            style={filterApproved === false ? { backgroundColor: "#303380", borderColor: "#303380" } : {}}
+            onMouseEnter={(e) => {
+              if (filterApproved === false) {
+                e.currentTarget.style.backgroundColor = "#252a6b";
+                e.currentTarget.style.borderColor = "#252a6b";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (filterApproved === false) {
+                e.currentTarget.style.backgroundColor = "#303380";
+                e.currentTarget.style.borderColor = "#303380";
+              }
+            }}
           >
             Pending
           </button>
@@ -305,9 +331,22 @@ export default function AdminStudentsPage() {
             onClick={() => setFilterApproved(true)}
             className={`px-3 py-2 text-sm font-medium rounded-md border transition ${
               filterApproved === true
-                ? "bg-gray-900 text-white border-gray-900"
+                ? "text-white"
                 : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
             }`}
+            style={filterApproved === true ? { backgroundColor: "#303380", borderColor: "#303380" } : {}}
+            onMouseEnter={(e) => {
+              if (filterApproved === true) {
+                e.currentTarget.style.backgroundColor = "#252a6b";
+                e.currentTarget.style.borderColor = "#252a6b";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (filterApproved === true) {
+                e.currentTarget.style.backgroundColor = "#303380";
+                e.currentTarget.style.borderColor = "#303380";
+              }
+            }}
           >
             Approved
           </button>
@@ -768,7 +807,18 @@ export default function AdminStudentsPage() {
                       }
                     }}
                     disabled={assignStep === 3 && !selectedExamId}
-                    className="px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-md transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+                    className="px-4 py-2 text-white font-medium rounded-md transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+                    style={{ backgroundColor: "#303380" }}
+                    onMouseEnter={(e) => {
+                      if (!e.currentTarget.disabled) {
+                        e.currentTarget.style.backgroundColor = "#252a6b";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!e.currentTarget.disabled) {
+                        e.currentTarget.style.backgroundColor = "#303380";
+                      }
+                    }}
                   >
                     Next
                     <ChevronRight className="w-4 h-4" />
@@ -779,7 +829,18 @@ export default function AdminStudentsPage() {
                   <button
                     onClick={handleAssignExam}
                     disabled={assigning}
-                    className="px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-md transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+                    className="px-4 py-2 text-white font-medium rounded-md transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+                    style={{ backgroundColor: "#303380" }}
+                    onMouseEnter={(e) => {
+                      if (!e.currentTarget.disabled) {
+                        e.currentTarget.style.backgroundColor = "#252a6b";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!e.currentTarget.disabled) {
+                        e.currentTarget.style.backgroundColor = "#303380";
+                      }
+                    }}
                   >
                     {assigning ? (
                       <>

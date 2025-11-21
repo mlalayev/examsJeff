@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-utils";
-import { loadJsonExam } from "@/lib/json-exam-loader";
 
 /**
  * Helper function to check if a student answer is correct
@@ -111,19 +110,8 @@ export async function GET(
 
     const booking = attempt.booking; // Type narrowing for TypeScript
 
-    // Check if this is a JSON exam (stub with no sections in DB)
-    let examWithSections = booking.exam;
-
-    // If no sections in DB, load from JSON
-    if (!examWithSections?.sections || examWithSections.sections.length === 0) {
-      const jsonExam = await loadJsonExam(booking.examId);
-      if (jsonExam) {
-        examWithSections = {
-          ...examWithSections!,
-          sections: jsonExam.sections as any,
-        };
-      }
-    }
+    // Get exam with sections from database
+    const examWithSections = booking.exam;
 
     if (!examWithSections?.sections || examWithSections.sections.length === 0) {
       return NextResponse.json(
@@ -282,30 +270,21 @@ export async function GET(
             };
           });
 
+          // Helper function to count DND_GAP blanks (optimized)
+          const countDndGapBlanks = (text: string): number => {
+            // Fast path: count all ___ or ________ occurrences
+            const matches = text.match(/___+|________+/g);
+            return matches ? matches.length : 0;
+          };
+          
           // Count correct and total, but for DND_GAP count blanks (each blank = 1 task)
           let correctCount = 0;
           let totalCount = 0;
           
           questions.forEach((q: any) => {
             if (q.qtype === "DND_GAP" && q.prompt?.textWithBlanks) {
-              // Count blanks in this question
-              const text = q.prompt.textWithBlanks;
-              let sentences: string[] = [];
-              if (text.includes('\n')) {
-                sentences = text.split('\n').filter((line: string) => line.trim());
-              } else if (text.includes('1.') && text.includes('2.')) {
-                sentences = text.split(/(?=\d+\.\s)/).filter((line: string) => line.trim());
-              } else {
-                sentences = text.split(/(?<=\.)\s+(?=[A-Z])/).filter((line: string) => line.trim());
-              }
-              
-              // Count total blanks
-              let totalBlanks = 0;
-              sentences.forEach(sentence => {
-                const blanksInSentence = sentence.split(/___+|________+/).length - 1;
-                totalBlanks += blanksInSentence;
-              });
-              
+              // Optimized: directly count blanks without sentence splitting
+              const totalBlanks = countDndGapBlanks(q.prompt.textWithBlanks);
               totalCount += (totalBlanks > 0 ? totalBlanks : 1);
               
               // Count correct blanks
@@ -318,32 +297,24 @@ export async function GET(
                 const studentAnswers = q.studentAnswer;
                 
                 if (studentAnswers && typeof studentAnswers === "object" && !Array.isArray(studentAnswers)) {
-                  // Flatten student answers
+                  // Flatten student answers (optimized)
                   const studentAnswersFlat: string[] = [];
-                  const sentenceIndices = Object.keys(studentAnswers).sort((a, b) => parseInt(a) - parseInt(b));
-                  
-                  for (const sentenceIdx of sentenceIndices) {
-                    const sentenceAnswers = studentAnswers[sentenceIdx];
-                    if (Array.isArray(sentenceAnswers)) {
-                      for (const answer of sentenceAnswers) {
-                        if (answer !== undefined && answer !== null) {
-                          studentAnswersFlat.push(answer);
-                        } else {
-                          studentAnswersFlat.push("");
-                        }
-                      }
-                    }
-                  }
-                  
-                  // Count correct blanks
-                  if (Array.isArray(correctBlanks) && studentAnswersFlat.length === correctBlanks.length) {
-                    studentAnswersFlat.forEach((v: string, i: number) => {
-                      if (typeof v === "string" && typeof correctBlanks[i] === "string") {
-                        if (v.trim().toLowerCase() === correctBlanks[i].trim().toLowerCase()) {
-                          correctCount++;
-                        }
+                  Object.keys(studentAnswers)
+                    .sort((a, b) => parseInt(a) - parseInt(b))
+                    .forEach(sentenceIdx => {
+                      const sentenceAnswers = studentAnswers[sentenceIdx];
+                      if (Array.isArray(sentenceAnswers)) {
+                        studentAnswersFlat.push(...sentenceAnswers.map(a => a ?? ""));
                       }
                     });
+                  
+                  // Count correct blanks (optimized)
+                  if (Array.isArray(correctBlanks) && studentAnswersFlat.length === correctBlanks.length) {
+                    correctCount += studentAnswersFlat.filter((v, i) => 
+                      typeof v === "string" && 
+                      typeof correctBlanks[i] === "string" &&
+                      v.trim().toLowerCase() === correctBlanks[i].trim().toLowerCase()
+                    ).length;
                   }
                 }
               }

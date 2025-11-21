@@ -28,7 +28,14 @@ export default function ExamSelector() {
             <div className="flex flex-wrap gap-2">
               <Link 
                 href={exam.tryLink} 
-                className="px-3 py-1.5 bg-gray-900 text-white rounded-md text-xs sm:text-sm font-medium hover:bg-gray-800 transition"
+                className="px-3 py-1.5 text-white rounded-md text-xs sm:text-sm font-medium transition"
+                style={{ backgroundColor: "#303380" }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "#252a6b";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "#303380";
+                }}
               >
                 {exam.tryText || 'Try Now'}
               </Link>

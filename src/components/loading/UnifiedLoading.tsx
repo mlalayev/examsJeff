@@ -179,12 +179,12 @@ const UnifiedLoading: React.FC<UnifiedLoadingProps> = ({
         return (
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-slate-200 rounded-lg animate-pulse"></div>
-              <div className="w-32 h-6 bg-slate-200 rounded animate-pulse"></div>
+              <div className="w-8 h-8 bg-gray-200 rounded-lg animate-pulse"></div>
+              <div className="w-32 h-6 bg-gray-200 rounded animate-pulse"></div>
             </div>
             <div className="flex items-center gap-4">
-              <div className="w-8 h-8 bg-slate-200 rounded-full animate-pulse"></div>
-              <div className="w-8 h-8 bg-slate-200 rounded-full animate-pulse"></div>
+              <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse"></div>
+              <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse"></div>
             </div>
           </div>
         );

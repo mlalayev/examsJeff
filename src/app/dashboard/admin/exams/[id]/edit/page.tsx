@@ -10,7 +10,6 @@ type QuestionType =
   | "MCQ_SINGLE" 
   | "MCQ_MULTI" 
   | "TF" 
-  | "GAP" 
   | "ORDER_SENTENCE" 
   | "DND_GAP" 
   | "SHORT_TEXT" 
@@ -46,7 +45,6 @@ const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   MCQ_MULTI: "Multiple Choice (Multiple)",
   TF: "True/False",
   INLINE_SELECT: "Inline Select",
-  GAP: "Gap Fill (Text Input)",
   ORDER_SENTENCE: "Order Sentence (Drag & Drop)",
   DND_GAP: "Drag and Drop Gap Fill",
   SHORT_TEXT: "Short Text Answer",
@@ -55,7 +53,7 @@ const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
 
 const QUESTION_TYPE_GROUPS = {
   "Variantlı sual": ["MCQ_SINGLE", "MCQ_MULTI", "TF", "INLINE_SELECT"],
-  "Açıq sual": ["GAP", "SHORT_TEXT", "ESSAY"],
+  "Açıq sual": ["SHORT_TEXT", "ESSAY"],
   "Drag and Drop": ["ORDER_SENTENCE", "DND_GAP"],
 };
 
@@ -301,15 +299,14 @@ export default function EditExamPage() {
         return { text: "Enter the question here" };
       case "INLINE_SELECT":
         return { text: "Enter the question here" };
-      case "GAP":
-        return { text: "Enter the question text here" };
       case "ORDER_SENTENCE":
         return { tokens: ["token1", "token2", "token3"] };
       case "DND_GAP":
         return { textWithBlanks: "Enter text with blanks (use ___ for blanks)" };
       case "SHORT_TEXT":
-      case "ESSAY":
         return { text: "Enter the question here" };
+      case "ESSAY":
+        return { text: "Write an essay about..." };
       default:
         return { text: "" };
     }
@@ -338,15 +335,14 @@ export default function EditExamPage() {
         return { index: 0 };
       case "MCQ_MULTI":
         return { indices: [0, 1] };
-      case "GAP":
-        return { answers: ["answer"] };
       case "ORDER_SENTENCE":
         return { order: [] };
       case "DND_GAP":
         return { blanks: ["word1", "word2"] };
       case "SHORT_TEXT":
+        return { answers: ["answer1"] }; // Multiple possible correct answers
       case "ESSAY":
-        return { answers: [] };
+        return null; // No auto-grading for essays
       default:
         return {};
     }
@@ -465,9 +461,22 @@ export default function EditExamPage() {
                   onClick={() => handleCategorySelect(cat)}
                   className={`px-3 py-2 text-sm font-medium rounded-md border transition ${
                     selectedCategory === cat
-                      ? "bg-gray-900 text-white border-gray-900"
+                      ? "text-white"
                       : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
                   }`}
+                  style={selectedCategory === cat ? { backgroundColor: "#303380", borderColor: "#303380" } : {}}
+                  onMouseEnter={(e) => {
+                    if (selectedCategory === cat) {
+                      e.currentTarget.style.backgroundColor = "#252a6b";
+                      e.currentTarget.style.borderColor = "#252a6b";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (selectedCategory === cat) {
+                      e.currentTarget.style.backgroundColor = "#303380";
+                      e.currentTarget.style.borderColor = "#303380";
+                    }
+                  }}
                 >
                   {cat}
                 </button>
@@ -560,7 +569,14 @@ export default function EditExamPage() {
             </h3>
             <button
               onClick={() => setShowQuestionTypeModal(true)}
-              className="px-3 py-1.5 text-sm font-medium text-white bg-gray-900 rounded hover:bg-gray-800 flex items-center gap-1"
+              className="px-3 py-1.5 text-sm font-medium text-white rounded flex items-center gap-1"
+              style={{ backgroundColor: "#303380" }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "#252a6b";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "#303380";
+              }}
             >
               <Plus className="w-4 h-4" />
               Add Question
@@ -616,7 +632,18 @@ export default function EditExamPage() {
         <button
           onClick={saveExam}
           disabled={saving}
-          className="px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-md hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          className="px-4 py-2 text-sm font-medium text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          style={{ backgroundColor: "#303380" }}
+          onMouseEnter={(e) => {
+            if (!e.currentTarget.disabled) {
+              e.currentTarget.style.backgroundColor = "#252a6b";
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!e.currentTarget.disabled) {
+              e.currentTarget.style.backgroundColor = "#303380";
+            }
+          }}
         >
           {saving ? (
             <>
@@ -721,7 +748,7 @@ export default function EditExamPage() {
                     />
                     <p className="text-xs text-gray-500">Enter tokens one per line. They will be shuffled for students.</p>
                   </div>
-                ) : editingQuestion.qtype === "GAP" ? (
+                ) : editingQuestion.qtype === "SHORT_TEXT" ? (
                   <div className="space-y-3">
                     <textarea
                       value={editingQuestion.prompt?.text || ""}
@@ -737,20 +764,44 @@ export default function EditExamPage() {
                     />
                     <div className="pt-3 border-t border-gray-200">
                       <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                        Correct Answer (for auto-scoring)
+                        Correct Answers (one per line, case-insensitive)
                       </label>
-                      <input
-                        type="text"
-                        value={Array.isArray(editingQuestion.answerKey?.answers) ? editingQuestion.answerKey.answers[0] : ""}
+                      <textarea
+                        value={Array.isArray(editingQuestion.answerKey?.answers) ? editingQuestion.answerKey.answers.join("\n") : ""}
                         onChange={(e) => {
+                          const answers = e.target.value.split("\n").filter(a => a.trim());
                           setEditingQuestion({
                             ...editingQuestion,
-                            answerKey: { answers: [e.target.value] },
+                            answerKey: { answers },
                           });
                         }}
-                        placeholder="Enter the correct answer"
+                        placeholder="Enter possible correct answers (one per line)&#10;answer1&#10;answer2&#10;answer3"
                         className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
+                        rows={4}
                       />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Students can enter any of these answers (case-insensitive matching).
+                      </p>
+                    </div>
+                  </div>
+                ) : editingQuestion.qtype === "ESSAY" ? (
+                  <div className="space-y-3">
+                    <textarea
+                      value={editingQuestion.prompt?.text || ""}
+                      onChange={(e) => {
+                        setEditingQuestion({
+                          ...editingQuestion,
+                          prompt: { ...editingQuestion.prompt, text: e.target.value },
+                        });
+                      }}
+                      placeholder="Enter the essay prompt (e.g., 'Write an essay about the importance of education...')"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
+                      rows={4}
+                    />
+                    <div className="pt-3 border-t border-gray-200 bg-yellow-50 p-3 rounded-md">
+                      <p className="text-xs text-yellow-800">
+                        <strong>Note:</strong> Essays require manual grading. No auto-scoring will be applied.
+                      </p>
                     </div>
                   </div>
                 ) : editingQuestion.qtype === "DND_GAP" ? (
@@ -863,6 +914,31 @@ export default function EditExamPage() {
                         </div>
                       </div>
                     )}
+                  </div>
+                ) : editingQuestion.qtype === "INLINE_SELECT" ? (
+                  <div className="space-y-2">
+                    <textarea
+                      value={editingQuestion.prompt?.text || ""}
+                      onChange={(e) => {
+                        setEditingQuestion({
+                          ...editingQuestion,
+                          prompt: { ...editingQuestion.prompt, text: e.target.value },
+                        });
+                      }}
+                      placeholder="Enter the question text (use ___ for inline dropdown, or leave without ___ for dropdown at the end)"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
+                      rows={3}
+                    />
+                    <div className="text-xs text-gray-500 bg-blue-50 p-2 rounded border border-blue-200">
+                      <strong>Tip:</strong> Use ___ (3 underscores) where you want the dropdown to appear inline. 
+                      If you don't use ___, the dropdown will appear at the end of the sentence.
+                      <br />
+                      <strong>Examples:</strong>
+                      <br />
+                      • "I ___ to school every day." → dropdown appears inline
+                      <br />
+                      • "What is the capital of France?" → dropdown appears at the end
+                    </div>
                   </div>
                 ) : (
                   <textarea
@@ -1062,7 +1138,14 @@ export default function EditExamPage() {
               </button>
               <button
                 onClick={saveQuestion}
-                className="px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-md hover:bg-gray-800"
+                className="px-4 py-2 text-sm font-medium text-white rounded-md"
+                style={{ backgroundColor: "#303380" }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "#252a6b";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "#303380";
+                }}
               >
                 Save Question
               </button>

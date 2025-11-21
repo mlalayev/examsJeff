@@ -7,7 +7,7 @@ export async function GET() {
     const user = await requireStudent();
     const studentId = (user as any).id as string;
 
-    // Find attempts by studentId directly, or through booking/assignment
+    // Find attempts by studentId directly, or through booking/assignment (optimized with limited select)
     const attempts = await prisma.attempt.findMany({
       where: {
         OR: [
@@ -17,8 +17,18 @@ export async function GET() {
         ]
       },
       orderBy: { createdAt: "desc" },
-      include: {
-        sections: true,
+      select: {
+        id: true,
+        status: true,
+        createdAt: true,
+        submittedAt: true,
+        sections: {
+          select: {
+            type: true,
+            rawScore: true,
+            maxScore: true
+          }
+        },
         booking: { 
           select: { 
             id: true, 
@@ -41,12 +51,16 @@ export async function GET() {
       },
     });
 
-    // Get student's classes for all attempts
+    // Get student's classes for all attempts (optimized query)
     const studentClasses = await prisma.classStudent.findMany({
       where: { studentId },
-      include: {
+      select: {
+        classId: true,
         class: {
-          include: {
+          select: {
+            id: true,
+            name: true,
+            teacherId: true,
             teacher: { select: { id: true, name: true } }
           }
         }

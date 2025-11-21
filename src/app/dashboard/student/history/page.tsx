@@ -128,7 +128,14 @@ export default function StudentHistoryPage() {
           <p className="text-gray-600 mb-6">You haven't taken any exams yet.</p>
           <Link
             href="/dashboard/student/exams"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800 transition-colors text-sm font-medium"
+            className="inline-flex items-center gap-2 px-4 py-2 text-white rounded-md transition-colors text-sm font-medium"
+            style={{ backgroundColor: "#303380" }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "#252a6b";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "#303380";
+            }}
           >
             <BookOpen className="w-4 h-4" />
             Browse Available Exams
@@ -199,7 +206,14 @@ export default function StudentHistoryPage() {
                   </div>
                   <Link
                     href={`/attempts/${a.id}/results`}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800 transition-colors text-sm font-medium"
+                    className="inline-flex items-center gap-2 px-4 py-2 text-white rounded-md transition-colors text-sm font-medium"
+            style={{ backgroundColor: "#303380" }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "#252a6b";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "#303380";
+            }}
                   >
                     <FileText className="w-4 h-4" />
                     View Results

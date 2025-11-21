@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireStudent } from "@/lib/auth-utils";
-import { loadJsonExam } from "@/lib/json-exam-loader";
 
 export async function GET(request: Request, { params }: { params: Promise<{ attemptId: string }> }) {
   try {
@@ -23,42 +22,28 @@ export async function GET(request: Request, { params }: { params: Promise<{ atte
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Try loading from JSON first, then fall back to DB
-    let exam: any = null;
-    
-    // Check if this is a JSON exam (stub with no sections in DB)
-    const dbExam = await prisma.exam.findUnique({ 
+    // Load exam data from database
+    const exam = await prisma.exam.findUnique({ 
       where: { id: attempt.examId },
-      include: { sections: true }
-    });
-    
-    if (!dbExam || !dbExam.sections || dbExam.sections.length === 0) {
-      // Try loading from JSON (either no DB exam or it's a stub with no sections)
-      exam = await loadJsonExam(attempt.examId);
-    } else {
-      // Load from DB with full details
-      exam = await prisma.exam.findUnique({
-        where: { id: attempt.examId },
-        include: {
-          sections: {
-            orderBy: { order: "asc" },
-            include: {
-              questions: {
-                orderBy: { order: "asc" },
-                select: {
-                  id: true,
-                  qtype: true,
-                  prompt: true,
-                  options: true,
-                  maxScore: true,
-                  order: true,
-                },
+      include: {
+        sections: {
+          orderBy: { order: "asc" },
+          include: {
+            questions: {
+              orderBy: { order: "asc" },
+              select: {
+                id: true,
+                qtype: true,
+                prompt: true,
+                options: true,
+                maxScore: true,
+                order: true,
               },
             },
           },
         },
-      });
-    }
+      }
+    });
 
     if (!exam) {
       return NextResponse.json({ error: "Exam not found" }, { status: 404 });

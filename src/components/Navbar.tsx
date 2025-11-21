@@ -118,7 +118,7 @@ export default function Navbar() {
         <div className="flex items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-8 h-8 bg-gray-900 rounded-lg flex items-center justify-center text-white font-bold text-sm group-hover:scale-105 transition-transform duration-200">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm group-hover:scale-105 transition-transform duration-200" style={{ backgroundColor: "#303380" }}>
               J
             </div>
             <span className="text-xl font-bold text-gray-900">JEFF Exams</span>
@@ -266,7 +266,14 @@ export default function Navbar() {
                 </Link>
                 <Link
                   href="/auth/register"
-                  className="px-4 py-2 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition-colors duration-200"
+                  className="px-4 py-2 text-white rounded-lg font-medium transition-colors duration-200"
+                  style={{ backgroundColor: "#303380" }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = "#252a6b";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = "#303380";
+                  }}
                 >
                   Get Started
                 </Link>

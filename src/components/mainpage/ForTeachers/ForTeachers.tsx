@@ -14,7 +14,17 @@ export default function ForTeachers() {
             <p className="mt-3 text-gray-700">Create classes, assign exams, track student progress, and provide detailed feedback.</p>
           </div>
           <div className="md:text-right">
-            <Link href="/dashboard/teacher/classes" className="inline-flex items-center gap-2 bg-gray-900 text-white px-6 py-3 rounded-lg font-medium hover:bg-black">
+            <Link 
+              href="/dashboard/teacher/classes" 
+              className="inline-flex items-center gap-2 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+              style={{ backgroundColor: "#303380" }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "#252a6b";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "#303380";
+              }}
+            >
               Teacher Dashboard
               <ArrowRight className="w-4 h-4" />
             </Link>

@@ -102,59 +102,169 @@ export async function PATCH(
     
     // If sections are provided, we need to update them
     if (validatedData.sections) {
-      // Delete all existing sections and questions (cascade will handle questions)
-      await prisma.examSection.deleteMany({
-        where: { examId: id }
-      });
-      
-      // Create new sections with questions
-      const exam = await prisma.exam.update({
-        where: { id },
-        data: {
-          ...(validatedData.title ? { title: validatedData.title } : {}),
-          ...(validatedData.category ? { category: validatedData.category as any } : {}),
-          ...(validatedData.track !== undefined ? { track: validatedData.track } : {}),
-          ...(validatedData.isActive !== undefined ? { isActive: validatedData.isActive } : {}),
-          sections: {
-            create: validatedData.sections.map((section) => ({
-              type: section.type,
-              title: section.title,
-              instruction: section.instruction || null,
-              durationMin: section.durationMin,
-              order: section.order,
-              questions: {
-                create: section.questions.map((q) => ({
-                  qtype: q.qtype,
-                  order: q.order,
-                  prompt: {
-                    ...q.prompt,
-                    ...(q.image ? { image: q.image } : {}),
-                  },
-                  options: q.options,
-                  answerKey: q.answerKey,
-                  maxScore: q.maxScore,
-                  explanation: q.explanation,
-                })),
-              },
-            })),
+      // Use transaction for better performance and atomicity
+      const exam = await prisma.$transaction(async (tx) => {
+        // Update exam basic fields first
+        const updatedExam = await tx.exam.update({
+          where: { id },
+          data: {
+            ...(validatedData.title ? { title: validatedData.title } : {}),
+            ...(validatedData.category ? { category: validatedData.category as any } : {}),
+            ...(validatedData.track !== undefined ? { track: validatedData.track } : {}),
+            ...(validatedData.isActive !== undefined ? { isActive: validatedData.isActive } : {}),
           },
-        },
-        include: {
-          createdBy: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            }
-          },
-          sections: {
-            include: {
-              questions: true,
+        });
+
+        // Get existing sections with their IDs and questions (batch query)
+        const existingSections = await tx.examSection.findMany({
+          where: { examId: id },
+          select: {
+            id: true,
+            questions: {
+              select: { id: true },
             },
           },
+        });
+        const existingSectionIds = new Set(existingSections.map((s) => s.id));
+        
+        // Create a map of sectionId -> questionIds for faster lookup
+        const sectionQuestionMap = new Map<string, Set<string>>();
+        existingSections.forEach((s) => {
+          sectionQuestionMap.set(
+            s.id,
+            new Set(s.questions.map((q) => q.id))
+          );
+        });
+
+        // Get incoming section IDs (if any)
+        const incomingSectionIds = new Set(
+          validatedData.sections
+            .map((s) => s.id)
+            .filter((id): id is string => Boolean(id))
+        );
+
+        // Find sections to delete (exist in DB but not in incoming data)
+        const sectionsToDelete = existingSections.filter(
+          (s) => !incomingSectionIds.has(s.id)
+        );
+
+        // Delete orphaned sections (cascade will handle questions)
+        if (sectionsToDelete.length > 0) {
+          await tx.examSection.deleteMany({
+            where: {
+              id: { in: sectionsToDelete.map((s) => s.id) },
+            },
+          });
         }
+
+        // Process each section (upsert pattern)
+        const sectionPromises = validatedData.sections.map(async (section) => {
+          const sectionData = {
+            type: section.type,
+            title: section.title,
+            instruction: section.instruction || null,
+            durationMin: section.durationMin,
+            order: section.order,
+          };
+
+          let sectionRecord;
+          if (section.id && existingSectionIds.has(section.id)) {
+            // Update existing section
+            sectionRecord = await tx.examSection.update({
+              where: { id: section.id },
+              data: sectionData,
+            });
+          } else {
+            // Create new section
+            sectionRecord = await tx.examSection.create({
+              data: {
+                ...sectionData,
+                examId: id,
+              },
+            });
+          }
+
+          // Get existing questions for this section (from pre-loaded map)
+          const existingQuestionIds =
+            sectionQuestionMap.get(sectionRecord.id) || new Set<string>();
+
+          // Get incoming question IDs
+          const incomingQuestionIds = new Set(
+            section.questions
+              .map((q) => q.id)
+              .filter((id): id is string => Boolean(id))
+          );
+
+          // Delete orphaned questions (exist in DB but not in incoming data)
+          const questionsToDelete = Array.from(existingQuestionIds).filter(
+            (qId) => !incomingQuestionIds.has(qId)
+          );
+          if (questionsToDelete.length > 0) {
+            await tx.question.deleteMany({
+              where: {
+                id: { in: questionsToDelete },
+              },
+            });
+          }
+
+          // Process each question (upsert pattern)
+          const questionPromises = section.questions.map(async (q) => {
+            const questionData = {
+              qtype: q.qtype,
+              order: q.order,
+              prompt: {
+                ...q.prompt,
+                ...(q.image ? { image: q.image } : {}),
+              },
+              options: q.options,
+              answerKey: q.answerKey,
+              maxScore: q.maxScore,
+              explanation: q.explanation,
+              sectionId: sectionRecord.id,
+            };
+
+            if (q.id && existingQuestionIds.has(q.id)) {
+              // Update existing question
+              return tx.question.update({
+                where: { id: q.id },
+                data: questionData,
+              });
+            } else {
+              // Create new question
+              return tx.question.create({
+                data: questionData,
+              });
+            }
+          });
+
+          await Promise.all(questionPromises);
+        });
+
+        await Promise.all(sectionPromises);
+
+        // Return updated exam with all relations
+        return tx.exam.findUnique({
+          where: { id },
+          include: {
+            createdBy: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+            sections: {
+              orderBy: { order: "asc" },
+              include: {
+                questions: {
+                  orderBy: { order: "asc" },
+                },
+              },
+            },
+          },
+        });
       });
-      
+
       return NextResponse.json({ exam });
     } else {
       // Just update basic fields

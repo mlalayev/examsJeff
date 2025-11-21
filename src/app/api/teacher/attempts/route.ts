@@ -12,7 +12,7 @@ export async function GET() {
     const teacherId = (user as any).id;
     const branchId = (user as any).branchId;
 
-    // Get all attempts from bookings assigned by this teacher
+    // Get all attempts from bookings assigned by this teacher (with pagination limit)
     const attempts = await prisma.attempt.findMany({
       where: {
         booking: {
@@ -23,9 +23,13 @@ export async function GET() {
           in: ["IN_PROGRESS", "SUBMITTED"],
         },
       },
-      include: {
+      select: {
+        id: true,
+        status: true,
+        submittedAt: true,
+        createdAt: true,
         booking: {
-          include: {
+          select: {
             student: {
               select: {
                 id: true,
@@ -52,6 +56,7 @@ export async function GET() {
       orderBy: {
         createdAt: "desc",
       },
+      take: 100, // Limit to 100 most recent attempts
     });
 
     const attemptsData = attempts.map((attempt) => {

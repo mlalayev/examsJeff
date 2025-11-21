@@ -210,6 +210,9 @@ model Attempt {
 
   sections AttemptSection[]
 
+  @@index([studentId, status])
+  @@index([studentId, createdAt])
+  @@index([status, createdAt])
   @@map("attempts")
 }
 
@@ -229,6 +232,7 @@ model AttemptSection {
   endedAt    DateTime?
   status     String      @default("IN_PROGRESS")
 
+  @@index([attemptId, type])
   @@map("attempt_sections")
 }
 

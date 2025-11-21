@@ -260,7 +260,7 @@ export default function Sidebar() {
             </div>
           ) : (
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-slate-900 rounded-full flex items-center justify-center text-white font-medium text-xs flex-shrink-0">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-medium text-xs flex-shrink-0" style={{ backgroundColor: "#303380" }}>
                 {session?.user?.name?.charAt(0).toUpperCase() ||
                   session?.user?.email?.charAt(0).toUpperCase() ||
                   "U"}
@@ -319,9 +319,24 @@ export default function Sidebar() {
                     onClick={() => setIsOpen(false)}
                     className={`flex items-center gap-3 px-3 py-2 rounded transition ${
                       isActive
-                        ? "bg-slate-900 text-white"
+                        ? "text-white"
                         : "text-slate-700 hover:bg-slate-50"
                     }`}
+                    style={isActive ? { backgroundColor: "#303380" } : {}}
+                    onMouseEnter={(e) => {
+                      if (!isActive) {
+                        e.currentTarget.style.backgroundColor = "";
+                      } else {
+                        e.currentTarget.style.backgroundColor = "#252a6b";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isActive) {
+                        e.currentTarget.style.backgroundColor = "";
+                      } else {
+                        e.currentTarget.style.backgroundColor = "#303380";
+                      }
+                    }}
                   >
                     <Icon className="w-4 h-4" />
                     <span className="text-sm font-medium">{item.label}</span>

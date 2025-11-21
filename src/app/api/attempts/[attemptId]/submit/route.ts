@@ -3,7 +3,6 @@ import { prisma } from "@/lib/prisma";
 import { requireStudent } from "@/lib/auth-utils";
 import { SectionType, QuestionType } from "@prisma/client";
 import { scoreQuestion } from "@/lib/scoring";
-import { loadJsonExam } from "@/lib/json-exam-loader";
 
 type AnswersByQuestionId = Record<string, any>;
 
@@ -13,65 +12,82 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
     const { attemptId } = await params;
     const studentId = (user as any).id as string;
 
+    // Load attempt first (optimized with limited fields)
     const attempt = await prisma.attempt.findUnique({
       where: { id: attemptId },
-      include: {
-        sections: true,
+      select: {
+        id: true,
+        studentId: true,
+        examId: true,
+        status: true,
+        sections: {
+          select: {
+            id: true,
+            type: true,
+            answers: true,
+          },
+        },
       },
     });
-    if (!attempt) return NextResponse.json({ error: "Attempt not found" }, { status: 404 });
-    if (attempt.studentId !== studentId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    
+    if (!attempt) {
+      return NextResponse.json({ error: "Attempt not found" }, { status: 404 });
+    }
+    
+    if (attempt.studentId !== studentId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
-    // Load exam with sections/questions to evaluate
-    let examWithSections = await prisma.exam.findUnique({
+    // Load exam with minimal required fields for scoring
+    const examWithSections = await prisma.exam.findUnique({
       where: { id: attempt.examId },
-      include: {
+      select: {
+        id: true,
         sections: {
           orderBy: { order: "asc" },
-          include: {
+          select: {
+            id: true,
+            type: true,
             questions: {
               orderBy: { order: "asc" },
-              select: { id: true, qtype: true, prompt: true, options: true, answerKey: true, maxScore: true, order: true },
+              select: {
+                id: true,
+                qtype: true,
+                answerKey: true,
+                maxScore: true,
+              },
             },
           },
         },
       },
     });
-    if (!examWithSections) return NextResponse.json({ error: "Exam not found" }, { status: 404 });
-
-    // Check if this is a JSON exam (no sections in DB)
-    const isJsonExam = !examWithSections.sections || examWithSections.sections.length === 0;
-    if (isJsonExam) {
-      const jsonExam = await loadJsonExam(attempt.examId);
-      if (jsonExam) {
-        examWithSections = {
-          ...examWithSections,
-          sections: jsonExam.sections as any,
-        };
-      }
+    
+    if (!examWithSections) {
+      return NextResponse.json({ error: "Exam not found" }, { status: 404 });
+    }
+    
+    if (!examWithSections.sections || examWithSections.sections.length === 0) {
+      return NextResponse.json({ error: "Exam has no sections" }, { status: 404 });
     }
 
-    // Map attempt section answers
-    // For JSON exams, answers are stored as { sectionType: { questionId: answer } }
-    // For DB exams, answers are in attempt.sections[].answers
-    const allAnswers = (attempt.answers as any) || {};
+    // Map attempt section answers from database
     let answersByType: Record<string, AnswersByQuestionId> = {};
     
-    if (isJsonExam) {
-      // For JSON exams, answers are organized by section type
-      // Structure: { GRAMMAR_PART1: { q1: answer1 }, GRAMMAR_PART2: { q2: answer2 } }
-      answersByType = allAnswers;
-    } else {
-      // For DB exams, answers are per section
-      for (const as of attempt.sections) {
-        if (as.answers) answersByType[as.type as string] = as.answers as AnswersByQuestionId;
+    for (const as of attempt.sections) {
+      if (as.answers) {
+        answersByType[as.type as string] = as.answers as AnswersByQuestionId;
       }
     }
 
+    // Calculate scores for all sections
     let totalRaw = 0;
     let totalMax = 0;
-
-    const updates: Array<Promise<any>> = [];
+    const sectionUpdates: Array<{
+      sectionId: string;
+      rawScore: number | null;
+      maxScore: number;
+      status: string;
+    }> = [];
 
     for (const section of examWithSections.sections) {
       const sectionType = section.type as string;
@@ -88,9 +104,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
         for (const q of section.questions) {
           try {
             const qtype = q.qtype as QuestionType;
-            // Only auto types
-            const auto = qtype !== "SHORT_TEXT" && qtype !== "ESSAY";
-            if (!auto) continue;
+            // ESSAY: auto-accept (mark as correct) but don't give points
+            if (qtype === "ESSAY") {
+              // Count in maxScore but not in rawScore (auto-accept, no points)
+              if (typeof q.maxScore === "number") {
+                sectionMax += q.maxScore;
+              } else {
+                sectionMax += 1;
+              }
+              // Note: We're NOT adding to sectionRaw, so student gets 0 points but question shows as "answered"
+              continue;
+            }
 
             const answer = sectionAnswers[q.id];
             const correct = scoreQuestion(qtype, answer, q.answerKey);
@@ -117,32 +141,45 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
         }
       }
 
-      // Only update attempt_sections for DB exams (not JSON exams)
-      if (!isJsonExam) {
-        updates.push(
-          prisma.attemptSection.updateMany({
-            where: { attemptId, type: sectionType as SectionType },
-            data: {
-              rawScore: isWriting ? null : sectionRaw,
-              maxScore: sectionMax || null,
-              status: "COMPLETED",
-            },
-          })
-        );
+      // Find attempt section ID
+      const attemptSection = attempt.sections.find((as) => as.type === sectionType);
+      if (attemptSection) {
+        sectionUpdates.push({
+          sectionId: attemptSection.id,
+          rawScore: isWriting ? null : sectionRaw,
+          maxScore: sectionMax || 0,
+          status: "COMPLETED",
+        });
       }
     }
 
-    await Promise.all(updates);
-
     const overallPercent = totalMax > 0 ? (totalRaw / totalMax) * 100 : null;
 
-    await prisma.attempt.update({
-      where: { id: attemptId },
-      data: {
-        status: "SUBMITTED",
-        submittedAt: new Date(),
-        bandOverall: overallPercent ?? undefined,
-      },
+    // Use transaction for atomic updates
+    await prisma.$transaction(async (tx) => {
+      // Update all attempt sections in batch
+      const updatePromises = sectionUpdates.map((update) =>
+        tx.attemptSection.update({
+          where: { id: update.sectionId },
+          data: {
+            rawScore: update.rawScore,
+            maxScore: update.maxScore,
+            status: update.status,
+          },
+        })
+      );
+
+      await Promise.all(updatePromises);
+
+      // Update attempt status
+      await tx.attempt.update({
+        where: { id: attemptId },
+        data: {
+          status: "SUBMITTED",
+          submittedAt: new Date(),
+          bandOverall: overallPercent ?? undefined,
+        },
+      });
     });
 
     return NextResponse.json({ success: true, attemptId, resultsUrl: `/attempt/${attemptId}/results` });
