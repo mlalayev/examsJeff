@@ -32,17 +32,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ atte
       include: { sections: true }
     });
     
-    console.log('Loading exam:', { attemptId, examId: attempt.examId, hasDbExam: !!dbExam, dbSectionsCount: dbExam?.sections?.length });
-    console.log('DB Exam details:', JSON.stringify(dbExam, null, 2));
-    
     if (!dbExam || !dbExam.sections || dbExam.sections.length === 0) {
       // Try loading from JSON (either no DB exam or it's a stub with no sections)
-      console.log('Attempting to load from JSON for exam:', attempt.examId);
       exam = await loadJsonExam(attempt.examId);
-      console.log('Loaded from JSON:', { examId: exam?.id, sectionsCount: exam?.sections?.length });
-      if (exam) {
-        console.log('JSON Exam sections:', JSON.stringify(exam.sections, null, 2));
-      }
     } else {
       // Load from DB with full details
       exam = await prisma.exam.findUnique({

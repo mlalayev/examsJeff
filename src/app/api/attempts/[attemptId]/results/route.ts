@@ -4,6 +4,58 @@ import { requireAuth } from "@/lib/auth-utils";
 import { loadJsonExam } from "@/lib/json-exam-loader";
 
 /**
+ * Helper function to check if a student answer is correct
+ * Optimized and reusable for both student and teacher views
+ */
+function checkAnswerCorrectness(q: any, studentAnswer: any, answerKey: any): boolean {
+  if (q.qtype === "TF") {
+    const correctBool = answerKey?.value;
+    return studentAnswer === (correctBool === true ? 0 : 1);
+  } else if (q.qtype === "MCQ_SINGLE" || q.qtype === "SELECT" || q.qtype === "INLINE_SELECT") {
+    return studentAnswer === answerKey?.index;
+  } else if (q.qtype === "MCQ_MULTI") {
+    const sorted = Array.isArray(studentAnswer) ? [...studentAnswer].sort() : [];
+    const correctSorted = Array.isArray(answerKey?.indices) ? [...answerKey.indices].sort() : [];
+    return JSON.stringify(sorted) === JSON.stringify(correctSorted);
+  } else if (q.qtype === "GAP") {
+    const normalized = typeof studentAnswer === "string" ? studentAnswer.trim().toLowerCase() : "";
+    const accepted = answerKey?.answers || [];
+    return accepted.some((a: string) => a.trim().toLowerCase() === normalized);
+  } else if (q.qtype === "ORDER_SENTENCE") {
+    return false; // Legacy: not supported
+  } else if (q.qtype === "DND_GAP") {
+    const correctBlanks = answerKey?.blanks || [];
+    if (studentAnswer && typeof studentAnswer === "object" && !Array.isArray(studentAnswer)) {
+      // Flatten student answers: { "0": ["on", "at"], "1": ["in"] } → ["on", "at", "in"]
+      const studentAnswersFlat: string[] = [];
+      const sentenceIndices = Object.keys(studentAnswer).sort((a, b) => parseInt(a) - parseInt(b));
+      
+      for (const sentenceIdx of sentenceIndices) {
+        const sentenceAnswers = studentAnswer[sentenceIdx];
+        if (Array.isArray(sentenceAnswers)) {
+          for (const answer of sentenceAnswers) {
+            if (answer !== undefined && answer !== null) {
+              studentAnswersFlat.push(answer);
+            } else {
+              studentAnswersFlat.push("");
+            }
+          }
+        }
+      }
+      
+      if (studentAnswersFlat.length === correctBlanks.length) {
+        return studentAnswersFlat.every((v: string, i: number) => {
+          if (typeof v !== "string" || typeof correctBlanks[i] !== "string") return false;
+          return v.trim().toLowerCase() === correctBlanks[i].trim().toLowerCase();
+        });
+      }
+    }
+    return false;
+  }
+  return false;
+}
+
+/**
  * GET /api/attempts/:attemptId/results
  * Returns exam results based on user role:
  * - STUDENT (owner): Summary only (total score, per-section correct/total counts)
@@ -17,13 +69,24 @@ export async function GET(
     const user = await requireAuth();
     const { attemptId } = await params;
 
-    // Fetch attempt with all details
+    // Fetch attempt with exam details in a single query (optimized)
     const attempt = await prisma.attempt.findUnique({
       where: { id: attemptId },
       include: {
         booking: {
           include: {
-            exam: true,
+            exam: {
+              include: {
+                sections: {
+                  include: {
+                    questions: {
+                      orderBy: { order: "asc" },
+                    },
+                  },
+                  orderBy: { order: "asc" },
+                },
+              },
+            },
             student: true,
             teacher: true,
           },
@@ -39,23 +102,21 @@ export async function GET(
       );
     }
 
+    if (!attempt.booking) {
+      return NextResponse.json(
+        { error: "Booking not found for this attempt" },
+        { status: 404 }
+      );
+    }
+
+    const booking = attempt.booking; // Type narrowing for TypeScript
+
     // Check if this is a JSON exam (stub with no sections in DB)
-    let examWithSections = await prisma.exam.findUnique({
-      where: { id: attempt.booking.examId },
-      include: {
-        sections: {
-          include: {
-            questions: true,
-          },
-          orderBy: { order: "asc" },
-        },
-      },
-    });
+    let examWithSections = booking.exam;
 
     // If no sections in DB, load from JSON
     if (!examWithSections?.sections || examWithSections.sections.length === 0) {
-      console.log('Loading JSON exam for results:', attempt.booking.examId);
-      const jsonExam = await loadJsonExam(attempt.booking.examId);
+      const jsonExam = await loadJsonExam(booking.examId);
       if (jsonExam) {
         examWithSections = {
           ...examWithSections!,
@@ -72,7 +133,7 @@ export async function GET(
     }
 
     const role = (user as any).role;
-    const isOwner = attempt.booking.studentId === user.id;
+    const isOwner = booking.studentId === user.id;
     const isTeacher = role === "TEACHER" || role === "ADMIN" || role === "BRANCH_ADMIN" || role === "BOSS";
 
     // Authorization check
@@ -109,40 +170,11 @@ export async function GET(
           // Use DB score if available
           correctCount = attemptSec.rawScore;
         } else {
-          // Compute score from answers (for JSON exams)
+          // Compute score from answers (for JSON exams) - using optimized helper function
           correctCount = examSection.questions.filter((q: any) => {
             const studentAnswer = studentAnswers[q.id];
             const answerKey = q.answerKey as any;
-            
-            // Legacy support: TF, SELECT, MCQ_MULTI, ORDER_SENTENCE converted to MCQ_SINGLE or INLINE_SELECT
-            if (q.qtype === "TF") {
-              // Convert TF to MCQ_SINGLE logic
-              const correctBool = answerKey?.value;
-              return studentAnswer === (correctBool === true ? 0 : 1);
-            } else if (q.qtype === "MCQ_SINGLE" || q.qtype === "SELECT" || q.qtype === "INLINE_SELECT") {
-              return studentAnswer === answerKey?.index;
-            } else if (q.qtype === "MCQ_MULTI") {
-              // Legacy: treat as MCQ_SINGLE (just check first answer)
-              const sorted = Array.isArray(studentAnswer) ? [...studentAnswer].sort() : [];
-              const correctSorted = Array.isArray(answerKey?.indices) ? [...answerKey.indices].sort() : [];
-              return JSON.stringify(sorted) === JSON.stringify(correctSorted);
-            } else if (q.qtype === "GAP") {
-              const normalized = typeof studentAnswer === "string" ? studentAnswer.trim().toLowerCase() : "";
-              const accepted = answerKey?.answers || [];
-              return accepted.some((a: string) => a.trim().toLowerCase() === normalized);
-            } else if (q.qtype === "ORDER_SENTENCE") {
-              // Legacy: treat as not supported, return false
-              return false;
-            } else if (q.qtype === "DND_GAP") {
-              const blanks = answerKey?.blanks || [];
-              if (Array.isArray(studentAnswer) && studentAnswer.length === blanks.length) {
-                return studentAnswer.every((v: string, i: number) =>
-                  v.trim().toLowerCase() === blanks[i].trim().toLowerCase()
-                );
-              }
-              return false;
-            }
-            return false;
+            return checkAnswerCorrectness(q, studentAnswer, answerKey);
           }).length;
         }
 
@@ -162,8 +194,8 @@ export async function GET(
 
       return NextResponse.json({
         attemptId: attempt.id,
-        examTitle: attempt.booking.exam.title,
-        studentName: attempt.booking.student.name || attempt.booking.student.email,
+        examTitle: booking.exam.title,
+        studentName: booking.student.name || booking.student.email,
         submittedAt: attempt.submittedAt,
         status: attempt.status,
         role: "STUDENT",
@@ -182,70 +214,21 @@ export async function GET(
       // Structure: { sectionType: { questionId: answer } }
       const allStudentAnswers = (attempt.answers as any) || {};
       
-      const fullSections = await Promise.all(
-        examWithSections.sections.map(async (examSection: any) => {
-          const attemptSection = attempt.sections.find(
-            (as) => as.type === examSection.type
-          );
+      // Optimized: no need for Promise.all since map is synchronous
+      const fullSections = examWithSections.sections.map((examSection: any) => {
+        const attemptSection = attempt.sections.find(
+          (as) => as.type === examSection.type
+        );
 
-          // Use attemptSection.answers if available (DB exam), otherwise use section-specific answers (JSON exam)
-          const studentAnswers = (attemptSection?.answers as Record<string, any>) || allStudentAnswers[examSection.type] || {};
+        // Use attemptSection.answers if available (DB exam), otherwise use section-specific answers (JSON exam)
+        const studentAnswers = (attemptSection?.answers as Record<string, any>) || allStudentAnswers[examSection.type] || {};
 
-          const questions = examSection.questions.map((q: any) => {
-            const studentAnswer = studentAnswers[q.id];
-            const answerKey = q.answerKey as any;
+        const questions = examSection.questions.map((q: any) => {
+          const studentAnswer = studentAnswers[q.id];
+          const answerKey = q.answerKey as any;
 
-            // Simple correctness check (could use scoring utility)
-            let isCorrect = false;
-            // Legacy support: TF, SELECT, MCQ_MULTI, ORDER_SENTENCE converted to MCQ_SINGLE or INLINE_SELECT
-            if (q.qtype === "TF") {
-              // Convert TF to MCQ_SINGLE logic
-              const correctBool = answerKey?.value;
-              isCorrect = studentAnswer === (correctBool === true ? 0 : 1);
-            } else if (q.qtype === "MCQ_SINGLE" || q.qtype === "SELECT" || q.qtype === "INLINE_SELECT") {
-              isCorrect = studentAnswer === answerKey?.index;
-            } else if (q.qtype === "MCQ_MULTI") {
-              // Legacy: treat as MCQ_SINGLE (just check first answer)
-              const sorted = Array.isArray(studentAnswer) ? [...studentAnswer].sort() : [];
-              const correctSorted = Array.isArray(answerKey?.indices) ? [...answerKey.indices].sort() : [];
-              isCorrect = JSON.stringify(sorted) === JSON.stringify(correctSorted);
-            } else if (q.qtype === "GAP") {
-              const normalized = typeof studentAnswer === "string" ? studentAnswer.trim().toLowerCase() : "";
-              const accepted = answerKey?.answers || [];
-              isCorrect = accepted.some((a: string) => a.trim().toLowerCase() === normalized);
-            } else if (q.qtype === "ORDER_SENTENCE") {
-              // Legacy: treat as not supported, return false
-              isCorrect = false;
-            } else if (q.qtype === "DND_GAP") {
-              // DND_GAP value format: { "0": ["on", "at"], "1": ["in"] } (sentence index → array of answers)
-              // answerKey format: { blanks: ["on", "at", "in"] } (flat array of all correct answers)
-              const correctBlanks = answerKey?.blanks || [];
-              if (studentAnswer && typeof studentAnswer === "object" && !Array.isArray(studentAnswer)) {
-                // Flatten student answers: { "0": ["on", "at"], "1": ["in"] } → ["on", "at", "in"]
-                const studentAnswersFlat: string[] = [];
-                const sentenceIndices = Object.keys(studentAnswer).sort((a, b) => parseInt(a) - parseInt(b));
-                
-                for (const sentenceIdx of sentenceIndices) {
-                  const sentenceAnswers = studentAnswer[sentenceIdx];
-                  if (Array.isArray(sentenceAnswers)) {
-                    for (const answer of sentenceAnswers) {
-                      if (answer !== undefined && answer !== null) {
-                        studentAnswersFlat.push(answer);
-                      } else {
-                        studentAnswersFlat.push(""); // Missing blank
-                      }
-                    }
-                  }
-                }
-                
-                if (studentAnswersFlat.length === correctBlanks.length) {
-                  isCorrect = studentAnswersFlat.every((v: string, i: number) => {
-                    if (typeof v !== "string" || typeof correctBlanks[i] !== "string") return false;
-                    return v.trim().toLowerCase() === correctBlanks[i].trim().toLowerCase();
-                  });
-                }
-              }
-            }
+          // Use optimized helper function for correctness check
+          const isCorrect = checkAnswerCorrectness(q, studentAnswer, answerKey);
 
             // Format answers for display
             let displayStudentAnswer = studentAnswer;
@@ -381,8 +364,7 @@ export async function GET(
             percentage: totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0,
             questions,
           };
-        })
-      );
+        });
 
       const totalCorrect = fullSections.reduce((sum, s) => sum + s.correct, 0);
       const totalQuestions = fullSections.reduce((sum, s) => sum + s.total, 0);
@@ -390,8 +372,8 @@ export async function GET(
 
       return NextResponse.json({
         attemptId: attempt.id,
-        examTitle: attempt.booking.exam.title,
-        studentName: attempt.booking.student.name || attempt.booking.student.email,
+        examTitle: booking.exam.title,
+        studentName: booking.student.name || booking.student.email,
         submittedAt: attempt.submittedAt,
         status: attempt.status,
         role: "TEACHER",
