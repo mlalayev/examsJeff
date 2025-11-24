@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Calendar, Clock, CheckCircle, FileText, BookOpen } from "lucide-react";
+import { Calendar, Clock, CheckCircle, FileText, BookOpen, Trash2, Loader2 } from "lucide-react";
 
 interface AttemptItem {
   id: string;
@@ -18,6 +18,11 @@ interface AttemptItem {
 export default function StudentHistoryPage() {
   const [loading, setLoading] = useState(true);
   const [attempts, setAttempts] = useState<AttemptItem[]>([]);
+  const [deleteModal, setDeleteModal] = useState<{ open: boolean; attempt: AttemptItem | null }>({
+    open: false,
+    attempt: null,
+  });
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -36,6 +41,36 @@ export default function StudentHistoryPage() {
     };
     load();
   }, []);
+
+  const openDeleteModal = (attempt: AttemptItem) => {
+    setDeleteModal({ open: true, attempt });
+  };
+
+  const closeDeleteModal = () => {
+    if (isDeleting) return;
+    setDeleteModal({ open: false, attempt: null });
+  };
+
+  const handleDelete = async () => {
+    if (!deleteModal.attempt) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch("/api/student/attempts", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ attemptId: deleteModal.attempt.id }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to delete attempt");
+      setAttempts((prev) => prev.filter((a) => a.id !== deleteModal.attempt?.id));
+      closeDeleteModal();
+    } catch (error) {
+      console.error(error);
+      alert(error instanceof Error ? error.message : "Failed to delete attempt");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -204,30 +239,67 @@ export default function StudentHistoryPage() {
                       </div>
                     )}
                   </div>
-                  <Link
-                    href={`/attempts/${a.id}/results`}
-                    className="inline-flex items-center gap-2 px-4 py-2 text-white rounded-md transition-colors text-sm font-medium"
-            style={{ backgroundColor: "#303380" }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "#252a6b";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "#303380";
-            }}
-                  >
-                    <FileText className="w-4 h-4" />
-                    View Results
-                  </Link>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => openDeleteModal(a)}
+                      className="inline-flex items-center gap-2 px-4 py-2 border border-red-200 text-red-600 rounded-md text-sm font-medium hover:bg-red-50 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Delete
+                    </button>
+                    <Link
+                      href={`/attempts/${a.id}/results`}
+                      className="inline-flex items-center gap-2 px-4 py-2 text-white rounded-md transition-colors text-sm font-medium"
+                      style={{ backgroundColor: "#303380" }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = "#252a6b";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = "#303380";
+                      }}
+                    >
+                      <FileText className="w-4 h-4" />
+                      View Results
+                    </Link>
+                  </div>
                 </div>
               </div>
             </div>
           ))}
         </div>
       )}
+
+      {deleteModal.open && deleteModal.attempt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">Delete Exam Attempt</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Are you sure you want to remove{" "}
+              <span className="font-medium">{deleteModal.attempt.exam?.title || "this attempt"}</span>{" "}
+              from your history? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={closeDeleteModal}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-md bg-red-600 hover:bg-red-700 disabled:opacity-70 disabled:cursor-not-allowed transition-colors"
+              >
+                {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                {isDeleting ? "Deleting..." : "Confirm Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
-
-
-

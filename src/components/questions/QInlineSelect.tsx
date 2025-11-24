@@ -1,10 +1,12 @@
 "use client";
 
 import { BaseQuestionProps } from "./types";
+import { QuestionImage } from "./QuestionImage";
 
 export function QInlineSelect({ question, value, onChange, readOnly }: BaseQuestionProps<number | null>) {
   const choices = question.options?.choices || [];
   const promptText = question.prompt?.text || "";
+  const imageUrl = question.prompt?.imageUrl;
   
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     if (readOnly) return;

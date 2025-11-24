@@ -1,15 +1,20 @@
 "use client";
 
 import { BaseQuestionProps } from "./types";
+import { QuestionImage } from "./QuestionImage";
 
 export function QTF({ question, value, onChange, readOnly }: BaseQuestionProps<boolean | null>) {
+  const imageUrl = question.prompt?.imageUrl;
+  
   const handleChange = (boolValue: boolean) => {
     if (readOnly) return;
     onChange(boolValue);
   };
 
   return (
-    <div className="flex items-center gap-4">
+    <div className="space-y-3">
+      <QuestionImage imageUrl={imageUrl} />
+      <div className="flex items-center gap-4">
       <button
         onClick={() => handleChange(true)}
         disabled={readOnly}
@@ -85,6 +90,7 @@ export function QTF({ question, value, onChange, readOnly }: BaseQuestionProps<b
         </div>
         <span className="text-base font-medium">False</span>
       </button>
+    </div>
     </div>
   );
 }

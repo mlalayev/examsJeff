@@ -1,10 +1,12 @@
 "use client";
 
 import { BaseQuestionProps } from "./types";
+import { QuestionImage } from "./QuestionImage";
 
 export function QMcqMulti({ question, value, onChange, readOnly }: BaseQuestionProps<number[]>) {
   const choices = question.options?.choices || [];
   const selectedIndices = Array.isArray(value) ? value : [];
+  const imageUrl = question.prompt?.imageUrl;
 
   const handleToggle = (idx: number) => {
     if (readOnly) return;
@@ -16,6 +18,7 @@ export function QMcqMulti({ question, value, onChange, readOnly }: BaseQuestionP
 
   return (
     <div className="space-y-3">
+      <QuestionImage imageUrl={imageUrl} />
       {choices.map((choice: string, idx: number) => {
         const isSelected = selectedIndices.includes(idx);
         return (

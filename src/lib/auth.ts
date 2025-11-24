@@ -63,12 +63,12 @@ export const authOptions: NextAuthOptions = {
         (token as any).approved = (user as any).approved ?? false;
         (token as any).branchId = (user as any).branchId ?? null;
       } else if (token?.id) {
-        // OPTIMIZED: Only sync with DB every 5 minutes instead of every request
+        // OPTIMIZED: Only sync with DB every 30 seconds instead of every request
         const lastSyncTime = (token as any).lastSync || 0;
         const now = Date.now();
-        const FIVE_MINUTES = 5 * 60 * 1000;
+        const THIRTY_SECONDS = 30 * 1000; // Reduced from 5 minutes for faster approval updates
         
-        if (now - lastSyncTime > FIVE_MINUTES) {
+        if (now - lastSyncTime > THIRTY_SECONDS) {
           try {
             // Fetch user data in a single query (optimized)
             const dbUser = await prisma.user.findUnique({

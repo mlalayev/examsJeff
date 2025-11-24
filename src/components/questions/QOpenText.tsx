@@ -1,11 +1,13 @@
 "use client";
 
 import { BaseQuestionProps } from "./types";
+import { QuestionImage } from "./QuestionImage";
 
 export function QOpenText({ question, value, onChange, readOnly }: BaseQuestionProps<string | Record<string, string>>) {
   // Handle both string and Record<string, string> values for GAP compatibility
   const currentValue = typeof value === 'string' ? value : (value?.['0'] || '');
   const promptText = question.prompt?.text || '';
+  const imageUrl = question.prompt?.imageUrl;
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (readOnly) return;

@@ -50,6 +50,12 @@ export async function POST(request: Request) {
       branchId = byName.id;
     }
 
+    // Check if there is any admin/boss user in the system (for bootstrap)
+    const adminCount = await prisma.user.count({
+      where: { role: { in: ["ADMIN", "BOSS"] } },
+    });
+    const isBootstrapAdmin = adminCount === 0;
+
     // Hash password
     const passwordHash = await bcrypt.hash(validatedData.password, 10);
 
@@ -59,8 +65,8 @@ export async function POST(request: Request) {
         name: validatedData.name,
         email: validatedData.email,
         passwordHash,
-        role: validatedData.role,
-        approved: false,
+        role: isBootstrapAdmin ? "ADMIN" : validatedData.role,
+        approved: isBootstrapAdmin ? true : false,
         branchId,
       },
       select: {
@@ -76,8 +82,14 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       { 
-        message: "User registered successfully",
-        user 
+        message: isBootstrapAdmin
+          ? "User registered successfully as bootstrap ADMIN (auto-approved)."
+          : "User registered successfully",
+        user: {
+          ...user,
+          role: isBootstrapAdmin ? "ADMIN" : user.role,
+          approved: isBootstrapAdmin ? true : user.approved,
+        },
       },
       { status: 201 }
     );

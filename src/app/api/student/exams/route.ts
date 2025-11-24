@@ -30,3 +30,47 @@ export async function GET() {
     return NextResponse.json({ error: "Failed to load exams" }, { status: 500 });
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const user = await requireStudent();
+    const studentId = (user as any).id as string;
+    const { bookingId } = await request.json();
+
+    if (!bookingId) {
+      return NextResponse.json({ error: "bookingId is required" }, { status: 400 });
+    }
+
+    const booking = await prisma.booking.findFirst({
+      where: {
+        id: bookingId,
+        studentId,
+        OR: [
+          { attempt: null },
+          { attempt: { status: { not: "SUBMITTED" } } },
+        ],
+      },
+      select: {
+        id: true,
+        attempt: { select: { id: true, status: true } },
+      },
+    });
+
+    if (!booking) {
+      return NextResponse.json({ error: "Exam not found" }, { status: 404 });
+    }
+
+    if (booking.attempt && booking.attempt.status === "IN_PROGRESS") {
+      return NextResponse.json({ error: "You must finish or cancel the attempt before deleting this exam" }, { status: 409 });
+    }
+
+    await prisma.booking.delete({
+      where: { id: bookingId },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Student exam delete error:", error);
+    return NextResponse.json({ error: "Failed to delete exam" }, { status: 500 });
+  }
+}

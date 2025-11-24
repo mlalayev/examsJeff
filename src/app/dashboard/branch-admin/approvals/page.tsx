@@ -22,14 +22,22 @@ export default function BranchAdminApprovalsPage() {
 
   const approveUser = async (userId: string) => {
     try {
-      await fetch(`/api/admin/users/${userId}/approve`, {
+      const res = await fetch(`/api/admin/users/${userId}/approve`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ approved: true }),
       });
-      await loadPendingUsers();
+      
+      if (res.ok) {
+        await loadPendingUsers();
+        alert("User approved! They should logout and login again to access their dashboard.");
+      } else {
+        const error = await res.json();
+        alert(error.error || "Failed to approve user");
+      }
     } catch (error) {
       console.error("Failed to approve user:", error);
+      alert("Failed to approve user");
     }
   };
 

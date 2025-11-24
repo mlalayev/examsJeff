@@ -54,6 +54,22 @@ export async function GET(request: Request, { params }: { params: Promise<{ atte
       return NextResponse.json({ error: "Exam has no sections" }, { status: 500 });
     }
 
+    const parseInstruction = (instruction: any) => {
+      if (!instruction) return { text: "", passage: null, audio: null };
+      if (typeof instruction === "string") {
+        try {
+          const parsed = JSON.parse(instruction);
+          if (parsed && typeof parsed === "object") {
+            return parsed as Record<string, any>;
+          }
+          return { text: instruction, passage: null, audio: null };
+        } catch {
+          return { text: instruction, passage: null, audio: null };
+        }
+      }
+      return instruction as Record<string, any>;
+    };
+
     return NextResponse.json({
       id: attempt.id,
       examTitle: exam.title,
@@ -64,8 +80,18 @@ export async function GET(request: Request, { params }: { params: Promise<{ atte
         title: s.title,
         durationMin: s.durationMin,
         order: s.order,
-        questions: s.questions || [],
-        audio: s.audio || null,
+        ...(() => {
+          const instructionData = parseInstruction(s.instruction);
+          return {
+            instruction: instructionData?.text || "",
+            passage: instructionData?.passage || null,
+            audio: instructionData?.audio || null,
+          };
+        })(),
+        questions: (s.questions || []).map((q: any) => ({
+          ...q,
+          prompt: q.prompt || {},
+        })),
       })),
       savedAnswers: (attempt.answers as any) || {},
     });

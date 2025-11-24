@@ -23,6 +23,8 @@ interface Section {
   questions: Question[];
   order: number;
   audio?: string | null;
+  instruction?: string;
+  passage?: string | null;
 }
 
 interface QuestionsAreaProps {
@@ -58,6 +60,10 @@ export const QuestionsArea = React.memo(function QuestionsArea({
   onDragEnd,
   renderQuestionComponent,
 }: QuestionsAreaProps) {
+  const audioSource = section.audio || section.questions?.[0]?.prompt?.audio;
+  const readingPassage =
+    section.passage || section.questions?.[0]?.prompt?.passage;
+
   const sectionAnswers = answers[section.id] || {};
 
   // Calculate base question numbers for DND_GAP questions
@@ -100,7 +106,7 @@ export const QuestionsArea = React.memo(function QuestionsArea({
         </div>
 
         {/* Audio Player */}
-        {section.audio && (
+        {audioSource && (
           <div className="mb-8">
             <div className="text-center mb-4">
               <h3
@@ -116,12 +122,12 @@ export const QuestionsArea = React.memo(function QuestionsArea({
                 Listen to the audio and answer the questions below
               </p>
             </div>
-            <AudioPlayer src={section.audio} className="w-full" />
+            <AudioPlayer src={audioSource} className="w-full" />
           </div>
         )}
 
         {/* Reading Passage */}
-        {section.questions?.[0]?.prompt?.passage && (
+        {readingPassage && (
           <div
             className="mb-6 p-6 rounded-lg"
             style={{
@@ -138,7 +144,7 @@ export const QuestionsArea = React.memo(function QuestionsArea({
             </h3>
             <div className="prose prose-sm max-w-none">
               <p className="text-slate-700 leading-relaxed whitespace-pre-line">
-                {section.questions[0].prompt.passage}
+                {readingPassage}
               </p>
             </div>
           </div>

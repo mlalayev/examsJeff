@@ -138,41 +138,22 @@ export default function BossUsersPage() {
     if (!selectedUser) return;
     setSaving(true);
     try {
-      // Approval change
-      if (approvedDesired && !selectedUser.approved) {
-        await fetch(`/api/admin/users/${selectedUser.id}/approve`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ approved: true }),
-        });
-      }
+      // Single unified call to update approval, role, and branch
+      const res = await fetch(`/api/admin/users/${selectedUser.id}/approve`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          approved: approvedDesired,
+          role: selectedRole,
+          branchId: selectedBranchId || null,
+        }),
+      });
 
-      // Role change
-      if (selectedRole === "BRANCH_ADMIN") {
-        if (!selectedBranchId) {
-          setSaving(false);
-          return;
-        }
-        await fetch(`/api/admin/users/${selectedUser.id}/assign-branch-admin`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ branchId: selectedBranchId }),
-        });
-      } else if (selectedRole !== selectedUser.role) {
-        await fetch(`/api/admin/users/${selectedUser.id}/role`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ role: selectedRole }),
-        });
-      }
-
-      // Branch change for non-branch-admin roles
-      if (selectedRole !== "BRANCH_ADMIN" && selectedBranchId && selectedBranchId !== (selectedUser.branchId || "")) {
-        await fetch(`/api/admin/users/${selectedUser.id}/approve`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ approved: approvedDesired, branchId: selectedBranchId }),
-        });
+      if (!res.ok) {
+        const error = await res.json();
+        alert(error.error || "Failed to update user");
+        setSaving(false);
+        return;
       }
 
       setModalOpen(false);
@@ -180,6 +161,12 @@ export default function BossUsersPage() {
       // Restore body scroll when modal is closed
       document.body.style.overflow = 'unset';
       await load();
+      
+      // Show success message and remind to refresh
+      alert("User updated successfully! If the user was approved, they should logout and login again to access their dashboard.");
+    } catch (error) {
+      console.error("Failed to save user:", error);
+      alert("Failed to update user");
     } finally {
       setSaving(false);
     }

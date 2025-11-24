@@ -120,3 +120,49 @@ export async function GET() {
     return NextResponse.json({ error: "Failed to load attempts" }, { status: 500 });
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const user = await requireStudent();
+    const studentId = (user as any).id as string;
+    const { attemptId } = await request.json();
+
+    if (!attemptId) {
+      return NextResponse.json({ error: "attemptId is required" }, { status: 400 });
+    }
+
+    // Ensure the attempt belongs to the student (directly, booking or assignment)
+    const attempt = await prisma.attempt.findFirst({
+      where: {
+        id: attemptId,
+        OR: [
+          { studentId },
+          { booking: { studentId } },
+          { assignment: { studentId } },
+        ],
+      },
+      select: { id: true },
+    });
+
+    if (!attempt) {
+      return NextResponse.json({ error: "Attempt not found" }, { status: 404 });
+    }
+
+    await prisma.attempt.delete({
+      where: { id: attemptId },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error("Student attempt delete error:", error);
+
+    if (error instanceof Error) {
+      if (error.message.includes("Unauthorized") || error.message.includes("Forbidden")) {
+        return NextResponse.json({ error: error.message }, { status: 403 });
+      }
+      return NextResponse.json({ error: error.message || "Failed to delete attempt" }, { status: 500 });
+    }
+
+    return NextResponse.json({ error: "Failed to delete attempt" }, { status: 500 });
+  }
+}

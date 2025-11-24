@@ -2,12 +2,18 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BookOpen, Search } from "lucide-react";
+import { BookOpen, Search, Trash2, Loader2 } from "lucide-react";
 
-type SectionType = "READING" | "LISTENING" | "WRITING" | "SPEAKING" | "GRAMMAR" | "VOCABULARY";
+type SectionType =
+  | "READING"
+  | "LISTENING"
+  | "WRITING"
+  | "SPEAKING"
+  | "GRAMMAR"
+  | "VOCABULARY";
 
 interface StudentExamItem {
-  id: string;           // booking id
+  id: string; // booking id
   examId: string;
   title: string;
   category: string;
@@ -27,6 +33,14 @@ export default function StudentExamsPage() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [starting, setStarting] = useState<string | null>(null);
+  const [deleteModal, setDeleteModal] = useState<{
+    open: boolean;
+    item: StudentExamItem | null;
+  }>({
+    open: false,
+    item: null,
+  });
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     fetchItems();
@@ -38,7 +52,7 @@ export default function StudentExamsPage() {
       const res = await fetch("/api/student/exams");
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to load exams");
-      
+
       // Transform bookings to exam items
       const examItems = (data.bookings || []).map((booking: any) => ({
         id: booking.id,
@@ -54,7 +68,7 @@ export default function StudentExamsPage() {
         status: booking.attempt?.status || "NOT_STARTED",
         attemptId: booking.attempt?.id,
       }));
-      
+
       setItems(examItems);
     } catch (err) {
       console.error("Failed to load student exams", err);
@@ -73,7 +87,7 @@ export default function StudentExamsPage() {
       // Create or get attempt for this booking with timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-      
+
       const res = await fetch("/api/student/attempt/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -95,7 +109,7 @@ export default function StudentExamsPage() {
       // Don't set starting to null here - let the navigation handle it
     } catch (err) {
       console.error("Failed to start exam", err);
-      if (err.name === 'AbortError') {
+      if (err instanceof Error && err.name === "AbortError") {
         alert("Request timed out. Please try again.");
       } else {
         alert("Failed to start exam");
@@ -104,23 +118,59 @@ export default function StudentExamsPage() {
     }
   };
 
+  const openDeleteModal = (item: StudentExamItem) => {
+    setDeleteModal({ open: true, item });
+  };
+
+  const closeDeleteModal = () => {
+    if (deleting) return;
+    setDeleteModal({ open: false, item: null });
+  };
+
+  const handleDelete = async () => {
+    if (!deleteModal.item) return;
+    setDeleting(true);
+    try {
+      const res = await fetch("/api/student/exams", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookingId: deleteModal.item.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to delete exam");
+      setItems((prev) => prev.filter((i) => i.id !== deleteModal.item?.id));
+      closeDeleteModal();
+    } catch (error) {
+      console.error("Failed to delete exam", error);
+      alert(error instanceof Error ? error.message : "Failed to delete exam");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const stats = {
     total: items.length,
-    notStarted: items.filter(i => i.status === "NOT_STARTED").length,
-    inProgress: items.filter(i => i.status === "IN_PROGRESS").length,
-    completed: items.filter(i => i.status === "COMPLETED").length,
+    notStarted: items.filter((i) => i.status === "NOT_STARTED").length,
+    inProgress: items.filter((i) => i.status === "IN_PROGRESS").length,
+    completed: items.filter((i) => i.status === "COMPLETED").length,
   };
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
       {/* Minimal Header */}
       <div className="mb-8 sm:mb-12">
-        <h1 className="text-xl sm:text-2xl font-medium text-gray-900">My Exams</h1>
-        <p className="text-gray-500 mt-1 text-sm sm:text-base">Exams assigned by your teacher</p>
+        <h1 className="text-xl sm:text-2xl font-medium text-gray-900">
+          My Exams
+        </h1>
+        <p className="text-gray-500 mt-1 text-sm sm:text-base">
+          Exams assigned by your teacher
+        </p>
         {starting && (
           <div className="mt-3 p-2.5 bg-slate-50 border border-slate-200 rounded-md flex items-center gap-2">
             <div className="w-4 h-4 border-2 border-slate-900 border-t-transparent rounded-full animate-spin"></div>
-            <span className="text-sm font-medium text-slate-900">Preparing your exam...</span>
+            <span className="text-sm font-medium text-slate-900">
+              Preparing your exam...
+            </span>
           </div>
         )}
       </div>
@@ -166,11 +216,21 @@ export default function StudentExamsPage() {
             <table className="w-full min-w-[640px]">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Title</th>
-                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Category</th>
-                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Due Date</th>
-                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Status</th>
-                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Actions</th>
+                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">
+                    Title
+                  </th>
+                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">
+                    Category
+                  </th>
+                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">
+                    Due Date
+                  </th>
+                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">
+                    Status
+                  </th>
+                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -212,11 +272,21 @@ export default function StudentExamsPage() {
             <table className="w-full min-w-[640px]">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Title</th>
-                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Category</th>
-                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Due Date</th>
-                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Status</th>
-                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Actions</th>
+                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">
+                    Title
+                  </th>
+                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">
+                    Category
+                  </th>
+                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">
+                    Due Date
+                  </th>
+                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">
+                    Status
+                  </th>
+                  <th className="text-center px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -228,9 +298,13 @@ export default function StudentExamsPage() {
                           <BookOpen className="w-4 h-4 text-gray-600" />
                         </div>
                         <div>
-                          <div className="font-medium text-gray-900">{item.title}</div>
+                          <div className="font-medium text-gray-900">
+                            {item.title}
+                          </div>
                           {item.track && (
-                            <div className="text-xs text-gray-500">{item.track}</div>
+                            <div className="text-xs text-gray-500">
+                              {item.track}
+                            </div>
                           )}
                         </div>
                       </div>
@@ -239,40 +313,59 @@ export default function StudentExamsPage() {
                       {item.category}
                     </td>
                     <td className="px-3 sm:px-4 py-3 text-sm text-gray-600">
-                      {item.dueAt ? new Date(item.dueAt).toLocaleDateString() : "—"}
+                      {item.dueAt
+                        ? new Date(item.dueAt).toLocaleDateString()
+                        : "—"}
                     </td>
                     <td className="px-3 sm:px-4 py-3 text-sm">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        item.status === "COMPLETED"
-                          ? "bg-green-100 text-green-700"
+                      <span
+                        className={`px-2 py-1 text-xs font-medium rounded-full ${
+                          item.status === "COMPLETED"
+                            ? "bg-green-100 text-green-700"
+                            : item.status === "IN_PROGRESS"
+                            ? "bg-blue-100 text-blue-700"
+                            : "bg-gray-100 text-gray-700"
+                        }`}
+                      >
+                        {item.status === "COMPLETED"
+                          ? "Completed"
                           : item.status === "IN_PROGRESS"
-                          ? "bg-blue-100 text-blue-700"
-                          : "bg-gray-100 text-gray-700"
-                      }`}>
-                        {item.status === "COMPLETED" ? "Completed" : item.status === "IN_PROGRESS" ? "In Progress" : "Not Started"}
+                          ? "In Progress"
+                          : "Not Started"}
                       </span>
                     </td>
                     <td className="px-3 sm:px-4 py-3 text-sm">
-                      {starting === item.id ? (
-                        <div className="px-3 py-1.5 text-sm rounded-md text-white flex items-center gap-2" style={{ backgroundColor: "#303380" }}>
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          <span className="font-medium">Starting...</span>
-                        </div>
-                      ) : (
+                      <div className="flex flex-wrap items-center justify-center gap-3">
                         <button
-                          onClick={() => handleStart(item.id)}
-                          className="px-3 py-1.5 text-sm font-medium text-white rounded-md transition"
-                          style={{ backgroundColor: "#303380" }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = "#252a6b";
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = "#303380";
-                          }}
+                          onClick={() => openDeleteModal(item)}
+                          className="inline-flex items-center justify-center p-2 border border-red-200 text-red-600 rounded-full hover:bg-red-50 transition-colors"
                         >
-                          Start Exam
+                          <Trash2 className="w-4 h-4" />
                         </button>
-                      )}
+                        {starting === item.id ? (
+                          <div
+                            className="inline-flex items-center justify-center gap-2 px-4 py-1.5 text-sm rounded-md text-white min-w-[130px]"
+                            style={{ backgroundColor: "#303380" }}
+                          >
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            <span className="font-medium">Starting...</span>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handleStart(item.id)}
+                            className="inline-flex items-center justify-center px-4 py-1.5 text-sm font-medium text-white rounded-md transition min-w-[130px]"
+                            style={{ backgroundColor: "#303380" }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = "#252a6b";
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = "#303380";
+                            }}
+                          >
+                            Start Exam
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -281,10 +374,43 @@ export default function StudentExamsPage() {
           </div>
         )}
       </div>
+
+      {deleteModal.open && deleteModal.item && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">
+              Remove Exam
+            </h2>
+            <p className="text-sm text-gray-600 mb-4">
+              {deleteModal.item.status === "IN_PROGRESS"
+                ? "Bu imtahan hazırda davam edir. İlk öncə imtahanı bitirin və ya müəllimlə əlaqə saxlayın."
+                : "Bu imtahanı siyahınızdan silmək istədiyinizə əminsiniz? Bu əməliyyat geri alınmayacaq."}
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={closeDeleteModal}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting || deleteModal.item.status === "IN_PROGRESS"}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-md bg-red-600 hover:bg-red-700 disabled:opacity-70 disabled:cursor-not-allowed transition-colors"
+              >
+                {deleting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4" />
+                )}
+                {deleting ? "Removing..." : "Confirm Remove"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
-
-
-

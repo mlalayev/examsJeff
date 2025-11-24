@@ -27,6 +27,7 @@ const createExamSchema = z.object({
   title: z.string().min(1).max(200),
   category: z.enum(["IELTS", "TOEFL", "SAT", "GENERAL_ENGLISH", "MATH", "KIDS"]),
   track: z.string().nullable().optional(),
+  durationMin: z.number().nullable().optional(), // Optional exam timer
   isActive: z.boolean().default(true),
   sections: z.array(sectionSchema).optional(),
 });
@@ -130,6 +131,7 @@ export async function POST(request: Request) {
         title: validatedData.title,
         category: validatedData.category,
         track: validatedData.track,
+        durationMin: validatedData.durationMin,
         isActive: validatedData.isActive ?? true,
         createdById: (user as any).id,
         sections: validatedData.sections ? {
@@ -146,8 +148,8 @@ export async function POST(request: Request) {
                   order: q.order,
                   prompt: {
                     ...q.prompt,
-                    // Add image to prompt if it exists
-                    ...(q.image ? { image: q.image } : {}),
+                    // Add imageUrl to prompt if image exists
+                    ...(q.image ? { imageUrl: q.image } : {}),
                   },
                   options: q.options,
                   answerKey: q.answerKey,

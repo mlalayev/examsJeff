@@ -89,6 +89,9 @@ export default function AdminStudentsPage() {
 
       if (res.ok) {
         await fetchStudents();
+        if (approve) {
+          alert("Student approved! They should logout and login again to access their dashboard.");
+        }
       } else {
         const data = await res.json();
         alert(data.error || "Failed to update approval status");

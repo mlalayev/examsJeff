@@ -1,9 +1,11 @@
 "use client";
 
 import { BaseQuestionProps } from "./types";
+import { QuestionImage } from "./QuestionImage";
 
 export function QMcqSingle({ question, value, onChange, readOnly }: BaseQuestionProps<number | null>) {
   const choices = question.options?.choices || [];
+  const imageUrl = question.prompt?.imageUrl;
 
   const handleChange = (idx: number) => {
     if (readOnly) return;
@@ -12,6 +14,7 @@ export function QMcqSingle({ question, value, onChange, readOnly }: BaseQuestion
 
   return (
     <div className="space-y-3">
+      <QuestionImage imageUrl={imageUrl} />
       {choices.map((choice: string, idx: number) => (
         <button
           key={idx}

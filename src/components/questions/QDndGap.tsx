@@ -1,9 +1,11 @@
 "use client";
 
 import { BaseQuestionProps } from "./types";
+import { QuestionImage } from "./QuestionImage";
 import { useMemo, useState } from "react";
 
 export function QDndGap({ question, value, onChange, readOnly, showWordBank = true, externalDraggedOption = null, onDropComplete }: BaseQuestionProps<Record<string, string>> & { showWordBank?: boolean; externalDraggedOption?: string | null; onDropComplete?: () => void }) {
+  const imageUrl = question.prompt?.imageUrl;
   let sentences: string[] = [];
   
   // Handle single sentence with blanks (for preposition/time expression questions)
@@ -145,7 +147,9 @@ export function QDndGap({ question, value, onChange, readOnly, showWordBank = tr
     const sentenceAnswers = Array.isArray(currentAnswers[index.toString()]) ? currentAnswers[index.toString()] : [];
     
     return (
-      <div className="space-y-4">
+      <div className="space-y-3">
+        <QuestionImage imageUrl={imageUrl} />
+        <div className="space-y-4">
         {/* Sentence with blank(s) */}
         <div className="flex items-center space-x-1 flex-wrap">
           {parts.map((part, partIndex) => (
@@ -198,6 +202,7 @@ export function QDndGap({ question, value, onChange, readOnly, showWordBank = tr
             </div>
           ))}
         </div>
+      </div>
       </div>
     );
   };

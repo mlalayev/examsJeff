@@ -87,14 +87,22 @@ export default function BranchAdminStudentsPage() {
 
   const approveStudent = async (studentId: string) => {
     try {
-      await fetch(`/api/admin/users/${studentId}/approve`, {
+      const res = await fetch(`/api/admin/users/${studentId}/approve`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ approved: true }),
       });
-      await loadData();
+      
+      if (res.ok) {
+        await loadData();
+        alert("Student approved! They should logout and login again to access their dashboard.");
+      } else {
+        const error = await res.json();
+        alert(error.error || "Failed to approve student");
+      }
     } catch (error) {
       console.error("Failed to approve student:", error);
+      alert("Failed to approve student");
     }
   };
 

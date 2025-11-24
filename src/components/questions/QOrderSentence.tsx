@@ -1,11 +1,13 @@
 "use client";
 
 import { BaseQuestionProps } from "./types";
+import { QuestionImage } from "./QuestionImage";
 import { useState, useEffect } from "react";
 
 export function QOrderSentence({ question, value, onChange, readOnly }: BaseQuestionProps<number[]>) {
   const tokens = Array.isArray(question.prompt?.tokens) ? question.prompt.tokens : [];
   const correctOrder = Array.isArray(value) ? value : tokens.map((_, idx) => idx);
+  const imageUrl = question.prompt?.imageUrl;
   
   // Shuffle tokens for display (only on mount, or if value is empty)
   const [displayOrder, setDisplayOrder] = useState<number[]>(() => {
