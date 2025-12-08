@@ -73,21 +73,27 @@ export default function RegisterPage() {
         throw new Error(data.error || "Registration failed");
       }
 
-      const signInResult = await signIn("credentials", {
-        email: formData.email,
-        password: formData.password,
-        redirect: false,
-      });
+      // Check if user is bootstrap admin (auto-approved)
+      const isBootstrapAdmin = data.user?.role === "ADMIN" && data.user?.approved === true;
 
-      if (signInResult?.error) {
-        setError("Registration successful, but login failed. Please try logging in manually.");
-      } else {
-        // Redirect based on role
-        let redirectUrl = "/dashboard/student";
-        if (formData.role === "TEACHER") {
-          redirectUrl = "/dashboard/teacher";
+      if (isBootstrapAdmin) {
+        // Only try to sign in if user is approved
+        const signInResult = await signIn("credentials", {
+          email: formData.email,
+          password: formData.password,
+          redirect: false,
+        });
+
+        if (signInResult?.error) {
+          setError("Registration successful, but login failed. Please try logging in manually.");
+          setLoading(false);
+          return;
         }
-        router.push(redirectUrl);
+
+        router.push("/dashboard/admin");
+      } else {
+        // User needs approval, don't try to sign in (this prevents 401 error)
+        router.push("/pending-approval");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
