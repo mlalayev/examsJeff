@@ -14,8 +14,8 @@ export default function Footer() {
           <div>
             <div className="font-semibold text-gray-900">Contact</div>
             <ul className="mt-2 text-sm text-gray-600 space-y-1">
-              <li>Email: support@jeff.ed</li>
-              <li>WhatsApp: +1 555 000 1122</li>
+              <li>Email: info@jeff.az</li>
+              <li>WhatsApp: +994 50 611 91 00</li>
             </ul>
           </div>
           <div>

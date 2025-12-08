@@ -29,6 +29,8 @@ export default function CreatorUsersPage() {
   const [branches, setBranches] = useState<any[]>([]);
   const [updating, setUpdating] = useState(false);
   const [usersLoading, setUsersLoading] = useState(true);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [tempRole, setTempRole] = useState("");
 
   useEffect(() => {
     if (status === "loading") return;
@@ -168,6 +170,37 @@ export default function CreatorUsersPage() {
       }
     } catch (error) {
       alert("Failed to update user");
+    }
+    setUpdating(false);
+  };
+
+  const handleQuickRoleChange = async (userId: string, currentRole: string, approved: boolean) => {
+    setEditingUserId(userId);
+    setTempRole(currentRole);
+  };
+
+  const handleSaveQuickRole = async (userId: string, approved: boolean) => {
+    setUpdating(true);
+    try {
+      const res = await fetch(`/api/creator/users/${userId}/approve`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          approved,
+          role: tempRole,
+        }),
+      });
+
+      if (res.ok) {
+        setEditingUserId(null);
+        fetchUsers(); // Refresh list
+        alert("Role updated successfully");
+      } else {
+        const data = await res.json();
+        alert(`Error: ${data.error}`);
+      }
+    } catch (error) {
+      alert("Failed to update role");
     }
     setUpdating(false);
   };
@@ -335,9 +368,55 @@ export default function CreatorUsersPage() {
                       {user.email}
                     </td>
                     <td className="px-3 sm:px-4 py-3 text-sm">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${roleColors[user.role]}`}>
-                        {user.role}
-                      </span>
+                      {editingUserId === user.id ? (
+                        <div className="flex items-center gap-2">
+                          <select
+                            value={tempRole}
+                            onChange={(e) => setTempRole(e.target.value)}
+                            className="px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:border-gray-400"
+                            autoFocus
+                          >
+                            <option value="STUDENT">STUDENT</option>
+                            <option value="TEACHER">TEACHER</option>
+                            <option value="ADMIN">ADMIN</option>
+                            <option value="BOSS">BOSS</option>
+                            <option value="BRANCH_ADMIN">BRANCH_ADMIN</option>
+                            <option value="BRANCH_BOSS">BRANCH_BOSS</option>
+                            <option value="CREATOR">CREATOR</option>
+                          </select>
+                          <button
+                            onClick={() => handleSaveQuickRole(user.id, user.approved)}
+                            disabled={updating}
+                            className="p-1 text-green-600 hover:text-green-700 disabled:opacity-50"
+                            title="Save"
+                          >
+                            <Check className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingUserId(null);
+                              setTempRole("");
+                            }}
+                            className="p-1 text-gray-400 hover:text-gray-600"
+                            title="Cancel"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${roleColors[user.role]}`}>
+                            {user.role}
+                          </span>
+                          <button
+                            onClick={() => handleQuickRoleChange(user.id, user.role, user.approved)}
+                            className="p-1 text-gray-400 hover:text-gray-600"
+                            title="Change role"
+                          >
+                            <Edit className="w-3 h-3" />
+                          </button>
+                        </div>
+                      )}
                     </td>
                     <td className="px-3 sm:px-4 py-3 text-sm text-gray-600">
                       {user.branch?.name || "—"}
