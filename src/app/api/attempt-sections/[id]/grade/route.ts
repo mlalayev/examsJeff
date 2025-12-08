@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireTeacher } from "@/lib/auth-utils";
-import { calculateOverallBand } from "@/lib/scoring";
 import { z } from "zod";
 
 const gradeSchema = z.object({
@@ -19,8 +18,9 @@ const gradeSchema = z.object({
 // POST /api/attempt-sections/[id]/grade - Submit grade for Writing/Speaking section
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const user = await requireTeacher();
     const teacherId = (user as any).id;
@@ -104,7 +104,8 @@ export async function POST(
         return s.bandScore!;
       });
       
-      overallBand = calculateOverallBand(sectionBands);
+      // Calculate overall band as average of section bands
+      overallBand = Math.round((sectionBands.reduce((sum, b) => sum + b, 0) / sectionBands.length) * 2) / 2;
       
       // Update attempt with new overall band
       await prisma.attempt.update({

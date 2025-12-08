@@ -90,7 +90,7 @@ export async function GET() {
             ...(role === "BRANCH_ADMIN" ? { branchId: branchId ?? undefined } : {}),
           }
         }
-      }),
+      }}),
       
       // Get pending grading sections (for quick list)
       prisma.attemptSection.findMany({
@@ -152,7 +152,7 @@ export async function GET() {
             ...(role === "BRANCH_ADMIN" ? { branchId: branchId ?? undefined } : {}),
           }
         }
-      })
+      }})
     ]);
     
     // REMOVED: avgResponseTime calculation (too expensive, not critical)

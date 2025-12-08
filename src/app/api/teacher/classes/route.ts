@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireTeacher } from "@/lib/auth";
+import { requireTeacher } from "@/lib/auth-utils";
 
 export async function GET() {
   try {

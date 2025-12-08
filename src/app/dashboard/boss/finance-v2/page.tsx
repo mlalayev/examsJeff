@@ -113,7 +113,7 @@ export default function BossFinanceV2Page() {
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             >
               {years.map((year) => (
-                <key={year} value={year}>
+                <option key={year} value={year}>
                   {year}
                 </option>
               ))}

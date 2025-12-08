@@ -123,8 +123,8 @@ export async function POST(request: Request) {
             student: { select: { id: true, name: true, email: true } },
             exam: { select: { id: true, title: true } }
           }
-        })
-      )
+        });
+      })
     );
     
     return NextResponse.json({

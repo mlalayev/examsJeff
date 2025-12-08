@@ -5,8 +5,9 @@ import { requireTeacher } from "@/lib/auth-utils";
 // GET /api/attempt-sections/[id] - Get section details for grading
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const user = await requireTeacher();
     const teacherId = (user as any).id;

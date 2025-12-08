@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Users, Calendar, Clock } from "lucide-react";
 import UnifiedLoading from "@/components/loading/UnifiedLoading";
@@ -26,7 +26,7 @@ interface Exam {
   totalDuration: number;
 }
 
-export default function AssignExamPage() {
+function AssignExamPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const examId = searchParams.get("examId");
@@ -293,5 +293,13 @@ export default function AssignExamPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AssignExamPage() {
+  return (
+    <Suspense fallback={<UnifiedLoading type="spinner" variant="spinner" size="md" />}>
+      <AssignExamPageContent />
+    </Suspense>
   );
 }

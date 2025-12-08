@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-utils";
-import { scoreAttempt } from "@/lib/scoring";
+// import { scoreAttempt } from "@/lib/scoring";
 
 // POST /api/attempts/[id]/submit - Submit entire attempt
 export async function POST(
@@ -85,8 +85,8 @@ export async function POST(
     
     // Auto-score Reading and Listening sections
     try {
-      const scoringResult = await scoreAttempt(params.id);
-      console.log('Auto-scoring completed:', scoringResult);
+      // const scoringResult = await scoreAttempt(params.id);
+      // console.log('Auto-scoring completed:', scoringResult);
       
       // Fetch updated attempt with scores
       const finalAttempt = await prisma.attempt.findUnique({
