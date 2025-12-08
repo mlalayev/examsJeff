@@ -18,6 +18,8 @@ export async function requireTeacher() {
   const user = await requireAuth();
   const role = (user as any).role;
   const approved = (user as any).approved ?? false;
+  // CREATOR has full access
+  if (role === "CREATOR") return user;
   // BOSS and BRANCH_ADMIN have teacher-level privileges
   if (role !== "TEACHER" && role !== "ADMIN" && role !== "BOSS" && role !== "BRANCH_ADMIN") {
     throw new Error("Forbidden: Teacher access required");
@@ -33,6 +35,8 @@ export async function requireStudent() {
   const user = await requireAuth();
   const role = (user as any).role;
   const approved = (user as any).approved ?? false;
+  // CREATOR has full access
+  if (role === "CREATOR") return user;
   // BOSS and BRANCH_ADMIN have student-level privileges (read-only contexts typically)
   if (role !== "STUDENT" && role !== "ADMIN" && role !== "BOSS" && role !== "BRANCH_ADMIN") {
     throw new Error("Forbidden: Student access required");
@@ -48,6 +52,9 @@ export async function requireAdmin() {
   const user = await requireAuth();
   const role = (user as any).role;
   
+  // CREATOR has full access
+  if (role === "CREATOR") return user;
+  
   if (role !== "ADMIN" && role !== "BOSS") {
     throw new Error("Forbidden: Admin access required");
   }
@@ -58,6 +65,8 @@ export async function requireAdmin() {
 export async function requireBoss() {
   const user = await requireAuth();
   const role = (user as any).role;
+  // CREATOR has full access
+  if (role === "CREATOR") return user;
   if (role !== "BOSS") {
     throw new Error("Forbidden: Boss access required");
   }
@@ -67,6 +76,8 @@ export async function requireBoss() {
 export async function requireBranchAdmin() {
   const user = await requireAuth();
   const role = (user as any).role;
+  // CREATOR has full access
+  if (role === "CREATOR") return user;
   if (role !== "BRANCH_ADMIN" && role !== "BOSS") {
     throw new Error("Forbidden: Branch admin or boss access required");
   }
@@ -74,8 +85,8 @@ export async function requireBranchAdmin() {
 }
 
 export function getScopedBranchId(user: any): string | null {
-  if (user.role === "BOSS" || user.role === "ADMIN") {
-    return null; // BOSS/ADMIN see all branches
+  if (user.role === "BOSS" || user.role === "ADMIN" || user.role === "CREATOR") {
+    return null; // BOSS/ADMIN/CREATOR see all branches
   }
   // BRANCH_ADMIN, BRANCH_BOSS, and TEACHER see only their branch
   return user.branchId || null;
@@ -85,8 +96,8 @@ export function assertSameBranchOrBoss(current: any, targetBranchId: string | nu
   const role = (current as any).role;
   const currentBranchId = (current as any).branchId ?? null;
   
-  // BOSS and ADMIN can access all branches
-  if (role === "BOSS" || role === "ADMIN") return;
+  // CREATOR, BOSS and ADMIN can access all branches
+  if (role === "CREATOR" || role === "BOSS" || role === "ADMIN") return;
   
   // If target has no branch, allow access (student might not be assigned to a branch yet)
   if (!targetBranchId) return;
@@ -105,6 +116,9 @@ export async function requireAdminOrBoss() {
   const user = await requireAuth();
   const role = (user as any).role;
   
+  // CREATOR has full access
+  if (role === "CREATOR") return user;
+  
   if (role !== "ADMIN" && role !== "BOSS") {
     throw new Error("Forbidden: Admin or Boss access required");
   }
@@ -118,6 +132,9 @@ export async function requireAdminOrBoss() {
 export async function requireBranchAdminOrBoss() {
   const user = await requireAuth();
   const role = (user as any).role;
+  
+  // CREATOR has full access
+  if (role === "CREATOR") return user;
   
   if (role !== "BRANCH_ADMIN" && role !== "BRANCH_BOSS" && role !== "ADMIN" && role !== "BOSS") {
     throw new Error("Forbidden: Branch admin, branch boss, admin, or boss access required");
@@ -133,6 +150,9 @@ export async function requireBranchBoss() {
   const user = await requireAuth();
   const role = (user as any).role;
   
+  // CREATOR has full access
+  if (role === "CREATOR") return user;
+  
   if (role !== "BRANCH_BOSS" && role !== "BOSS") {
     throw new Error("Forbidden: Branch boss or boss access required");
   }
@@ -146,6 +166,9 @@ export async function requireBranchBoss() {
 export async function requireAdminOrBranchAdmin() {
   const user = await requireAuth();
   const role = (user as any).role;
+  
+  // CREATOR has full access
+  if (role === "CREATOR") return user;
   
   if (role !== "ADMIN" && role !== "BRANCH_ADMIN" && role !== "BOSS") {
     throw new Error("Forbidden: Admin or Branch Admin access required");

@@ -78,6 +78,7 @@ export default function Navbar() {
     if (!session?.user) return null;
     
     const role = (session.user as any).role;
+    if (role === "CREATOR") return "/dashboard/creator";
     if (role === "STUDENT") return "/dashboard/student";
     if (role === "TEACHER") return "/dashboard/teacher";
     if (role === "ADMIN") return "/dashboard/admin";
@@ -88,6 +89,7 @@ export default function Navbar() {
 
   const getRoleDisplayName = (role: string) => {
     switch (role) {
+      case "CREATOR": return "System Creator";
       case "STUDENT": return "Student";
       case "TEACHER": return "Teacher";
       case "ADMIN": return "Admin";

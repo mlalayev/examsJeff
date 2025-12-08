@@ -259,17 +259,7 @@ export default function ClassRosterPage() {
       : "—"
   };
 
-  if (loading) {
-    return (
-      <div className="p-8">
-        <div className="flex items-center justify-center h-32">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-400"></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!classData) {
+  if (!classData && !loading) {
     return (
       <div className="p-8">
         <p>Class not found</p>
@@ -290,8 +280,10 @@ export default function ClassRosterPage() {
 
       {/* Minimal Header */}
       <div className="mb-12">
-        <h1 className="text-2xl font-medium text-gray-900">{classData.name}</h1>
-        <p className="text-gray-500 mt-1">Manage students in this class</p>
+        <h1 className="text-2xl font-medium text-gray-900">{classData?.name || "Class"}</h1>
+        <p className="text-gray-500 mt-1">
+          {classData ? "Manage students in this class" : "Loading class details..."}
+        </p>
       </div>
 
       {/* Compact Stats Row */}
@@ -340,7 +332,31 @@ export default function ClassRosterPage() {
 
       {/* Simple Table */}
       <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
-        {filteredRoster.length === 0 ? (
+        {loading ? (
+          <div className="p-4 sm:p-6">
+            <div className="animate-pulse space-y-4">
+              <div className="h-6 bg-gray-200 rounded w-1/4"></div>
+              <div className="space-y-3">
+                {[1, 2, 3, 4, 5].map((row) => (
+                  <div key={row} className="flex items-center gap-4">
+                    <div className="w-8 h-8 bg-gray-200 rounded-md"></div>
+                    <div className="flex-1">
+                      <div className="h-4 bg-gray-200 rounded w-1/3 mb-2"></div>
+                      <div className="h-3 bg-gray-200 rounded w-1/4"></div>
+                    </div>
+                    <div className="h-4 bg-gray-200 rounded w-24"></div>
+                    <div className="h-4 bg-gray-200 rounded w-20"></div>
+                    <div className="h-4 bg-gray-200 rounded w-16"></div>
+                    <div className="flex gap-2">
+                      <div className="w-6 h-6 bg-gray-200 rounded"></div>
+                      <div className="w-6 h-6 bg-gray-200 rounded"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : filteredRoster.length === 0 ? (
           <div className="text-center py-12 text-gray-500">
             <UserPlus className="w-8 h-8 mx-auto mb-2 text-gray-300" />
             <p>No students found</p>
@@ -407,15 +423,24 @@ export default function ClassRosterPage() {
                       {new Date(item.enrolledAt).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3 text-sm">
-                      {(userRole === "ADMIN" || userRole === "BOSS") && (
+                      <div className="flex items-center gap-2">
                         <button
-                          onClick={() => openAssignModal(item.student)}
-                          className="text-gray-400 hover:text-gray-600"
-                          title="Assign Exam"
+                          onClick={() => router.push(`/dashboard/teacher/students/${item.student.id}/attempts`)}
+                          className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                          title="View all attempts"
                         >
-                          <BookOpen className="w-4 h-4" />
+                          View Attempts
                         </button>
-                      )}
+                        {(userRole === "ADMIN" || userRole === "BOSS") && (
+                          <button
+                            onClick={() => openAssignModal(item.student)}
+                            className="text-gray-400 hover:text-gray-600"
+                            title="Assign Exam"
+                          >
+                            <BookOpen className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

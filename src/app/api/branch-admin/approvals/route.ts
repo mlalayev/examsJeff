@@ -12,7 +12,7 @@ export async function GET() {
 
     const users = await prisma.user.findMany({
       where: {
-        role: { in: ["STUDENT", "TEACHER"] },
+        role: { in: ["STUDENT", "TEACHER"], notIn: ["CREATOR"] },
         ...branchFilter,
         approved: false,
       },

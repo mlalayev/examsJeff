@@ -20,6 +20,7 @@ enum Role {
   BOSS
   BRANCH_ADMIN
   BRANCH_BOSS
+  CREATOR
 }
 
 enum ExamCategory {

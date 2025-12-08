@@ -18,7 +18,11 @@ export async function GET(request: Request) {
 
     // OPTIMIZED: use select instead of include, add limit
     const students = await prisma.user.findMany({
-      where,
+      where: {
+        ...where,
+        // Hide CREATOR accounts from everyone (belt and suspenders - CREATOR shouldn't be STUDENT anyway)
+        role: { not: "CREATOR" }
+      },
       select: {
         id: true,
         name: true,

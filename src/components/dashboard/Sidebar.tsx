@@ -24,6 +24,9 @@ import {
   CheckCircle,
   Home,
   Library,
+  Shield,
+  UserPlus,
+  Key,
 } from "lucide-react";
 
 type NavItem = {
@@ -42,6 +45,54 @@ export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
 
   const navItems: NavItem[] = [];
+
+  // CREATOR Navigation (Super Admin) - Everything in one dashboard
+  if (role === "CREATOR") {
+    navItems.push(
+      {
+        label: "Users",
+        href: "/dashboard/creator/users",
+        icon: Users,
+        color: "from-purple-600 to-blue-600",
+      },
+      {
+        label: "Students",
+        href: "/dashboard/creator/students",
+        icon: GraduationCap,
+        color: "from-green-500 to-green-600",
+      },
+      {
+        label: "Exams",
+        href: "/dashboard/creator/exams",
+        icon: BookOpen,
+        color: "from-orange-500 to-orange-600",
+      },
+      {
+        label: "Classes",
+        href: "/dashboard/creator/classes",
+        icon: ClipboardList,
+        color: "from-teal-500 to-teal-600",
+      },
+      {
+        label: "Branches",
+        href: "/dashboard/creator/branches",
+        icon: Building2,
+        color: "from-purple-500 to-purple-600",
+      },
+      {
+        label: "Finance",
+        href: "/dashboard/creator/finance",
+        icon: DollarSign,
+        color: "from-emerald-500 to-emerald-600",
+      },
+      {
+        label: "Create User",
+        href: "/dashboard/creator/create-user",
+        icon: UserPlus,
+        color: "from-green-500 to-green-600",
+      }
+    );
+  }
 
   // BOSS Navigation
   if (role === "BOSS") {
@@ -141,16 +192,12 @@ export default function Sidebar() {
         color: "from-purple-500 to-purple-600",
       },
       {
-        label: "Attempts",
-        href: "/dashboard/teacher/attempts",
-        icon: ClipboardList,
-        color: "from-emerald-500 to-emerald-600",
-      },
-      {
         label: "Reports",
         href: "/dashboard/teacher/reports",
         icon: BarChart3,
         color: "from-cyan-500 to-cyan-600",
+        disabled: true,
+        comingSoon: true,
       },
       {
         label: "Exams",
@@ -293,8 +340,10 @@ export default function Sidebar() {
               </>
             ) : (
               navItems.map((item) => {
-                const isActive =
-                  pathname === item.href || pathname.startsWith(item.href + "/");
+                // For CREATOR role, match exact paths only
+                const isActive = role === "CREATOR" 
+                  ? pathname === item.href
+                  : (pathname === item.href || pathname.startsWith(item.href + "/"));
                 const Icon = item.icon;
                 const isDisabled = item.disabled || item.comingSoon;
 

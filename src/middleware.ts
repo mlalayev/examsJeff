@@ -6,6 +6,11 @@ export default withAuth(
     const token = req.nextauth.token;
     const path = req.nextUrl.pathname;
 
+  // CREATOR has full access to everything - no restrictions
+  if (token?.role === "CREATOR") {
+    return NextResponse.next();
+  }
+
   // Student dashboard routes (must be approved unless elevated roles)
   if (path.startsWith("/dashboard/student")) {
     const approved = (token as any)?.approved ?? false;

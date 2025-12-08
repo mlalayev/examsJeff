@@ -28,12 +28,14 @@ export async function GET() {
         where: {
           role: "STUDENT",
           ...branchFilter,
+          NOT: { role: "CREATOR" }
         },
       }),
       prisma.user.count({
         where: {
           role: "TEACHER",
           ...branchFilter,
+          NOT: { role: "CREATOR" }
         },
       }),
       prisma.class.count({
@@ -43,7 +45,7 @@ export async function GET() {
       }),
       prisma.user.count({
         where: {
-          role: { in: ["STUDENT", "TEACHER"] },
+          role: { in: ["STUDENT", "TEACHER"], notIn: ["CREATOR"] },
           ...branchFilter,
           approved: false,
         },
@@ -55,6 +57,7 @@ export async function GET() {
       where: {
         role: "STUDENT",
         ...branchFilter,
+        NOT: { role: "CREATOR" }
       },
       select: {
         id: true,

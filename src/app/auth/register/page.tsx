@@ -82,9 +82,11 @@ export default function RegisterPage() {
       if (signInResult?.error) {
         setError("Registration successful, but login failed. Please try logging in manually.");
       } else {
-        const redirectUrl = formData.role === "STUDENT" 
-          ? "/dashboard/student" 
-          : "/dashboard/teacher";
+        // Redirect based on role
+        let redirectUrl = "/dashboard/student";
+        if (formData.role === "TEACHER") {
+          redirectUrl = "/dashboard/teacher";
+        }
         router.push(redirectUrl);
       }
     } catch (err) {

@@ -13,12 +13,24 @@ const registerSchema = z.object({
   branchId: z.string().min(1, "Branch is required"),
 });
 
+// Prevent registration of CREATOR accounts
+const RESERVED_EMAILS = ["creator@creator.com"];
+const RESERVED_ROLES = ["CREATOR", "ADMIN", "BOSS", "BRANCH_ADMIN", "BRANCH_BOSS"];
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     
     // Validate input
     const validatedData = registerSchema.parse(body);
+    
+    // Prevent registration with reserved emails
+    if (RESERVED_EMAILS.includes(validatedData.email.toLowerCase())) {
+      return NextResponse.json(
+        { error: "This email is reserved and cannot be used for registration" },
+        { status: 400 }
+      );
+    }
     
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({

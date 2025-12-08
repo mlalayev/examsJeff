@@ -11,6 +11,8 @@ export async function GET(request: Request) {
     const whereClause: any = {
       role: "TEACHER",
       approved: true, // Only approved teachers
+      // Hide CREATOR accounts from everyone
+      NOT: { role: "CREATOR" }
     };
 
     // Branch scoping

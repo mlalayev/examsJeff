@@ -19,6 +19,8 @@ export async function GET(request: Request) {
     // Build where clause
     const whereClause: any = {
       role: "STUDENT",
+      // Hide CREATOR accounts from everyone
+      NOT: { role: "CREATOR" }
     };
 
     // Branch scoping

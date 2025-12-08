@@ -10,6 +10,8 @@ export async function GET() {
     // Build where clause based on user role
     const whereClause: any = {
       role: "STUDENT",
+      // Hide CREATOR accounts from everyone
+      NOT: { role: "CREATOR" }
     };
     
     // If user has a specific branch, filter by it

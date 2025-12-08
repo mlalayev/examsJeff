@@ -21,7 +21,13 @@ function checkAnswerCorrectness(q: any, studentAnswer: any, answerKey: any): boo
     const accepted = answerKey?.answers || [];
     return accepted.some((a: string) => a.trim().toLowerCase() === normalized);
   } else if (q.qtype === "ORDER_SENTENCE") {
-    return false; // Legacy: not supported
+    const correctOrder = Array.isArray(answerKey?.order) ? answerKey.order : [];
+    if (!Array.isArray(studentAnswer) || correctOrder.length === 0) return false;
+    if (studentAnswer.length !== correctOrder.length) return false;
+    return studentAnswer.every(
+      (val: any, idx: number) =>
+        Number(val) === Number(correctOrder[idx])
+    );
   } else if (q.qtype === "DND_GAP") {
     const correctBlanks = answerKey?.blanks || [];
     if (studentAnswer && typeof studentAnswer === "object" && !Array.isArray(studentAnswer)) {

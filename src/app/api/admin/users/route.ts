@@ -15,6 +15,8 @@ export async function GET(request: Request) {
     
     const users = await prisma.user.findMany({
       where: {
+        // Hide CREATOR accounts from everyone
+        role: { not: "CREATOR" },
         ...(roleFilter && { role: roleFilter as any }),
         ...(search && {
           OR: [
