@@ -11,21 +11,10 @@ npm start
 ```
 
 Look for this message in the console:
-```
-✓ Creator account created successfully
-  Email: creator@creator.com
-  Password: murad123
-  Role: CREATOR (superadmin with full access)
-  Note: This account is hidden from all users
-```
+
 
 ### Step 2: Login
 
-1. Navigate to your login page
-2. Enter credentials:
-   - **Email**: `creator@creator.com`
-   - **Password**: `murad123`
-3. Click Login
 
 ### Step 3: Access Everything
 

@@ -11,10 +11,6 @@ You now have a fully functional **CREATOR Super Admin Dashboard** with comprehen
 npm run dev
 ```
 
-### 2. Login as CREATOR
-- **Email**: `creator@creator.com`
-- **Password**: `murad123`
-- **Dashboard URL**: `http://localhost:3000/dashboard/creator`
 
 ### 3. What You Can Do
 
@@ -247,7 +243,6 @@ The creator dashboard shows real-time stats:
 ## 🎯 Next Steps
 
 ### Recommended Actions:
-1. **Change Creator Password** - Update from default `murad123`
 2. **Create Test Accounts** - Test user creation for students
 3. **Practice Password Reset** - Familiarize yourself with the flow
 4. **Explore All Dashboards** - Click through each role's features
@@ -294,9 +289,6 @@ If you encounter any issues:
 
 **Everything is ready! Start your application and login as CREATOR to begin managing your system.**
 
-**Email:** `creator@creator.com`  
-**Password:** `murad123`  
-**Dashboard:** `http://localhost:3000/dashboard/creator`
 
 🎉 **Enjoy your complete control over the system!**
 

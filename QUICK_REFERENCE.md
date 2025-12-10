@@ -2,8 +2,6 @@
 
 ## 🔑 Login Credentials
 ```
-Email: creator@creator.com
-Password: murad123
 ```
 
 ## 🎯 Common Tasks

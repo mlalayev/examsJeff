@@ -6,9 +6,6 @@ The CREATOR account is a special super administrator account that has unrestrict
 
 ## Account Details
 
-- **Email**: `creator@creator.com`
-- **Password**: `murad123`
-- **Role**: `CREATOR`
 
 ## Features & Capabilities
 
@@ -72,10 +69,6 @@ The CREATOR account is automatically created when you start the application:
 
 ### Logging In
 
-1. Go to the login page
-2. Enter email: `creator@creator.com`
-3. Enter password: `murad123`
-4. You will be logged in with full system access
 
 ### Switching Between Dashboards
 

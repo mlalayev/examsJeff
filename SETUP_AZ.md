@@ -40,23 +40,12 @@ https://SAYTINIZIN_DOMENI.com/api/setup/creator?secret=aimentor-setup-secret-202
 ```
 
 **Uğurlu olsa görəcəksən:**
-```json
-{
-  "success": true,
-  "message": "Creator account created successfully",
-  "account": {
-    "email": "creator@creator.com",
-    "password": "murad123",
-    "role": "CREATOR"
-  }
-}
+
 ```
 
 ### 4-cü Addım: Login ol
 
 İndi sayta gir:
-- **Email:** `creator@creator.com`
-- **Password:** `murad123`
 
 ## Alternativ Yol: curl istifadə et
 
@@ -84,11 +73,8 @@ SETUP_SECRET=sizin-custom-secret
 ```
 
 ### ❓ "User with this email already exists" xətası
-Bu o deməkdir ki, `creator@creator.com` email-i artıq database-də var, amma CREATOR rolu yoxdur.
 
 Həll:
-1. Login olmağa çalış `creator@creator.com` / `murad123` ilə
-2. Olmursa, `/api/setup/creator?secret=...` yenidən çağır, o avtomatik update edəcək
 
 ### ❓ Registration işləmir - yeni hesab yaratmaq olmur
 Səbəblər:
@@ -100,9 +86,6 @@ Registration üçün branch mütləq lazımdır!
 
 ### ❓ Creator hesabı yarandı, amma login ola bilmirəm
 Yoxla:
-1. Email düzdür? → `creator@creator.com` (kiçik hərflərlə)
-2. Password düzdür? → `murad123` (heç bir boşluq olmadan)
-3. `/api/setup/check` ilə yoxla creator-un `approved: true` olduğunu
 
 ### ❓ Bu endpoint-ları sildikdən sonra problem olarmı?
 Xeyr. Creator hesabı yaradıldıqdan sonra bu endpoint-ları silə bilərsən:
@@ -159,7 +142,6 @@ Sonra User table-ində manual olaraq creator yarat:
 - email: `creator@creator.com`
 - role: `CREATOR`
 - approved: `true`
-- passwordHash: bcrypt hash of "murad123"
 
 Ya da mənə yaz, kömək edərəm! 😊
 

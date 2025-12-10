@@ -57,21 +57,8 @@ You can use:
 - Postman/Thunder Client
 
 2. **You should see:**
-```json
-{
-  "success": true,
-  "message": "Creator account created successfully",
-  "account": {
-    "email": "creator@creator.com",
-    "password": "murad123",
-    "role": "CREATOR"
-  }
-}
-```
 
-3. **Now you can login with:**
-   - Email: `creator@creator.com`
-   - Password: `murad123`
+
 
 ## Solution 2: Database Direct
 
@@ -82,14 +69,6 @@ If the API doesn't work, you can create the account directly in your database:
 ```bash
 npx prisma studio
 ```
-
-Then create a user with:
-- name: "System Creator"
-- email: "creator@creator.com"
-- passwordHash: `$2a$10$8X8qE5Z9Zg8Q8Q8Q8Q8Q8OqK5Z9Zg8Q8Q8Q8Q8Q8Q8Q8Q8Q8Q8Q8Q` (this is "murad123")
-- role: "CREATOR"
-- approved: true
-- branchId: (any existing branch ID)
 
 ### Using SQL:
 
@@ -133,11 +112,6 @@ Make sure you're using the correct secret. Check your environment variables or u
 This is normal. Regular registration is blocked for CREATOR role. Use the setup endpoint instead.
 
 ### Account created but can't login
-Check that:
-- The password is exactly `murad123`
-- The email is exactly `creator@creator.com`
-- The role is `CREATOR` (uppercase)
-- The account is approved (`approved: true`)
 
 ## Environment Variables
 

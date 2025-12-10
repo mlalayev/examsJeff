@@ -15,7 +15,6 @@ Successfully implemented a CREATOR super admin account with unrestricted access 
 - ✅ Created `src/instrumentation.ts` - Next.js startup hook
 - ✅ Updated `next.config.mjs` - Enabled instrumentation hook
 - ✅ Account is automatically created on first server startup
-- ✅ Credentials: `creator@creator.com` / `murad123`
 
 ### 3. Authentication & Authorization
 - ✅ Updated `src/middleware.ts` - CREATOR bypasses all route restrictions
@@ -90,7 +89,6 @@ Updated the following APIs to filter out CREATOR accounts:
 5. Logs success/failure to console
 
 ### During Authentication
-1. User logs in with creator@creator.com / murad123
 2. NextAuth verifies credentials normally
 3. Session includes `role: "CREATOR"`
 4. Middleware detects CREATOR role and bypasses all restrictions
@@ -107,7 +105,6 @@ Updated the following APIs to filter out CREATOR accounts:
 To verify the implementation works:
 
 - [ ] Start the server and check for "✓ Creator account created" in logs
-- [ ] Login with `creator@creator.com` / `murad123`
 - [ ] Access `/dashboard/student` - should work
 - [ ] Access `/dashboard/teacher` - should work
 - [ ] Access `/dashboard/admin` - should work
@@ -186,12 +183,6 @@ Before deploying to production:
 - Verify database connection
 - Ensure migrations are applied
 - Check `src/lib/init-creator.ts` for errors
-
-### Cannot login
-- Verify email: `creator@creator.com`
-- Verify password: `murad123`
-- Check database for user existence
-- Verify role is set to CREATOR
 
 ### CREATOR visible to others
 - Check API filters are applied correctly
