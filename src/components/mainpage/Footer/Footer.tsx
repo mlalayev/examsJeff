@@ -21,9 +21,9 @@ export default function Footer() {
           <div>
             <div className="font-semibold text-gray-900">Follow</div>
             <ul className="mt-2 text-sm text-gray-600 space-y-1">
-              <li>Instagram</li>
-              <li>LinkedIn</li>
-              <li>Twitter</li>
+              <li><a href="https://www.facebook.com/p/JEFF-Colleges-61564214197612/?mibextid=LQQJ4d%2F">Facebook</a></li>
+              <li><a href="https://www.linkedin.com/company/jeff-colleges/">LinkedIn</a></li>
+              <li><a href="https://www.instagram.com/jeffcolleges/?igsh=MWxjYXdoZjdyeTJobg%3D%3D%2F#">Instagram</a></li>
             </ul>
           </div>
           <div>
