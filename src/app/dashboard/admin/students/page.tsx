@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Users, Search, BookOpen, X, Calendar, ChevronRight, ChevronLeft, Target, FileText, CheckCircle } from "lucide-react";
+import { Users, Search, BookOpen, X, Calendar, ChevronRight, ChevronLeft, Target, FileText, CheckCircle, UserPlus } from "lucide-react";
 
 interface Student {
   id: string;
@@ -41,11 +41,39 @@ export default function AdminStudentsPage() {
   });
   const [assigning, setAssigning] = useState(false);
   const [jsonExams, setJsonExams] = useState<any[]>([]);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [branches, setBranches] = useState<any[]>([]);
+  const [createError, setCreateError] = useState("");
+  const [createFormData, setCreateFormData] = useState({
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    branchId: "",
+    phoneNumber: "",
+    dateOfBirth: "",
+    program: "",
+    paymentDate: "",
+    paymentAmount: "",
+  });
 
   useEffect(() => {
     // Optimize: fetch both in parallel
-    Promise.all([fetchStudents(), fetchExams()]);
+    Promise.all([fetchStudents(), fetchExams(), fetchBranches()]);
   }, [filterApproved]);
+
+  const fetchBranches = async () => {
+    try {
+      const res = await fetch("/api/branches");
+      if (res.ok) {
+        const data = await res.json();
+        setBranches(data.branches || []);
+      }
+    } catch (error) {
+      console.error("Error fetching branches:", error);
+    }
+  };
 
   const fetchStudents = async () => {
     try {
@@ -241,12 +269,122 @@ export default function AdminStudentsPage() {
   const pendingCount = students.filter(s => !s.approved).length;
   const approvedCount = students.filter(s => s.approved).length;
 
+  const openCreateModal = () => {
+    setShowCreateModal(true);
+    setCreateError("");
+    setCreateFormData({
+      name: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+      branchId: "",
+      phoneNumber: "",
+      dateOfBirth: "",
+      program: "",
+      paymentDate: "",
+      paymentAmount: "",
+    });
+    document.body.style.overflow = 'hidden';
+  };
+
+  const closeCreateModal = () => {
+    setShowCreateModal(false);
+    setCreateError("");
+    document.body.style.overflow = 'unset';
+  };
+
+  const handleCreateUser = async () => {
+    setCreateError("");
+
+    // Validation
+    if (!createFormData.name || !createFormData.email || !createFormData.password) {
+      setCreateError("Please fill in all required fields");
+      return;
+    }
+
+    if (createFormData.password.length < 6) {
+      setCreateError("Password must be at least 6 characters");
+      return;
+    }
+
+    if (createFormData.password !== createFormData.confirmPassword) {
+      setCreateError("Passwords do not match");
+      return;
+    }
+
+    if (!createFormData.phoneNumber || !createFormData.dateOfBirth || !createFormData.program) {
+      setCreateError("Phone number, date of birth, and program are required");
+      return;
+    }
+
+    if (!createFormData.branchId) {
+      setCreateError("Branch is required");
+      return;
+    }
+
+    setCreating(true);
+
+    try {
+      const payload = {
+        name: createFormData.name,
+        email: createFormData.email,
+        password: createFormData.password,
+        role: "STUDENT",
+        branchId: createFormData.branchId,
+        approved: true,
+        studentProfile: {
+          phoneNumber: createFormData.phoneNumber,
+          dateOfBirth: createFormData.dateOfBirth,
+          program: createFormData.program,
+          paymentDate: createFormData.paymentDate || null,
+          paymentAmount: createFormData.paymentAmount || null,
+        },
+      };
+
+      const res = await fetch("/api/admin/users/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        alert(`Student created successfully!\n\nEmail: ${createFormData.email}\nPassword: ${createFormData.password}\n\nStudent is automatically approved.`);
+        closeCreateModal();
+        fetchStudents();
+      } else {
+        setCreateError(data.error || "Failed to create student");
+      }
+    } catch (error) {
+      setCreateError("An error occurred while creating student");
+    } finally {
+      setCreating(false);
+    }
+  };
+
   return (
     <div className="p-4 sm:p-6 lg:p-8">
       {/* Minimal Header */}
-      <div className="mb-8 sm:mb-12">
-        <h1 className="text-xl sm:text-2xl font-medium text-gray-900">Students</h1>
-        <p className="text-gray-500 mt-1 text-sm sm:text-base">Manage student accounts and approvals</p>
+      <div className="mb-8 sm:mb-12 flex items-center justify-between">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-medium text-gray-900">Students</h1>
+          <p className="text-gray-500 mt-1 text-sm sm:text-base">Manage student accounts and approvals</p>
+        </div>
+        <button
+          onClick={openCreateModal}
+          className="px-4 py-2 text-white font-medium rounded-md transition flex items-center gap-2 text-sm"
+          style={{ backgroundColor: "#303380" }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = "#252a6b";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = "#303380";
+          }}
+        >
+          <UserPlus className="w-4 h-4" />
+          <span className="hidden sm:inline">Create Student</span>
+        </button>
       </div>
 
       {/* Compact Stats Row */}
@@ -852,6 +990,257 @@ export default function AdminStudentsPage() {
                     )}
                   </button>
                 )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Student Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-hidden border border-gray-200 flex flex-col">
+            {/* Header */}
+            <div className="px-6 py-4 flex items-center justify-between border-b border-gray-200 bg-gray-50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: "#303380" }}>
+                  <UserPlus className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">Create New Student</h2>
+                  <p className="text-sm text-gray-500">Add a new student (auto-approved)</p>
+                </div>
+              </div>
+              <button
+                onClick={closeCreateModal}
+                className="text-gray-400 hover:text-gray-600 rounded-md p-1.5 hover:bg-gray-100 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="px-6 py-6 overflow-y-auto flex-1">
+              {createError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-red-700 text-sm">{createError}</p>
+                </div>
+              )}
+
+              <div className="space-y-4">
+                {/* Basic Information */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Basic Information</h3>
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        Full Name <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={createFormData.name}
+                        onChange={(e) => setCreateFormData({ ...createFormData, name: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        placeholder="John Doe"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        Email Address <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        value={createFormData.email}
+                        onChange={(e) => setCreateFormData({ ...createFormData, email: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        placeholder="john@example.com"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Password */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Password</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        Password <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="password"
+                        required
+                        value={createFormData.password}
+                        onChange={(e) => setCreateFormData({ ...createFormData, password: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        placeholder="Min. 6 characters"
+                        minLength={6}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        Confirm Password <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="password"
+                        required
+                        value={createFormData.confirmPassword}
+                        onChange={(e) => setCreateFormData({ ...createFormData, confirmPassword: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        placeholder="Repeat password"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Student Details */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Student Details</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        Branch <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        required
+                        value={createFormData.branchId}
+                        onChange={(e) => setCreateFormData({ ...createFormData, branchId: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                      >
+                        <option value="">Select Branch</option>
+                        {branches.map((branch) => (
+                          <option key={branch.id} value={branch.id}>
+                            {branch.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        Phone Number <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="tel"
+                        required
+                        value={createFormData.phoneNumber}
+                        onChange={(e) => setCreateFormData({ ...createFormData, phoneNumber: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        placeholder="+994 XX XXX XX XX"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        Date of Birth <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        required
+                        value={createFormData.dateOfBirth}
+                        onChange={(e) => setCreateFormData({ ...createFormData, dateOfBirth: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        Program <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={createFormData.program}
+                        onChange={(e) => setCreateFormData({ ...createFormData, program: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        placeholder="e.g., General English A2"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Payment Information (Optional) */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Payment Information (Optional)</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        Payment Date
+                      </label>
+                      <input
+                        type="date"
+                        value={createFormData.paymentDate}
+                        onChange={(e) => setCreateFormData({ ...createFormData, paymentDate: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        Payment Amount (AZN)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={createFormData.paymentAmount}
+                        onChange={(e) => setCreateFormData({ ...createFormData, paymentAmount: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Info Box */}
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-xs text-blue-800">
+                    <strong>Note:</strong> The student will be automatically approved and can login immediately with the provided credentials.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  onClick={closeCreateModal}
+                  disabled={creating}
+                  className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition font-medium text-sm disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateUser}
+                  disabled={creating}
+                  className="px-4 py-2 text-white font-medium rounded-lg transition disabled:opacity-50 flex items-center gap-2 text-sm"
+                  style={{ backgroundColor: "#303380" }}
+                  onMouseEnter={(e) => {
+                    if (!e.currentTarget.disabled) {
+                      e.currentTarget.style.backgroundColor = "#252a6b";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!e.currentTarget.disabled) {
+                      e.currentTarget.style.backgroundColor = "#303380";
+                    }
+                  }}
+                >
+                  {creating ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="w-4 h-4" />
+                      Create Student
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           </div>

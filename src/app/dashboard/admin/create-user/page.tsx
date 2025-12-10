@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { UserPlus } from "lucide-react";
 
-export default function CreateUserPage() {
+export default function AdminCreateUserPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [branches, setBranches] = useState<any[]>([]);
@@ -15,7 +15,6 @@ export default function CreateUserPage() {
     password: "",
     role: "STUDENT" as string,
     branchId: "",
-    approved: false,
     phoneNumber: "",
     dateOfBirth: "",
     program: "",
@@ -34,7 +33,7 @@ export default function CreateUserPage() {
     }
 
     const role = (session.user as any)?.role;
-    if (role !== "CREATOR") {
+    if (role !== "ADMIN" && role !== "CREATOR") {
       router.push("/dashboard/student");
       return;
     }
@@ -81,7 +80,7 @@ export default function CreateUserPage() {
         password: formData.password,
         role: formData.role,
         branchId: formData.branchId || null,
-        approved: formData.approved,
+        approved: true, // Auto-approve for admin-created accounts
       };
 
       // Add student-specific fields if role is STUDENT
@@ -95,7 +94,7 @@ export default function CreateUserPage() {
         };
       }
 
-      const res = await fetch("/api/creator/users/create", {
+      const res = await fetch("/api/admin/users/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -104,8 +103,8 @@ export default function CreateUserPage() {
       const data = await res.json();
 
       if (res.ok) {
-        alert(`User created successfully!\n\nEmail: ${formData.email}\nPassword: ${formData.password}\n\nPlease save these credentials.`);
-        router.push("/dashboard/creator/users");
+        alert(`User created successfully!\n\nEmail: ${formData.email}\nPassword: ${formData.password}\n\nUser is automatically approved.`);
+        router.push("/dashboard/admin/students");
       } else {
         setError(data.error || "Failed to create user");
       }
@@ -127,7 +126,7 @@ export default function CreateUserPage() {
   }
 
   const role = (session?.user as any)?.role;
-  if (role !== "CREATOR") {
+  if (role !== "ADMIN" && role !== "CREATOR") {
     return null;
   }
 
@@ -137,16 +136,16 @@ export default function CreateUserPage() {
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <button
-            onClick={() => router.push("/dashboard/creator/users")}
+            onClick={() => router.push("/dashboard/admin/students")}
             className="text-sm text-gray-600 hover:text-gray-900 mb-2"
           >
-            ← Back to Users
+            ← Back to Students
           </button>
           <div className="flex items-center gap-3">
             <UserPlus className="w-8 h-8 text-blue-600" />
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Create New User</h1>
-              <p className="text-gray-600 mt-1">Manually create a user account</p>
+              <p className="text-gray-600 mt-1">Manually create a user account (auto-approved)</p>
             </div>
           </div>
         </div>
@@ -224,9 +223,6 @@ export default function CreateUserPage() {
                 <option value="TEACHER">Teacher</option>
                 <option value="ADMIN">Admin</option>
                 <option value="BRANCH_ADMIN">Branch Admin</option>
-                <option value="BRANCH_BOSS">Branch Boss</option>
-                <option value="BOSS">Boss</option>
-                <option value="CREATOR">Creator (Super Admin)</option>
               </select>
             </div>
 
@@ -335,20 +331,6 @@ export default function CreateUserPage() {
               </>
             )}
 
-            {/* Approved */}
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="approved"
-                checked={formData.approved}
-                onChange={(e) => setFormData({ ...formData, approved: e.target.checked })}
-                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-              />
-              <label htmlFor="approved" className="text-sm font-medium text-gray-700">
-                Approve user immediately (recommended for manually created accounts)
-              </label>
-            </div>
-
             {/* Submit */}
             <div className="flex gap-3 pt-4">
               <button
@@ -360,7 +342,7 @@ export default function CreateUserPage() {
               </button>
               <button
                 type="button"
-                onClick={() => router.push("/dashboard/creator/users")}
+                onClick={() => router.push("/dashboard/admin/students")}
                 className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-medium"
               >
                 Cancel
@@ -373,9 +355,9 @@ export default function CreateUserPage() {
         <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
           <h3 className="font-medium text-blue-900 mb-2">Important Notes:</h3>
           <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+            <li>All users created here are automatically approved</li>
             <li>The password will be shown only once after creation</li>
             <li>Make sure to save the credentials securely</li>
-            <li>You can reset passwords later from the Users page</li>
             <li>Students aged 5-10 may need password assistance</li>
           </ul>
         </div>
@@ -383,5 +365,4 @@ export default function CreateUserPage() {
     </div>
   );
 }
-
 

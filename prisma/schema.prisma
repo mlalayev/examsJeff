@@ -515,6 +515,11 @@ model StudentProfile {
   branch        Branch    @relation(fields: [branchId], references: [id], onDelete: Restrict)
   teacherId     String?
   teacher       User?     @relation("TeacherOfStudent", fields: [teacherId], references: [id], onDelete: SetNull)
+  phoneNumber   String
+  dateOfBirth   DateTime
+  program       String
+  paymentDate   DateTime?
+  paymentAmount Decimal?  @db.Decimal(10, 2)
   firstEnrollAt DateTime?
   monthlyFee    Decimal?  @db.Decimal(10, 2)
   createdAt     DateTime  @default(now())

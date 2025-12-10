@@ -174,6 +174,12 @@ export default function Sidebar() {
         color: "from-emerald-500 to-emerald-600",
       },
       {
+        label: "Create User",
+        href: "/dashboard/admin/create-user",
+        icon: UserPlus,
+        color: "from-green-500 to-green-600",
+      },
+      {
         label: "Seed Demo Data",
         href: "/dashboard/admin/seed",
         icon: Settings,

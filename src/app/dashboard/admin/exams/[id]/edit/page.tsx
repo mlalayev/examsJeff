@@ -769,7 +769,7 @@ export default function EditExamPage() {
                       <textarea
                         value={Array.isArray(editingQuestion.answerKey?.answers) ? editingQuestion.answerKey.answers.join("\n") : ""}
                         onChange={(e) => {
-                          const answers = e.target.value.split("\n").filter(a => a.trim());
+                          const answers = e.target.value.split("\n");
                           setEditingQuestion({
                             ...editingQuestion,
                             answerKey: { answers },

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/auth-utils";
+import { requireAdmin } from "@/lib/auth-utils";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
@@ -8,9 +8,9 @@ const createUserSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  role: z.enum(["STUDENT", "TEACHER", "ADMIN", "BOSS", "BRANCH_ADMIN", "BRANCH_BOSS", "CREATOR"]),
+  role: z.enum(["STUDENT", "TEACHER", "ADMIN", "BRANCH_ADMIN"]),
   branchId: z.string().nullable(),
-  approved: z.boolean().default(false),
+  approved: z.boolean().default(true),
   studentProfile: z.object({
     phoneNumber: z.string().min(1, "Phone number is required"),
     dateOfBirth: z.string().min(1, "Date of birth is required"),
@@ -20,16 +20,10 @@ const createUserSchema = z.object({
   }).optional(),
 });
 
-// POST /api/creator/users/create - Create a user manually (CREATOR only)
+// POST /api/admin/users/create - Create a user manually (ADMIN only)
 export async function POST(request: Request) {
   try {
-    const user = await requireAuth();
-    const role = (user as any).role;
-
-    // Only CREATOR can access this endpoint
-    if (role !== "CREATOR") {
-      return NextResponse.json({ error: "Forbidden: CREATOR access required" }, { status: 403 });
-    }
+    const user = await requireAdmin();
 
     const body = await request.json();
     const validatedData = createUserSchema.parse(body);
@@ -110,5 +104,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Failed to create user" }, { status: 500 });
   }
 }
-
 

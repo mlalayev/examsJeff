@@ -95,13 +95,6 @@ function LoginPageContent() {
               {loading ? "Signing in..." : "Sign In"}
             </button>
           </form>
-
-          <p className="mt-5 text-center text-sm text-slate-600">
-            Don't have an account?{" "}
-            <Link href="/auth/register" className="text-slate-900 hover:text-slate-700 font-medium">
-              Create account
-            </Link>
-          </p>
         </div>
       </div>
     </div>
