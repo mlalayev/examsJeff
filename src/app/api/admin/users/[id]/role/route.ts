@@ -4,7 +4,7 @@ import { requireAdminOrBoss } from "@/lib/auth-utils";
 import { z } from "zod";
 
 const roleSchema = z.object({
-  role: z.enum(["STUDENT", "TEACHER", "ADMIN", "BOSS", "BRANCH_ADMIN", "BRANCH_BOSS"])
+  role: z.enum(["STUDENT", "TEACHER", "ADMIN", "BOSS", "BRANCH_ADMIN", "BRANCH_BOSS", "PARENT"])
 });
 
 // PATCH /api/admin/users/[id]/role

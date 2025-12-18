@@ -73,6 +73,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ atte
     return NextResponse.json({
       id: attempt.id,
       examTitle: exam.title,
+      examCategory: exam.category,
       status: attempt.status,
       sections: exam.sections.map((s: any) => ({
         id: s.id,
@@ -94,6 +95,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ atte
         })),
       })),
       savedAnswers: (attempt.answers as any) || {},
+      sectionStartTimes: (attempt.answers as any)?.sectionStartTimes || {},
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

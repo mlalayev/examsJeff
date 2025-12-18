@@ -10,6 +10,7 @@ interface SectionListItemProps {
   };
   isActive: boolean;
   isLocked: boolean;
+  isDisabled?: boolean;
   answeredCount: number;
   totalCount: number;
   onClick: () => void;
@@ -20,6 +21,7 @@ export const SectionListItem = React.memo(function SectionListItem({
   section,
   isActive,
   isLocked,
+  isDisabled = false,
   answeredCount,
   totalCount,
   onClick,
@@ -28,11 +30,12 @@ export const SectionListItem = React.memo(function SectionListItem({
   return (
     <button
       onClick={onClick}
+      disabled={isDisabled}
       className={`w-full text-left px-3 py-2.5 rounded-lg transition-all ${
         isActive
           ? "border"
           : "border border-transparent"
-      }`}
+      } ${isDisabled ? "opacity-40 cursor-not-allowed" : ""}`}
       style={isActive ? { 
         backgroundColor: '#E0E1EC',
         borderColor: 'rgba(48, 51, 128, 0.2)',
@@ -43,13 +46,13 @@ export const SectionListItem = React.memo(function SectionListItem({
         color: 'rgba(48, 51, 128, 0.8)'
       }}
       onMouseEnter={(e) => {
-        if (!isActive) {
+        if (!isActive && !isDisabled) {
           e.currentTarget.style.backgroundColor = 'rgba(48, 51, 128, 0.05)';
           e.currentTarget.style.borderColor = 'rgba(48, 51, 128, 0.15)';
         }
       }}
       onMouseLeave={(e) => {
-        if (!isActive) {
+        if (!isActive && !isDisabled) {
           e.currentTarget.style.backgroundColor = 'rgba(48, 51, 128, 0.02)';
           e.currentTarget.style.borderColor = 'rgba(48, 51, 128, 0.1)';
         }

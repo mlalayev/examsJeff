@@ -21,8 +21,11 @@ interface ExamSidebarProps {
   progressStats: { answered: number; total: number; percentage: number };
   sectionStats: Record<string, { answered: number; total: number }>; // Key is section.id now
   submitting: boolean;
+  isSAT?: boolean;
+  currentSectionIndex?: number;
   onSectionClick: (sectionId: string) => Promise<void>;
   onSubmit: () => void | Promise<void>;
+  onSubmitModule?: () => void | Promise<void>;
   getShortSectionTitle: (title: string) => string;
 }
 
@@ -34,8 +37,11 @@ export const ExamSidebar = React.memo(function ExamSidebar({
   progressStats,
   sectionStats,
   submitting,
+  isSAT = false,
+  currentSectionIndex = 0,
   onSectionClick,
   onSubmit,
+  onSubmitModule,
   getShortSectionTitle,
 }: ExamSidebarProps) {
   return (
@@ -91,7 +97,7 @@ export const ExamSidebar = React.memo(function ExamSidebar({
             }
           `}</style>
           <div className="space-y-2 pr-1">
-            {sections.map((section) => {
+            {sections.map((section, index) => {
               const isActive = activeSection === section.id;
               const isLocked = lockedSections.has(section.id);
               const stats = sectionStats[section.id] || {
@@ -99,12 +105,16 @@ export const ExamSidebar = React.memo(function ExamSidebar({
                 total: 0,
               };
 
+              // SAT üçün: yalnız cari, keçmiş və locked modullar aktiv
+              const isDisabled = isSAT && index > currentSectionIndex && !isLocked;
+
               return (
                 <SectionListItem
                   key={section.id}
                   section={section}
                   isActive={isActive}
                   isLocked={isLocked}
+                  isDisabled={isDisabled}
                   answeredCount={stats.answered}
                   totalCount={stats.total}
                   onClick={() => onSectionClick(section.id)}
@@ -116,7 +126,29 @@ export const ExamSidebar = React.memo(function ExamSidebar({
         </div>
 
         {/* Submit Button - Bottom */}
-        <div className="mt-4 pt-4 border-t border-slate-200">
+        <div className="mt-4 pt-4 border-t border-slate-200 space-y-2">
+          {/* SAT Submit Module Button */}
+          {isSAT && onSubmitModule && (
+            <button
+              onClick={onSubmitModule}
+              disabled={submitting || lockedSections.has(activeSection)}
+              className="w-full px-4 py-2.5 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
+              style={{ backgroundColor: "#059669" }}
+              onMouseEnter={(e) => {
+                if (!submitting && !lockedSections.has(activeSection)) {
+                  e.currentTarget.style.backgroundColor = "#047857";
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "#059669";
+              }}
+            >
+              <Send className="w-4 h-4" />
+              Submit Module
+            </button>
+          )}
+
+          {/* Submit Exam Button */}
           <button
             onClick={onSubmit}
             disabled={submitting}

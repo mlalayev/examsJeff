@@ -283,6 +283,7 @@ export default function CreatorUsersPage() {
             <option value="ALL">All Roles</option>
             <option value="STUDENT">Students</option>
             <option value="TEACHER">Teachers</option>
+            <option value="PARENT">Parents</option>
             <option value="ADMIN">Admins</option>
             <option value="BOSS">Boss</option>
             <option value="BRANCH_ADMIN">Branch Admins</option>
@@ -378,6 +379,7 @@ export default function CreatorUsersPage() {
                           >
                             <option value="STUDENT">STUDENT</option>
                             <option value="TEACHER">TEACHER</option>
+                            <option value="PARENT">PARENT</option>
                             <option value="ADMIN">ADMIN</option>
                             <option value="BOSS">BOSS</option>
                             <option value="BRANCH_ADMIN">BRANCH_ADMIN</option>
@@ -591,6 +593,7 @@ export default function CreatorUsersPage() {
                           >
                             <option value="STUDENT">STUDENT</option>
                             <option value="TEACHER">TEACHER</option>
+                            <option value="PARENT">PARENT</option>
                             <option value="ADMIN">ADMIN</option>
                             <option value="BOSS">BOSS</option>
                             <option value="BRANCH_ADMIN">BRANCH_ADMIN</option>

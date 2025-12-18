@@ -18,6 +18,7 @@ import { QTF } from "@/components/questions/QTF";
 import { QInlineSelect } from "@/components/questions/QInlineSelect";
 import { QDndGap } from "@/components/questions/QDndGap";
 import { QOrderSentence } from "@/components/questions/QOrderSentence";
+import { SectionTimer } from "@/components/attempts/SectionTimer";
 
 interface Question {
   id: string;
@@ -33,6 +34,7 @@ interface Section {
   id: string;
   type: string;
   title: string;
+  durationMin: number;
   questions: Question[];
   order: number;
   status?: string;
@@ -42,9 +44,11 @@ interface Section {
 interface AttemptData {
   id: string;
   examTitle: string;
+  examCategory?: string;
   status: string;
   sections: Section[];
   savedAnswers: Record<string, Record<string, any>>;
+  sectionStartTimes?: Record<string, number>;
 }
 
 export default function AttemptRunnerPage() {
@@ -62,6 +66,8 @@ export default function AttemptRunnerPage() {
   const [submitting, setSubmitting] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [lockedSections, setLockedSections] = useState<Set<string>>(new Set()); // Now stores section.id
+  const [accessedSections, setAccessedSections] = useState<Set<string>>(new Set());
+  const [sectionStartTimes, setSectionStartTimes] = useState<Record<string, number>>({});
   const [wordBankPositions, setWordBankPositions] = useState<
     Record<string, number>
   >({});
@@ -82,6 +88,10 @@ export default function AttemptRunnerPage() {
     };
   }, []);
 
+  const getLocalStorageKey = (attemptId: string) => {
+    return `exam_answers_${attemptId}`;
+  };
+
   useEffect(() => {
     fetchAttempt();
   }, [attemptId]);
@@ -94,7 +104,22 @@ export default function AttemptRunnerPage() {
       
       setData(json);
       
-      // Convert savedAnswers from section.type to section.id
+      // Load answers from localStorage first (if exists)
+      let loadedAnswers: Record<string, Record<string, any>> = {};
+      if (typeof window !== "undefined") {
+        const storageKey = getLocalStorageKey(attemptId);
+        const savedAnswers = localStorage.getItem(storageKey);
+        if (savedAnswers) {
+          try {
+            loadedAnswers = JSON.parse(savedAnswers);
+          } catch (e) {
+            console.error("Failed to parse saved answers from localStorage:", e);
+            localStorage.removeItem(storageKey);
+          }
+        }
+      }
+      
+      // Convert savedAnswers from section.type to section.id (from server)
       if (json.savedAnswers && json.sections) {
         const convertedAnswers: Record<string, Record<string, any>> = {};
         json.sections.forEach((section: Section) => {
@@ -102,11 +127,90 @@ export default function AttemptRunnerPage() {
             convertedAnswers[section.id] = json.savedAnswers[section.type];
           }
         });
-        setAnswers(convertedAnswers);
+        
+        // Merge: localStorage takes priority, but merge with server data
+        Object.keys(convertedAnswers).forEach((sectionId) => {
+          if (!loadedAnswers[sectionId]) {
+            loadedAnswers[sectionId] = convertedAnswers[sectionId];
+          } else {
+            // Merge: keep localStorage answers, but add any new questions from server
+            loadedAnswers[sectionId] = {
+              ...convertedAnswers[sectionId],
+              ...loadedAnswers[sectionId],
+            };
+          }
+        });
+      }
+      
+      setAnswers(loadedAnswers);
+      
+      // Save merged answers back to localStorage
+      if (typeof window !== "undefined" && Object.keys(loadedAnswers).length > 0) {
+        const storageKey = getLocalStorageKey(attemptId);
+        localStorage.setItem(storageKey, JSON.stringify(loadedAnswers));
       }
 
+      // Load section start times
+      let finalStartTimes = json.sectionStartTimes || {};
+      const restoredAccessedSections = new Set<string>();
+
+      // Load timer data from localStorage for SAT exams
+      if (json.examCategory === "SAT" && typeof window !== "undefined") {
+        const restoredStartTimes: Record<string, number> = {};
+        json.sections.forEach((section: Section) => {
+          const storageKey = `sat_timer_${attemptId}_${section.id}`;
+          const savedTimer = localStorage.getItem(storageKey);
+          if (savedTimer) {
+            try {
+              const { startTime, endTime } = JSON.parse(savedTimer);
+              const now = Date.now();
+              
+              // Check if timer is still valid (not expired)
+              if (endTime && now < endTime && startTime) {
+                restoredStartTimes[section.id] = startTime;
+                restoredAccessedSections.add(section.id);
+              } else {
+                // Timer expired, remove from localStorage
+                localStorage.removeItem(storageKey);
+              }
+            } catch (e) {
+              console.error("Failed to parse saved timer:", e);
+              localStorage.removeItem(storageKey);
+            }
+          }
+        });
+        
+        // Merge with server data (localStorage takes priority)
+        finalStartTimes = { ...finalStartTimes, ...restoredStartTimes };
+      }
+
+      setSectionStartTimes(finalStartTimes);
+      setAccessedSections(restoredAccessedSections);
+
       if (json.sections && json.sections.length > 0) {
-        setActiveSection(json.sections[0].id);
+        const firstSection = json.sections[0];
+        setActiveSection(firstSection.id);
+        setAccessedSections((prev) => new Set([...prev, firstSection.id]));
+        // Start timer for first section if SAT
+        if (json.examCategory === "SAT" && !finalStartTimes[firstSection.id]) {
+          const storageKey = `sat_timer_${attemptId}_${firstSection.id}`;
+          const hasTimer = typeof window !== "undefined" && localStorage.getItem(storageKey);
+          if (!hasTimer) {
+            const newStartTimes = {
+              ...finalStartTimes,
+              [firstSection.id]: Date.now(),
+            };
+            setSectionStartTimes(newStartTimes);
+            // Save start time
+            fetch(`/api/attempts/${attemptId}/save`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                sectionStartTimes: newStartTimes,
+              }),
+            });
+          }
+        }
       }
     } catch (err) {
       console.error(err);
@@ -146,6 +250,7 @@ export default function AttemptRunnerPage() {
   );
 
   const setAnswer = (sectionId: string, questionId: string, value: any) => {
+    // SAT üçün locked section-larda dəyişiklik etmək olmaz
     if (lockedSections.has(sectionId)) return;
 
     setAnswers((prev) => {
@@ -153,6 +258,12 @@ export default function AttemptRunnerPage() {
         ...prev,
         [sectionId]: { ...(prev[sectionId] || {}), [questionId]: value },
       };
+
+      // Save to localStorage immediately
+      if (typeof window !== "undefined") {
+        const storageKey = getLocalStorageKey(attemptId);
+        localStorage.setItem(storageKey, JSON.stringify(newAnswers));
+      }
 
       if (autosaveTimerRef.current) {
         clearTimeout(autosaveTimerRef.current);
@@ -164,6 +275,66 @@ export default function AttemptRunnerPage() {
       return newAnswers;
     });
   };
+
+  const handleTimeExpired = useCallback(async (sectionId: string) => {
+    // Clear timer from localStorage
+    if (typeof window !== "undefined") {
+      const storageKey = `sat_timer_${attemptId}_${sectionId}`;
+      localStorage.removeItem(storageKey);
+    }
+
+    // Auto-save and lock the section
+    await saveSection(sectionId, answers[sectionId] || {});
+    setLockedSections((prev) => new Set([...prev, sectionId]));
+
+    alert("Time's up for this module! Your answers have been auto-saved and the module is now locked.");
+
+    // SAT üçün avtomatik növbəti modula keçid
+    if (data?.examCategory === "SAT" && data?.sections) {
+      const currentIndex = data.sections.findIndex((s) => s.id === sectionId);
+      if (currentIndex < data.sections.length - 1) {
+      const nextSection = data.sections[currentIndex + 1];
+      
+      // Clear old timer from localStorage for next section
+      if (typeof window !== "undefined") {
+        const nextStorageKey = `sat_timer_${attemptId}_${nextSection.id}`;
+        localStorage.removeItem(nextStorageKey);
+      }
+      
+      // Always start new timer for next section
+      const newStartTime = Date.now();
+      const newStartTimes = {
+        ...sectionStartTimes,
+        [nextSection.id]: newStartTime,
+      };
+      setSectionStartTimes(newStartTimes);
+      setAccessedSections((prev) => new Set([...prev, nextSection.id]));
+      
+      // Save start time
+      await fetch(`/api/attempts/${attemptId}/save`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sectionStartTimes: newStartTimes,
+        }),
+      });
+      
+      setActiveSection(nextSection.id);
+      } else {
+        // Last module
+        alert("This was the last module. You can now submit the entire exam.");
+      }
+    } else {
+      // Normal exam (non-SAT) - keep old behavior
+      if (data?.sections) {
+        const currentIndex = data.sections.findIndex((s) => s.id === sectionId);
+        if (currentIndex < data.sections.length - 1) {
+          const nextSection = data.sections[currentIndex + 1];
+          setActiveSection(nextSection.id);
+        }
+      }
+    }
+  }, [answers, data, saveSection, sectionStartTimes, accessedSections, lockedSections, attemptId]);
 
   const handleEndSection = async (sectionId: string) => {
     if (!data?.sections) return;
@@ -180,6 +351,71 @@ export default function AttemptRunnerPage() {
 
     await saveSection(sectionId, answers[sectionId] || {});
     setLockedSections((prev) => new Set([...prev, sectionId]));
+  };
+
+  const [showSubmitModuleModal, setShowSubmitModuleModal] = useState(false);
+
+  const handleSubmitModuleClick = () => {
+    if (!data?.examCategory || data.examCategory !== "SAT") return;
+    if (lockedSections.has(activeSection)) {
+      alert("This module is already submitted.");
+      return;
+    }
+    setShowSubmitModuleModal(true);
+  };
+
+  const handleSubmitModuleConfirm = async () => {
+    setShowSubmitModuleModal(false);
+    if (!data?.sections || !activeSection) return;
+
+    const currentSectionIndex = data.sections.findIndex((s) => s.id === activeSection);
+    if (currentSectionIndex === -1) return;
+
+    // Save current module
+    await saveSection(activeSection, answers[activeSection] || {});
+    
+    // Clear timer from localStorage
+    if (typeof window !== "undefined") {
+      const storageKey = `sat_timer_${attemptId}_${activeSection}`;
+      localStorage.removeItem(storageKey);
+    }
+    
+    // Lock current module
+    setLockedSections((prev) => new Set([...prev, activeSection]));
+
+    // Move to next module if exists
+    if (currentSectionIndex < data.sections.length - 1) {
+      const nextSection = data.sections[currentSectionIndex + 1];
+      
+      // Clear old timer from localStorage for next section
+      if (typeof window !== "undefined") {
+        const nextStorageKey = `sat_timer_${attemptId}_${nextSection.id}`;
+        localStorage.removeItem(nextStorageKey);
+      }
+      
+      // Always start new timer for next section
+      const newStartTime = Date.now();
+      const newStartTimes = {
+        ...sectionStartTimes,
+        [nextSection.id]: newStartTime,
+      };
+      setSectionStartTimes(newStartTimes);
+      setAccessedSections((prev) => new Set([...prev, nextSection.id]));
+      
+      // Save start time
+      await fetch(`/api/attempts/${attemptId}/save`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sectionStartTimes: newStartTimes,
+        }),
+      });
+      
+      setActiveSection(nextSection.id);
+    } else {
+      // Last module - show message
+      alert("This was the last module. You can now submit the entire exam.");
+    }
   };
 
   const handleSubmitClick = async () => {
@@ -205,6 +441,21 @@ export default function AttemptRunnerPage() {
           ? `${json.error}: ${json.details}`
           : json.error || "Failed to submit";
         throw new Error(errorMsg);
+      }
+
+      // Clear all localStorage data for this attempt
+      if (typeof window !== "undefined") {
+        // Clear answers
+        const answersKey = getLocalStorageKey(attemptId);
+        localStorage.removeItem(answersKey);
+        
+        // Clear all timers for this attempt
+        if (data?.sections) {
+          data.sections.forEach((section) => {
+            const timerKey = `sat_timer_${attemptId}_${section.id}`;
+            localStorage.removeItem(timerKey);
+          });
+        }
       }
 
       setShowSuccessModal(true);
@@ -445,12 +696,67 @@ export default function AttemptRunnerPage() {
 
   const handleSectionClick = useCallback(
     async (sectionId: string) => {
-                        if (activeSection && answers[activeSection]) {
-                          await saveSection(activeSection, answers[activeSection]);
-                        }
+      if (!data) return;
+
+      // SAT üçün locked section-lara qayıtmaq olmaz
+      if (data.examCategory === "SAT" && lockedSections.has(sectionId)) {
+        alert("This module has been completed and locked. You cannot make changes.");
+        return;
+      }
+
+      // SAT üçün yalnız növbəti modula keçmək olar (əvvəlki modullara yox)
+      if (data.examCategory === "SAT") {
+        const currentIndex = data.sections.findIndex((s) => s.id === activeSection);
+        const targetIndex = data.sections.findIndex((s) => s.id === sectionId);
+        
+        // Əgər istifadəçi əvvəlki modula keçmək istəyirsə
+        if (targetIndex < currentIndex) {
+          alert("You cannot go back to previous modules in SAT exams.");
+          return;
+        }
+
+        // Əgər istifadəçi cari modulu submit etmədən növbəti modula keçmək istəyirsə
+        if (targetIndex > currentIndex && !lockedSections.has(activeSection)) {
+          alert("Please submit the current module before moving to the next one.");
+          return;
+        }
+      }
+
+      // Save current section before switching
+      if (activeSection && answers[activeSection]) {
+        await saveSection(activeSection, answers[activeSection]);
+      }
+
+      // SAT üçün timer başlat (həmişə yenidən başlat)
+      if (data.examCategory === "SAT" && !lockedSections.has(sectionId)) {
+        // Clear old timer from localStorage
+        if (typeof window !== "undefined") {
+          const storageKey = `sat_timer_${attemptId}_${sectionId}`;
+          localStorage.removeItem(storageKey);
+        }
+        
+        // Always start new timer
+        const newStartTime = Date.now();
+        const newStartTimes = {
+          ...sectionStartTimes,
+          [sectionId]: newStartTime,
+        };
+        setSectionStartTimes(newStartTimes);
+        setAccessedSections((prev) => new Set([...prev, sectionId]));
+        
+        // Save start time immediately
+        await fetch(`/api/attempts/${attemptId}/save`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sectionStartTimes: newStartTimes,
+          }),
+        });
+      }
+
       setActiveSection(sectionId);
     },
-    [activeSection, answers, saveSection]
+    [activeSection, answers, saveSection, data, accessedSections, sectionStartTimes, lockedSections, attemptId]
   );
 
   const handleAnswerChange = useCallback(
@@ -525,10 +831,23 @@ export default function AttemptRunnerPage() {
   }
 
   const currentSection = data.sections.find((s) => s.id === activeSection);
+  const isSAT = data.examCategory === "SAT";
 
   return (
     <>
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+        {/* SAT Timer */}
+        {isSAT && currentSection && !lockedSections.has(currentSection.id) && (
+          <SectionTimer
+            sectionId={currentSection.id}
+            durationMinutes={currentSection.durationMin || 35}
+            startTime={sectionStartTimes[currentSection.id]}
+            isActive={activeSection === currentSection.id}
+            onTimeExpired={() => handleTimeExpired(currentSection.id)}
+            attemptId={attemptId}
+          />
+        )}
+
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-3 pb-3">
         <div className="flex flex-col lg:flex-row gap-6">
             <ExamSidebar
@@ -539,8 +858,11 @@ export default function AttemptRunnerPage() {
               progressStats={progressStats}
               sectionStats={sectionStats}
               submitting={submitting}
+              isSAT={isSAT}
+              currentSectionIndex={data.sections.findIndex((s) => s.id === activeSection)}
               onSectionClick={handleSectionClick}
               onSubmit={handleSubmitClick}
+              onSubmitModule={isSAT ? handleSubmitModuleClick : undefined}
               getShortSectionTitle={getShortSectionTitle}
             />
 
@@ -561,6 +883,66 @@ export default function AttemptRunnerPage() {
                    </div>
                 </div>
               </div>
+
+      {/* Submit Module Modal - SAT Only */}
+      {showSubmitModuleModal && isSAT && currentSection && (
+        <div 
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowSubmitModuleModal(false);
+          }}
+        >
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden">
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-gray-200">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-900">
+                    Submit Module
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    {currentSection.title}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="px-6 py-5">
+              <p className="text-sm text-gray-600 leading-relaxed mb-3">
+                Are you sure you want to submit <span className="font-semibold">{currentSection.title}</span>?
+              </p>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                <p className="text-xs text-amber-800">
+                  ⚠️ You will not be able to return to this module or change your answers after submission.
+                </p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex gap-3 justify-end">
+              <button
+                onClick={() => setShowSubmitModuleModal(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmitModuleConfirm}
+                className="px-4 py-2 text-sm font-medium text-white rounded-md hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors"
+                style={{ backgroundColor: "#059669" }}
+              >
+                Submit Module
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Submit Confirmation Modal */}
       {showSubmitModal && (

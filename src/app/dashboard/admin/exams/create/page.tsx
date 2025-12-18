@@ -67,7 +67,7 @@ const ALLOWED_SECTIONS_BY_CATEGORY: Record<ExamCategory, SectionType[]> = {
   KIDS: ["READING", "LISTENING", "GRAMMAR", "VOCABULARY"], // KIDS üçün WRITING və SPEAKING yoxdur
 };
 
-// Section type label-ləri
+// Section type label-ləri (default)
 const SECTION_TYPE_LABELS: Record<SectionType, string> = {
   READING: "Reading",
   LISTENING: "Listening",
@@ -75,6 +75,20 @@ const SECTION_TYPE_LABELS: Record<SectionType, string> = {
   SPEAKING: "Speaking",
   GRAMMAR: "Grammar",
   VOCABULARY: "Vocabulary",
+};
+
+// SAT üçün xüsusi label-lər:
+// - READING -> Verbal
+// - WRITING -> Math
+const getSectionLabel = (
+  type: SectionType,
+  selectedCategory: ExamCategory | null
+): string => {
+  if (selectedCategory === "SAT") {
+    if (type === "READING") return "Verbal";
+    if (type === "WRITING") return "Math";
+  }
+  return SECTION_TYPE_LABELS[type];
 };
 
 export default function CreateExamPage() {
@@ -145,11 +159,13 @@ export default function CreateExamPage() {
       return;
     }
     
+    const label = getSectionLabel(type, selectedCategory);
+
     const newSection: Section = {
       id: `section-${Date.now()}`,
       type,
-      title: `${SECTION_TYPE_LABELS[type]} Section`,
-      instruction: `Complete the ${SECTION_TYPE_LABELS[type].toLowerCase()} section`,
+      title: `${label} Section`,
+      instruction: `Complete the ${label.toLowerCase()} section`,
       durationMin: 15,
       order: sections.length,
       questions: [],
@@ -334,11 +350,23 @@ export default function CreateExamPage() {
               instructionData.audio = s.audio;
             }
             
+            // SAT üçün avtomatik duration təyin et
+            let sectionDurationMin = s.durationMin;
+            if (selectedCategory === "SAT") {
+              if (s.type === "WRITING") {
+                // Math sections: 35 dəqiqə
+                sectionDurationMin = 35;
+              } else if (s.type === "READING") {
+                // Verbal sections: 32 dəqiqə
+                sectionDurationMin = 32;
+              }
+            }
+            
             return {
               type: s.type,
               title: s.title,
               instruction: JSON.stringify(instructionData),
-              durationMin: s.durationMin,
+              durationMin: sectionDurationMin,
               order: s.order,
               questions: s.questions.map((q) => ({
               qtype: q.qtype,
@@ -523,7 +551,7 @@ export default function CreateExamPage() {
               </option>
               {allowedSectionTypes.map((type) => (
                 <option key={type} value={type}>
-                  {SECTION_TYPE_LABELS[type]}
+                  {getSectionLabel(type, selectedCategory)}
                 </option>
               ))}
             </select>

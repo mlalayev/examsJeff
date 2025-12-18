@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import UnifiedLoading from "@/components/loading/UnifiedLoading";
 
-type UserRole = "STUDENT" | "TEACHER" | "ADMIN" | "BRANCH_ADMIN" | "BRANCH_BOSS";
+type UserRole = "STUDENT" | "TEACHER" | "ADMIN" | "BRANCH_ADMIN" | "BRANCH_BOSS" | "PARENT";
 type ViewMode = "all" | "branch" | "role";
 type FilterType = "all" | UserRole;
 
@@ -231,6 +231,7 @@ export default function BossUsersPage() {
           <option value="all">All Roles</option>
           <option value="STUDENT">Students</option>
           <option value="TEACHER">Teachers</option>
+          <option value="PARENT">Parents</option>
           <option value="BRANCH_ADMIN">Branch Admins</option>
           <option value="BRANCH_BOSS">Branch Boss</option>
           <option value="ADMIN">Admins</option>

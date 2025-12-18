@@ -8,7 +8,7 @@ const createUserSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  role: z.enum(["STUDENT", "TEACHER", "ADMIN", "BRANCH_ADMIN"]),
+  role: z.enum(["STUDENT", "TEACHER", "ADMIN", "BRANCH_ADMIN", "PARENT"]),
   branchId: z.string().nullable(),
   approved: z.boolean().default(true),
   studentProfile: z.object({
@@ -17,6 +17,11 @@ const createUserSchema = z.object({
     program: z.string().min(1, "Program is required"),
     paymentDate: z.string().nullable().optional(),
     paymentAmount: z.string().nullable().optional(),
+  }).optional(),
+  teacherProfile: z.object({
+    phoneNumber: z.string().min(1, "Phone number is required"),
+    dateOfBirth: z.string().min(1, "Date of birth is required"),
+    program: z.string().min(1, "Program is required"),
   }).optional(),
 });
 
@@ -47,6 +52,16 @@ export async function POST(request: Request) {
       }
       if (!validatedData.branchId) {
         return NextResponse.json({ error: "Branch is required for student accounts" }, { status: 400 });
+      }
+    }
+
+    // Validate teacher profile for teachers
+    if (validatedData.role === "TEACHER") {
+      if (!validatedData.teacherProfile) {
+        return NextResponse.json({ error: "Teacher profile information is required for teacher accounts" }, { status: 400 });
+      }
+      if (!validatedData.branchId) {
+        return NextResponse.json({ error: "Branch is required for teacher accounts" }, { status: 400 });
       }
     }
 
@@ -90,6 +105,20 @@ export async function POST(request: Request) {
       });
     }
 
+    // Create teacher profile if role is TEACHER
+    if (validatedData.role === "TEACHER" && validatedData.teacherProfile) {
+      await prisma.teacherProfile.create({
+        data: {
+          teacherId: newUser.id,
+          phoneNumber: validatedData.teacherProfile.phoneNumber,
+          dateOfBirth: validatedData.teacherProfile.dateOfBirth
+            ? new Date(validatedData.teacherProfile.dateOfBirth)
+            : null,
+          program: validatedData.teacherProfile.program,
+        },
+      });
+    }
+
     return NextResponse.json({ 
       message: "User created successfully", 
       user: newUser 
@@ -104,4 +133,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Failed to create user" }, { status: 500 });
   }
 }
+
+
+
+
 

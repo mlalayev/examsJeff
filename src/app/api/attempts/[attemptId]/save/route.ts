@@ -11,10 +11,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
 
     console.log('Save attempt request:', { attemptId, studentId, bodyKeys: Object.keys(body) });
 
-    const { sectionType, answers } = body as { sectionType: string; answers: any };
-    if (!sectionType) {
-      console.error('Missing sectionType in save request');
-      return NextResponse.json({ error: "sectionType required" }, { status: 400 });
+    const { sectionType, answers, sectionStartTimes } = body as { 
+      sectionType?: string; 
+      answers?: any;
+      sectionStartTimes?: Record<string, number>;
+    };
+    
+    // Allow saving just sectionStartTimes without sectionType
+    if (!sectionType && !sectionStartTimes) {
+      console.error('Missing sectionType or sectionStartTimes in save request');
+      return NextResponse.json({ error: "sectionType or sectionStartTimes required" }, { status: 400 });
     }
 
     const attempt = await prisma.attempt.findUnique({ 
@@ -40,21 +46,38 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
 
     if (isJsonExam) {
       // For JSON exams, merge answers into attempt.answers
-      // Structure: { sectionType1: { q1: answer1, q2: answer2 }, sectionType2: { q3: answer3 } }
+      // Structure: { sectionType1: { q1: answer1, q2: answer2 }, sectionType2: { q3: answer3 }, sectionStartTimes: {...} }
       const currentAnswers = (attempt.answers as any) || {};
-      const updatedAnswers = { 
-        ...currentAnswers, 
-        [sectionType]: { 
-          ...(currentAnswers[sectionType] || {}), 
-          ...answers 
-        } 
-      };
+      
+      let updatedAnswers = { ...currentAnswers };
+      
+      // Update section answers if provided
+      if (sectionType && answers) {
+        updatedAnswers = {
+          ...updatedAnswers,
+          [sectionType]: { 
+            ...(currentAnswers[sectionType] || {}), 
+            ...answers 
+          }
+        };
+      }
+      
+      // Update section start times if provided
+      if (sectionStartTimes) {
+        updatedAnswers = {
+          ...updatedAnswers,
+          sectionStartTimes: {
+            ...(currentAnswers.sectionStartTimes || {}),
+            ...sectionStartTimes
+          }
+        };
+      }
 
-      console.log('Saving JSON exam answers:', { 
+      console.log('Saving JSON exam data:', { 
         sectionType, 
-        currentSectionCount: Object.keys(currentAnswers[sectionType] || {}).length, 
-        newCount: Object.keys(answers).length, 
-        totalSectionCount: Object.keys(updatedAnswers[sectionType]).length 
+        hasAnswers: !!answers,
+        hasTimes: !!sectionStartTimes,
+        answersCount: answers ? Object.keys(answers).length : 0
       });
 
       await prisma.attempt.update({
@@ -62,7 +85,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
         data: { answers: updatedAnswers },
       });
 
-      console.log('JSON exam answers saved successfully');
+      console.log('JSON exam data saved successfully');
       return NextResponse.json({ success: true, updated: 1 });
     } else {
       // For DB exams, update attempt_section

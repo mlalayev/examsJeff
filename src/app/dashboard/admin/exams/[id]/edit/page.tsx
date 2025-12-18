@@ -75,6 +75,39 @@ const SECTION_TYPE_LABELS: Record<SectionType, string> = {
   VOCABULARY: "Vocabulary",
 };
 
+// SAT üçün xüsusi label-lər:
+// - READING -> Verbal
+// - WRITING -> Math
+const getSectionLabel = (
+  type: SectionType,
+  selectedCategory: ExamCategory | null
+): string => {
+  if (selectedCategory === "SAT") {
+    if (type === "READING") return "Verbal";
+    if (type === "WRITING") return "Math";
+  }
+  return SECTION_TYPE_LABELS[type];
+};
+
+// SAT üçün avtomatik section adı yaratmaq
+const getSATSectionTitle = (
+  type: SectionType,
+  existingSections: Section[]
+): string => {
+  if (type === "WRITING") {
+    // Math sections
+    const mathSections = existingSections.filter(s => s.type === "WRITING");
+    const moduleNumber = mathSections.length + 1;
+    return `Math Module ${moduleNumber}`;
+  } else if (type === "READING") {
+    // Verbal sections
+    const verbalSections = existingSections.filter(s => s.type === "READING");
+    const moduleNumber = verbalSections.length + 1;
+    return `Verbal Module ${moduleNumber}`;
+  }
+  return `${getSectionLabel(type, "SAT")} Section`;
+};
+
 export default function EditExamPage() {
   const router = useRouter();
   const params = useParams();
@@ -123,12 +156,24 @@ export default function EditExamPage() {
             }
           }
           
+          // SAT üçün avtomatik duration təyin et
+          let durationMin = s.durationMin;
+          if (exam.category === "SAT") {
+            if (s.type === "WRITING") {
+              // Math sections: 35 dəqiqə
+              durationMin = 35;
+            } else if (s.type === "READING") {
+              // Verbal sections: 32 dəqiqə
+              durationMin = 32;
+            }
+          }
+          
           return {
             id: s.id,
             type: s.type,
             title: s.title,
             instruction: instructionData.text || "",
-            durationMin: s.durationMin,
+            durationMin: durationMin,
             order: s.order,
             passage: instructionData.passage || "",
             audio: instructionData.audio || "",
@@ -179,12 +224,40 @@ export default function EditExamPage() {
   const addSection = (type: SectionType) => {
     if (!selectedCategory) return;
     
+    // SAT üçün maksimum limit yoxlaması
+    if (selectedCategory === "SAT") {
+      if (type === "WRITING") {
+        // Math sections - maksimum 2
+        const mathCount = sections.filter(s => s.type === "WRITING").length;
+        if (mathCount >= 2) {
+          alert("SAT imtahanında maksimum 2 Math section ola bilər");
+          return;
+        }
+      } else if (type === "READING") {
+        // Verbal sections - maksimum 2
+        const verbalCount = sections.filter(s => s.type === "READING").length;
+        if (verbalCount >= 2) {
+          alert("SAT imtahanında maksimum 2 Verbal section ola bilər");
+          return;
+        }
+      }
+    }
+    
+    // SAT üçün avtomatik adlandırma
+    let sectionTitle: string;
+    if (selectedCategory === "SAT") {
+      sectionTitle = getSATSectionTitle(type, sections);
+    } else {
+      const label = getSectionLabel(type, selectedCategory);
+      sectionTitle = `${label} Section`;
+    }
+    
     const newSection: Section = {
       id: `section-${Date.now()}`,
       type,
-      title: `${SECTION_TYPE_LABELS[type]} Section`,
+      title: sectionTitle,
       instruction: "",
-      durationMin: 15,
+      durationMin: selectedCategory === "SAT" ? (type === "WRITING" ? 35 : 32) : 15,
       order: sections.length,
       questions: [],
     };
@@ -374,12 +447,24 @@ export default function EditExamPage() {
               instructionData.audio = s.audio;
             }
             
+            // SAT üçün avtomatik duration təyin et
+            let durationMin = s.durationMin;
+            if (selectedCategory === "SAT") {
+              if (s.type === "WRITING") {
+                // Math sections: 35 dəqiqə
+                durationMin = 35;
+              } else if (s.type === "READING") {
+                // Verbal sections: 32 dəqiqə
+                durationMin = 32;
+              }
+            }
+            
             return {
               id: s.id,
               type: s.type,
               title: s.title,
               instruction: JSON.stringify(instructionData),
-              durationMin: s.durationMin,
+              durationMin: durationMin,
               order: s.order,
               questions: s.questions.map((q) => ({
                 id: q.id,
@@ -504,16 +589,27 @@ export default function EditExamPage() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-medium text-gray-900">Sections</h2>
             <div className="flex items-center gap-2">
-              {allowedSectionTypes.map((type) => (
-                <button
-                  key={type}
-                  onClick={() => addSection(type)}
-                  className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 flex items-center gap-1"
-                >
-                  <Plus className="w-3 h-3" />
-                  Add {SECTION_TYPE_LABELS[type]}
-                </button>
-              ))}
+              {allowedSectionTypes.map((type) => {
+                // SAT üçün maksimum limit yoxlaması
+                const isDisabled = selectedCategory === "SAT" && (
+                  (type === "WRITING" && sections.filter(s => s.type === "WRITING").length >= 2) ||
+                  (type === "READING" && sections.filter(s => s.type === "READING").length >= 2)
+                );
+                
+                const label = getSectionLabel(type, selectedCategory);
+                
+                return (
+                  <button
+                    key={type}
+                    onClick={() => addSection(type)}
+                    disabled={isDisabled}
+                    className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Plus className="w-3 h-3" />
+                    Add {label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -533,7 +629,7 @@ export default function EditExamPage() {
                       {idx + 1}. {section.title}
                     </span>
                     <span className="text-xs px-2 py-1 bg-gray-100 rounded text-gray-600">
-                      {section.type}
+                      {getSectionLabel(section.type, selectedCategory)}
                     </span>
                     <span className="text-xs text-gray-500">
                       {section.questions.length} questions
