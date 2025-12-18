@@ -51,6 +51,10 @@ const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   ESSAY: "Essay",
 };
 
+// SAT per-section question limits
+const SAT_VERBAL_MAX_QUESTIONS = 27;
+const SAT_MATH_MAX_QUESTIONS = 22;
+
 const QUESTION_TYPE_GROUPS = {
   "Variantlı sual": ["MCQ_SINGLE", "MCQ_MULTI", "TF", "INLINE_SELECT"],
   "Açıq sual": ["SHORT_TEXT", "ESSAY"],
@@ -282,6 +286,22 @@ export default function EditExamPage() {
 
   const addQuestion = (qtype: QuestionType) => {
     if (!currentSection) return;
+
+    // SAT: enforce per-section question limits (Verbal / Math)
+    if (selectedCategory === "SAT") {
+      const isVerbal = currentSection.type === "READING";
+      const isMath = currentSection.type === "WRITING";
+      const currentCount = currentSection.questions.length;
+
+      if (isVerbal && currentCount >= SAT_VERBAL_MAX_QUESTIONS) {
+        alert(`Maximum ${SAT_VERBAL_MAX_QUESTIONS} questions allowed for Verbal sections in SAT exams`);
+        return;
+      }
+      if (isMath && currentCount >= SAT_MATH_MAX_QUESTIONS) {
+        alert(`Maximum ${SAT_MATH_MAX_QUESTIONS} questions allowed for Math sections in SAT exams`);
+        return;
+      }
+    }
 
     const defaultPrompt = getDefaultPrompt(qtype);
     const defaultOptions = getDefaultOptions(qtype);
@@ -631,9 +651,22 @@ export default function EditExamPage() {
                     <span className="text-xs px-2 py-1 bg-gray-100 rounded text-gray-600">
                       {getSectionLabel(section.type, selectedCategory)}
                     </span>
-                    <span className="text-xs text-gray-500">
-                      {section.questions.length} questions
-                    </span>
+                    {/* Question count + SAT limits */}
+                    {selectedCategory === "SAT" && section.type === "WRITING" && (
+                      <span className="text-xs text-gray-500">
+                        {section.questions.length}/{SAT_MATH_MAX_QUESTIONS}
+                      </span>
+                    )}
+                    {selectedCategory === "SAT" && section.type === "READING" && (
+                      <span className="text-xs text-gray-500">
+                        {section.questions.length}/{SAT_VERBAL_MAX_QUESTIONS}
+                      </span>
+                    )}
+                    {!(selectedCategory === "SAT" && (section.type === "WRITING" || section.type === "READING")) && (
+                      <span className="text-xs text-gray-500">
+                        {section.questions.length} questions
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <button

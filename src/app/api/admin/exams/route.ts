@@ -20,7 +20,8 @@ const sectionSchema = z.object({
   instruction: z.string(), // JSON string: {text, passage?, audio?}
   durationMin: z.number(),
   order: z.number(),
-  questions: z.array(questionSchema),
+  // Allow creating sections with zero questions (optional question list)
+  questions: z.array(questionSchema).optional(),
 });
 
 const createExamSchema = z.object({
