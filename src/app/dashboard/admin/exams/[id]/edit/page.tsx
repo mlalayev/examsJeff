@@ -230,14 +230,14 @@ export default function EditExamPage() {
         // Math sections - maksimum 2
         const mathCount = sections.filter(s => s.type === "WRITING").length;
         if (mathCount >= 2) {
-          alert("SAT imtahanında maksimum 2 Math section ola bilər");
+          alert("Maximum 2 Math sections allowed for SAT exams");
           return;
         }
       } else if (type === "READING") {
         // Verbal sections - maksimum 2
         const verbalCount = sections.filter(s => s.type === "READING").length;
         if (verbalCount >= 2) {
-          alert("SAT imtahanında maksimum 2 Verbal section ola bilər");
+          alert("Maximum 2 Verbal sections allowed for SAT exams");
           return;
         }
       }

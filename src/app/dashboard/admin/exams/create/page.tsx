@@ -91,6 +91,25 @@ const getSectionLabel = (
   return SECTION_TYPE_LABELS[type];
 };
 
+// SAT üçün avtomatik section adı yaratmaq
+const getSATSectionTitle = (
+  type: SectionType,
+  existingSections: Section[]
+): string => {
+  if (type === "WRITING") {
+    // Math sections
+    const mathSections = existingSections.filter(s => s.type === "WRITING");
+    const moduleNumber = mathSections.length + 1;
+    return `Math Module ${moduleNumber}`;
+  } else if (type === "READING") {
+    // Verbal sections
+    const verbalSections = existingSections.filter(s => s.type === "READING");
+    const moduleNumber = verbalSections.length + 1;
+    return `Verbal Module ${moduleNumber}`;
+  }
+  return `${getSectionLabel(type, "SAT")} Section`;
+};
+
 export default function CreateExamPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -159,14 +178,49 @@ export default function CreateExamPage() {
       return;
     }
     
+    // SAT üçün section limit: max 2 verbal və 2 math
+    if (selectedCategory === "SAT") {
+      if (type === "READING") {
+        const verbalCount = sections.filter(s => s.type === "READING").length;
+        if (verbalCount >= 2) {
+          alert("Maximum 2 Verbal sections allowed for SAT exams");
+          return;
+        }
+      } else if (type === "WRITING") {
+        const mathCount = sections.filter(s => s.type === "WRITING").length;
+        if (mathCount >= 2) {
+          alert("Maximum 2 Math sections allowed for SAT exams");
+          return;
+        }
+      }
+    }
+    
     const label = getSectionLabel(type, selectedCategory);
+    
+    // SAT üçün avtomatik ad ver
+    let sectionTitle = `${label} Section`;
+    if (selectedCategory === "SAT") {
+      sectionTitle = getSATSectionTitle(type, sections);
+    }
+    
+    // SAT üçün avtomatik duration təyin et
+    let sectionDurationMin = 15;
+    if (selectedCategory === "SAT") {
+      if (type === "WRITING") {
+        // Math sections: 35 dəqiqə
+        sectionDurationMin = 35;
+      } else if (type === "READING") {
+        // Verbal sections: 32 dəqiqə
+        sectionDurationMin = 32;
+      }
+    }
 
     const newSection: Section = {
       id: `section-${Date.now()}`,
       type,
-      title: `${label} Section`,
+      title: sectionTitle,
       instruction: `Complete the ${label.toLowerCase()} section`,
-      durationMin: 15,
+      durationMin: sectionDurationMin,
       order: sections.length,
       questions: [],
       passage: type === "READING" ? undefined : undefined,
