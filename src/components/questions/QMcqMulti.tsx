@@ -2,9 +2,11 @@
 
 import { BaseQuestionProps } from "./types";
 import { QuestionImage } from "./QuestionImage";
+import FormattedText from "../FormattedText";
 
 export function QMcqMulti({ question, value, onChange, readOnly }: BaseQuestionProps<number[]>) {
   const choices = question.options?.choices || [];
+  const choiceImages = question.options?.choiceImages || [];
   const selectedIndices = Array.isArray(value) ? value : [];
   const imageUrl = question.prompt?.imageUrl;
 
@@ -21,12 +23,13 @@ export function QMcqMulti({ question, value, onChange, readOnly }: BaseQuestionP
       <QuestionImage imageUrl={imageUrl} />
       {choices.map((choice: string, idx: number) => {
         const isSelected = selectedIndices.includes(idx);
+        const choiceImage = choiceImages[idx];
         return (
           <button
             key={idx}
             onClick={() => handleToggle(idx)}
             disabled={readOnly}
-            className={`w-full text-left flex items-center space-x-4 px-5 py-3.5 rounded-lg border transition-all shadow-sm ${
+            className={`w-full text-left flex items-start space-x-4 px-5 py-3.5 rounded-lg border transition-all shadow-sm ${
               isSelected
                 ? "border-transparent shadow-md"
                 : "bg-white hover:shadow border-gray-200"
@@ -53,7 +56,7 @@ export function QMcqMulti({ question, value, onChange, readOnly }: BaseQuestionP
               }
             }}
           >
-            <div className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+            <div className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-all mt-0.5 ${
               isSelected ? "border-white bg-white" : "border-gray-300 bg-white"
             }`}>
               {isSelected && (
@@ -62,7 +65,20 @@ export function QMcqMulti({ question, value, onChange, readOnly }: BaseQuestionP
                 </svg>
               )}
             </div>
-            <span className="text-base font-medium">{choice}</span>
+            <div className="flex-1">
+              <div className="text-base font-medium">
+                <FormattedText text={choice} />
+              </div>
+              {choiceImage && (
+                <div className="mt-2">
+                  <img
+                    src={choiceImage}
+                    alt={`Option ${idx + 1}`}
+                    className="max-h-32 w-auto rounded border border-gray-300"
+                  />
+                </div>
+              )}
+            </div>
           </button>
         );
       })}

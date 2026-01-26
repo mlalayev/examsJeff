@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, Plus, X, BookOpen, Save, Edit } from "lucide-react";
+import { ArrowLeft, Plus, X, BookOpen, Save, Edit, Info, Image } from "lucide-react";
+import TextFormattingPreview from "@/components/TextFormattingPreview";
+import QuestionPreview from "@/components/QuestionPreview";
 
 type ExamCategory = "IELTS" | "TOEFL" | "SAT" | "GENERAL_ENGLISH" | "MATH" | "KIDS";
 type SectionType = "READING" | "LISTENING" | "WRITING" | "SPEAKING" | "GRAMMAR" | "VOCABULARY";
@@ -50,10 +52,6 @@ const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   SHORT_TEXT: "Short Text Answer",
   ESSAY: "Essay",
 };
-
-// SAT per-section question limits
-const SAT_VERBAL_MAX_QUESTIONS = 27;
-const SAT_MATH_MAX_QUESTIONS = 22;
 
 const QUESTION_TYPE_GROUPS = {
   "Variantlı sual": ["MCQ_SINGLE", "MCQ_MULTI", "TF", "INLINE_SELECT"],
@@ -234,14 +232,14 @@ export default function EditExamPage() {
         // Math sections - maksimum 2
         const mathCount = sections.filter(s => s.type === "WRITING").length;
         if (mathCount >= 2) {
-          alert("Maximum 2 Math sections allowed for SAT exams");
+          alert("SAT imtahanında maksimum 2 Math section ola bilər");
           return;
         }
       } else if (type === "READING") {
         // Verbal sections - maksimum 2
         const verbalCount = sections.filter(s => s.type === "READING").length;
         if (verbalCount >= 2) {
-          alert("Maximum 2 Verbal sections allowed for SAT exams");
+          alert("SAT imtahanında maksimum 2 Verbal section ola bilər");
           return;
         }
       }
@@ -286,22 +284,6 @@ export default function EditExamPage() {
 
   const addQuestion = (qtype: QuestionType) => {
     if (!currentSection) return;
-
-    // SAT: enforce per-section question limits (Verbal / Math)
-    if (selectedCategory === "SAT") {
-      const isVerbal = currentSection.type === "READING";
-      const isMath = currentSection.type === "WRITING";
-      const currentCount = currentSection.questions.length;
-
-      if (isVerbal && currentCount >= SAT_VERBAL_MAX_QUESTIONS) {
-        alert(`Maximum ${SAT_VERBAL_MAX_QUESTIONS} questions allowed for Verbal sections in SAT exams`);
-        return;
-      }
-      if (isMath && currentCount >= SAT_MATH_MAX_QUESTIONS) {
-        alert(`Maximum ${SAT_MATH_MAX_QUESTIONS} questions allowed for Math sections in SAT exams`);
-        return;
-      }
-    }
 
     const defaultPrompt = getDefaultPrompt(qtype);
     const defaultOptions = getDefaultOptions(qtype);
@@ -651,22 +633,9 @@ export default function EditExamPage() {
                     <span className="text-xs px-2 py-1 bg-gray-100 rounded text-gray-600">
                       {getSectionLabel(section.type, selectedCategory)}
                     </span>
-                    {/* Question count + SAT limits */}
-                    {selectedCategory === "SAT" && section.type === "WRITING" && (
-                      <span className="text-xs text-gray-500">
-                        {section.questions.length}/{SAT_MATH_MAX_QUESTIONS}
-                      </span>
-                    )}
-                    {selectedCategory === "SAT" && section.type === "READING" && (
-                      <span className="text-xs text-gray-500">
-                        {section.questions.length}/{SAT_VERBAL_MAX_QUESTIONS}
-                      </span>
-                    )}
-                    {!(selectedCategory === "SAT" && (section.type === "WRITING" || section.type === "READING")) && (
-                      <span className="text-xs text-gray-500">
-                        {section.questions.length} questions
-                      </span>
-                    )}
+                    <span className="text-xs text-gray-500">
+                      {section.questions.length} questions
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
@@ -1070,18 +1039,26 @@ export default function EditExamPage() {
                     </div>
                   </div>
                 ) : (
-                  <textarea
-                    value={editingQuestion.prompt?.text || ""}
-                    onChange={(e) => {
-                      setEditingQuestion({
-                        ...editingQuestion,
-                        prompt: { ...editingQuestion.prompt, text: e.target.value },
-                      });
-                    }}
-                    placeholder="Enter the question text"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
-                    rows={3}
-                  />
+                  <>
+                    <textarea
+                      value={editingQuestion.prompt?.text || ""}
+                      onChange={(e) => {
+                        setEditingQuestion({
+                          ...editingQuestion,
+                          prompt: { ...editingQuestion.prompt, text: e.target.value },
+                        });
+                      }}
+                      placeholder="Enter the question text"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
+                      rows={3}
+                    />
+                    <div className="mt-2 text-xs text-gray-700 bg-yellow-50 p-2 rounded border border-yellow-200 flex items-center gap-2">
+                      <Info className="w-4 h-4 text-yellow-600 flex-shrink-0" />
+                      <span>
+                        <strong>Text Formatting:</strong> **bold** | __underline__ | ~~strikethrough~~ | —italic—
+                      </span>
+                    </div>
+                  </>
                 )}
               </div>
 
@@ -1093,42 +1070,112 @@ export default function EditExamPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Options
                   </label>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {(editingQuestion.options?.choices || []).map((opt: string, idx: number) => (
-                      <div key={idx} className="flex gap-2">
-                        <input
-                          type="text"
-                          value={opt}
-                          onChange={(e) => {
-                            const newOptions = [...(editingQuestion.options?.choices || [])];
-                            newOptions[idx] = e.target.value;
-                            setEditingQuestion({
-                              ...editingQuestion,
-                              options: {
-                                ...editingQuestion.options,
-                                choices: newOptions,
-                              },
-                            });
-                          }}
-                          className="flex-1 px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
-                          placeholder={`Option ${idx + 1}`}
-                        />
-                        <button
-                          onClick={() => {
-                            const newOptions = [...(editingQuestion.options?.choices || [])];
-                            newOptions.splice(idx, 1);
-                            setEditingQuestion({
-                              ...editingQuestion,
-                              options: {
-                                ...editingQuestion.options,
-                                choices: newOptions,
-                              },
-                            });
-                          }}
-                          className="px-2 py-2 text-red-700 bg-red-50 hover:bg-red-100 rounded-md"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
+                      <div key={idx} className="space-y-2">
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={opt}
+                            onChange={(e) => {
+                              const newOptions = [...(editingQuestion.options?.choices || [])];
+                              newOptions[idx] = e.target.value;
+                              setEditingQuestion({
+                                ...editingQuestion,
+                                options: {
+                                  ...editingQuestion.options,
+                                  choices: newOptions,
+                                },
+                              });
+                            }}
+                            className="flex-1 px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
+                            placeholder={`Option ${idx + 1}`}
+                          />
+                          <label className="cursor-pointer">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+
+                                const formData = new FormData();
+                                formData.append("file", file);
+
+                                try {
+                                  const res = await fetch("/api/upload", {
+                                    method: "POST",
+                                    body: formData,
+                                  });
+                                  const data = await res.json();
+                                  
+                                  if (data.url) {
+                                    const newOptionsImages = [...(editingQuestion.options?.choiceImages || [])];
+                                    newOptionsImages[idx] = data.url;
+                                    setEditingQuestion({
+                                      ...editingQuestion,
+                                      options: {
+                                        ...editingQuestion.options,
+                                        choiceImages: newOptionsImages,
+                                      },
+                                    });
+                                  }
+                                } catch (error) {
+                                  console.error("Upload error:", error);
+                                  alert("Failed to upload image");
+                                }
+                              }}
+                            />
+                            <div className="px-2 py-2 text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors">
+                              <Image className="w-3 h-3 sm:w-4 sm:h-4" />
+                            </div>
+                          </label>
+                          <button
+                            onClick={() => {
+                              const newOptions = [...(editingQuestion.options?.choices || [])];
+                              newOptions.splice(idx, 1);
+                              const newImages = [...(editingQuestion.options?.choiceImages || [])];
+                              newImages.splice(idx, 1);
+                              setEditingQuestion({
+                                ...editingQuestion,
+                                options: {
+                                  ...editingQuestion.options,
+                                  choices: newOptions,
+                                  choiceImages: newImages,
+                                },
+                              });
+                            }}
+                            className="px-2 py-2 text-red-700 bg-red-50 hover:bg-red-100 rounded-md"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                        {editingQuestion.options?.choiceImages?.[idx] && (
+                          <div className="relative inline-block">
+                            <img
+                              src={editingQuestion.options.choiceImages[idx]}
+                              alt={`Option ${idx + 1}`}
+                              className="h-20 w-auto rounded border border-gray-200"
+                            />
+                            <button
+                              onClick={() => {
+                                const newImages = [...(editingQuestion.options?.choiceImages || [])];
+                                newImages[idx] = undefined;
+                                setEditingQuestion({
+                                  ...editingQuestion,
+                                  options: {
+                                    ...editingQuestion.options,
+                                    choiceImages: newImages,
+                                  },
+                                });
+                              }}
+                              className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 text-xs"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        )}
                       </div>
                     ))}
                     <button
@@ -1257,6 +1304,9 @@ export default function EditExamPage() {
                 )}
               </div>
             </div>
+
+            {/* Question Preview */}
+            <QuestionPreview question={editingQuestion} />
 
             <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-gray-200">
               <button

@@ -5,7 +5,7 @@ import { z } from "zod";
 
 const schema = z.object({
   approved: z.boolean(),
-  role: z.enum(["STUDENT", "TEACHER", "ADMIN", "BOSS", "BRANCH_ADMIN", "BRANCH_BOSS", "CREATOR", "PARENT"]).optional(),
+  role: z.enum(["STUDENT", "TEACHER", "ADMIN", "BOSS", "BRANCH_ADMIN", "BRANCH_BOSS", "CREATOR"]).optional(),
   branchId: z.string().nullable().optional(),
 });
 

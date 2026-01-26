@@ -2,6 +2,7 @@
 
 import { BaseQuestionProps } from "./types";
 import { useState } from "react";
+import FormattedText from "../FormattedText";
 
 export function QGap({ question, value, onChange, readOnly }: BaseQuestionProps<Record<string, string>>) {
   const sentences = question.prompt?.sentences || [];
@@ -106,7 +107,7 @@ export function QGap({ question, value, onChange, readOnly }: BaseQuestionProps<
                     : "bg-white border-gray-200 text-gray-700 cursor-move hover:border-gray-900 hover:bg-gray-50"
                 }`}
               >
-                {option}
+                <FormattedText text={option} />
               </div>
             );
           })}

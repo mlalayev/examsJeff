@@ -60,14 +60,14 @@ export default function CreateUserPage() {
       return;
     }
 
-    // Validate student/teacher-specific fields
-    if (formData.role === "STUDENT" || formData.role === "TEACHER") {
+    // Validate student-specific fields
+    if (formData.role === "STUDENT") {
       if (!formData.phoneNumber || !formData.dateOfBirth || !formData.program) {
-        setError("Phone number, date of birth, and program are required for students and teachers");
+        setError("Phone number, date of birth, and program are required for students");
         return;
       }
       if (!formData.branchId) {
-        setError("Branch is required for students and teachers");
+        setError("Branch is required for students");
         return;
       }
     }
@@ -92,15 +92,6 @@ export default function CreateUserPage() {
           program: formData.program,
           paymentDate: formData.paymentDate || null,
           paymentAmount: formData.paymentAmount || null,
-        };
-      }
-
-      // Add teacher-specific fields if role is TEACHER
-      if (formData.role === "TEACHER") {
-        payload.teacherProfile = {
-          phoneNumber: formData.phoneNumber,
-          dateOfBirth: formData.dateOfBirth,
-          program: formData.program,
         };
       }
 
@@ -231,7 +222,6 @@ export default function CreateUserPage() {
               >
                 <option value="STUDENT">Student</option>
                 <option value="TEACHER">Teacher</option>
-                <option value="PARENT">Parent</option>
                 <option value="ADMIN">Admin</option>
                 <option value="BRANCH_ADMIN">Branch Admin</option>
                 <option value="BRANCH_BOSS">Branch Boss</option>
@@ -243,13 +233,13 @@ export default function CreateUserPage() {
             {/* Branch */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Branch {(formData.role === "STUDENT" || formData.role === "TEACHER") && <span className="text-red-500">*</span>}
+                Branch {formData.role === "STUDENT" && <span className="text-red-500">*</span>}
               </label>
               <select
                 value={formData.branchId}
                 onChange={(e) => setFormData({ ...formData, branchId: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required={formData.role === "STUDENT" || formData.role === "TEACHER"}
+                required={formData.role === "STUDENT"}
               >
                 <option value="">No Branch</option>
                 {branches.map((branch) => (
@@ -259,9 +249,7 @@ export default function CreateUserPage() {
                 ))}
               </select>
               <p className="text-xs text-gray-500 mt-1">
-                {formData.role === "STUDENT" || formData.role === "TEACHER"
-                  ? "Required for students and teachers"
-                  : "Optional - assign user to a branch"}
+                {formData.role === "STUDENT" ? "Required for students" : "Optional - assign user to a branch"}
               </p>
             </div>
 
@@ -342,59 +330,6 @@ export default function CreateUserPage() {
                       placeholder="0.00"
                     />
                     <p className="text-xs text-gray-500 mt-1">Payment amount in AZN</p>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Teacher-specific fields (no payment info) */}
-            {formData.role === "TEACHER" && (
-              <>
-                <div className="border-t pt-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Teacher Information</h3>
-
-                  {/* Phone Number */}
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Phone Number *
-                    </label>
-                    <input
-                      type="tel"
-                      required
-                      value={formData.phoneNumber}
-                      onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="+994 XX XXX XX XX"
-                    />
-                  </div>
-
-                  {/* Date of Birth */}
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Date of Birth *
-                    </label>
-                    <input
-                      type="date"
-                      required
-                      value={formData.dateOfBirth}
-                      onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  {/* Program / Subject */}
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Program / Subject *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.program}
-                      onChange={(e) => setFormData({ ...formData, program: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="e.g., General English, IELTS, Math"
-                    />
                   </div>
                 </div>
               </>

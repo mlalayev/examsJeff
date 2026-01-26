@@ -2,6 +2,7 @@
 
 import { BaseQuestionProps } from "./types";
 import { QuestionImage } from "./QuestionImage";
+import FormattedText from "../FormattedText";
 
 export function QInlineSelect({ question, value, onChange, readOnly }: BaseQuestionProps<number | null>) {
   const choices = question.options?.choices || [];
@@ -47,6 +48,7 @@ export function QInlineSelect({ question, value, onChange, readOnly }: BaseQuest
         </option>
         {choices.map((choice: string, idx: number) => (
           <option key={idx} value={idx} style={{ color: '#303380' }}>
+            {/* Note: HTML options can't have nested formatting, so we show raw text */}
             {choice}
           </option>
         ))}

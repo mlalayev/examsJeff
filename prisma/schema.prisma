@@ -21,7 +21,6 @@ enum Role {
   BRANCH_ADMIN
   BRANCH_BOSS
   CREATOR
-  PARENT
 }
 
 enum ExamCategory {
@@ -101,9 +100,6 @@ model User {
   // Student Profile relations
   studentProfile   StudentProfile?  @relation("StudentProfileUser")
   studentsTeaching StudentProfile[] @relation("TeacherOfStudent")
-
-  // Teacher profile
-  teacherProfile   TeacherProfile?
 
   // Tuition Payment relations
   tuitionPayments TuitionPayment[] @relation("StudentTuitionPayments")
@@ -519,11 +515,6 @@ model StudentProfile {
   branch        Branch    @relation(fields: [branchId], references: [id], onDelete: Restrict)
   teacherId     String?
   teacher       User?     @relation("TeacherOfStudent", fields: [teacherId], references: [id], onDelete: SetNull)
-  phoneNumber   String
-  dateOfBirth   DateTime
-  program       String
-  paymentDate   DateTime?
-  paymentAmount Decimal?  @db.Decimal(10, 2)
   firstEnrollAt DateTime?
   monthlyFee    Decimal?  @db.Decimal(10, 2)
   createdAt     DateTime  @default(now())
@@ -532,19 +523,6 @@ model StudentProfile {
   @@index([branchId])
   @@index([teacherId])
   @@map("student_profiles")
-}
-
-model TeacherProfile {
-  id          String   @id @default(cuid())
-  teacherId   String   @unique
-  teacher     User     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-  phoneNumber String
-  dateOfBirth DateTime?
-  program     String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("teacher_profiles")
 }
 
 model TuitionPayment {

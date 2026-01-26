@@ -50,8 +50,6 @@ export async function GET(
   }
 }
 
-// DELETE exam - Cascade delete configured in Prisma schema
-// When exam is deleted, all related bookings and attempts are automatically deleted
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ examId: string }> }
@@ -60,16 +58,27 @@ export async function DELETE(
     await requireAdminOrBranchAdmin();
     const { examId } = await params;
     
-    // Check if exam exists
+    // Check if exam has bookings
     const exam = await prisma.exam.findUnique({
-      where: { id: examId }
+      where: { id: examId },
+      include: {
+        _count: {
+          select: { bookings: true }
+        }
+      }
     });
     
     if (!exam) {
       return NextResponse.json({ error: "Exam not found" }, { status: 404 });
     }
     
-    // Delete exam (cascade will automatically delete bookings and attempts)
+    if (exam._count.bookings > 0) {
+      return NextResponse.json(
+        { error: `Cannot delete exam with ${exam._count.bookings} booking(s). Set inactive instead.` },
+        { status: 400 }
+      );
+    }
+    
     await prisma.exam.delete({
       where: { id: examId }
     });

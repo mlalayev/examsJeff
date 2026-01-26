@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import FormattedText from "../FormattedText";
 
 interface Question {
   id: string;
@@ -80,7 +81,7 @@ export const QuestionCard = React.memo(function QuestionCard({
               🎧 Transcript
             </p>
             <p className="text-sm text-gray-700 leading-relaxed">
-              {question.prompt.transcript}
+              <FormattedText text={question.prompt.transcript} />
             </p>
           </div>
         )}
@@ -104,7 +105,7 @@ export const QuestionCard = React.memo(function QuestionCard({
                     className="text-gray-800 text-base leading-relaxed font-normal"
                     style={{ lineHeight: "1.6", margin: 0 }}
                   >
-                    {question.prompt?.text || "Question"}
+                    <FormattedText text={question.prompt?.text || "Question"} />
                   </p>
                 ) : (
                   renderQuestionComponent(question, value, onChange, isLocked)
@@ -134,7 +135,7 @@ export const QuestionCard = React.memo(function QuestionCard({
                   className="text-gray-800 text-base leading-relaxed font-normal mb-4"
                   style={{ lineHeight: "1.6" }}
                 >
-                  {question.prompt?.text || "Question"}
+                  <FormattedText text={question.prompt?.text || "Question"} />
                 </p>
               )}
               <div className="mt-4">
