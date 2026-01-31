@@ -1013,7 +1013,7 @@ export default function CreateExamPage() {
           </div>
 
           {/* Section Content (Reading Passage / Listening Audio) */}
-          {(currentSection.type === "READING" || currentSection.type === "LISTENING") && (
+          {(currentSection.type === "READING" || (currentSection.type === "LISTENING" && !currentSection.isSubsection)) && (
             <div className="mb-4 p-4 bg-gray-50 border border-gray-200 rounded-md">
               <div className="flex items-center justify-between mb-2">
                 <label className="text-sm font-medium text-gray-700">
@@ -1042,7 +1042,7 @@ export default function CreateExamPage() {
               {(!currentSection.passage && currentSection.type === "READING") && (
                 <p className="text-xs text-gray-500">No passage added yet. Click Edit to add.</p>
               )}
-              {(!currentSection.audio && currentSection.type === "LISTENING" && !currentSection.isSubsection) && (
+              {(!currentSection.audio && currentSection.type === "LISTENING") && (
                 <p className="text-xs text-gray-500">No audio uploaded yet. Click Edit to upload.</p>
               )}
             </div>

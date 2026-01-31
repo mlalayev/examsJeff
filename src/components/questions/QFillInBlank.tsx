@@ -58,27 +58,29 @@ export default function QFillInBlank({ prompt, image, value, onChange }: QFillIn
 
         {/* Text + Input fields - vertical layout */}
         <div className={`flex-1 ${imageUrl ? "w-2/3" : "w-full"}`}>
-          <div className="space-y-4">
+          <div className="space-y-3">
             {parts.map((part, index) => (
-              <div key={index} className="space-y-2">
+              <React.Fragment key={index}>
                 {/* Render text part with formatting */}
-                {part && (
-                  <div>
+                {part && part.trim() && (
+                  <div className="mb-2">
                     <FormattedText text={part} />
                   </div>
                 )}
 
-                {/* Render input field if not last part - full width, on new line */}
+                {/* Render input field if not last part - full width, on separate line */}
                 {index < blankCount && (
-                  <input
-                    type="text"
-                    value={value[String(index)] || ""}
-                    onChange={(e) => handleChange(index, e.target.value)}
-                    className="block w-full px-3 py-2 border-2 border-gray-300 rounded-md text-base focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
-                    placeholder={`Answer ${index + 1}`}
-                  />
+                  <div className="mb-4">
+                    <input
+                      type="text"
+                      value={value[String(index)] || ""}
+                      onChange={(e) => handleChange(index, e.target.value)}
+                      className="w-full px-3 py-2 border-2 border-gray-300 rounded-md text-base focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                      placeholder={`Answer ${index + 1}`}
+                    />
+                  </div>
                 )}
-              </div>
+              </React.Fragment>
             ))}
           </div>
         </div>
