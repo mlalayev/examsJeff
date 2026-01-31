@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Plus, X, BookOpen, Save, Edit, Info, Image } from "lucide-react";
+import { ArrowLeft, Plus, X, BookOpen, Save, Edit, Info, Image, Volume2 } from "lucide-react";
 import TextFormattingPreview from "@/components/TextFormattingPreview";
 import QuestionPreview from "@/components/QuestionPreview";
 import { 
@@ -40,6 +40,9 @@ interface Section {
   audio?: string; // Listening section üçün (MP3 file path)
   image?: string; // Section image (for IELTS Listening parts)
   introduction?: string; // Section introduction text (for IELTS Listening parts)
+  subsections?: Section[]; // IELTS Listening subsections (Part 1-4)
+  isSubsection?: boolean; // Bu subsection-dır?
+  parentId?: string; // Parent section ID (for subsections)
 }
 
 interface Question {
@@ -206,30 +209,32 @@ export default function CreateExamPage() {
       audio: type === "LISTENING" ? undefined : undefined,
     };
 
-    // IELTS Listening: avtomatik 4 sub-section (Part 1-4) yarat
+    // IELTS Listening: 1 əsas section + 4 subsection yarat
     if (selectedCategory === "IELTS" && type === "LISTENING") {
       const parts = [
-        { title: "Part 1", instruction: "Conversation between two people in everyday social context", questionRange: [0, 9] },
-        { title: "Part 2", instruction: "Monologue in everyday social context", questionRange: [10, 19] },
-        { title: "Part 3", instruction: "Conversation (up to 4 people) in educational/training context", questionRange: [20, 29] },
-        { title: "Part 4", instruction: "Academic monologue", questionRange: [30, 39] },
+        { title: "Part 1", instruction: "Conversation between two people in everyday social context" },
+        { title: "Part 2", instruction: "Monologue in everyday social context" },
+        { title: "Part 3", instruction: "Conversation (up to 4 people) in educational/training context" },
+        { title: "Part 4", instruction: "Academic monologue" },
       ];
 
-      const listeningParts: Section[] = parts.map((part, index) => ({
-        id: `section-${Date.now()}-part${index + 1}`,
+      const subsections: Section[] = parts.map((part, index) => ({
+        id: `subsection-${Date.now()}-${index}`,
         type: "LISTENING",
-        title: `${label} - ${part.title}`,
+        title: part.title,
         instruction: part.instruction,
-        durationMin: 0, // Sub-sections don't have separate timers
-        order: newSection.order + (index * 0.1), // 0, 0.1, 0.2, 0.3 to keep them grouped
+        durationMin: 0,
+        order: index,
         questions: [],
-        audio: newSection.audio, // Same audio for all parts
-        image: undefined, // Each part can have its own image
-        introduction: undefined, // Each part can have its own introduction
+        image: undefined,
+        introduction: undefined,
+        isSubsection: true,
+        parentId: newSection.id,
       }));
 
-      setSections([...sections, ...listeningParts]);
-      setCurrentSection(listeningParts[0]); // Start with Part 1
+      newSection.subsections = subsections;
+      setSections([...sections, newSection]);
+      setCurrentSection(subsections[0]); // Start with Part 1
       setStep("questions");
     } else {
       setSections([...sections, newSection]);
@@ -276,18 +281,47 @@ export default function CreateExamPage() {
       delete (questionToSave.prompt as any).rawText;
     }
 
-    const updatedSections = sections.map((s) =>
-      s.id === currentSection.id
+    const updatedSections = sections.map((s) => {
+      // If current section is a subsection, update inside parent
+      if (currentSection.isSubsection && s.subsections) {
+        return {
+          ...s,
+          subsections: s.subsections.map(sub =>
+            sub.id === currentSection.id
+              ? {
+                  ...sub,
+                  questions: editingQuestion.id.startsWith("q-") && sub.questions.find((q) => q.id === editingQuestion.id)
+                    ? sub.questions.map((q) => (q.id === editingQuestion.id ? questionToSave : q))
+                    : [...sub.questions, questionToSave],
+                }
+              : sub
+          ),
+        };
+      }
+      // Regular section
+      return s.id === currentSection.id
         ? {
             ...s,
             questions: editingQuestion.id.startsWith("q-") && s.questions.find((q) => q.id === editingQuestion.id)
               ? s.questions.map((q) => (q.id === editingQuestion.id ? questionToSave : q))
               : [...s.questions, questionToSave],
           }
-        : s
-    );
+        : s;
+    });
     setSections(updatedSections);
-    setCurrentSection(updatedSections.find((s) => s.id === currentSection.id) || null);
+    
+    // Update currentSection
+    const findCurrentSection = (sections: Section[]): Section | null => {
+      for (const s of sections) {
+        if (s.id === currentSection.id) return s;
+        if (s.subsections) {
+          const found = s.subsections.find(sub => sub.id === currentSection.id);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+    setCurrentSection(findCurrentSection(updatedSections));
     setEditingQuestion(null);
   };
 
@@ -305,13 +339,37 @@ export default function CreateExamPage() {
 
   const deleteQuestion = (questionId: string) => {
     if (!currentSection) return;
-    const updatedSections = sections.map((s) =>
-      s.id === currentSection.id
+    const updatedSections = sections.map((s) => {
+      // If current section is a subsection
+      if (currentSection.isSubsection && s.subsections) {
+        return {
+          ...s,
+          subsections: s.subsections.map(sub =>
+            sub.id === currentSection.id
+              ? { ...sub, questions: sub.questions.filter((q) => q.id !== questionId) }
+              : sub
+          ),
+        };
+      }
+      // Regular section
+      return s.id === currentSection.id
         ? { ...s, questions: s.questions.filter((q) => q.id !== questionId) }
-        : s
-    );
+        : s;
+    });
     setSections(updatedSections);
-    setCurrentSection(updatedSections.find((s) => s.id === currentSection.id) || null);
+    
+    // Update currentSection
+    const findCurrentSection = (sections: Section[]): Section | null => {
+      for (const s of sections) {
+        if (s.id === currentSection.id) return s;
+        if (s.subsections) {
+          const found = s.subsections.find(sub => sub.id === currentSection.id);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+    setCurrentSection(findCurrentSection(updatedSections));
   };
 
   const deleteSection = (sectionId: string) => {
@@ -416,6 +474,19 @@ export default function CreateExamPage() {
         sortedSections = sortIELTSSections(sections);
       }
 
+      // Flatten subsections for API
+      const flattenedSections = sortedSections.flatMap(s => {
+        if (s.subsections && s.subsections.length > 0) {
+          // Return subsections only (parent section is just a container)
+          return s.subsections.map((sub, idx) => ({
+            ...sub,
+            audio: s.audio, // Use parent's audio
+            order: s.order + (idx * 0.01), // 0, 0.01, 0.02, 0.03
+          }));
+        }
+        return [s];
+      });
+
       const res = await fetch("/api/admin/exams", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -424,7 +495,7 @@ export default function CreateExamPage() {
           category: selectedCategory,
           track: track || null,
           durationMin: durationMin || null, // Optional timer
-          sections: sortedSections.map((s, index) => {
+          sections: flattenedSections.map((s, index) => {
             // Combine instruction, passage, audio, introduction into instruction JSON
             const instructionData: any = {
               text: s.instruction,
@@ -699,67 +770,162 @@ export default function CreateExamPage() {
           <div className="space-y-3 sm:space-y-4">
             {(selectedCategory === "IELTS" ? sortIELTSSections(sections) : sections).map((section, idx) => {
               const isActive = currentSection?.id === section.id && step === "questions";
+              const hasSubsections = section.subsections && section.subsections.length > 0;
+              
               return (
-                <div
-                  key={section.id}
-                  className={`bg-white border rounded-md p-4 sm:p-6 transition ${
-                    isActive
-                      ? "border-slate-900 bg-slate-50"
-                      : "border-gray-200 hover:border-gray-300"
-                  }`}
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-                    <div className="flex-1">
-                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
-                        <h3 className="font-medium text-gray-900 text-sm sm:text-base">
-                          Section {idx + 1}: {section.title}
-                          {selectedCategory === "IELTS" && (
-                            <span className="ml-2 text-xs text-gray-500">({section.durationMin} min)</span>
-                          )}
-                        </h3>
-                        <span className="text-xs px-2 py-1 bg-gray-100 rounded text-gray-600">
-                          {section.type}
-                        </span>
-                        <span className="text-xs sm:text-sm text-gray-500">
-                          ({section.questions.length} {section.questions.length === 1 ? "question" : "questions"})
-                        </span>
-                        {isActive && (
-                          <span className="text-xs px-2 py-1 bg-slate-900 text-white rounded-full font-medium">
-                            Editing
+                <div key={section.id}>
+                  {/* Main Section */}
+                  <div
+                    className={`bg-white border rounded-md p-4 sm:p-6 transition ${
+                      isActive
+                        ? "border-slate-900 bg-slate-50"
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+                      <div className="flex-1">
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
+                          <h3 className="font-medium text-gray-900 text-sm sm:text-base">
+                            Section {idx + 1}: {section.title}
+                            {selectedCategory === "IELTS" && (
+                              <span className="ml-2 text-xs text-gray-500">({section.durationMin} min)</span>
+                            )}
+                          </h3>
+                          <span className="text-xs px-2 py-1 bg-gray-100 rounded text-gray-600">
+                            {section.type}
                           </span>
-                        )}
+                          {!hasSubsections && (
+                            <span className="text-xs sm:text-sm text-gray-500">
+                              ({section.questions.length} {section.questions.length === 1 ? "question" : "questions"})
+                            </span>
+                          )}
+                          {hasSubsections && (
+                            <span className="text-xs sm:text-sm text-blue-600 font-medium">
+                              ({section.subsections.length} parts)
+                            </span>
+                          )}
+                          {isActive && (
+                            <span className="text-xs px-2 py-1 bg-slate-900 text-white rounded-full font-medium">
+                              Editing
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs sm:text-sm text-gray-600">{section.instruction}</p>
                       </div>
-                      <p className="text-xs sm:text-sm text-gray-600">{section.instruction}</p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        onClick={() => {
-                          setCurrentSection(section);
-                          setStep("questions");
-                        }}
-                        className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium text-white flex items-center gap-1.5 sm:gap-2"
-                        style={{ backgroundColor: "#303380" }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = "#252a6b";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = "#303380";
-                        }}
-                      >
-                        <Edit className="w-3 h-3 sm:w-4 sm:h-4" />
-                        <span className="hidden sm:inline">{isActive ? "Continue Editing" : "Edit Section"}</span>
-                        <span className="sm:hidden">Edit</span>
-                      </button>
-                      <button
-                        onClick={() => deleteSection(section.id)}
-                        disabled={isActive}
-                        className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-red-700 bg-red-50 rounded-md hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 sm:gap-2"
-                      >
-                        <X className="w-3 h-3 sm:w-4 sm:h-4" />
-                        <span className="hidden sm:inline">Delete</span>
-                      </button>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {!hasSubsections && (
+                          <button
+                            onClick={() => {
+                              setCurrentSection(section);
+                              setStep("questions");
+                            }}
+                            className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium text-white flex items-center gap-1.5 sm:gap-2"
+                            style={{ backgroundColor: "#303380" }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = "#252a6b";
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = "#303380";
+                            }}
+                          >
+                            <Edit className="w-3 h-3 sm:w-4 sm:h-4" />
+                            <span className="hidden sm:inline">{isActive ? "Continue Editing" : "Edit Section"}</span>
+                            <span className="sm:hidden">Edit</span>
+                          </button>
+                        )}
+                        {/* IELTS Listening: Upload Audio button */}
+                        {section.type === "LISTENING" && selectedCategory === "IELTS" && hasSubsections && (
+                          <button
+                            onClick={() => {
+                              setEditingSection(section);
+                              setShowSectionEditModal(true);
+                            }}
+                            className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-blue-700 bg-blue-50 rounded-md hover:bg-blue-100 flex items-center gap-1.5"
+                          >
+                            <Volume2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                            <span className="hidden sm:inline">{section.audio ? "Change Audio" : "Upload Audio"}</span>
+                            <span className="sm:hidden">Audio</span>
+                          </button>
+                        )}
+                        <button
+                          onClick={() => deleteSection(section.id)}
+                          disabled={isActive}
+                          className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-red-700 bg-red-50 rounded-md hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 sm:gap-2"
+                        >
+                          <X className="w-3 h-3 sm:w-4 sm:h-4" />
+                          <span className="hidden sm:inline">Delete</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
+
+                  {/* Subsections (indented and different background) */}
+                  {hasSubsections && (
+                    <div className="ml-6 mt-2 space-y-2">
+                      {section.subsections.map((subsection, subIdx) => {
+                        const isSubActive = currentSection?.id === subsection.id && step === "questions";
+                        return (
+                          <div
+                            key={subsection.id}
+                            className={`bg-slate-50 border-l-4 rounded-r-md p-3 sm:p-4 transition ${
+                              isSubActive
+                                ? "border-l-[#303380] bg-[#303380]/5 shadow-sm"
+                                : "border-l-gray-300 hover:border-l-gray-400"
+                            }`}
+                          >
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3">
+                              <div className="flex-1">
+                                <div className="flex flex-wrap items-center gap-2 mb-1">
+                                  <h4 className="font-medium text-gray-800 text-sm">
+                                    {subsection.title}
+                                  </h4>
+                                  <span className="text-xs text-gray-500">
+                                    ({subsection.questions.length} questions)
+                                  </span>
+                                  {isSubActive && (
+                                    <span className="text-xs px-2 py-0.5 bg-[#303380] text-white rounded-full font-medium">
+                                      Editing
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-gray-600">{subsection.instruction}</p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => {
+                                    setCurrentSection(subsection);
+                                    setStep("questions");
+                                  }}
+                                  className="px-2 sm:px-3 py-1 rounded text-xs font-medium text-white flex items-center gap-1"
+                                  style={{ backgroundColor: "#303380" }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = "#252a6b";
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = "#303380";
+                                  }}
+                                >
+                                  <Edit className="w-3 h-3" />
+                                  <span>Questions</span>
+                                </button>
+                                {/* Edit Image/Introduction button */}
+                                <button
+                                  onClick={() => {
+                                    setEditingSection(subsection);
+                                    setShowSectionEditModal(true);
+                                  }}
+                                  className="px-2 sm:px-3 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100 flex items-center gap-1"
+                                >
+                                  <Image className="w-3 h-3" />
+                                  <span>Image/Intro</span>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -1033,7 +1199,12 @@ export default function CreateExamPage() {
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base sm:text-lg font-medium text-gray-900">
-                {editingSection.type === "READING" ? "Edit Reading Passage" : "Edit Listening Audio"}
+                {editingSection.type === "READING" 
+                  ? "Edit Reading Passage" 
+                  : editingSection.isSubsection 
+                    ? `Edit ${editingSection.title} - Image & Introduction`
+                    : "Edit Listening Audio"
+                }
               </h3>
               <button
                 onClick={() => {
@@ -1069,8 +1240,8 @@ export default function CreateExamPage() {
 
               {editingSection.type === "LISTENING" && (
                 <div className="space-y-4">
-                  {/* Audio Upload - Only for first Part or main Listening section */}
-                  {(!editingSection.title.includes("Part") || editingSection.title.includes("Part 1")) && (
+                  {/* Audio Upload - Only for main Listening section (not subsections) */}
+                  {!editingSection.isSubsection && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1.5">
                         Listening Audio (All Parts) *
@@ -1122,10 +1293,17 @@ export default function CreateExamPage() {
                               
                               if (res.ok) {
                                 const data = await res.json();
-                                // Update all Listening parts with same audio
-                                const updatedSections = sections.map(s => 
-                                  s.type === "LISTENING" ? { ...s, audio: data.path } : s
-                                );
+                                // Update main section and all its subsections with same audio
+                                const updatedSections = sections.map(s => {
+                                  if (s.id === editingSection.id) {
+                                    return {
+                                      ...s,
+                                      audio: data.path,
+                                      subsections: s.subsections?.map(sub => ({ ...sub, audio: data.path })),
+                                    };
+                                  }
+                                  return s;
+                                });
                                 setSections(updatedSections);
                                 setEditingSection({
                                   ...editingSection,
@@ -1151,8 +1329,8 @@ export default function CreateExamPage() {
                     </div>
                   )}
 
-                  {/* Image and Introduction - For each Part */}
-                  {editingSection.title.includes("Part") && selectedCategory === "IELTS" && (
+                  {/* Image and Introduction - For subsections only */}
+                  {editingSection.isSubsection && selectedCategory === "IELTS" && (
                     <>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -1269,15 +1447,28 @@ export default function CreateExamPage() {
                     alert("Please enter a reading passage");
                     return;
                   }
-                  if (editingSection.type === "LISTENING" && !editingSection.audio) {
+                  if (editingSection.type === "LISTENING" && !editingSection.isSubsection && !editingSection.audio) {
                     alert("Please upload an audio file");
                     return;
                   }
                   
                   // Update section in sections array
-                  const updatedSections = sections.map((s) =>
-                    s.id === editingSection.id ? editingSection : s
-                  );
+                  const updatedSections = sections.map((s) => {
+                    // If editing a subsection, update it inside parent's subsections
+                    if (editingSection.isSubsection && s.subsections) {
+                      return {
+                        ...s,
+                        subsections: s.subsections.map(sub => 
+                          sub.id === editingSection.id ? editingSection : sub
+                        ),
+                      };
+                    }
+                    // If editing parent section
+                    if (s.id === editingSection.id) {
+                      return editingSection;
+                    }
+                    return s;
+                  });
                   setSections(updatedSections);
                   
                   // Update currentSection if it's the same
