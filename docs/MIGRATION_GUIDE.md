@@ -78,3 +78,4 @@ Bu legacy field-lər **optional**-dır və data loss olmayacaq. İstəsəniz son
 
 İndi migration təhlükəsiz şəkildə apply edilə bilər!
 
+
