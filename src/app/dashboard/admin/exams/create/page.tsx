@@ -521,7 +521,7 @@ export default function CreateExamPage() {
             flattenedSections.push({
               ...sub,
               audio: s.audio, // Use parent's audio
-              order: s.order + (idx * 0.01), // 0, 0.01, 0.02, 0.03
+              order: s.order * 1000 + idx, // Use 1000+ for subsections (e.g., 0 -> 0, 1, 2, 3)
               parentTitle: s.title, // Reference to find parent
               parentOrder: s.order, // Reference to find parent
             });
@@ -606,11 +606,12 @@ export default function CreateExamPage() {
         router.push(`/dashboard/admin/exams/${data.exam.id}`);
       } else {
         const error = await res.json();
-        alert(error.error || "Failed to create exam");
+        console.error("Server error response:", error);
+        alert(`Failed to create exam: ${error.error || error.details || JSON.stringify(error)}`);
       }
     } catch (error) {
       console.error("Failed to create exam:", error);
-      alert("Failed to create exam");
+      alert(`Failed to create exam: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setSaving(false);
     }

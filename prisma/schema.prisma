@@ -312,7 +312,7 @@ model ExamSection {
   image       String?     // Section image URL (for IELTS Listening parts)
   image2      String?     // Second section image URL (for IELTS Listening parts)
   durationMin Int         @default(15)
-  order       Float       @default(0) // Changed to Float to support 0.01, 0.02 for subsections
+  order       Int         @default(0) // Keep as Int, use 1000+ for subsections (e.g., 1000, 1001, 1002)
 
   // Parent/child relationship for IELTS Listening subsections
   parentSectionId String?      @map("parent_section_id")

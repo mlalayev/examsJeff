@@ -160,6 +160,9 @@ export async function POST(request: Request) {
     const subsections = validatedData.sections?.filter(s => s.parentTitle) || [];
     const regularSections = validatedData.sections?.filter(s => !s.parentTitle) || [];
     
+    console.log("Regular sections:", regularSections.length);
+    console.log("Subsections:", subsections.length);
+    
     // Create exam with regular sections first
     const exam = await prisma.exam.create({
       data: {
@@ -171,6 +174,7 @@ export async function POST(request: Request) {
         createdById: (user as any).id,
         sections: {
           create: regularSections.map((section) => {
+              console.log("Creating section:", section.title, "order:", section.order, "type:", typeof section.order);
               return {
               type: section.type,
               title: section.title,
@@ -178,9 +182,9 @@ export async function POST(request: Request) {
               image: section.image || null, // Section image (for IELTS Listening parts)
               image2: section.image2 || null, // Second section image (for IELTS Listening parts)
               durationMin: section.durationMin,
-              order: section.order,
+              order: Number(section.order), // Ensure it's a number
               questions: {
-                create: section.questions?.map((q) => ({
+                create: (section.questions || []).map((q) => ({
                   qtype: q.qtype,
                   order: q.order,
                   prompt: {
@@ -192,7 +196,7 @@ export async function POST(request: Request) {
                   answerKey: q.answerKey,
                   maxScore: q.maxScore,
                   explanation: q.explanation,
-                })) || [],
+                })),
               },
             };
           }),
