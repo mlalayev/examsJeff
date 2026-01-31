@@ -308,10 +308,16 @@ model ExamSection {
   exam        Exam        @relation(fields: [examId], references: [id], onDelete: Cascade)
   type        SectionType
   title       String
-  instruction String?     @db.Text // JSON string: {text, passage?, audio?, introduction?, image?}
+  instruction String?     @db.Text // JSON string: {text, passage?, audio?, introduction?, image?, image2?}
   image       String?     // Section image URL (for IELTS Listening parts)
+  image2      String?     // Second section image URL (for IELTS Listening parts)
   durationMin Int         @default(15)
-  order       Int
+  order       Float       @default(0) // Changed to Float to support 0.01, 0.02 for subsections
+
+  // Parent/child relationship for IELTS Listening subsections
+  parentSectionId String?      @map("parent_section_id")
+  parentSection   ExamSection? @relation("Subsections", fields: [parentSectionId], references: [id], onDelete: Cascade)
+  subsections     ExamSection[] @relation("Subsections")
 
   questions Question[]
 
