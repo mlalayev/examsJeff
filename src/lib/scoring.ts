@@ -125,11 +125,11 @@ export function scoreQuestion(qtype: QuestionType, studentAnswer: any, answerKey
       }) ? 1 : 0;
     }
     case "FILL_IN_BLANK": {
-      // IELTS Fill in the Blank: case-sensitive matching
+      // IELTS Fill in the Blank: case-insensitive matching (changed from case-sensitive)
       // Value format: { "0": "train", "1": "stickers", "2": "17.50" } (blank index → student answer)
-      // answerKey format: { answers: ["train", "stickers", "17.50"], caseSensitive: true }
+      // answerKey format: { answers: ["train", "stickers", "17.50"], caseSensitive: false }
       const correctAnswers = answerKey?.answers || [];
-      const caseSensitive = answerKey?.caseSensitive !== false; // Default to true
+      const caseSensitive = answerKey?.caseSensitive === true; // Default to false (case-insensitive)
       
       if (!studentAnswer || typeof studentAnswer !== "object") return 0;
       

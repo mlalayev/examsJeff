@@ -56,42 +56,38 @@ export default function QFillInBlank({ prompt, image, value, onChange }: QFillIn
           </div>
         )}
 
-        {/* Text + Input fields */}
+        {/* Text + Input fields - vertical layout */}
         <div className={`flex-1 ${imageUrl ? "w-2/3" : "w-full"}`}>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {parts.map((part, index) => (
-              <React.Fragment key={index}>
+              <div key={index} className="space-y-2">
                 {/* Render text part with formatting */}
                 {part && (
-                  <div className="inline">
+                  <div>
                     <FormattedText text={part} />
                   </div>
                 )}
 
-                {/* Render input field if not last part */}
+                {/* Render input field if not last part - full width, on new line */}
                 {index < blankCount && (
                   <input
                     type="text"
                     value={value[String(index)] || ""}
                     onChange={(e) => handleChange(index, e.target.value)}
-                    className="inline-block mx-2 px-3 py-2 border-2 border-gray-300 rounded-md text-base focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
-                    style={{
-                      minWidth: "120px",
-                      maxWidth: "200px",
-                    }}
+                    className="block w-full px-3 py-2 border-2 border-gray-300 rounded-md text-base focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
                     placeholder={`Answer ${index + 1}`}
                   />
                 )}
-              </React.Fragment>
+              </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Case-sensitive warning */}
-      <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-        <p className="text-sm text-yellow-800">
-          <strong>⚠️ Note:</strong> Answers are case-sensitive. Make sure to use the correct capitalization.
+      {/* Case-insensitive info */}
+      <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+        <p className="text-sm text-blue-800">
+          <strong>ℹ️ Note:</strong> Answers are not case-sensitive. "train", "Train", and "TRAIN" are all accepted.
         </p>
       </div>
     </div>

@@ -443,8 +443,8 @@ export default function CreateExamPage() {
         return null; // No auto-grading for essays
       case "FILL_IN_BLANK":
         return { 
-          answers: ["train", "stickers", "17.50"], // Case-sensitive answers
-          caseSensitive: true // Mütləq case-sensitive
+          answers: ["train", "stickers", "17.50"], // Case-insensitive answers
+          caseSensitive: false // Case-insensitive (böyük kiçik hərf fərqi yoxdur)
         };
       default:
         return {};
@@ -1042,7 +1042,7 @@ export default function CreateExamPage() {
               {(!currentSection.passage && currentSection.type === "READING") && (
                 <p className="text-xs text-gray-500">No passage added yet. Click Edit to add.</p>
               )}
-              {(!currentSection.audio && currentSection.type === "LISTENING") && (
+              {(!currentSection.audio && currentSection.type === "LISTENING" && !currentSection.isSubsection) && (
                 <p className="text-xs text-gray-500">No audio uploaded yet. Click Edit to upload.</p>
               )}
             </div>
@@ -1260,9 +1260,13 @@ export default function CreateExamPage() {
                         </div>
                       )}
                       <div className="space-y-2">
-                        {editingSection.audio && (
+                        {editingSection.audio ? (
                           <div className="p-2 bg-gray-50 rounded-md text-sm text-gray-600">
                             Current: {editingSection.audio}
+                          </div>
+                        ) : (
+                          <div className="p-2 bg-blue-50 rounded-md text-sm text-blue-600">
+                            Audio will be shared across all 4 parts
                           </div>
                         )}
                         <input
@@ -1851,7 +1855,7 @@ export default function CreateExamPage() {
                           answerKey: {
                             ...editingQuestion.answerKey,
                             answers: newAnswers,
-                            caseSensitive: true, // Always case-sensitive
+                            caseSensitive: false, // Case-insensitive
                           }
                         });
                       }}
@@ -1866,7 +1870,7 @@ export default function CreateExamPage() {
                       <br />
                       • Use <strong>**number**</strong> to number your blanks (e.g., **1**, **2**, **3**)
                       <br />
-                      • Answers are <strong>case-sensitive</strong> (e.g., "Train" ≠ "train")
+                      • Answers are <strong>not case-sensitive</strong> (e.g., "train", "Train", "TRAIN" are all correct)
                       <br />
                       • You can optionally add an image in the section above
                     </div>
@@ -1875,7 +1879,7 @@ export default function CreateExamPage() {
                     {(editingQuestion.prompt?.text || "").match(/___/g) && (
                       <div className="pt-3 border-t border-gray-200">
                         <label className="block text-xs font-medium text-gray-600 mb-2">
-                          Correct Answers (case-sensitive)
+                          Correct Answers (case-insensitive)
                         </label>
                         <div className="space-y-2">
                           {Array.from({ length: (editingQuestion.prompt?.text || "").match(/___/g)?.length || 0 }).map((_, idx) => (
@@ -1895,7 +1899,7 @@ export default function CreateExamPage() {
                                     answerKey: { 
                                       ...editingQuestion.answerKey,
                                       answers,
-                                      caseSensitive: true,
+                                      caseSensitive: false,
                                     },
                                   });
                                 }}
@@ -1905,8 +1909,8 @@ export default function CreateExamPage() {
                             </div>
                           ))}
                         </div>
-                        <p className="text-xs text-red-600 mt-2 font-medium">
-                          ⚠️ Answers are case-sensitive. "train" and "Train" are different.
+                        <p className="text-xs text-blue-600 mt-2 font-medium">
+                          ℹ️ Answers are case-insensitive. "train", "Train", and "TRAIN" are all accepted.
                         </p>
                       </div>
                     )}
