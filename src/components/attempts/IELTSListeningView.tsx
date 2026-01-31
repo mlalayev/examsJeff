@@ -17,6 +17,7 @@ interface PartSection {
   id: string;
   title: string;
   image?: string | null;
+  image2?: string | null; // Second image
   introduction?: string | null;
   questions: Question[];
 }
@@ -56,6 +57,7 @@ export const IELTSListeningView: React.FC<IELTSListeningViewProps> = ({
   const currentPartQuestions = currentPartSection.questions || [];
   const currentPartTitle = IELTS_LISTENING_STRUCTURE.parts[activePart - 1]?.title || `Part ${activePart}`;
   const hasImage = !!currentPartSection.image;
+  const hasImage2 = !!currentPartSection.image2;
   const hasIntroduction = !!currentPartSection.introduction;
 
   return (
@@ -101,14 +103,23 @@ export const IELTSListeningView: React.FC<IELTSListeningViewProps> = ({
 
       {/* Layout: Image/Introduction Left, Questions Right */}
       <div className="flex gap-6 items-start">
-        {/* Left Side: Image and/or Introduction */}
-        {(hasImage || hasIntroduction) && (
+        {/* Left Side: Images and/or Introduction */}
+        {(hasImage || hasImage2 || hasIntroduction) && (
           <div className="flex-shrink-0 w-1/3 space-y-4">
             {hasImage && (
               <div>
                 <img
                   src={currentPartSection.image!}
                   alt={`${currentPartTitle} illustration`}
+                  className="w-full h-auto rounded-lg border-2 border-gray-200 shadow-sm"
+                />
+              </div>
+            )}
+            {hasImage2 && (
+              <div>
+                <img
+                  src={currentPartSection.image2!}
+                  alt={`${currentPartTitle} illustration 2`}
                   className="w-full h-auto rounded-lg border-2 border-gray-200 shadow-sm"
                 />
               </div>
@@ -127,7 +138,7 @@ export const IELTSListeningView: React.FC<IELTSListeningViewProps> = ({
         )}
 
         {/* Right Side: Questions */}
-        <div className={`flex-1 ${(hasImage || hasIntroduction) ? "w-2/3" : "w-full"}`}>
+        <div className={`flex-1 ${(hasImage || hasImage2 || hasIntroduction) ? "w-2/3" : "w-full"}`}>
           {/* Part Description (if no custom introduction) */}
           {!hasIntroduction && (
             <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">

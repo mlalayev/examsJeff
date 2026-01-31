@@ -17,12 +17,12 @@ interface QFillInBlankProps {
  * IELTS Fill in the Blank Question Component
  * 
  * Example prompt.text:
- * "A wooden **1** ___\nIncludes a sheet of **2** ___\nPrice: £**3** ___"
+ * "A wooden **1** [input]\nIncludes a sheet of **2** [input]\nPrice: £**3** [input]"
  * 
  * This will render:
  * - Image on the left (if provided)
  * - Text with input fields on the right
- * - Input fields replace "___" (3 underscores)
+ * - Input fields replace "[input]"
  * - **number** is rendered as bold number
  */
 export default function QFillInBlank({ prompt, image, value, onChange }: QFillInBlankProps) {
@@ -30,8 +30,8 @@ export default function QFillInBlank({ prompt, image, value, onChange }: QFillIn
   const imageUrl = image || prompt?.imageUrl;
 
   // Parse text and extract blanks
-  // Split by ___ to get parts and blanks
-  const parts = text.split("___");
+  // Split by [input] to get parts and blanks
+  const parts = text.split("[input]");
   const blankCount = parts.length - 1;
 
   const handleChange = (index: number, newValue: string) => {

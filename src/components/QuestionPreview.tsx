@@ -138,33 +138,33 @@ export default function QuestionPreview({ question }: QuestionPreviewProps) {
 
         {/* Fill in the Blank (IELTS) */}
         {question.qtype === "FILL_IN_BLANK" && (
-          <div className="mt-4 space-y-3">
-            {question.prompt?.text?.split("___").map((part: string, idx: number, arr: string[]) => (
-              <React.Fragment key={idx}>
-                {part && (
-                  <span className="inline">
+          <div className="mt-4 space-y-4">
+            {question.prompt?.text?.split("[input]").map((part: string, idx: number, arr: string[]) => (
+              <div key={idx}>
+                {part && part.trim() && (
+                  <div className="mb-2">
                     <FormattedText text={part} />
-                  </span>
+                  </div>
                 )}
                 {idx < arr.length - 1 && (
-                  <input
-                    type="text"
-                    disabled
-                    placeholder={`Answer ${idx + 1}`}
-                    className="inline-block mx-2 px-3 py-2 border-2 rounded-md text-base bg-gray-50 cursor-not-allowed"
-                    style={{
-                      minWidth: "120px",
-                      maxWidth: "200px",
-                      borderColor: "rgba(48, 51, 128, 0.2)",
-                      color: "#9CA3AF",
-                    }}
-                  />
+                  <div className="mb-4">
+                    <input
+                      type="text"
+                      disabled
+                      placeholder={`Answer ${idx + 1}`}
+                      className="w-full px-3 py-2 border-2 rounded-md text-base bg-gray-50 cursor-not-allowed"
+                      style={{
+                        borderColor: "rgba(48, 51, 128, 0.2)",
+                        color: "#9CA3AF",
+                      }}
+                    />
+                  </div>
                 )}
-              </React.Fragment>
+              </div>
             ))}
-            <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-              <p className="text-sm text-yellow-800">
-                <strong>⚠️ Note:</strong> Answers are case-sensitive
+            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <p className="text-sm text-blue-800">
+                <strong>ℹ️ Note:</strong> Answers are not case-sensitive
               </p>
             </div>
           </div>

@@ -38,7 +38,8 @@ interface Section {
   questions: Question[];
   passage?: string; // Reading section üçün
   audio?: string; // Listening section üçün (MP3 file path)
-  image?: string; // Section image (for IELTS Listening parts)
+  image?: string; // First image (for IELTS Listening parts)
+  image2?: string; // Second image (for IELTS Listening parts)
   introduction?: string; // Section introduction text (for IELTS Listening parts)
   subsections?: Section[]; // IELTS Listening subsections (Part 1-4)
   isSubsection?: boolean; // Bu subsection-dır?
@@ -383,6 +384,41 @@ export default function CreateExamPage() {
     }
   };
 
+  const addSubsection = (parentSectionId: string) => {
+    const parentSection = sections.find(s => s.id === parentSectionId);
+    if (!parentSection || parentSection.type !== "LISTENING" || selectedCategory !== "IELTS") return;
+
+    const currentSubsections = parentSection.subsections || [];
+    const nextPartNumber = currentSubsections.length + 1;
+
+    const newSubsection: Section = {
+      id: `subsection-${parentSectionId}-part${nextPartNumber}`,
+      type: "LISTENING",
+      title: `Listening - Part ${nextPartNumber}`,
+      instruction: `Complete Part ${nextPartNumber} questions`,
+      durationMin: 0,
+      order: nextPartNumber - 1,
+      questions: [],
+      audio: parentSection.audio,
+      image: undefined,
+      introduction: undefined,
+      isSubsection: true,
+      parentId: parentSectionId,
+    };
+
+    const updatedSections = sections.map(s => {
+      if (s.id === parentSectionId) {
+        return {
+          ...s,
+          subsections: [...(s.subsections || []), newSubsection],
+        };
+      }
+      return s;
+    });
+
+    setSections(updatedSections);
+  };
+
   const getDefaultPrompt = (qtype: QuestionType): any => {
     switch (qtype) {
       case "TF":
@@ -402,7 +438,7 @@ export default function CreateExamPage() {
         return { text: "Write an essay about..." };
       case "FILL_IN_BLANK":
         return { 
-          text: "A wooden **1** ___ \nIncludes a sheet of **2** ___ \nPrice: £**3** ___",
+          text: "A wooden **1** [input] \nIncludes a sheet of **2** [input] \nPrice: £**3** [input]",
           imageUrl: "" // Optional image URL
         };
       default:
@@ -835,17 +871,27 @@ export default function CreateExamPage() {
                         )}
                         {/* IELTS Listening: Upload Audio button */}
                         {section.type === "LISTENING" && selectedCategory === "IELTS" && hasSubsections && (
-                          <button
-                            onClick={() => {
-                              setEditingSection(section);
-                              setShowSectionEditModal(true);
-                            }}
-                            className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-blue-700 bg-blue-50 rounded-md hover:bg-blue-100 flex items-center gap-1.5"
-                          >
-                            <Volume2 className="w-3 h-3 sm:w-4 sm:h-4" />
-                            <span className="hidden sm:inline">{section.audio ? "Change Audio" : "Upload Audio"}</span>
-                            <span className="sm:hidden">Audio</span>
-                          </button>
+                          <>
+                            <button
+                              onClick={() => {
+                                setEditingSection(section);
+                                setShowSectionEditModal(true);
+                              }}
+                              className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-blue-700 bg-blue-50 rounded-md hover:bg-blue-100 flex items-center gap-1.5"
+                            >
+                              <Volume2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                              <span className="hidden sm:inline">{section.audio ? "Change Audio" : "Upload Audio"}</span>
+                              <span className="sm:hidden">Audio</span>
+                            </button>
+                            <button
+                              onClick={() => addSubsection(section.id)}
+                              className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-green-700 bg-green-50 rounded-md hover:bg-green-100 flex items-center gap-1.5"
+                            >
+                              <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
+                              <span className="hidden sm:inline">Add Part</span>
+                              <span className="sm:hidden">Part</span>
+                            </button>
+                          </>
                         )}
                         <button
                           onClick={() => deleteSection(section.id)}
@@ -918,6 +964,28 @@ export default function CreateExamPage() {
                                 >
                                   <Image className="w-3 h-3" />
                                   <span>Image/Intro</span>
+                                </button>
+                                {/* Delete subsection button */}
+                                <button
+                                  onClick={() => {
+                                    const updatedSections = sections.map(s => {
+                                      if (s.id === subsection.parentId) {
+                                        return {
+                                          ...s,
+                                          subsections: s.subsections?.filter(sub => sub.id !== subsection.id) || [],
+                                        };
+                                      }
+                                      return s;
+                                    });
+                                    setSections(updatedSections);
+                                    if (currentSection?.id === subsection.id) {
+                                      setCurrentSection(null);
+                                    }
+                                  }}
+                                  className="px-2 sm:px-3 py-1 text-xs font-medium text-red-700 bg-red-50 rounded hover:bg-red-100 flex items-center gap-1"
+                                >
+                                  <X className="w-3 h-3" />
+                                  <span>Delete</span>
                                 </button>
                               </div>
                             </div>
@@ -1411,6 +1479,79 @@ export default function CreateExamPage() {
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                          Second Part Image <span className="text-gray-500 font-normal">(Optional)</span>
+                        </label>
+                        <div className="space-y-2">
+                          {editingSection.image2 && (
+                            <div className="p-3 bg-white border border-gray-200 rounded-md">
+                              <img
+                                src={editingSection.image2}
+                                alt="Part image 2"
+                                className="max-w-full h-auto max-h-48 rounded border border-gray-200"
+                              />
+                              <p className="text-xs text-gray-500 mt-2">{editingSection.image2}</p>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingSection({
+                                    ...editingSection,
+                                    image2: undefined,
+                                  });
+                                }}
+                                className="mt-2 text-xs text-red-600 hover:text-red-700 font-medium"
+                              >
+                                Remove Image 2
+                              </button>
+                            </div>
+                          )}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              
+                              setUploadingImage(true);
+                              try {
+                                const formData = new FormData();
+                                formData.append("file", file);
+                                formData.append("type", "image");
+                                
+                                const res = await fetch("/api/admin/upload", {
+                                  method: "POST",
+                                  body: formData,
+                                });
+                                
+                                if (res.ok) {
+                                  const data = await res.json();
+                                  setEditingSection({
+                                    ...editingSection,
+                                    image2: data.path,
+                                  });
+                                } else {
+                                  alert("Failed to upload image");
+                                }
+                              } catch (error) {
+                                console.error("Upload error:", error);
+                                alert("Failed to upload image");
+                              } finally {
+                                setUploadingImage(false);
+                              }
+                            }}
+                            disabled={uploadingImage}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 disabled:opacity-50 bg-white"
+                          />
+                          {uploadingImage && (
+                            <p className="text-xs text-gray-500">Uploading image...</p>
+                          )}
+                          <p className="text-xs text-gray-500">
+                            Second image for additional visual support
+                          </p>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
                           Part Introduction <span className="text-gray-500 font-normal">(Optional)</span>
                         </label>
                         <textarea
@@ -1837,8 +1978,8 @@ export default function CreateExamPage() {
                       value={editingQuestion.prompt?.text || ""}
                       onChange={(e) => {
                         const text = e.target.value;
-                        // Count blanks (___) in the text
-                        const blankCount = (text.match(/___/g) || []).length;
+                        // Count blanks ([input]) in the text
+                        const blankCount = (text.match(/\[input\]/g) || []).length;
                         
                         // Initialize answers array
                         const currentAnswers = Array.isArray(editingQuestion.answerKey?.answers) 
@@ -1859,14 +2000,14 @@ export default function CreateExamPage() {
                           }
                         });
                       }}
-                      placeholder="A wooden **1** ___&#10;Includes a sheet of **2** ___&#10;Price: £**3** ___"
+                      placeholder="A wooden **1** [input]&#10;Includes a sheet of **2** [input]&#10;Price: £**3** [input]"
                       className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white resize-y"
                       rows={8}
                     />
                     <div className="text-xs text-gray-500 bg-blue-50 p-3 rounded border border-blue-200">
                       <strong>📝 IELTS Fill in the Blank:</strong>
                       <br />
-                      • Use <strong>___</strong> (3 underscores) where you want input fields
+                      • Use <strong>[input]</strong> where you want input fields
                       <br />
                       • Use <strong>**number**</strong> to number your blanks (e.g., **1**, **2**, **3**)
                       <br />
@@ -1876,13 +2017,13 @@ export default function CreateExamPage() {
                     </div>
                     
                     {/* Answer inputs for each blank */}
-                    {(editingQuestion.prompt?.text || "").match(/___/g) && (
+                    {(editingQuestion.prompt?.text || "").match(/\[input\]/g) && (
                       <div className="pt-3 border-t border-gray-200">
                         <label className="block text-xs font-medium text-gray-600 mb-2">
                           Correct Answers (case-insensitive)
                         </label>
                         <div className="space-y-2">
-                          {Array.from({ length: (editingQuestion.prompt?.text || "").match(/___/g)?.length || 0 }).map((_, idx) => (
+                          {Array.from({ length: (editingQuestion.prompt?.text || "").match(/\[input\]/g)?.length || 0 }).map((_, idx) => (
                             <div key={idx} className="flex items-center gap-2">
                               <span className="text-xs text-gray-500 w-16">Blank {idx + 1}:</span>
                               <input
