@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, Plus, X, BookOpen, Save, Edit, Info, Image } from "lucide-react";
+import { ArrowLeft, Plus, X, BookOpen, Save, Edit, Info, Image, Volume2 } from "lucide-react";
 import TextFormattingPreview from "@/components/TextFormattingPreview";
 import QuestionPreview from "@/components/QuestionPreview";
 import { 
@@ -40,6 +40,9 @@ interface Section {
   audio?: string;
   image?: string; // Section image (for IELTS Listening parts)
   introduction?: string; // Section introduction (for IELTS Listening parts)
+  subsections?: Section[]; // IELTS Listening subsections (Part 1-4)
+  isSubsection?: boolean; // Bu subsection-dır?
+  parentId?: string; // Parent section ID (for subsections)
 }
 
 interface Question {
@@ -162,7 +165,11 @@ export default function EditExamPage() {
         setTrack(exam.track || "");
         
         // Parse sections and questions
-        const parsedSections: Section[] = exam.sections.map((s: any) => {
+        // Group IELTS Listening sections into subsections
+        const parsedSections: Section[] = [];
+        const listeningParts: any[] = [];
+        
+        exam.sections.forEach((s: any) => {
           let instructionData: any = { text: "" };
           if (s.instruction) {
             try {
@@ -184,7 +191,7 @@ export default function EditExamPage() {
             }
           }
           
-          return {
+          const section = {
             id: s.id,
             type: s.type,
             title: s.title,
@@ -193,8 +200,8 @@ export default function EditExamPage() {
             order: s.order,
             passage: instructionData.passage || "",
             audio: instructionData.audio || "",
-            image: s.image || instructionData.image || null, // Section image
-            introduction: instructionData.introduction || null, // Section introduction
+            image: s.image || instructionData.image || null,
+            introduction: instructionData.introduction || null,
             questions: s.questions.map((q: any) => ({
               id: q.id,
               qtype: q.qtype,
@@ -207,7 +214,34 @@ export default function EditExamPage() {
               image: q.prompt?.image || null,
             })),
           };
+
+          // IELTS Listening: Group parts into subsections
+          if (exam.category === "IELTS" && s.type === "LISTENING" && s.title.includes("Part")) {
+            listeningParts.push(section);
+          } else {
+            parsedSections.push(section);
+          }
         });
+
+        // Create main Listening section with subsections if we have listening parts
+        if (listeningParts.length > 0) {
+          const mainListening: Section = {
+            id: `listening-${Date.now()}`,
+            type: "LISTENING",
+            title: "Listening",
+            instruction: "IELTS Listening Test",
+            durationMin: 30,
+            order: IELTS_SECTION_ORDER.LISTENING,
+            questions: [],
+            audio: listeningParts[0]?.audio,
+            subsections: listeningParts.map(part => ({
+              ...part,
+              isSubsection: true,
+              parentId: `listening-${Date.now()}`,
+            })),
+          };
+          parsedSections.push(mainListening);
+        }
         
         setSections(parsedSections);
         if (parsedSections.length > 0) {
@@ -372,32 +406,86 @@ export default function EditExamPage() {
       delete (questionToSave.prompt as any).rawText;
     }
 
-    const updatedSections = sections.map((s) =>
-      s.id === currentSection.id
+    const updatedSections = sections.map((s) => {
+      // If current section is a subsection, update inside parent
+      if (currentSection.isSubsection && s.subsections) {
+        return {
+          ...s,
+          subsections: s.subsections.map(sub =>
+            sub.id === currentSection.id
+              ? {
+                  ...sub,
+                  questions: sub.questions.find((q) => q.id === editingQuestion.id)
+                    ? sub.questions.map((q) => (q.id === editingQuestion.id ? questionToSave : q))
+                    : [...sub.questions, questionToSave],
+                }
+              : sub
+          ),
+        };
+      }
+      // Regular section
+      return s.id === currentSection.id
         ? {
             ...s,
             questions: s.questions.find((q) => q.id === editingQuestion.id)
               ? s.questions.map((q) => (q.id === editingQuestion.id ? questionToSave : q))
               : [...s.questions, questionToSave],
           }
-        : s
-    );
+        : s;
+    });
+    
     setSections(updatedSections);
-    setCurrentSection(updatedSections.find((s) => s.id === currentSection.id) || null);
+    
+    // Update currentSection
+    const findCurrentSection = (sections: Section[]): Section | null => {
+      for (const s of sections) {
+        if (s.id === currentSection.id) return s;
+        if (s.subsections) {
+          const found = s.subsections.find(sub => sub.id === currentSection.id);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+    setCurrentSection(findCurrentSection(updatedSections));
     setEditingQuestion(null);
   };
 
   const deleteQuestion = (questionId: string) => {
     if (!currentSection) return;
     
-    const updatedSections = sections.map(s =>
-      s.id === currentSection.id
-        ? { ...s, questions: s.questions.filter(q => q.id !== questionId) }
-        : s
-    );
-
+    const updatedSections = sections.map((s) => {
+      // If current section is a subsection
+      if (currentSection.isSubsection && s.subsections) {
+        return {
+          ...s,
+          subsections: s.subsections.map(sub =>
+            sub.id === currentSection.id
+              ? { ...sub, questions: sub.questions.filter((q) => q.id !== questionId) }
+              : sub
+          ),
+        };
+      }
+      // Regular section
+      return s.id === currentSection.id
+        ? { ...s, questions: s.questions.filter((q) => q.id !== questionId) }
+        : s;
+    });
+    
     setSections(updatedSections);
-    setCurrentSection(updatedSections.find(s => s.id === currentSection.id) || null);
+    
+    // Update currentSection
+    const findCurrentSection = (sections: Section[]): Section | null => {
+      for (const s of sections) {
+        if (s.id === currentSection.id) return s;
+        if (s.subsections) {
+          const found = s.subsections.find(sub => sub.id === currentSection.id);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+    setCurrentSection(findCurrentSection(updatedSections));
   };
 
   const getDefaultPrompt = (qtype: QuestionType): any => {
@@ -476,6 +564,19 @@ export default function EditExamPage() {
 
     setSaving(true);
     try {
+      // Flatten subsections for API
+      const flattenedSections = sections.flatMap(s => {
+        if (s.subsections && s.subsections.length > 0) {
+          // Return subsections only (parent section is just a container)
+          return s.subsections.map((sub, idx) => ({
+            ...sub,
+            audio: s.audio, // Use parent's audio
+            order: s.order + (idx * 0.01), // 0, 0.01, 0.02, 0.03
+          }));
+        }
+        return [s];
+      });
+
       const res = await fetch(`/api/admin/exams/${examId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -483,7 +584,7 @@ export default function EditExamPage() {
           title: examTitle,
           category: selectedCategory,
           track: track || null,
-          sections: sections.map((s) => {
+          sections: flattenedSections.map((s) => {
             const instructionData: any = {
               text: s.instruction,
             };
@@ -665,55 +766,130 @@ export default function EditExamPage() {
           </div>
 
           <div className="space-y-3">
-            {sections.map((section, idx) => (
-              <div
-                key={section.id}
-                className={`border rounded-md p-3 ${
-                  currentSection?.id === section.id
-                    ? "border-gray-900 bg-gray-50"
-                    : "border-gray-200 bg-white"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-medium text-gray-700">
-                      {idx + 1}. {section.title}
-                    </span>
-                    <span className="text-xs px-2 py-1 bg-gray-100 rounded text-gray-600">
-                      {getSectionLabel(section.type, selectedCategory)}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      {section.questions.length} questions
-                    </span>
+            {sections.map((section, idx) => {
+              const isActive = currentSection?.id === section.id;
+              const hasSubsections = section.subsections && section.subsections.length > 0;
+              
+              return (
+                <div key={section.id}>
+                  {/* Main Section */}
+                  <div
+                    className={`border rounded-md p-3 ${
+                      isActive
+                        ? "border-gray-900 bg-gray-50"
+                        : "border-gray-200 bg-white"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-medium text-gray-700">
+                          {idx + 1}. {section.title}
+                        </span>
+                        <span className="text-xs px-2 py-1 bg-gray-100 rounded text-gray-600">
+                          {getSectionLabel(section.type, selectedCategory)}
+                        </span>
+                        {!hasSubsections && (
+                          <span className="text-xs text-gray-500">
+                            {section.questions.length} questions
+                          </span>
+                        )}
+                        {hasSubsections && (
+                          <span className="text-xs text-blue-600 font-medium">
+                            ({(section.subsections || []).length} parts)
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {!hasSubsections && (section.type === "READING" || section.type === "LISTENING") && (
+                          <button
+                            onClick={() => {
+                              setEditingSection(section);
+                              setShowSectionEditModal(true);
+                            }}
+                            className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100"
+                          >
+                            <Edit className="w-3 h-3" />
+                          </button>
+                        )}
+                        {hasSubsections && section.type === "LISTENING" && (
+                          <button
+                            onClick={() => {
+                              setEditingSection(section);
+                              setShowSectionEditModal(true);
+                            }}
+                            className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100"
+                          >
+                            <Volume2 className="w-3 h-3" />
+                          </button>
+                        )}
+                        {!hasSubsections && (
+                          <button
+                            onClick={() => setCurrentSection(section)}
+                            className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
+                          >
+                            Questions
+                          </button>
+                        )}
+                        <button
+                          onClick={() => deleteSection(section.id)}
+                          className="px-2 py-1 text-xs font-medium text-red-700 bg-red-50 rounded hover:bg-red-100"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {(section.type === "READING" || section.type === "LISTENING") && (
-                      <button
-                        onClick={() => {
-                          setEditingSection(section);
-                          setShowSectionEditModal(true);
-                        }}
-                        className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100"
-                      >
-                        <Edit className="w-3 h-3" />
-                      </button>
-                    )}
-                    <button
-                      onClick={() => setCurrentSection(section)}
-                      className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
-                    >
-                      Questions
-                    </button>
-                    <button
-                      onClick={() => deleteSection(section.id)}
-                      className="px-2 py-1 text-xs font-medium text-red-700 bg-red-50 rounded hover:bg-red-100"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
+
+                  {/* Subsections */}
+                  {hasSubsections && section.subsections && (
+                    <div className="ml-6 mt-2 space-y-2">
+                      {section.subsections.map((subsection, subIdx) => {
+                        const isSubActive = currentSection?.id === subsection.id;
+                        return (
+                          <div
+                            key={subsection.id}
+                            className={`bg-slate-50 border-l-4 rounded-r-md p-3 ${
+                              isSubActive
+                                ? "border-l-[#303380] bg-[#303380]/5"
+                                : "border-l-gray-300"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <span className="text-sm font-medium text-gray-700">
+                                  {subsection.title}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  {subsection.questions.length} questions
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => setCurrentSection(subsection)}
+                                  className="px-2 py-1 text-xs font-medium text-white rounded"
+                                  style={{ backgroundColor: "#303380" }}
+                                >
+                                  Questions
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setEditingSection(subsection);
+                                    setShowSectionEditModal(true);
+                                  }}
+                                  className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100"
+                                >
+                                  <Image className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -877,7 +1053,7 @@ export default function EditExamPage() {
                 <div key={group}>
                   <h4 className="text-sm font-medium text-gray-700 mb-2">{group}</h4>
                   <div className="grid grid-cols-2 gap-2">
-                    {types.map((type) => (
+                    {(types as QuestionType[]).map((type) => (
                       <button
                         key={type}
                         onClick={() => addQuestion(type)}
@@ -1050,7 +1226,7 @@ export default function EditExamPage() {
                     </div>
                     
                     {/* Show answer inputs for each blank in each sentence */}
-                    {(editingQuestion.prompt?.textWithBlanks || "").split('\n').filter(line => line.trim()).length > 0 && (
+                    {(editingQuestion.prompt?.textWithBlanks || "").split('\n').filter((line: string) => line.trim()).length > 0 && (
                       <div className="pt-3 border-t border-gray-200">
                         <label className="block text-xs font-medium text-gray-600 mb-2">
                           Correct Answers (one per blank)
@@ -1059,10 +1235,10 @@ export default function EditExamPage() {
                           {(() => {
                             const sentences = (editingQuestion.prompt?.textWithBlanks || "")
                               .split('\n')
-                              .filter(line => line.trim());
+                              .filter((line: string) => line.trim());
                             
                             let blankIndex = 0;
-                            return sentences.map((sentence, sentenceIdx) => {
+                            return sentences.map((sentence: string, sentenceIdx: number) => {
                               const blanksInSentence = sentence.split(/___+|________+/).length - 1;
                               const sentenceStartBlank = blankIndex;
                               const blanksForThisSentence = [];
@@ -1534,7 +1710,12 @@ export default function EditExamPage() {
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base sm:text-lg font-medium text-gray-900">
-                {editingSection.type === "READING" ? "Edit Reading Passage" : "Edit Listening Audio"}
+                {editingSection.type === "READING" 
+                  ? "Edit Reading Passage" 
+                  : editingSection.isSubsection 
+                    ? `Edit ${editingSection.title} - Image & Introduction`
+                    : "Edit Listening Audio"
+                }
               </h3>
               <button
                 onClick={() => {
@@ -1570,8 +1751,8 @@ export default function EditExamPage() {
 
               {editingSection.type === "LISTENING" && (
                 <div className="space-y-4">
-                  {/* Audio Upload - Only for first Part or main Listening section */}
-                  {(!editingSection.title.includes("Part") || editingSection.title.includes("Part 1")) && (
+                  {/* Audio Upload - Only for main Listening section (not subsections) */}
+                  {!editingSection.isSubsection && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1.5">
                         Listening Audio (All Parts) *
@@ -1623,10 +1804,17 @@ export default function EditExamPage() {
                               
                               if (res.ok) {
                                 const data = await res.json();
-                                // Update all Listening parts with same audio
-                                const updatedSections = sections.map(s => 
-                                  s.type === "LISTENING" ? { ...s, audio: data.path } : s
-                                );
+                                // Update main section and all its subsections with same audio
+                                const updatedSections = sections.map(s => {
+                                  if (s.id === editingSection.id) {
+                                    return {
+                                      ...s,
+                                      audio: data.path,
+                                      subsections: s.subsections?.map(sub => ({ ...sub, audio: data.path })),
+                                    };
+                                  }
+                                  return s;
+                                });
                                 setSections(updatedSections);
                                 setEditingSection({
                                   ...editingSection,
@@ -1652,8 +1840,8 @@ export default function EditExamPage() {
                     </div>
                   )}
 
-                  {/* Image and Introduction - For each Part */}
-                  {editingSection.title.includes("Part") && selectedCategory === "IELTS" && (
+                  {/* Image and Introduction - For subsections only */}
+                  {editingSection.isSubsection && selectedCategory === "IELTS" && (
                     <>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -1770,18 +1958,31 @@ export default function EditExamPage() {
                     alert("Please enter a reading passage");
                     return;
                   }
-                  if (editingSection.type === "LISTENING" && !editingSection.audio) {
+                  if (editingSection.type === "LISTENING" && !editingSection.isSubsection && !editingSection.audio) {
                     alert("Please upload an audio file");
                     return;
                   }
                   
                   // Update section in sections array
-                  const updatedSections = sections.map(s => 
-                    s.id === editingSection.id ? editingSection : s
-                  );
+                  const updatedSections = sections.map((s) => {
+                    // If editing a subsection, update it inside parent's subsections
+                    if (editingSection.isSubsection && s.subsections) {
+                      return {
+                        ...s,
+                        subsections: s.subsections.map(sub => 
+                          sub.id === editingSection.id ? editingSection : sub
+                        ),
+                      };
+                    }
+                    // If editing parent section
+                    if (s.id === editingSection.id) {
+                      return editingSection;
+                    }
+                    return s;
+                  });
                   setSections(updatedSections);
                   
-                  // Update currentSection if it's the one being edited
+                  // Update currentSection if it's the same
                   if (currentSection?.id === editingSection.id) {
                     setCurrentSection(editingSection);
                   }
@@ -1808,560 +2009,3 @@ export default function EditExamPage() {
     </div>
   );
 }
-
-
-                      onClick={() => {
-                        const newOptions = [...(editingQuestion.options?.choices || []), ""];
-                        setEditingQuestion({
-                          ...editingQuestion,
-                          options: {
-                            ...editingQuestion.options,
-                            choices: newOptions,
-                          },
-                        });
-                      }}
-                      className="w-full px-3 py-2 border border-dashed border-gray-300 rounded-md text-gray-600 hover:border-gray-400 hover:bg-gray-50 text-sm"
-                    >
-                      <Plus className="w-3 h-3 inline mr-2" />
-                      Add Option
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Answer Key */}
-              <div className="p-4 bg-gray-50 border-l-2 border-r-2 border-b-2 border-gray-300 rounded-b-md">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Correct Answer *
-                </label>
-                {editingQuestion.qtype === "TF" && (
-                  <select
-                    value={editingQuestion.answerKey?.value ? "true" : "false"}
-                    onChange={(e) => {
-                      setEditingQuestion({
-                        ...editingQuestion,
-                        answerKey: { value: e.target.value === "true" },
-                      });
-                    }}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
-                  >
-                    <option value="true">True</option>
-                    <option value="false">False</option>
-                  </select>
-                )}
-                {(editingQuestion.qtype === "MCQ_SINGLE" ||
-                  editingQuestion.qtype === "INLINE_SELECT") && (
-                  <select
-                    value={editingQuestion.answerKey?.index ?? 0}
-                    onChange={(e) => {
-                      setEditingQuestion({
-                        ...editingQuestion,
-                        answerKey: { index: parseInt(e.target.value) },
-                      });
-                    }}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
-                  >
-                    {(editingQuestion.options?.choices || []).map((opt: string, idx: number) => (
-                      <option key={idx} value={idx}>
-                        {opt || `Option ${idx + 1}`}
-                      </option>
-                    ))}
-                  </select>
-                )}
-                {editingQuestion.qtype === "MCQ_MULTI" && (
-                  <div className="space-y-2 p-3 bg-white border border-gray-200 rounded-md">
-                    {(editingQuestion.options?.choices || []).map((opt: string, idx: number) => (
-                      <label key={idx} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={(editingQuestion.answerKey?.indices || []).includes(idx)}
-                          onChange={(e) => {
-                            const indices = [...(editingQuestion.answerKey?.indices || [])];
-                            if (e.target.checked) {
-                              indices.push(idx);
-                            } else {
-                              const pos = indices.indexOf(idx);
-                              if (pos > -1) indices.splice(pos, 1);
-                            }
-                            setEditingQuestion({
-                              ...editingQuestion,
-                              answerKey: { indices: indices.sort() },
-                            });
-                          }}
-                          className="w-4 h-4"
-                        />
-                        <span className="text-sm">{opt || `Option ${idx + 1}`}</span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-                {editingQuestion.qtype === "DND_GAP" && (
-                  <div className="space-y-2 p-3 bg-white border border-gray-200 rounded-md">
-                    <p className="text-xs text-gray-500 mb-2">
-                      Word Bank will be automatically generated from the correct answers above.
-                    </p>
-                    {Array.isArray(editingQuestion.options?.bank) && editingQuestion.options.bank.length > 0 && (
-                      <div className="mt-3">
-                        <p className="text-xs font-medium text-gray-700 mb-2">Auto-generated Word Bank:</p>
-                        <div className="flex flex-wrap gap-2">
-                          {editingQuestion.options.bank.map((word: string, idx: number) => (
-                            <span key={idx} className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-medium">
-                              {word}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-                {editingQuestion.qtype === "ORDER_SENTENCE" && (
-                  <div className="space-y-2 p-3 bg-white border border-gray-200 rounded-md">
-                    <p className="text-xs text-gray-500">
-                      The correct order is determined by the token order. Students will see them shuffled.
-                    </p>
-                    {Array.isArray(editingQuestion.prompt?.tokens) && editingQuestion.prompt.tokens.length > 0 && (
-                      <div className="p-3 bg-gray-50 border border-gray-200 rounded-md">
-                        <p className="text-xs font-medium text-gray-700 mb-2">Current order (correct answer):</p>
-                        <div className="flex flex-wrap gap-2">
-                          {editingQuestion.prompt.tokens.map((token: string, idx: number) => (
-                            <span key={idx} className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
-                              {idx + 1}. {token}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Question Preview */}
-            <QuestionPreview question={editingQuestion} />
-
-            <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-gray-200">
-              <button
-                onClick={() => setEditingQuestion(null)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={saveQuestion}
-                className="px-4 py-2 text-sm font-medium text-white rounded-md"
-                style={{ backgroundColor: "#303380" }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = "#252a6b";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "#303380";
-                }}
-              >
-                Save Question
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Section Edit Modal (for Reading Passage / Listening Audio) */}
-      {showSectionEditModal && editingSection && (
-        <div
-          className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 p-4"
-          onClick={() => {
-            setShowSectionEditModal(false);
-            setEditingSection(null);
-          }}
-        >
-          <div
-            className="bg-white border border-gray-200 rounded-md p-4 sm:p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base sm:text-lg font-medium text-gray-900">
-                {editingSection.type === "READING" ? "Edit Reading Passage" : "Edit Listening Audio"}
-              </h3>
-              <button
-                onClick={() => {
-                  setShowSectionEditModal(false);
-                  setEditingSection(null);
-                }}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="w-4 h-4 sm:w-5 sm:h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {editingSection.type === "READING" && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Reading Passage *
-                  </label>
-                  <textarea
-                    value={editingSection.passage || ""}
-                    onChange={(e) => {
-                      setEditingSection({
-                        ...editingSection,
-                        passage: e.target.value,
-                      });
-                    }}
-                    placeholder="Enter the reading passage text..."
-                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
-                    rows={10}
-                  />
-                </div>
-              )}
-
-              {editingSection.type === "LISTENING" && (
-                <div className="space-y-4">
-                  {/* Audio Upload - Only for first Part or main Listening section */}
-                  {(!editingSection.title.includes("Part") || editingSection.title.includes("Part 1")) && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                        Listening Audio (All Parts) *
-                      </label>
-                      {selectedCategory === "IELTS" && (
-                        <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                          <p className="text-xs text-blue-800 font-medium mb-1">
-                            📝 IELTS Listening Requirements:
-                          </p>
-                          <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
-                            <li>Must have exactly <strong>40 questions</strong> (10 per part)</li>
-                            <li>4 parts: Conversation (1), Monologue (2), Discussion (3), Lecture (4)</li>
-                            <li>Audio will play automatically with restrictions (no pause/seek for students)</li>
-                            <li><strong>One audio file for all 4 parts</strong></li>
-                          </ul>
-                        </div>
-                      )}
-                      <div className="space-y-2">
-                        {editingSection.audio && (
-                          <div className="p-2 bg-gray-50 rounded-md text-sm text-gray-600">
-                            Current: {editingSection.audio}
-                          </div>
-                        )}
-                        <input
-                          type="file"
-                          accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac,.wma"
-                          onChange={async (e) => {
-                            const file = e.target.files?.[0];
-                            if (!file) return;
-                            
-                            const validAudioExtensions = ['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac', '.wma'];
-                            const hasValidExtension = validAudioExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
-                            
-                            if (!hasValidExtension) {
-                              alert("Please upload a valid audio file (mp3, wav, ogg, m4a, aac, flac, wma)");
-                              return;
-                            }
-                            
-                            setUploadingAudio(true);
-                            try {
-                              const formData = new FormData();
-                              formData.append("file", file);
-                              formData.append("type", "audio");
-                              
-                              const res = await fetch("/api/admin/upload", {
-                                method: "POST",
-                                body: formData,
-                              });
-                              
-                              if (res.ok) {
-                                const data = await res.json();
-                                // Update all Listening parts with same audio
-                                const updatedSections = sections.map(s => 
-                                  s.type === "LISTENING" ? { ...s, audio: data.path } : s
-                                );
-                                setSections(updatedSections);
-                                setEditingSection({
-                                  ...editingSection,
-                                  audio: data.path,
-                                });
-                              } else {
-                                alert("Failed to upload audio");
-                              }
-                            } catch (error) {
-                              console.error("Upload error:", error);
-                              alert("Failed to upload audio");
-                            } finally {
-                              setUploadingAudio(false);
-                            }
-                          }}
-                          disabled={uploadingAudio}
-                          className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 disabled:opacity-50"
-                        />
-                        {uploadingAudio && (
-                          <p className="text-xs text-gray-500">Uploading...</p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Image and Introduction - For each Part */}
-                  {editingSection.title.includes("Part") && selectedCategory === "IELTS" && (
-                    <>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                          Part Image <span className="text-gray-500 font-normal">(Optional)</span>
-                        </label>
-                        <div className="space-y-2">
-                          {editingSection.image && (
-                            <div className="p-3 bg-white border border-gray-200 rounded-md">
-                              <img
-                                src={editingSection.image}
-                                alt="Part image"
-                                className="max-w-full h-auto max-h-48 rounded border border-gray-200"
-                              />
-                              <p className="text-xs text-gray-500 mt-2">{editingSection.image}</p>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setEditingSection({
-                                    ...editingSection,
-                                    image: undefined,
-                                  });
-                                }}
-                                className="mt-2 text-xs text-red-600 hover:text-red-700 font-medium"
-                              >
-                                Remove Image
-                              </button>
-                            </div>
-                          )}
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={async (e) => {
-                              const file = e.target.files?.[0];
-                              if (!file) return;
-                              
-                              setUploadingImage(true);
-                              try {
-                                const formData = new FormData();
-                                formData.append("file", file);
-                                formData.append("type", "image");
-                                
-                                const res = await fetch("/api/admin/upload", {
-                                  method: "POST",
-                                  body: formData,
-                                });
-                                
-                                if (res.ok) {
-                                  const data = await res.json();
-                                  setEditingSection({
-                                    ...editingSection,
-                                    image: data.path,
-                                  });
-                                } else {
-                                  alert("Failed to upload image");
-                                }
-                              } catch (error) {
-                                console.error("Upload error:", error);
-                                alert("Failed to upload image");
-                              } finally {
-                                setUploadingImage(false);
-                              }
-                            }}
-                            disabled={uploadingImage}
-                            className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 disabled:opacity-50 bg-white"
-                          />
-                          {uploadingImage && (
-                            <p className="text-xs text-gray-500">Uploading image...</p>
-                          )}
-                          <p className="text-xs text-gray-500">
-                            Image will appear on the left side, questions on the right
-                          </p>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                          Part Introduction <span className="text-gray-500 font-normal">(Optional)</span>
-                        </label>
-                        <textarea
-                          value={editingSection.introduction || ""}
-                          onChange={(e) => {
-                            setEditingSection({
-                              ...editingSection,
-                              introduction: e.target.value,
-                            });
-                          }}
-                          placeholder="Enter introduction text for this part (e.g., 'You will hear a conversation between two people...')"
-                          className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
-                          rows={4}
-                        />
-                        <p className="text-xs text-gray-500 mt-1">
-                          Introduction will appear on the left side with the image (if provided)
-                        </p>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 mt-6 pt-4 border-t border-gray-200">
-              <button
-                onClick={() => {
-                  setShowSectionEditModal(false);
-                  setEditingSection(null);
-                }}
-                className="px-3 sm:px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  if (editingSection.type === "READING" && !editingSection.passage?.trim()) {
-                    alert("Please enter a reading passage");
-                    return;
-                  }
-                  if (editingSection.type === "LISTENING" && !editingSection.audio) {
-                    alert("Please upload an audio file");
-                    return;
-                  }
-                  
-                  // Update section in sections array
-                  const updatedSections = sections.map(s => 
-                    s.id === editingSection.id ? editingSection : s
-                  );
-                  setSections(updatedSections);
-                  
-                  // Update currentSection if it's the one being edited
-                  if (currentSection?.id === editingSection.id) {
-                    setCurrentSection(editingSection);
-                  }
-                  
-                  setShowSectionEditModal(false);
-                  setEditingSection(null);
-                }}
-                className="px-3 sm:px-4 py-2 text-sm font-medium text-white rounded-md flex items-center gap-2"
-                style={{ backgroundColor: "#303380" }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = "#252a6b";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "#303380";
-                }}
-              >
-                <Save className="w-4 h-4" />
-                Save Changes
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-
-                      });
-                    }}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
-                  >
-                    {(editingQuestion.options?.choices || []).map((opt: string, idx: number) => (
-                      <option key={idx} value={idx}>
-                        {opt || `Option ${idx + 1}`}
-                      </option>
-                    ))}
-                  </select>
-                )}
-                {editingQuestion.qtype === "MCQ_MULTI" && (
-                  <div className="space-y-2 p-3 bg-white border border-gray-200 rounded-md">
-                    {(editingQuestion.options?.choices || []).map((opt: string, idx: number) => (
-                      <label key={idx} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={(editingQuestion.answerKey?.indices || []).includes(idx)}
-                          onChange={(e) => {
-                            const indices = [...(editingQuestion.answerKey?.indices || [])];
-                            if (e.target.checked) {
-                              indices.push(idx);
-                            } else {
-                              const pos = indices.indexOf(idx);
-                              if (pos > -1) indices.splice(pos, 1);
-                            }
-                            setEditingQuestion({
-                              ...editingQuestion,
-                              answerKey: { indices: indices.sort() },
-                            });
-                          }}
-                          className="w-4 h-4"
-                        />
-                        <span className="text-sm">{opt || `Option ${idx + 1}`}</span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-                {editingQuestion.qtype === "DND_GAP" && (
-                  <div className="space-y-2 p-3 bg-white border border-gray-200 rounded-md">
-                    <p className="text-xs text-gray-500 mb-2">
-                      Word Bank will be automatically generated from the correct answers above.
-                    </p>
-                    {Array.isArray(editingQuestion.options?.bank) && editingQuestion.options.bank.length > 0 && (
-                      <div className="mt-3">
-                        <p className="text-xs font-medium text-gray-700 mb-2">Auto-generated Word Bank:</p>
-                        <div className="flex flex-wrap gap-2">
-                          {editingQuestion.options.bank.map((word: string, idx: number) => (
-                            <span key={idx} className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-medium">
-                              {word}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-                {editingQuestion.qtype === "ORDER_SENTENCE" && (
-                  <div className="space-y-2 p-3 bg-white border border-gray-200 rounded-md">
-                    <p className="text-xs text-gray-500">
-                      The correct order is determined by the token order. Students will see them shuffled.
-                    </p>
-                    {Array.isArray(editingQuestion.prompt?.tokens) && editingQuestion.prompt.tokens.length > 0 && (
-                      <div className="p-3 bg-gray-50 border border-gray-200 rounded-md">
-                        <p className="text-xs font-medium text-gray-700 mb-2">Current order (correct answer):</p>
-                        <div className="flex flex-wrap gap-2">
-                          {editingQuestion.prompt.tokens.map((token: string, idx: number) => (
-                            <span key={idx} className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
-                              {idx + 1}. {token}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Question Preview */}
-            <QuestionPreview question={editingQuestion} />
-
-            <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-gray-200">
-              <button
-                onClick={() => setEditingQuestion(null)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={saveQuestion}
-                className="px-4 py-2 text-sm font-medium text-white rounded-md"
-                style={{ backgroundColor: "#303380" }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = "#252a6b";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "#303380";
-                }}
-              >
-                Save Question
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
