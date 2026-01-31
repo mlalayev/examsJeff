@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireStudent } from "@/lib/auth-utils";
 import { SectionType, QuestionType } from "@prisma/client";
 import { scoreQuestion } from "@/lib/scoring";
+import { scoreIELTSListening } from "@/lib/ielts-listening-scoring";
 
 type AnswersByQuestionId = Record<string, any>;
 
@@ -43,6 +44,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
       where: { id: attempt.examId },
       select: {
         id: true,
+        category: true, // For IELTS-specific scoring
         sections: {
           orderBy: { order: "asc" },
           select: {
@@ -55,6 +57,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
                 qtype: true,
                 answerKey: true,
                 maxScore: true,
+                order: true, // For IELTS Listening part grouping
               },
             },
           },
@@ -87,6 +90,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
       rawScore: number | null;
       maxScore: number;
       status: string;
+      rubric?: any; // For IELTS Listening part scores
     }> = [];
 
     for (const section of examWithSections.sections) {
@@ -95,12 +99,37 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
 
       let sectionRaw = 0;
       let sectionMax = 0;
+      let sectionRubric: any = undefined;
 
       // Get answers for this section
       const sectionAnswers = answersByType[sectionType] || {};
 
+      // IELTS Listening: Special 4-part scoring
+      if (examWithSections.category === "IELTS" && sectionType === "LISTENING") {
+        const listeningResult = scoreIELTSListening(
+          section.questions.map(q => ({
+            id: q.id,
+            qtype: q.qtype as string,
+            answerKey: q.answerKey,
+            maxScore: q.maxScore || 1,
+            order: q.order,
+          })),
+          sectionAnswers
+        );
+        
+        sectionRaw = listeningResult.totalRaw;
+        sectionMax = listeningResult.maxScore;
+        sectionRubric = {
+          listeningParts: listeningResult.sectionScores,
+          totalRaw: listeningResult.totalRaw,
+          maxScore: listeningResult.maxScore,
+        };
+        
+        totalRaw += sectionRaw;
+        totalMax += sectionMax;
+      }
       // For writing, don't auto-score; calculate maxScore but keep raw null
-      if (!isWriting) {
+      else if (!isWriting) {
         for (const q of section.questions) {
           try {
             const qtype = q.qtype as QuestionType;
@@ -149,6 +178,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
           rawScore: isWriting ? null : sectionRaw,
           maxScore: sectionMax || 0,
           status: "COMPLETED",
+          rubric: sectionRubric, // IELTS Listening part scores
         });
       }
     }
@@ -165,6 +195,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
             rawScore: update.rawScore,
             maxScore: update.maxScore,
             status: update.status,
+            rubric: update.rubric || undefined, // IELTS Listening part scores
           },
         })
       );

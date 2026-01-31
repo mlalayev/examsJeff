@@ -1025,6 +1025,18 @@ export default function CreateExamPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     Listening Audio (MP3) *
                   </label>
+                  {selectedCategory === "IELTS" && (
+                    <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                      <p className="text-xs text-blue-800 font-medium mb-1">
+                        📝 IELTS Listening Requirements:
+                      </p>
+                      <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
+                        <li>Must have exactly <strong>40 questions</strong> (10 per part)</li>
+                        <li>4 parts: Conversation (1), Monologue (2), Discussion (3), Lecture (4)</li>
+                        <li>Audio will play automatically with restrictions (no pause/seek for students)</li>
+                      </ul>
+                    </div>
+                  )}
                   <div className="space-y-2">
                     {editingSection.audio && (
                       <div className="p-2 bg-gray-50 rounded-md text-sm text-gray-600">

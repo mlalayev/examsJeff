@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, BookOpen, Clock, FileText, Edit, Trash2, CheckCircle, XCircle } from "lucide-react";
+import IELTSAudioPlayer from "@/components/audio/IELTSAudioPlayer";
 
 interface ExamSection {
   id: string;
@@ -389,11 +390,12 @@ export default function AdminExamDetailPage() {
                     )}
                     {instructionData.audio && (
                       <div className="mt-3">
-                        <p className="text-xs font-medium text-gray-700 mb-2">Audio:</p>
-                        <audio controls className="w-full max-w-md">
-                          <source src={instructionData.audio} type="audio/mpeg" />
-                          Your browser does not support the audio element.
-                        </audio>
+                        <p className="text-xs font-medium text-gray-700 mb-2">🎧 Audio Preview (Teacher Mode):</p>
+                        <IELTSAudioPlayer 
+                          src={instructionData.audio}
+                          allowFullControls={true}
+                          className="max-w-2xl"
+                        />
                       </div>
                     )}
                   </div>

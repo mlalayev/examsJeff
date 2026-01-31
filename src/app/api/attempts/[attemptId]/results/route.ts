@@ -340,6 +340,8 @@ export async function GET(
             total: totalCount,
             percentage: totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0,
             questions,
+            // IELTS Listening: Include part scores from rubric
+            listeningParts: attemptSection?.rubric?.listeningParts || undefined,
           };
         });
 

@@ -19,6 +19,8 @@ import { QInlineSelect } from "@/components/questions/QInlineSelect";
 import { QDndGap } from "@/components/questions/QDndGap";
 import { QOrderSentence } from "@/components/questions/QOrderSentence";
 import { SectionTimer } from "@/components/attempts/SectionTimer";
+import { useAttemptPersistence, type PersistedAttemptState } from "@/hooks/useAttemptPersistence";
+import { X } from "lucide-react";
 
 interface Question {
   id: string;
@@ -76,8 +78,50 @@ export default function AttemptRunnerPage() {
   >({});
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showResumeNotification, setShowResumeNotification] = useState(false);
 
   const autosaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const hasRestoredFromPersistence = useRef(false);
+
+  // Persistence hook - auto-saves state to localStorage
+  const { clearStorage: clearPersistence } = useAttemptPersistence({
+    attemptId,
+    moduleType: data?.examCategory,
+    answers,
+    activeSection,
+    sectionStartTimes,
+    lockedSections,
+    isSubmitted: submitting || showSuccessModal,
+    onRestore: (restored: PersistedAttemptState) => {
+      // Only restore once
+      if (hasRestoredFromPersistence.current) return;
+      hasRestoredFromPersistence.current = true;
+
+      // Restore answers
+      if (restored.answers && Object.keys(restored.answers).length > 0) {
+        setAnswers(restored.answers);
+      }
+
+      // Restore active section
+      if (restored.activeSection) {
+        setActiveSection(restored.activeSection);
+      }
+
+      // Restore section start times
+      if (restored.sectionStartTimes) {
+        setSectionStartTimes(restored.sectionStartTimes);
+      }
+
+      // Restore locked sections
+      if (restored.lockedSections) {
+        setLockedSections(new Set(restored.lockedSections));
+      }
+
+      // Show notification
+      setShowResumeNotification(true);
+      setTimeout(() => setShowResumeNotification(false), 5000);
+    },
+  });
 
   // Cleanup autosave timer on unmount
   useEffect(() => {
@@ -456,6 +500,9 @@ export default function AttemptRunnerPage() {
             localStorage.removeItem(timerKey);
           });
         }
+
+        // Clear persistence data
+        clearPersistence();
       }
 
       setShowSuccessModal(true);
@@ -878,11 +925,36 @@ export default function AttemptRunnerPage() {
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
                 renderQuestionComponent={renderQuestionComponent}
+                examCategory={data.examCategory}
+                userRole="STUDENT"
               />
             )}
                    </div>
                 </div>
               </div>
+
+      {/* Resume Notification */}
+      {showResumeNotification && (
+        <div className="fixed top-4 right-4 z-50 animate-fade-in">
+          <div className="bg-green-50 border border-green-200 rounded-lg shadow-lg p-4 flex items-start gap-3 max-w-sm">
+            <div className="flex-shrink-0">
+              <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-green-900">Resumed from last session</p>
+              <p className="text-xs text-green-700 mt-1">Your answers and progress have been restored</p>
+            </div>
+            <button
+              onClick={() => setShowResumeNotification(false)}
+              className="flex-shrink-0 text-green-600 hover:text-green-800"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Submit Module Modal - SAT Only */}
       {showSubmitModuleModal && isSAT && currentSection && (

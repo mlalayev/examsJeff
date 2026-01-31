@@ -2,9 +2,11 @@
 
 import React, { useMemo } from "react";
 import AudioPlayer from "@/components/audio/AudioPlayer";
+import IELTSAudioPlayer from "@/components/audio/IELTSAudioPlayer";
 import QDndGroup from "@/components/questions/QDndGroup";
 import { QuestionCard } from "./QuestionCard";
 import { DndGapQuestion } from "./DndGapQuestion";
+import { IELTSListeningView } from "./IELTSListeningView";
 
 interface Question {
   id: string;
@@ -46,6 +48,8 @@ interface QuestionsAreaProps {
     externalDraggedOption?: string | null,
     onDropComplete?: () => void
   ) => React.ReactNode;
+  examCategory?: string; // For IELTS audio restrictions
+  userRole?: string; // For teacher preview
 }
 
 export const QuestionsArea = React.memo(function QuestionsArea({
@@ -59,6 +63,8 @@ export const QuestionsArea = React.memo(function QuestionsArea({
   onDragStart,
   onDragEnd,
   renderQuestionComponent,
+  examCategory,
+  userRole,
 }: QuestionsAreaProps) {
   const audioSource = section.audio || section.questions?.[0]?.prompt?.audio;
   const readingPassage =
@@ -122,7 +128,16 @@ export const QuestionsArea = React.memo(function QuestionsArea({
                 Listen to the audio and answer the questions below
               </p>
             </div>
-            <AudioPlayer src={audioSource} className="w-full" />
+            {/* Use IELTS-restricted player for IELTS Listening sections (student mode) */}
+            {examCategory === "IELTS" && section.type === "LISTENING" && userRole !== "TEACHER" && userRole !== "ADMIN" ? (
+              <IELTSAudioPlayer 
+                src={audioSource} 
+                className="w-full"
+                allowFullControls={false}
+              />
+            ) : (
+              <AudioPlayer src={audioSource} className="w-full" />
+            )}
           </div>
         )}
 
@@ -167,6 +182,17 @@ export const QuestionsArea = React.memo(function QuestionsArea({
               />
             </div>
           </div>
+        ) : examCategory === "IELTS" && section.type === "LISTENING" ? (
+          // IELTS Listening: Show 4 parts with tab navigation
+          <IELTSListeningView
+            questions={section.questions}
+            answers={sectionAnswers}
+            isLocked={isLocked}
+            renderQuestionComponent={(q, value, onChange, readOnly) => 
+              renderQuestionComponent(q, value, onChange, readOnly, false, null, undefined)
+            }
+            onAnswerChange={onAnswerChange}
+          />
         ) : (
           <div className="space-y-5">
             {section.questions.map((q, idx) => {

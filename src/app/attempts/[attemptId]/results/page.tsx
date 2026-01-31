@@ -285,6 +285,16 @@ export default function AttemptResultsPage() {
                           <span>•</span>
                           <span>{section.type}</span>
                         </div>
+                        {/* IELTS Listening Part Breakdown (Teacher Only) */}
+                        {data.role === "TEACHER" && section.type === "LISTENING" && section.listeningParts && (
+                          <div className="flex items-center gap-2 mt-2 text-xs">
+                            <span className="text-gray-500">Parts:</span>
+                            <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded">P1: {section.listeningParts.s1}/10</span>
+                            <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded">P2: {section.listeningParts.s2}/10</span>
+                            <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded">P3: {section.listeningParts.s3}/10</span>
+                            <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded">P4: {section.listeningParts.s4}/10</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
