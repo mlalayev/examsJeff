@@ -1366,43 +1366,105 @@ export default function EditExamPage() {
                       • You can optionally add an image in the section above
                     </div>
                     
-                    {/* Answer inputs for each blank */}
+                    {/* Answer inputs for each blank - multiple alternatives */}
                     {(editingQuestion.prompt?.text || "").match(/___/g) && (
                       <div className="pt-3 border-t border-gray-200">
                         <label className="block text-xs font-medium text-gray-600 mb-2">
-                          Correct Answers (case-insensitive)
+                          Correct Answers (case-insensitive, spaces ignored)
                         </label>
-                        <div className="space-y-2">
-                          {Array.from({ length: (editingQuestion.prompt?.text || "").match(/___/g)?.length || 0 }).map((_, idx) => (
-                            <div key={idx} className="flex items-center gap-2">
-                              <span className="text-xs text-gray-500 w-16">Blank {idx + 1}:</span>
-                              <input
-                                type="text"
-                                value={Array.isArray(editingQuestion.answerKey?.answers) 
-                                  ? editingQuestion.answerKey.answers[idx] || "" 
-                                  : ""}
-                                onChange={(e) => {
-                                  const answers = [...(editingQuestion.answerKey?.answers || [])];
-                                  answers[idx] = e.target.value;
-                                  
-                                  setEditingQuestion({
-                                    ...editingQuestion,
-                                    answerKey: { 
-                                      ...editingQuestion.answerKey,
-                                      answers,
-                                      caseSensitive: false,
-                                    },
-                                  });
-                                }}
-                                placeholder={`Answer for blank ${idx + 1}`}
-                                className="flex-1 px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
-                              />
-                            </div>
-                          ))}
+                        <div className="space-y-3">
+                          {Array.from({ length: (editingQuestion.prompt?.text || "").match(/___/g)?.length || 0 }).map((_, idx) => {
+                            // Get current alternatives for this blank
+                            const currentAlternatives = Array.isArray(editingQuestion.answerKey?.answers?.[idx])
+                              ? editingQuestion.answerKey.answers[idx]
+                              : (typeof editingQuestion.answerKey?.answers?.[idx] === "string" 
+                                  ? [editingQuestion.answerKey.answers[idx]] 
+                                  : [""]);
+                            
+                            return (
+                              <div key={idx} className="bg-gray-50 p-3 rounded-md border border-gray-200">
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-xs font-semibold text-gray-700">Blank {idx + 1}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const answers = [...(editingQuestion.answerKey?.answers || [])];
+                                      const alternatives = Array.isArray(answers[idx]) ? [...answers[idx]] : (typeof answers[idx] === "string" ? [answers[idx]] : [""]);
+                                      alternatives.push("");
+                                      answers[idx] = alternatives;
+                                      
+                                      setEditingQuestion({
+                                        ...editingQuestion,
+                                        answerKey: { 
+                                          ...editingQuestion.answerKey,
+                                          answers,
+                                        },
+                                      });
+                                    }}
+                                    className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                                  >
+                                    + Add Alternative
+                                  </button>
+                                </div>
+                                
+                                <div className="space-y-2">
+                                  {currentAlternatives.map((alt: string, altIdx: number) => (
+                                    <div key={altIdx} className="flex items-center gap-2">
+                                      <input
+                                        type="text"
+                                        value={alt || ""}
+                                        onChange={(e) => {
+                                          const answers = [...(editingQuestion.answerKey?.answers || [])];
+                                          const alternatives = Array.isArray(answers[idx]) ? [...answers[idx]] : (typeof answers[idx] === "string" ? [answers[idx]] : [""]);
+                                          alternatives[altIdx] = e.target.value;
+                                          answers[idx] = alternatives;
+                                          
+                                          setEditingQuestion({
+                                            ...editingQuestion,
+                                            answerKey: { 
+                                              ...editingQuestion.answerKey,
+                                              answers,
+                                            },
+                                          });
+                                        }}
+                                        placeholder={`Alternative ${altIdx + 1} (e.g., "90%", "ninety percent")`}
+                                        className="flex-1 px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
+                                      />
+                                      {currentAlternatives.length > 1 && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const answers = [...(editingQuestion.answerKey?.answers || [])];
+                                            const alternatives = Array.isArray(answers[idx]) ? [...answers[idx]] : [answers[idx]];
+                                            alternatives.splice(altIdx, 1);
+                                            answers[idx] = alternatives.length === 1 ? alternatives : alternatives;
+                                            
+                                            setEditingQuestion({
+                                              ...editingQuestion,
+                                              answerKey: { 
+                                                ...editingQuestion.answerKey,
+                                                answers,
+                                              },
+                                            });
+                                          }}
+                                          className="text-xs text-red-600 hover:text-red-700 font-medium"
+                                        >
+                                          Remove
+                                        </button>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                        <p className="text-xs text-blue-600 mt-2 font-medium">
-                          ℹ️ Answers are case-insensitive. "train", "Train", and "TRAIN" are all accepted.
-                        </p>
+                        <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                          <p className="text-xs text-blue-800">
+                            <strong>ℹ️ Note:</strong> Answers are case-insensitive and spaces are ignored.<br/>
+                            Examples: "90%", "90 %", "9 0 %" are all treated as the same answer.
+                          </p>
+                        </div>
                       </div>
                     )}
                   </div>

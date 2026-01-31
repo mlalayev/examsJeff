@@ -26,6 +26,24 @@ function normalizeText(text: string): string {
 }
 
 /**
+ * Normalize text for IELTS Fill in the Blank comparison
+ * Removes spaces, punctuation, converts to lowercase
+ * Examples:
+ * - "90 %" → "90%"
+ * - "ninety percent" → "ninetypercent"
+ * - "9 0 %" → "90%"
+ */
+function normalizeFillInBlank(text: string): string {
+  return text
+    .trim()
+    .toLowerCase()
+    // Remove all spaces
+    .replace(/\s+/g, "")
+    // Remove common punctuation that might be extra
+    .replace(/[.,!?\\/\-_:;"'()]/g, "");
+}
+
+/**
  * Auto-scoring function for question types
  * Returns 1 for correct, 0 for incorrect
  * 
@@ -125,36 +143,52 @@ export function scoreQuestion(qtype: QuestionType, studentAnswer: any, answerKey
       }) ? 1 : 0;
     }
     case "FILL_IN_BLANK": {
-      // IELTS Fill in the Blank: case-insensitive matching (changed from case-sensitive)
-      // Value format: { "0": "train", "1": "stickers", "2": "17.50" } (blank index → student answer)
-      // answerKey format: { answers: ["train", "stickers", "17.50"], caseSensitive: false }
+      // IELTS Fill in the Blank: case-insensitive matching with multiple alternatives
+      // Value format: { "0": "ninety percent", "1": "train", "2": "17.50" } (blank index → student answer)
+      // answerKey format: { 
+      //   answers: [
+      //     ["90%", "ninety percent", "90 percent", "ninety %"],  // Blank 0: multiple alternatives
+      //     ["train"],  // Blank 1: single answer
+      //     ["17.50", "17.5"]  // Blank 2: multiple alternatives
+      //   ]
+      // }
       const correctAnswers = answerKey?.answers || [];
-      const caseSensitive = answerKey?.caseSensitive === true; // Default to false (case-insensitive)
       
       if (!studentAnswer || typeof studentAnswer !== "object") return 0;
       
-      // Convert student answer object to array: { "0": "train", "1": "stickers" } → ["train", "stickers"]
-      const studentAnswersArray: string[] = [];
+      // Check each blank
       for (let i = 0; i < correctAnswers.length; i++) {
-        const value = studentAnswer[String(i)];
-        studentAnswersArray.push(value || "");
+        const studentAns = studentAnswer[String(i)];
+        if (!studentAns || typeof studentAns !== "string") return 0;
+        
+        const alternatives = correctAnswers[i];
+        
+        // Handle both old format (string) and new format (array of strings)
+        const alternativesArray = Array.isArray(alternatives) ? alternatives : [alternatives];
+        
+        if (!Array.isArray(alternativesArray) || alternativesArray.length === 0) return 0;
+        
+        // Normalize student answer (remove spaces, lowercase, remove punctuation)
+        const normalizedStudent = normalizeFillInBlank(studentAns);
+        
+        // Check if student answer matches any alternative
+        const isMatch = alternativesArray.some((alt: string | string[]) => {
+          // Handle nested arrays (backward compatibility)
+          if (Array.isArray(alt)) {
+            return alt.some((a: string) => {
+              if (typeof a !== "string") return false;
+              return normalizeFillInBlank(a) === normalizedStudent;
+            });
+          }
+          
+          if (typeof alt !== "string") return false;
+          return normalizeFillInBlank(alt) === normalizedStudent;
+        });
+        
+        if (!isMatch) return 0;
       }
       
-      if (studentAnswersArray.length !== correctAnswers.length) return 0;
-      
-      // Check each answer
-      return studentAnswersArray.every((studentAns, i) => {
-        const correctAns = correctAnswers[i];
-        if (typeof studentAns !== "string" || typeof correctAns !== "string") return false;
-        
-        if (caseSensitive) {
-          // Case-sensitive: exact match after trimming
-          return studentAns.trim() === correctAns.trim();
-        } else {
-          // Case-insensitive: normalize
-          return normalizeText(studentAns) === normalizeText(correctAns);
-        }
-      }) ? 1 : 0;
+      return 1; // All blanks matched
     }
     // Essay requires manual grading (no autoscore)
     case "ESSAY":
