@@ -21,6 +21,7 @@ enum Role {
   BRANCH_ADMIN
   BRANCH_BOSS
   CREATOR
+  PARENT // Legacy role - kept to prevent data loss
 }
 
 enum ExamCategory {
@@ -55,7 +56,7 @@ enum QuestionType {
   DND_GAP
   SHORT_TEXT
   ESSAY
-  FILL_IN_BLANK  // IELTS boşluq doldurma sual tipi
+  FILL_IN_BLANK // IELTS boşluq doldurma sual tipi
 }
 
 enum PaymentStatus {
@@ -101,6 +102,9 @@ model User {
   // Student Profile relations
   studentProfile   StudentProfile?  @relation("StudentProfileUser")
   studentsTeaching StudentProfile[] @relation("TeacherOfStudent")
+
+  // Teacher Profile relations
+  teacherProfile TeacherProfile? @relation("TeacherProfileUser")
 
   // Tuition Payment relations
   tuitionPayments TuitionPayment[] @relation("StudentTuitionPayments")
@@ -207,7 +211,7 @@ model Attempt {
   startedAt    DateTime?
   submittedAt  DateTime?
   bandOverall  Float?
-  answers      Json?       // For JSON-based exams (stores all answers)
+  answers      Json? // For JSON-based exams (stores all answers)
   createdAt    DateTime    @default(now())
 
   sections AttemptSection[]
@@ -518,12 +522,32 @@ model StudentProfile {
   teacher       User?     @relation("TeacherOfStudent", fields: [teacherId], references: [id], onDelete: SetNull)
   firstEnrollAt DateTime?
   monthlyFee    Decimal?  @db.Decimal(10, 2)
+  // Legacy fields - kept to prevent data loss
+  dateOfBirth   DateTime?
+  paymentAmount Decimal?  @db.Decimal(10, 2)
+  paymentDate   DateTime? // Legacy field from migration
+  phoneNumber   String?
+  program       String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   @@index([branchId])
   @@index([teacherId])
   @@map("student_profiles")
+}
+
+model TeacherProfile {
+  id          String    @id @default(cuid())
+  teacherId   String    @unique
+  teacher     User      @relation("TeacherProfileUser", fields: [teacherId], references: [id], onDelete: Cascade)
+  phoneNumber String
+  dateOfBirth DateTime?
+  program     String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([teacherId])
+  @@map("teacher_profiles")
 }
 
 model TuitionPayment {
