@@ -152,8 +152,8 @@ export async function POST(request: Request) {
     }
     
     // Separate parent sections from subsections
-    const parentSections = validatedData.sections?.filter(s => !s.parentTitle && !s.parentOrder) || [];
-    const subsections = validatedData.sections?.filter(s => s.parentTitle || s.parentOrder !== null) || [];
+    const parentSections = validatedData.sections?.filter(s => !s.parentTitle) || [];
+    const subsections = validatedData.sections?.filter(s => s.parentTitle) || [];
     
     // Create exam with parent sections first
     const exam = await prisma.exam.create({
