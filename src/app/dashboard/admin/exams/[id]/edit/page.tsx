@@ -507,7 +507,7 @@ export default function EditExamPage() {
         return { text: "Write an essay about..." };
       case "FILL_IN_BLANK":
         return { 
-          text: "A wooden **1** [input] \nIncludes a sheet of **2** [input] \nPrice: £**3** [input]",
+          text: "Complete the sentences below:\n---\n1. A wooden ___\n2. Includes a sheet of ___\n3. Price: £___",
           imageUrl: "" // Optional image URL
         };
       default:
@@ -1322,8 +1322,8 @@ export default function EditExamPage() {
                       value={editingQuestion.prompt?.text || ""}
                       onChange={(e) => {
                         const text = e.target.value;
-                        // Count blanks ([input]) in the text
-                        const blankCount = (text.match(/\[input\]/g) || []).length;
+                        // Count blanks (___) in the text
+                        const blankCount = (text.match(/___/g) || []).length;
                         
                         // Initialize answers array
                         const currentAnswers = Array.isArray(editingQuestion.answerKey?.answers) 
@@ -1344,16 +1344,22 @@ export default function EditExamPage() {
                           }
                         });
                       }}
-                      placeholder="A wooden **1** [input]&#10;Includes a sheet of **2** [input]&#10;Price: £**3** [input]"
+                      placeholder="Complete the sentences below:&#10;---&#10;1. A wooden ___&#10;2. Includes a sheet of ___&#10;3. Price: £___"
                       className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white resize-y"
                       rows={8}
                     />
                     <div className="text-xs text-gray-500 bg-blue-50 p-3 rounded border border-blue-200">
                       <strong>📝 IELTS Fill in the Blank:</strong>
                       <br />
-                      • Use <strong>[input]</strong> where you want input fields
+                      • First line: Question title/instruction
                       <br />
-                      • Use <strong>**number**</strong> to number your blanks (e.g., **1**, **2**, **3**)
+                      • Use <strong>---</strong> to separate title from items
+                      <br />
+                      • Each line after --- is one item (e.g., 1. Text ___)
+                      <br />
+                      • Use <strong>___</strong> (3 underscores) for blank spaces
+                      <br />
+                      • Use <strong>**text**</strong> for bold formatting
                       <br />
                       • Answers are <strong>not case-sensitive</strong> (e.g., "train", "Train", "TRAIN" are all correct)
                       <br />
@@ -1361,13 +1367,13 @@ export default function EditExamPage() {
                     </div>
                     
                     {/* Answer inputs for each blank */}
-                    {(editingQuestion.prompt?.text || "").match(/\[input\]/g) && (
+                    {(editingQuestion.prompt?.text || "").match(/___/g) && (
                       <div className="pt-3 border-t border-gray-200">
                         <label className="block text-xs font-medium text-gray-600 mb-2">
                           Correct Answers (case-insensitive)
                         </label>
                         <div className="space-y-2">
-                          {Array.from({ length: (editingQuestion.prompt?.text || "").match(/\[input\]/g)?.length || 0 }).map((_, idx) => (
+                          {Array.from({ length: (editingQuestion.prompt?.text || "").match(/___/g)?.length || 0 }).map((_, idx) => (
                             <div key={idx} className="flex items-center gap-2">
                               <span className="text-xs text-gray-500 w-16">Blank {idx + 1}:</span>
                               <input

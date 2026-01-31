@@ -16,23 +16,31 @@ interface QFillInBlankProps {
 /**
  * IELTS Fill in the Blank Question Component
  * 
+ * NEW Format:
+ * Title line (optional, before ---)
+ * ---
+ * 1. Text with blank ___
+ * 2. Another text ___
+ * 
  * Example prompt.text:
- * "A wooden **1** [input]\nIncludes a sheet of **2** [input]\nPrice: £**3** [input]"
+ * "Complete the sentences below:\n---\n1. A wooden ___\n2. Includes a sheet of ___\n3. Price: £___"
  * 
  * This will render:
- * - Image on the left (if provided)
- * - Text with input fields on the right
- * - Input fields replace "[input]"
- * - **number** is rendered as bold number
+ * Title: "Complete the sentences below:"
+ * Then each line as: "1. A wooden ___" + [Input field]
  */
 export default function QFillInBlank({ prompt, image, value, onChange }: QFillInBlankProps) {
   const text = prompt?.text || "";
   const imageUrl = image || prompt?.imageUrl;
 
-  // Parse text and extract blanks
-  // Split by [input] to get parts and blanks
-  const parts = text.split("[input]");
-  const blankCount = parts.length - 1;
+  // Split by --- to separate title from items
+  const [titlePart = "", itemsPart = ""] = text.split("---").map(s => s.trim());
+  
+  // Split items by newline
+  const items = itemsPart.split("\n").filter(line => line.trim());
+  
+  // Count how many items have ___
+  const blankCount = items.filter(item => item.includes("___")).length;
 
   const handleChange = (index: number, newValue: string) => {
     onChange({
@@ -58,19 +66,27 @@ export default function QFillInBlank({ prompt, image, value, onChange }: QFillIn
 
         {/* Text + Input fields - vertical layout */}
         <div className={`flex-1 ${imageUrl ? "w-2/3" : "w-full"}`}>
-          <div className="space-y-3">
-            {parts.map((part, index) => (
-              <React.Fragment key={index}>
-                {/* Render text part with formatting */}
-                {part && part.trim() && (
-                  <div className="mb-2">
-                    <FormattedText text={part} />
-                  </div>
-                )}
+          {/* Title */}
+          {titlePart && (
+            <div className="mb-4 text-base font-medium text-gray-900">
+              <FormattedText text={titlePart} />
+            </div>
+          )}
 
-                {/* Render input field if not last part - full width, on separate line */}
-                {index < blankCount && (
-                  <div className="mb-4">
+          {/* Items with inputs */}
+          <div className="space-y-4">
+            {items.map((item, index) => {
+              const hasBlank = item.includes("___");
+              
+              return (
+                <div key={index} className="space-y-2">
+                  {/* Item text */}
+                  <div className="text-gray-800">
+                    <FormattedText text={item} />
+                  </div>
+                  
+                  {/* Input field if this item has a blank */}
+                  {hasBlank && (
                     <input
                       type="text"
                       value={value[String(index)] || ""}
@@ -78,10 +94,10 @@ export default function QFillInBlank({ prompt, image, value, onChange }: QFillIn
                       className="w-full px-3 py-2 border-2 border-gray-300 rounded-md text-base focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
                       placeholder={`Answer ${index + 1}`}
                     />
-                  </div>
-                )}
-              </React.Fragment>
-            ))}
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

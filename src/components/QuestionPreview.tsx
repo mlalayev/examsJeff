@@ -139,29 +139,46 @@ export default function QuestionPreview({ question }: QuestionPreviewProps) {
         {/* Fill in the Blank (IELTS) */}
         {question.qtype === "FILL_IN_BLANK" && (
           <div className="mt-4 space-y-4">
-            {question.prompt?.text?.split("[input]").map((part: string, idx: number, arr: string[]) => (
-              <div key={idx}>
-                {part && part.trim() && (
-                  <div className="mb-2">
-                    <FormattedText text={part} />
-                  </div>
-                )}
-                {idx < arr.length - 1 && (
-                  <div className="mb-4">
-                    <input
-                      type="text"
-                      disabled
-                      placeholder={`Answer ${idx + 1}`}
-                      className="w-full px-3 py-2 border-2 rounded-md text-base bg-gray-50 cursor-not-allowed"
-                      style={{
-                        borderColor: "rgba(48, 51, 128, 0.2)",
-                        color: "#9CA3AF",
-                      }}
-                    />
-                  </div>
-                )}
-              </div>
-            ))}
+            {(() => {
+              const text = question.prompt?.text || "";
+              const [titlePart = "", itemsPart = ""] = text.split("---").map((s: string) => s.trim());
+              const items = itemsPart.split("\n").filter((line: string) => line.trim());
+
+              return (
+                <>
+                  {/* Title */}
+                  {titlePart && (
+                    <div className="mb-4 text-base font-medium text-gray-900">
+                      <FormattedText text={titlePart} />
+                    </div>
+                  )}
+
+                  {/* Items */}
+                  {items.map((item: string, idx: number) => {
+                    const hasBlank = item.includes("___");
+                    return (
+                      <div key={idx} className="space-y-2">
+                        <div className="text-gray-800">
+                          <FormattedText text={item} />
+                        </div>
+                        {hasBlank && (
+                          <input
+                            type="text"
+                            disabled
+                            placeholder={`Answer ${idx + 1}`}
+                            className="w-full px-3 py-2 border-2 rounded-md text-base bg-gray-50 cursor-not-allowed"
+                            style={{
+                              borderColor: "rgba(48, 51, 128, 0.2)",
+                              color: "#9CA3AF",
+                            }}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </>
+              );
+            })()}
             <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
               <p className="text-sm text-blue-800">
                 <strong>ℹ️ Note:</strong> Answers are not case-sensitive
