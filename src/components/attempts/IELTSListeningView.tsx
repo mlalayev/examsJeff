@@ -13,18 +13,18 @@ interface Question {
   maxScore: number;
 }
 
-interface Section {
+interface PartSection {
   id: string;
   title: string;
   image?: string | null;
   introduction?: string | null;
+  questions: Question[];
 }
 
 interface IELTSListeningViewProps {
-  questions: Question[];
-  answers: Record<string, any>;
+  partSections: PartSection[]; // All 4 Listening parts
+  answers: Record<string, any>; // All answers across all parts
   isLocked: boolean;
-  section?: Section; // Full section data for image and introduction
   renderQuestionComponent: (
     q: Question,
     value: any,
@@ -36,43 +36,46 @@ interface IELTSListeningViewProps {
 
 /**
  * IELTS Listening View - Shows 4 parts with tab navigation
+ * Audio plays continuously across all parts
  */
 export const IELTSListeningView: React.FC<IELTSListeningViewProps> = ({
-  questions,
+  partSections,
   answers,
   isLocked,
-  section,
   renderQuestionComponent,
   onAnswerChange,
 }) => {
   const [activePart, setActivePart] = useState(1);
   
-  // Group questions by parts
-  const groupedQuestions = groupIELTSListeningQuestions(questions);
-  const currentPartQuestions = groupedQuestions[activePart] || [];
+  // Get current part section (1-indexed → 0-indexed)
+  const currentPartSection = partSections[activePart - 1];
+  if (!currentPartSection) {
+    return <div className="text-center py-8 text-red-500">Part {activePart} not found</div>;
+  }
 
-  // Get current part's image and introduction from section title
-  // Section title format: "Listening - Part 1", "Listening - Part 2", etc.
-  const currentPartTitle = IELTS_LISTENING_STRUCTURE.parts[activePart - 1].title;
-  const hasImage = section?.image;
-  const hasIntroduction = section?.introduction;
+  const currentPartQuestions = currentPartSection.questions || [];
+  const currentPartTitle = IELTS_LISTENING_STRUCTURE.parts[activePart - 1]?.title || `Part ${activePart}`;
+  const hasImage = !!currentPartSection.image;
+  const hasIntroduction = !!currentPartSection.introduction;
 
   return (
     <div>
       {/* Part Navigation */}
       <div className="mb-6 border-b border-gray-200">
         <div className="flex space-x-1 overflow-x-auto pb-2">
-          {IELTS_LISTENING_STRUCTURE.parts.map((part) => {
-            const partQuestions = groupedQuestions[part.id] || [];
+          {partSections.map((partSection, idx) => {
+            const partId = idx + 1;
+            const partInfo = IELTS_LISTENING_STRUCTURE.parts[idx];
+            const partQuestions = partSection.questions || [];
             const answeredCount = partQuestions.filter(q => 
               answers[q.id] !== undefined && answers[q.id] !== null && answers[q.id] !== ""
             ).length;
-            const isActive = activePart === part.id;
+            const isActive = activePart === partId;
 
             return (
               <button
-                key={part.id}
-                onClick={() => setActivePart(part.id)}
+                key={partSection.id}
+                onClick={() => setActivePart(partId)}
                 className={`
                   flex-shrink-0 px-4 py-3 rounded-t-lg border-b-2 transition-all
                   ${isActive 
@@ -82,9 +85,9 @@ export const IELTSListeningView: React.FC<IELTSListeningViewProps> = ({
                 `}
               >
                 <div className="text-sm">
-                  <div className="font-medium">{part.title}</div>
+                  <div className="font-medium">{partInfo?.title || `Part ${partId}`}</div>
                   <div className="text-xs mt-1 opacity-75">
-                    Q{part.questionRange[0]}–{part.questionRange[1]}
+                    Q{partInfo?.questionRange[0]}–{partInfo?.questionRange[1]}
                   </div>
                   <div className="text-xs mt-1">
                     {answeredCount}/{partQuestions.length}
@@ -104,7 +107,7 @@ export const IELTSListeningView: React.FC<IELTSListeningViewProps> = ({
             {hasImage && (
               <div>
                 <img
-                  src={section.image!}
+                  src={currentPartSection.image!}
                   alt={`${currentPartTitle} illustration`}
                   className="w-full h-auto rounded-lg border-2 border-gray-200 shadow-sm"
                 />
@@ -116,7 +119,7 @@ export const IELTSListeningView: React.FC<IELTSListeningViewProps> = ({
                   {currentPartTitle}
                 </h3>
                 <p className="text-sm text-blue-700 whitespace-pre-line">
-                  {section.introduction}
+                  {currentPartSection.introduction}
                 </p>
               </div>
             )}

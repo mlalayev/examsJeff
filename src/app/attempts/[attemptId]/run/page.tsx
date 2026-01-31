@@ -939,6 +939,8 @@ export default function AttemptRunnerPage() {
                 renderQuestionComponent={renderQuestionComponent}
                 examCategory={data.examCategory}
                 userRole="STUDENT"
+                allSections={sections}
+                currentSectionIndex={currentSectionIdx}
               />
             )}
                    </div>

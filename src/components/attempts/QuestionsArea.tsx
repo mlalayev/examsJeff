@@ -28,6 +28,7 @@ interface Section {
   instruction?: string;
   passage?: string | null;
   image?: string | null; // Section image (for IELTS Listening parts)
+  introduction?: string | null; // Section introduction (for IELTS Listening parts)
 }
 
 interface QuestionsAreaProps {
@@ -51,6 +52,8 @@ interface QuestionsAreaProps {
   ) => React.ReactNode;
   examCategory?: string; // For IELTS audio restrictions
   userRole?: string; // For teacher preview
+  allSections?: Section[]; // All sections for IELTS Listening multi-part view
+  currentSectionIndex?: number; // Current section index in exam
 }
 
 export const QuestionsArea = React.memo(function QuestionsArea({
@@ -66,12 +69,35 @@ export const QuestionsArea = React.memo(function QuestionsArea({
   renderQuestionComponent,
   examCategory,
   userRole,
+  allSections = [],
+  currentSectionIndex = 0,
 }: QuestionsAreaProps) {
   const audioSource = section.audio || section.questions?.[0]?.prompt?.audio;
   const readingPassage =
     section.passage || section.questions?.[0]?.prompt?.passage;
 
   const sectionAnswers = answers[section.id] || {};
+
+  // For IELTS Listening: Check if this is a Listening Part section
+  const isIELTSListeningPart = examCategory === "IELTS" && section.type === "LISTENING";
+  
+  // Find all IELTS Listening parts (4 consecutive sections)
+  const ieltsListeningParts = isIELTSListeningPart 
+    ? allSections.filter(s => s.type === "LISTENING").slice(0, 4)
+    : [];
+  
+  // Is this the first Listening part? (only first part shows audio player)
+  const isFirstListeningPart = isIELTSListeningPart && 
+    ieltsListeningParts.length > 0 && 
+    ieltsListeningParts[0].id === section.id;
+  
+  // Collect all answers from all 4 Listening parts
+  const allListeningAnswers = isIELTSListeningPart
+    ? ieltsListeningParts.reduce((acc, partSection) => {
+        const partAnswers = answers[partSection.id] || {};
+        return { ...acc, ...partAnswers };
+      }, {})
+    : sectionAnswers;
 
   // Calculate base question numbers for DND_GAP questions
   const baseQuestionNumbers = useMemo(() => {
@@ -112,8 +138,8 @@ export const QuestionsArea = React.memo(function QuestionsArea({
           <h2 className="text-2xl font-bold text-slate-900">{section.title}</h2>
         </div>
 
-        {/* Audio Player */}
-        {audioSource && (
+        {/* Audio Player - Only show once for first IELTS Listening part */}
+        {audioSource && (!isIELTSListeningPart || isFirstListeningPart) && (
           <div className="mb-8">
             <div className="text-center mb-4">
               <h3
@@ -126,7 +152,10 @@ export const QuestionsArea = React.memo(function QuestionsArea({
                 className="text-sm"
                 style={{ color: "rgba(48, 51, 128, 0.7)" }}
               >
-                Listen to the audio and answer the questions below
+                {isIELTSListeningPart 
+                  ? "The audio plays continuously. Navigate between parts using the tabs below."
+                  : "Listen to the audio and answer the questions below"
+                }
               </p>
             </div>
             {/* Use IELTS-restricted player for IELTS Listening sections (student mode) */}
@@ -184,17 +213,32 @@ export const QuestionsArea = React.memo(function QuestionsArea({
             </div>
           </div>
         ) : examCategory === "IELTS" && section.type === "LISTENING" ? (
-          // IELTS Listening: Show 4 parts with tab navigation
-          <IELTSListeningView
-            questions={section.questions}
-            answers={sectionAnswers}
-            isLocked={isLocked}
-            section={section} // Pass full section to access image and introduction
-            renderQuestionComponent={(q, value, onChange, readOnly) => 
-              renderQuestionComponent(q, value, onChange, readOnly, false, null, undefined)
-            }
-            onAnswerChange={onAnswerChange}
-          />
+          // IELTS Listening: Show all 4 parts in one view (only on first part)
+          isFirstListeningPart ? (
+            <IELTSListeningView
+              partSections={ieltsListeningParts.map(s => ({
+                id: s.id,
+                title: s.title,
+                image: s.image,
+                introduction: s.introduction || s.instruction, // Use introduction field, fallback to instruction
+                questions: s.questions,
+              }))}
+              answers={allListeningAnswers}
+              isLocked={isLocked}
+              renderQuestionComponent={(q, value, onChange, readOnly) => 
+                renderQuestionComponent(q, value, onChange, readOnly, false, null, undefined)
+              }
+              onAnswerChange={onAnswerChange}
+            />
+          ) : (
+            // For non-first parts, show message to go back
+            <div className="text-center py-12">
+              <div className="text-gray-500 mb-4">
+                <p className="text-lg font-medium">This is Part {currentSectionIndex + 1} of IELTS Listening</p>
+                <p className="text-sm mt-2">Please navigate using the section tabs at the top</p>
+              </div>
+            </div>
+          )
         ) : (
           <div className="space-y-5">
             {section.questions.map((q, idx) => {
