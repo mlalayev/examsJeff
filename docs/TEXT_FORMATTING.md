@@ -26,16 +26,11 @@ Use double tildes (`~~`) to add strikethrough:
 **Result:** ~~This text will have a line through it~~
 
 ### 4. Italic Text
-Use em dashes (`—`) to make text italic:
+Use double ampersands (`&&`) to make text italic:
 ```
-—This text will be italic—
+&&This text will be italic&&
 ```
 **Result:** *This text will be italic*
-
-> **Note:** To type the em dash (—), use:
-> - Windows: `Alt + 0151`
-> - Mac: `Option + Shift + -`
-> - Or copy and paste: —
 
 ## Combining Formats
 
@@ -52,7 +47,7 @@ __**Bold and underlined text**__
 **Result:** **~~Bold with strikethrough~~**
 
 ```
-—**Bold italic text**—
+&&**Bold italic text**&&
 ```
 **Result:** *__Bold italic text__*
 
@@ -93,7 +88,7 @@ Question: "What is the capital of France?"
 
 ### Example 4: Combined Formatting
 ```
-The word —quickly— is an adverb, **not** an adjective. It __modifies__ verbs.
+The word &&quickly&& is an adverb, **not** an adjective. It __modifies__ verbs.
 ```
 
 ## Tips

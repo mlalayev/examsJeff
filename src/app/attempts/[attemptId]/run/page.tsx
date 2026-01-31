@@ -18,6 +18,7 @@ import { QTF } from "@/components/questions/QTF";
 import { QInlineSelect } from "@/components/questions/QInlineSelect";
 import { QDndGap } from "@/components/questions/QDndGap";
 import { QOrderSentence } from "@/components/questions/QOrderSentence";
+import QFillInBlank from "@/components/questions/QFillInBlank";
 import { SectionTimer } from "@/components/attempts/SectionTimer";
 import { useAttemptPersistence, type PersistedAttemptState } from "@/hooks/useAttemptPersistence";
 import { X } from "lucide-react";
@@ -552,6 +553,15 @@ export default function AttemptRunnerPage() {
         return <QOrderSentence {...props} />;
        case "DND_GAP":
          return <QDndGap {...props} />;
+      case "FILL_IN_BLANK":
+        return (
+          <QFillInBlank
+            prompt={q.prompt}
+            image={q.image}
+            value={value || {}}
+            onChange={onChange}
+          />
+        );
         case "GAP": // Legacy support - treat as SHORT_TEXT
        case "SHORT_TEXT":
          return <QOpenText {...props} />;

@@ -55,6 +55,7 @@ enum QuestionType {
   DND_GAP
   SHORT_TEXT
   ESSAY
+  FILL_IN_BLANK  // IELTS boşluq doldurma sual tipi
 }
 
 enum PaymentStatus {

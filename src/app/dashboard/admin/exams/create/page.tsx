@@ -25,7 +25,8 @@ type QuestionType =
   | "DND_GAP" 
   | "SHORT_TEXT" 
   | "ESSAY"
-  | "INLINE_SELECT";
+  | "INLINE_SELECT"
+  | "FILL_IN_BLANK";
 
 interface Section {
   id: string;
@@ -60,12 +61,14 @@ const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   DND_GAP: "Drag & Drop Gap Fill",
   SHORT_TEXT: "Short Text Answer",
   ESSAY: "Essay",
+  FILL_IN_BLANK: "Fill in the Blank (IELTS)",
 };
 
 const QUESTION_TYPE_GROUPS = {
   "Variantlı sual": ["MCQ_SINGLE", "MCQ_MULTI", "TF", "INLINE_SELECT"],
   "Açıq sual": ["SHORT_TEXT", "ESSAY"],
   "Drag and Drop": ["ORDER_SENTENCE", "DND_GAP"],
+  "IELTS": ["FILL_IN_BLANK"],
 };
 
 // Category-ə görə icazə verilən section tipləri
@@ -200,9 +203,35 @@ export default function CreateExamPage() {
       passage: type === "READING" ? undefined : undefined,
       audio: type === "LISTENING" ? undefined : undefined,
     };
-    setSections([...sections, newSection]);
-    setCurrentSection(newSection);
-    setStep("questions");
+
+    // IELTS Listening: avtomatik 4 sub-section (Part 1-4) yarat
+    if (selectedCategory === "IELTS" && type === "LISTENING") {
+      const parts = [
+        { title: "Part 1", instruction: "Conversation between two people in everyday social context", questionRange: [0, 9] },
+        { title: "Part 2", instruction: "Monologue in everyday social context", questionRange: [10, 19] },
+        { title: "Part 3", instruction: "Conversation (up to 4 people) in educational/training context", questionRange: [20, 29] },
+        { title: "Part 4", instruction: "Academic monologue", questionRange: [30, 39] },
+      ];
+
+      const listeningParts: Section[] = parts.map((part, index) => ({
+        id: `section-${Date.now()}-part${index + 1}`,
+        type: "LISTENING",
+        title: `${label} - ${part.title}`,
+        instruction: part.instruction,
+        durationMin: 0, // Sub-sections don't have separate timers
+        order: newSection.order + (index * 0.1), // 0, 0.1, 0.2, 0.3 to keep them grouped
+        questions: [],
+        audio: newSection.audio, // Same audio for all parts
+      }));
+
+      setSections([...sections, ...listeningParts]);
+      setCurrentSection(listeningParts[0]); // Start with Part 1
+      setStep("questions");
+    } else {
+      setSections([...sections, newSection]);
+      setCurrentSection(newSection);
+      setStep("questions");
+    }
   };
 
   const addQuestion = (qtype: QuestionType) => {
@@ -309,6 +338,11 @@ export default function CreateExamPage() {
         return { text: "Enter the question here" };
       case "ESSAY":
         return { text: "Write an essay about..." };
+      case "FILL_IN_BLANK":
+        return { 
+          text: "A wooden **1** ___ \nIncludes a sheet of **2** ___ \nPrice: £**3** ___",
+          imageUrl: "" // Optional image URL
+        };
       default:
         return { text: "" };
     }
@@ -345,6 +379,11 @@ export default function CreateExamPage() {
         return { answers: ["answer1"] }; // Multiple possible correct answers
       case "ESSAY":
         return null; // No auto-grading for essays
+      case "FILL_IN_BLANK":
+        return { 
+          answers: ["train", "stickers", "17.50"], // Case-sensitive answers
+          caseSensitive: true // Mütləq case-sensitive
+        };
       default:
         return {};
     }
@@ -1045,13 +1084,16 @@ export default function CreateExamPage() {
                     )}
                     <input
                       type="file"
-                      accept="audio/mpeg,audio/mp3,.mp3"
+                      accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac,.wma"
                       onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (!file) return;
                         
-                        if (!file.name.toLowerCase().endsWith('.mp3')) {
-                          alert("Please upload an MP3 file");
+                        const validAudioExtensions = ['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac', '.wma'];
+                        const hasValidExtension = validAudioExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+                        
+                        if (!hasValidExtension) {
+                          alert("Please upload a valid audio file (mp3, wav, ogg, m4a, aac, flac, wma)");
                           return;
                         }
                         
@@ -1476,6 +1518,90 @@ export default function CreateExamPage() {
                       • "What is the capital of France?" → dropdown appears at the end
                     </div>
                   </div>
+                ) : editingQuestion.qtype === "FILL_IN_BLANK" ? (
+                  <div className="space-y-3">
+                    <textarea
+                      value={editingQuestion.prompt?.text || ""}
+                      onChange={(e) => {
+                        const text = e.target.value;
+                        // Count blanks (___) in the text
+                        const blankCount = (text.match(/___/g) || []).length;
+                        
+                        // Initialize answers array
+                        const currentAnswers = Array.isArray(editingQuestion.answerKey?.answers) 
+                          ? editingQuestion.answerKey.answers 
+                          : [];
+                        const newAnswers = Array(blankCount).fill("").map((_, idx) => currentAnswers[idx] || "");
+                        
+                        setEditingQuestion({
+                          ...editingQuestion,
+                          prompt: { 
+                            ...editingQuestion.prompt, 
+                            text 
+                          },
+                          answerKey: {
+                            ...editingQuestion.answerKey,
+                            answers: newAnswers,
+                            caseSensitive: true, // Always case-sensitive
+                          }
+                        });
+                      }}
+                      placeholder="A wooden **1** ___&#10;Includes a sheet of **2** ___&#10;Price: £**3** ___"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white resize-y"
+                      rows={8}
+                    />
+                    <div className="text-xs text-gray-500 bg-blue-50 p-3 rounded border border-blue-200">
+                      <strong>📝 IELTS Fill in the Blank:</strong>
+                      <br />
+                      • Use <strong>___</strong> (3 underscores) where you want input fields
+                      <br />
+                      • Use <strong>**number**</strong> to number your blanks (e.g., **1**, **2**, **3**)
+                      <br />
+                      • Answers are <strong>case-sensitive</strong> (e.g., "Train" ≠ "train")
+                      <br />
+                      • You can optionally add an image in the section above
+                    </div>
+                    
+                    {/* Answer inputs for each blank */}
+                    {(editingQuestion.prompt?.text || "").match(/___/g) && (
+                      <div className="pt-3 border-t border-gray-200">
+                        <label className="block text-xs font-medium text-gray-600 mb-2">
+                          Correct Answers (case-sensitive)
+                        </label>
+                        <div className="space-y-2">
+                          {Array.from({ length: (editingQuestion.prompt?.text || "").match(/___/g)?.length || 0 }).map((_, idx) => (
+                            <div key={idx} className="flex items-center gap-2">
+                              <span className="text-xs text-gray-500 w-16">Blank {idx + 1}:</span>
+                              <input
+                                type="text"
+                                value={Array.isArray(editingQuestion.answerKey?.answers) 
+                                  ? editingQuestion.answerKey.answers[idx] || "" 
+                                  : ""}
+                                onChange={(e) => {
+                                  const answers = [...(editingQuestion.answerKey?.answers || [])];
+                                  answers[idx] = e.target.value;
+                                  
+                                  setEditingQuestion({
+                                    ...editingQuestion,
+                                    answerKey: { 
+                                      ...editingQuestion.answerKey,
+                                      answers,
+                                      caseSensitive: true,
+                                    },
+                                  });
+                                }}
+                                placeholder={`Answer for blank ${idx + 1}`}
+                                className="flex-1 px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-xs text-red-600 mt-2 font-medium">
+                          ⚠️ Answers are case-sensitive. "train" and "Train" are different.
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <>
                     <textarea
@@ -1493,7 +1619,7 @@ export default function CreateExamPage() {
                     <div className="mt-2 text-xs text-gray-700 bg-yellow-50 p-2 rounded border border-yellow-200 flex items-center gap-2">
                       <Info className="w-4 h-4 text-yellow-600 flex-shrink-0" />
                       <span>
-                        <strong>Text Formatting:</strong> **bold** | __underline__ | ~~strikethrough~~ | —italic—
+                        <strong>Text Formatting:</strong> **bold** | __underline__ | ~~strikethrough~~ | &&italic&&
                       </span>
                     </div>
                   </>

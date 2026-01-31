@@ -1083,7 +1083,7 @@ export default function EditExamPage() {
                     <div className="mt-2 text-xs text-gray-700 bg-yellow-50 p-2 rounded border border-yellow-200 flex items-center gap-2">
                       <Info className="w-4 h-4 text-yellow-600 flex-shrink-0" />
                       <span>
-                        <strong>Text Formatting:</strong> **bold** | __underline__ | ~~strikethrough~~ | —italic—
+                        <strong>Text Formatting:</strong> **bold** | __underline__ | ~~strikethrough~~ | &&italic&&
                       </span>
                     </div>
                   </>

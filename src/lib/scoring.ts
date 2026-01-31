@@ -124,6 +124,38 @@ export function scoreQuestion(qtype: QuestionType, studentAnswer: any, answerKey
         return normalizeText(v) === normalizeText(correctBlanks[i]);
       }) ? 1 : 0;
     }
+    case "FILL_IN_BLANK": {
+      // IELTS Fill in the Blank: case-sensitive matching
+      // Value format: { "0": "train", "1": "stickers", "2": "17.50" } (blank index → student answer)
+      // answerKey format: { answers: ["train", "stickers", "17.50"], caseSensitive: true }
+      const correctAnswers = answerKey?.answers || [];
+      const caseSensitive = answerKey?.caseSensitive !== false; // Default to true
+      
+      if (!studentAnswer || typeof studentAnswer !== "object") return 0;
+      
+      // Convert student answer object to array: { "0": "train", "1": "stickers" } → ["train", "stickers"]
+      const studentAnswersArray: string[] = [];
+      for (let i = 0; i < correctAnswers.length; i++) {
+        const value = studentAnswer[String(i)];
+        studentAnswersArray.push(value || "");
+      }
+      
+      if (studentAnswersArray.length !== correctAnswers.length) return 0;
+      
+      // Check each answer
+      return studentAnswersArray.every((studentAns, i) => {
+        const correctAns = correctAnswers[i];
+        if (typeof studentAns !== "string" || typeof correctAns !== "string") return false;
+        
+        if (caseSensitive) {
+          // Case-sensitive: exact match after trimming
+          return studentAns.trim() === correctAns.trim();
+        } else {
+          // Case-insensitive: normalize
+          return normalizeText(studentAns) === normalizeText(correctAns);
+        }
+      }) ? 1 : 0;
+    }
     // Essay requires manual grading (no autoscore)
     case "ESSAY":
     default:

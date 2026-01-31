@@ -21,8 +21,11 @@ export async function POST(request: NextRequest) {
     
     // Validate file type
     if (type === "audio") {
-      if (!file.name.toLowerCase().endsWith('.mp3') && !file.type.includes('audio')) {
-        return NextResponse.json({ error: "Only MP3 audio files are allowed" }, { status: 400 });
+      const validAudioExtensions = ['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac', '.wma'];
+      const hasValidExtension = validAudioExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+      
+      if (!hasValidExtension && !file.type.includes('audio')) {
+        return NextResponse.json({ error: "Only audio files are allowed (mp3, wav, ogg, m4a, aac, flac, wma)" }, { status: 400 });
       }
     } else if (type === "image") {
       if (!file.type.startsWith('image/')) {
