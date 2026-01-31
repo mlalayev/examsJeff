@@ -35,11 +35,31 @@ export function parseFormattedText(text: string): FormattedSegment[] {
 
   const markers: Marker[] = [];
   
+  // First, find all ___ (three underscores) positions to exclude from __ (underline) matching
+  const tripleUnderscorePositions = new Set<number>();
+  let searchPos = 0;
+  while (true) {
+    const pos = text.indexOf("___", searchPos);
+    if (pos === -1) break;
+    // Mark all three positions as part of ___
+    tripleUnderscorePositions.add(pos);
+    tripleUnderscorePositions.add(pos + 1);
+    tripleUnderscorePositions.add(pos + 2);
+    searchPos = pos + 1;
+  }
+  
   for (const pattern of patterns) {
     let searchPos = 0;
     while (true) {
       const pos = text.indexOf(pattern.marker, searchPos);
       if (pos === -1) break;
+      
+      // Skip __ markers that are part of ___
+      if (pattern.marker === "__" && (tripleUnderscorePositions.has(pos) || tripleUnderscorePositions.has(pos + 1))) {
+        searchPos = pos + 1;
+        continue;
+      }
+      
       markers.push({ pos, type: pattern.key, length: pattern.marker.length });
       searchPos = pos + pattern.marker.length;
     }

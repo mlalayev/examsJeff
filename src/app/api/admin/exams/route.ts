@@ -22,8 +22,12 @@ const questionSchema = z.object({
 const sectionSchema = z.object({
   type: z.enum(["READING", "LISTENING", "WRITING", "SPEAKING", "GRAMMAR", "VOCABULARY"]),
   title: z.string(),
-  instruction: z.string(), // JSON string: {text, passage?, audio?, introduction?}
+  instruction: z.string(), // JSON string: {text, passage?, audio?, introduction?, image?, image2?}
   image: z.string().nullable().optional(), // Section image (for IELTS Listening parts)
+  image2: z.string().nullable().optional(), // Second section image (for IELTS Listening parts)
+  parentSectionId: z.string().nullable().optional(), // For subsections (IELTS Listening)
+  parentTitle: z.string().nullable().optional(), // Temporary reference to find parent
+  parentOrder: z.number().nullable().optional(), // Temporary reference to find parent
   durationMin: z.number(),
   order: z.number(),
   // Allow creating sections with zero questions (optional question list)
@@ -147,6 +151,11 @@ export async function POST(request: Request) {
       validatedData.sections = sortIELTSSections(validatedData.sections);
     }
     
+    // Separate parent sections from subsections
+    const parentSections = validatedData.sections?.filter(s => !s.parentTitle && !s.parentOrder) || [];
+    const subsections = validatedData.sections?.filter(s => s.parentTitle || s.parentOrder !== null) || [];
+    
+    // Create exam with parent sections first
     const exam = await prisma.exam.create({
       data: {
         title: validatedData.title,
@@ -155,13 +164,14 @@ export async function POST(request: Request) {
         durationMin: validatedData.durationMin,
         isActive: validatedData.isActive ?? true,
         createdById: (user as any).id,
-        sections: validatedData.sections ? {
-          create: validatedData.sections.map((section) => {
+        sections: {
+          create: parentSections.map((section) => {
               return {
               type: section.type,
               title: section.title,
               instruction: section.instruction || null, // Already JSON string from frontend
               image: section.image || null, // Section image (for IELTS Listening parts)
+              image2: section.image2 || null, // Second section image (for IELTS Listening parts)
               durationMin: section.durationMin,
               order: section.order,
               questions: {
@@ -181,7 +191,7 @@ export async function POST(request: Request) {
               },
             };
           }),
-        } : undefined,
+        },
       },
       include: {
         createdBy: {
@@ -198,6 +208,67 @@ export async function POST(request: Request) {
         },
       }
     });
+    
+    // Now create subsections with parentSectionId
+    if (subsections.length > 0) {
+      for (const subsection of subsections) {
+        // Find parent section by title and order
+        const parentSection = exam.sections.find(
+          s => s.title === subsection.parentTitle && s.order === subsection.parentOrder
+        );
+        
+        if (parentSection) {
+          await prisma.examSection.create({
+            data: {
+              examId: exam.id,
+              type: subsection.type,
+              title: subsection.title,
+              instruction: subsection.instruction || null,
+              image: subsection.image || null,
+              image2: subsection.image2 || null,
+              parentSectionId: parentSection.id,
+              durationMin: subsection.durationMin,
+              order: subsection.order,
+              questions: {
+                create: subsection.questions?.map((q) => ({
+                  qtype: q.qtype,
+                  order: q.order,
+                  prompt: {
+                    ...q.prompt,
+                    ...(q.image ? { imageUrl: q.image } : {}),
+                  },
+                  options: q.options,
+                  answerKey: q.answerKey,
+                  maxScore: q.maxScore,
+                  explanation: q.explanation,
+                })) || [],
+              },
+            },
+          });
+        }
+      }
+      
+      // Reload exam with all sections
+      const updatedExam = await prisma.exam.findUnique({
+        where: { id: exam.id },
+        include: {
+          createdBy: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            }
+          },
+          sections: {
+            include: {
+              questions: true,
+            },
+          },
+        },
+      });
+      
+      return NextResponse.json({ exam: updatedExam }, { status: 201 });
+    }
     
     return NextResponse.json({ exam }, { status: 201 });
     

@@ -511,17 +511,30 @@ export default function CreateExamPage() {
       }
 
       // Flatten subsections for API
-      const flattenedSections = sortedSections.flatMap(s => {
+      // For IELTS Listening: create parent section first, then subsections with parentSectionId
+      const flattenedSections: any[] = [];
+      for (const s of sortedSections) {
         if (s.subsections && s.subsections.length > 0) {
-          // Return subsections only (parent section is just a container)
-          return s.subsections.map((sub, idx) => ({
-            ...sub,
-            audio: s.audio, // Use parent's audio
-            order: s.order + (idx * 0.01), // 0, 0.01, 0.02, 0.03
-          }));
+          // This is a parent section with subsections (IELTS Listening)
+          // First, add the parent section (it will be created first and get an ID)
+          flattenedSections.push({
+            ...s,
+            isParent: true, // Mark as parent so we can reference it
+          });
+          // Then add subsections (they will reference parent by order/title match)
+          s.subsections.forEach((sub, idx) => {
+            flattenedSections.push({
+              ...sub,
+              audio: s.audio, // Use parent's audio
+              order: s.order + (idx * 0.01), // 0, 0.01, 0.02, 0.03
+              parentTitle: s.title, // Reference to find parent
+              parentOrder: s.order, // Reference to find parent
+            });
+          });
+        } else {
+          flattenedSections.push(s);
         }
-        return [s];
-      });
+      }
 
       const res = await fetch("/api/admin/exams", {
         method: "POST",
@@ -532,7 +545,7 @@ export default function CreateExamPage() {
           track: track || null,
           durationMin: durationMin || null, // Optional timer
           sections: flattenedSections.map((s, index) => {
-            // Combine instruction, passage, audio, introduction into instruction JSON
+            // Combine instruction, passage, audio, introduction, image, image2 into instruction JSON
             const instructionData: any = {
               text: s.instruction,
             };
@@ -544,6 +557,12 @@ export default function CreateExamPage() {
             }
             if (s.introduction) {
               instructionData.introduction = s.introduction;
+            }
+            if (s.image) {
+              instructionData.image = s.image;
+            }
+            if (s.image2) {
+              instructionData.image2 = s.image2;
             }
             
             // Auto-set duration based on category
@@ -566,6 +585,10 @@ export default function CreateExamPage() {
               title: s.title,
               instruction: JSON.stringify(instructionData),
               image: s.image || null, // Section image (for IELTS Listening parts)
+              image2: s.image2 || null, // Second section image (for IELTS Listening parts)
+              parentSectionId: s.parentSectionId || null, // For subsections (will be set on server)
+              parentTitle: s.parentTitle || null, // Temporary reference for server to match
+              parentOrder: s.parentOrder !== undefined ? s.parentOrder : null, // Temporary reference
               durationMin: sectionDurationMin,
               order: selectedCategory === "IELTS" ? IELTS_SECTION_ORDER[s.type as keyof typeof IELTS_SECTION_ORDER] : index,
               questions: s.questions.map((q) => ({
