@@ -135,6 +135,11 @@ export async function POST(request: Request) {
     const user = await requireAdmin();
     const body = await request.json();
     
+    console.log("=== CREATE EXAM REQUEST ===");
+    console.log("Category:", body.category);
+    console.log("Sections count:", body.sections?.length || 0);
+    console.log("First section:", JSON.stringify(body.sections?.[0], null, 2));
+    
     const validatedData = createExamSchema.parse(body);
     
     // IELTS validation: Check LISTENING uniqueness
@@ -152,10 +157,10 @@ export async function POST(request: Request) {
     }
     
     // Separate parent sections from subsections
-    const parentSections = validatedData.sections?.filter(s => !s.parentTitle) || [];
     const subsections = validatedData.sections?.filter(s => s.parentTitle) || [];
+    const regularSections = validatedData.sections?.filter(s => !s.parentTitle) || [];
     
-    // Create exam with parent sections first
+    // Create exam with regular sections first
     const exam = await prisma.exam.create({
       data: {
         title: validatedData.title,
@@ -165,7 +170,7 @@ export async function POST(request: Request) {
         isActive: validatedData.isActive ?? true,
         createdById: (user as any).id,
         sections: {
-          create: parentSections.map((section) => {
+          create: regularSections.map((section) => {
               return {
               type: section.type,
               title: section.title,
@@ -211,13 +216,34 @@ export async function POST(request: Request) {
     
     // Now create subsections with parentSectionId
     if (subsections.length > 0) {
+      // Group subsections by parent (parentTitle + parentOrder)
+      const subsectionsByParent = new Map<string, typeof subsections>();
       for (const subsection of subsections) {
-        // Find parent section by title and order
-        const parentSection = exam.sections.find(
-          s => s.title === subsection.parentTitle && s.order === subsection.parentOrder
-        );
+        const key = `${subsection.parentTitle}-${subsection.parentOrder}`;
+        if (!subsectionsByParent.has(key)) {
+          subsectionsByParent.set(key, []);
+        }
+        subsectionsByParent.get(key)!.push(subsection);
+      }
+      
+      // For each parent group, create parent section first, then subsections
+      for (const [key, subs] of subsectionsByParent.entries()) {
+        const firstSub = subs[0];
         
-        if (parentSection) {
+        // Create parent section (empty, just for grouping)
+        const parentSection = await prisma.examSection.create({
+          data: {
+            examId: exam.id,
+            type: firstSub.type,
+            title: firstSub.parentTitle || "Listening",
+            instruction: firstSub.instruction || "{}",
+            durationMin: firstSub.durationMin,
+            order: firstSub.parentOrder || 0,
+          },
+        });
+        
+        // Create subsections under this parent
+        for (const subsection of subs) {
           await prisma.examSection.create({
             data: {
               examId: exam.id,
@@ -274,6 +300,7 @@ export async function POST(request: Request) {
     
   } catch (error) {
     if (error instanceof z.ZodError) {
+      console.error("Validation error:", JSON.stringify(error.errors, null, 2));
       return NextResponse.json(
         { error: "Validation error", details: error.errors },
         { status: 400 }
@@ -285,8 +312,10 @@ export async function POST(request: Request) {
     }
     
     console.error("Admin create exam error:", error);
+    console.error("Error stack:", error instanceof Error ? error.stack : "No stack trace");
+    console.error("Error details:", JSON.stringify(error, null, 2));
     return NextResponse.json(
-      { error: "An error occurred" },
+      { error: "An error occurred", details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }

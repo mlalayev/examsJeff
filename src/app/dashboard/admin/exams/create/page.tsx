@@ -511,17 +511,12 @@ export default function CreateExamPage() {
       }
 
       // Flatten subsections for API
-      // For IELTS Listening: create parent section first, then subsections with parentSectionId
+      // For IELTS Listening: skip parent section, send only subsections with parentTitle reference
       const flattenedSections: any[] = [];
       for (const s of sortedSections) {
         if (s.subsections && s.subsections.length > 0) {
           // This is a parent section with subsections (IELTS Listening)
-          // First, add the parent section (it will be created first and get an ID)
-          flattenedSections.push({
-            ...s,
-            isParent: true, // Mark as parent so we can reference it
-          });
-          // Then add subsections (they will reference parent by order/title match)
+          // Skip the parent, send only subsections with parent reference
           s.subsections.forEach((sub, idx) => {
             flattenedSections.push({
               ...sub,
@@ -591,7 +586,7 @@ export default function CreateExamPage() {
               parentOrder: s.parentOrder !== undefined ? s.parentOrder : null, // Temporary reference
               durationMin: sectionDurationMin,
               order: selectedCategory === "IELTS" ? IELTS_SECTION_ORDER[s.type as keyof typeof IELTS_SECTION_ORDER] : index,
-              questions: s.questions.map((q) => ({
+              questions: (s.questions || []).map((q) => ({
               qtype: q.qtype,
               order: q.order,
               prompt: q.prompt,
