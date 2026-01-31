@@ -33,8 +33,8 @@ export default function QuestionPreview({ question }: QuestionPreviewProps) {
       </div>
       
       <div className="bg-white rounded-xl border shadow-sm p-6" style={{ borderColor: "rgba(15, 17, 80, 0.63)" }}>
-        {/* Question Text */}
-        {question.prompt?.text && (
+        {/* Question Text (skip for FILL_IN_BLANK - it has custom layout) */}
+        {question.prompt?.text && question.qtype !== "FILL_IN_BLANK" && (
           <div className="mb-4">
             <div className="flex items-start gap-4">
               <div
@@ -138,7 +138,7 @@ export default function QuestionPreview({ question }: QuestionPreviewProps) {
 
         {/* Fill in the Blank (IELTS) */}
         {question.qtype === "FILL_IN_BLANK" && (
-          <div className="mt-4 space-y-4">
+          <div className="space-y-4">
             {(() => {
               const text = question.prompt?.text || "";
               const [titlePart = "", itemsPart = ""] = text.split("---").map((s: string) => s.trim());
@@ -146,44 +146,60 @@ export default function QuestionPreview({ question }: QuestionPreviewProps) {
 
               return (
                 <>
-                  {/* Title */}
-                  {titlePart && (
-                    <div className="mb-4 text-base font-medium text-gray-900">
-                      <FormattedText text={titlePart} />
+                  {/* Question number + Title */}
+                  <div className="flex items-start gap-4 mb-4">
+                    <div
+                      className="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm shadow-sm"
+                      style={{
+                        backgroundColor: "#303380",
+                        color: "white",
+                      }}
+                    >
+                      1
                     </div>
-                  )}
+                    {titlePart && (
+                      <div className="flex-1 pt-2">
+                        <div className="text-base font-medium text-gray-900">
+                          <FormattedText text={titlePart} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
                   {/* Items */}
-                  {items.map((item: string, idx: number) => {
-                    const hasBlank = item.includes("___");
-                    return (
-                      <div key={idx} className="space-y-2">
-                        <div className="text-gray-800">
-                          <FormattedText text={item} />
+                  <div className="space-y-4 pl-14">
+                    {items.map((item: string, idx: number) => {
+                      const hasBlank = item.includes("___");
+                      return (
+                        <div key={idx} className="space-y-2">
+                          <div className="text-gray-800">
+                            <FormattedText text={item} />
+                          </div>
+                          {hasBlank && (
+                            <input
+                              type="text"
+                              disabled
+                              placeholder={`Answer ${idx + 1}`}
+                              className="w-full px-3 py-2 border-2 rounded-md text-base bg-gray-50 cursor-not-allowed"
+                              style={{
+                                borderColor: "rgba(48, 51, 128, 0.2)",
+                                color: "#9CA3AF",
+                              }}
+                            />
+                          )}
                         </div>
-                        {hasBlank && (
-                          <input
-                            type="text"
-                            disabled
-                            placeholder={`Answer ${idx + 1}`}
-                            className="w-full px-3 py-2 border-2 rounded-md text-base bg-gray-50 cursor-not-allowed"
-                            style={{
-                              borderColor: "rgba(48, 51, 128, 0.2)",
-                              color: "#9CA3AF",
-                            }}
-                          />
-                        )}
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
+                  
+                  <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                    <p className="text-sm text-blue-800">
+                      <strong>ℹ️ Note:</strong> Answers are not case-sensitive
+                    </p>
+                  </div>
                 </>
               );
             })()}
-            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
-              <p className="text-sm text-blue-800">
-                <strong>ℹ️ Note:</strong> Answers are not case-sensitive
-              </p>
-            </div>
           </div>
         )}
       </div>
