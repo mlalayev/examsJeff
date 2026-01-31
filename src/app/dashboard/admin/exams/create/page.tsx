@@ -151,7 +151,8 @@ export default function CreateExamPage() {
     
     // Category dəyişəndə, əgər artıq section-lar varsa və onlar yeni category-ə uyğun deyilsə, təmizlə
     const allowedTypes = ALLOWED_SECTIONS_BY_CATEGORY[category];
-    const hasInvalidSections = sections.some(section => !allowedTypes.includes(section.type));
+    const currentSections = sections || []; // Guard against undefined
+    const hasInvalidSections = currentSections.some(section => !allowedTypes.includes(section.type));
     
     if (hasInvalidSections) {
       if (confirm("Changing category will remove sections that are not allowed for this exam type. Continue?")) {
@@ -179,11 +180,22 @@ export default function CreateExamPage() {
       return;
     }
 
+    const currentSections = sections || []; // Guard against undefined
+
     // IELTS validation: LISTENING can only be added once
     if (selectedCategory === "IELTS" && type === "LISTENING") {
-      const validation = validateIELTSListeningUniqueness(sections, type);
+      const validation = validateIELTSListeningUniqueness(currentSections, type);
       if (!validation.valid) {
         alert(validation.error);
+        return;
+      }
+    }
+
+    // IELTS validation: READING can only be added once
+    if (selectedCategory === "IELTS" && type === "READING") {
+      const hasReading = currentSections.some(s => s.type === "READING");
+      if (hasReading) {
+        alert("READING section can only be added once per IELTS exam");
         return;
       }
     }
@@ -204,7 +216,7 @@ export default function CreateExamPage() {
       durationMin: defaultDuration,
       order: selectedCategory === "IELTS" 
         ? IELTS_SECTION_ORDER[type as keyof typeof IELTS_SECTION_ORDER]
-        : sections.length,
+        : currentSections.length,
       questions: [],
       passage: type === "READING" ? undefined : undefined,
       audio: type === "LISTENING" ? undefined : undefined,
@@ -234,11 +246,38 @@ export default function CreateExamPage() {
       }));
 
       newSection.subsections = subsections;
-      setSections([...sections, newSection]);
+      setSections([...currentSections, newSection]);
       setCurrentSection(subsections[0]); // Start with Part 1
       setStep("questions");
-    } else {
-      setSections([...sections, newSection]);
+    } 
+    // IELTS Reading: 1 əsas section + 3 passage subsection yarat
+    else if (selectedCategory === "IELTS" && type === "READING") {
+      const passages = [
+        { title: "Passage 1", instruction: "Questions 1-13 (Easier text)" },
+        { title: "Passage 2", instruction: "Questions 14-26 (Medium difficulty)" },
+        { title: "Passage 3", instruction: "Questions 27-40 (Harder academic text)" },
+      ];
+
+      const subsections: Section[] = passages.map((passage, index) => ({
+        id: `subsection-${Date.now()}-${index}`,
+        type: "READING",
+        title: passage.title,
+        instruction: passage.instruction,
+        durationMin: 0,
+        order: index,
+        questions: [],
+        passage: "", // Empty passage text, admin will fill
+        isSubsection: true,
+        parentId: newSection.id,
+      }));
+
+      newSection.subsections = subsections;
+      setSections([...currentSections, newSection]);
+      setCurrentSection(subsections[0]); // Start with Passage 1
+      setStep("questions");
+    }
+    else {
+      setSections([...currentSections, newSection]);
       setCurrentSection(newSection);
       setStep("questions");
     }

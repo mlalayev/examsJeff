@@ -7,6 +7,7 @@ import QDndGroup from "@/components/questions/QDndGroup";
 import { QuestionCard } from "./QuestionCard";
 import { DndGapQuestion } from "./DndGapQuestion";
 import { IELTSListeningView } from "./IELTSListeningView";
+import IELTSReadingView from "./IELTSReadingView";
 
 interface Question {
   id: string;
@@ -81,21 +82,42 @@ export const QuestionsArea = React.memo(function QuestionsArea({
   // For IELTS Listening: Check if this is a Listening Part section
   const isIELTSListeningPart = examCategory === "IELTS" && section.type === "LISTENING";
   
+  // For IELTS Reading: Check if this is a Reading Passage section
+  const isIELTSReadingPassage = examCategory === "IELTS" && section.type === "READING";
+  
   // Find all IELTS Listening parts (4 consecutive sections)
   const ieltsListeningParts = isIELTSListeningPart 
     ? allSections.filter(s => s.type === "LISTENING").slice(0, 4)
+    : [];
+
+  // Find all IELTS Reading passages (3 passages)
+  const ieltsReadingPassages = isIELTSReadingPassage
+    ? allSections.filter(s => s.type === "READING").slice(0, 3)
     : [];
   
   // Is this the first Listening part? (only first part shows audio player)
   const isFirstListeningPart = isIELTSListeningPart && 
     ieltsListeningParts.length > 0 && 
     ieltsListeningParts[0].id === section.id;
+
+  // Is this the first Reading passage?
+  const isFirstReadingPassage = isIELTSReadingPassage &&
+    ieltsReadingPassages.length > 0 &&
+    ieltsReadingPassages[0].id === section.id;
   
   // Collect all answers from all 4 Listening parts
   const allListeningAnswers = isIELTSListeningPart
     ? ieltsListeningParts.reduce((acc, partSection) => {
         const partAnswers = answers[partSection.id] || {};
         return { ...acc, ...partAnswers };
+      }, {})
+    : sectionAnswers;
+
+  // Collect all answers from all 3 Reading passages
+  const allReadingAnswers = isIELTSReadingPassage
+    ? ieltsReadingPassages.reduce((acc, passageSection) => {
+        const passageAnswers = answers[passageSection.id] || {};
+        return { ...acc, ...passageAnswers };
       }, {})
     : sectionAnswers;
 
@@ -235,6 +257,33 @@ export const QuestionsArea = React.memo(function QuestionsArea({
             <div className="text-center py-12">
               <div className="text-gray-500 mb-4">
                 <p className="text-lg font-medium">This is Part {currentSectionIndex + 1} of IELTS Listening</p>
+                <p className="text-sm mt-2">Please navigate using the section tabs at the top</p>
+              </div>
+            </div>
+          )
+        ) : examCategory === "IELTS" && section.type === "READING" ? (
+          // IELTS Reading: Show all 3 passages in one view (only on first passage)
+          isFirstReadingPassage ? (
+            <IELTSReadingView
+              partSections={ieltsReadingPassages.map(s => ({
+                id: s.id,
+                title: s.title,
+                passage: s.passage || "",
+                introduction: s.introduction || s.instruction,
+                questions: s.questions,
+              }))}
+              answers={allReadingAnswers}
+              onAnswerChange={onAnswerChange}
+              examCategory={examCategory}
+              renderQuestionComponent={(q, value, onChange, readOnly) =>
+                renderQuestionComponent(q, value, onChange, readOnly, false, null, undefined)
+              }
+            />
+          ) : (
+            // For non-first passages, show message to go back
+            <div className="text-center py-12">
+              <div className="text-gray-500 mb-4">
+                <p className="text-lg font-medium">This is Passage {currentSectionIndex - ieltsListeningParts.length + 1} of IELTS Reading</p>
                 <p className="text-sm mt-2">Please navigate using the section tabs at the top</p>
               </div>
             </div>

@@ -27,6 +27,36 @@ export const IELTS_SECTION_DURATIONS = {
 export const IELTS_SPEAKING_MIN_DURATION = 11;
 export const IELTS_SPEAKING_MAX_DURATION = 14;
 
+/**
+ * IELTS Reading structure
+ */
+export const IELTS_READING_CONFIG = {
+  TOTAL_QUESTIONS: 40,
+  TOTAL_DURATION: 60, // minutes
+  PASSAGES: [
+    {
+      id: 1,
+      title: "Passage 1",
+      questionRange: { start: 1, end: 13 },
+      difficulty: "Easy",
+    },
+    {
+      id: 2,
+      title: "Passage 2",
+      questionRange: { start: 14, end: 26 },
+      difficulty: "Medium",
+    },
+    {
+      id: 3,
+      title: "Passage 3",
+      questionRange: { start: 27, end: 40 },
+      difficulty: "Hard",
+    },
+  ],
+} as const;
+
+export type ReadingType = "ACADEMIC" | "GENERAL";
+
 export type IELTSSectionType = keyof typeof IELTS_SECTION_ORDER;
 
 /**

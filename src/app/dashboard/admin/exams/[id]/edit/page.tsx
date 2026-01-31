@@ -276,18 +276,20 @@ export default function EditExamPage() {
   const addSection = (type: SectionType) => {
     if (!selectedCategory) return;
     
+    const currentSections = sections || []; // Guard against undefined
+
     // SAT üçün maksimum limit yoxlaması
     if (selectedCategory === "SAT") {
       if (type === "WRITING") {
         // Math sections - maksimum 2
-        const mathCount = sections.filter(s => s.type === "WRITING").length;
+        const mathCount = currentSections.filter(s => s.type === "WRITING").length;
         if (mathCount >= 2) {
           alert("SAT imtahanında maksimum 2 Math section ola bilər");
           return;
         }
       } else if (type === "READING") {
         // Verbal sections - maksimum 2
-        const verbalCount = sections.filter(s => s.type === "READING").length;
+        const verbalCount = currentSections.filter(s => s.type === "READING").length;
         if (verbalCount >= 2) {
           alert("SAT imtahanında maksimum 2 Verbal section ola bilər");
           return;
@@ -297,9 +299,18 @@ export default function EditExamPage() {
 
     // IELTS validation: LISTENING can only be added once
     if (selectedCategory === "IELTS" && type === "LISTENING") {
-      const validation = validateIELTSListeningUniqueness(sections, type);
+      const validation = validateIELTSListeningUniqueness(currentSections, type);
       if (!validation.valid) {
         alert(validation.error);
+        return;
+      }
+    }
+
+    // IELTS validation: READING can only be added once
+    if (selectedCategory === "IELTS" && type === "READING") {
+      const hasReading = currentSections.some(s => s.type === "READING");
+      if (hasReading) {
+        alert("READING section can only be added once per IELTS exam");
         return;
       }
     }
@@ -307,7 +318,7 @@ export default function EditExamPage() {
     // SAT üçün avtomatik adlandırma
     let sectionTitle: string;
     if (selectedCategory === "SAT") {
-      sectionTitle = getSATSectionTitle(type, sections);
+      sectionTitle = getSATSectionTitle(type, currentSections);
     } else {
       const label = getSectionLabel(type, selectedCategory);
       sectionTitle = `${label} Section`;
@@ -329,13 +340,69 @@ export default function EditExamPage() {
       durationMin: defaultDuration,
       order: selectedCategory === "IELTS" 
         ? IELTS_SECTION_ORDER[type as keyof typeof IELTS_SECTION_ORDER]
-        : sections.length,
+        : currentSections.length,
       questions: [],
     };
-    
-    setSections([...sections, newSection]);
-    setCurrentSection(newSection);
-    setStep("questions");
+
+    // IELTS Listening: 1 əsas section + 4 subsection yarat
+    if (selectedCategory === "IELTS" && type === "LISTENING") {
+      const parts = [
+        { title: "Part 1", instruction: "Conversation between two people in everyday social context" },
+        { title: "Part 2", instruction: "Monologue in everyday social context" },
+        { title: "Part 3", instruction: "Conversation (up to 4 people) in educational/training context" },
+        { title: "Part 4", instruction: "Academic monologue" },
+      ];
+
+      const subsections: Section[] = parts.map((part, index) => ({
+        id: `subsection-${Date.now()}-${index}`,
+        type: "LISTENING",
+        title: part.title,
+        instruction: part.instruction,
+        durationMin: 0,
+        order: index,
+        questions: [],
+        image: undefined,
+        introduction: undefined,
+        isSubsection: true,
+        parentId: newSection.id,
+      }));
+
+      newSection.subsections = subsections;
+      setSections([...currentSections, newSection]);
+      setCurrentSection(subsections[0]); // Start with Part 1
+      setStep("questions");
+    } 
+    // IELTS Reading: 1 əsas section + 3 passage subsection yarat
+    else if (selectedCategory === "IELTS" && type === "READING") {
+      const passages = [
+        { title: "Passage 1", instruction: "Questions 1-13 (Easier text)" },
+        { title: "Passage 2", instruction: "Questions 14-26 (Medium difficulty)" },
+        { title: "Passage 3", instruction: "Questions 27-40 (Harder academic text)" },
+      ];
+
+      const subsections: Section[] = passages.map((passage, index) => ({
+        id: `subsection-${Date.now()}-${index}`,
+        type: "READING",
+        title: passage.title,
+        instruction: passage.instruction,
+        durationMin: 0,
+        order: index,
+        questions: [],
+        passage: "", // Empty passage text, admin will fill
+        isSubsection: true,
+        parentId: newSection.id,
+      }));
+
+      newSection.subsections = subsections;
+      setSections([...currentSections, newSection]);
+      setCurrentSection(subsections[0]); // Start with Passage 1
+      setStep("questions");
+    }
+    else {
+      setSections([...currentSections, newSection]);
+      setCurrentSection(newSection);
+      setStep("questions");
+    }
   };
 
   const deleteSection = (sectionId: string) => {

@@ -247,6 +247,7 @@ model Exam {
   title           String
   category        ExamCategory @default(IELTS)
   track           String? // e.g. "A2" (General English üçün)
+  readingType     String?      @default("ACADEMIC") // IELTS Reading type: ACADEMIC or GENERAL
   isActive        Boolean      @default(true)
   durationMin     Int? // Optional: overall exam duration in minutes
   sectionPassword String? // Optional: password for section navigation (IELTS/SAT)
@@ -312,7 +313,7 @@ model ExamSection {
   image       String?     // Section image URL (for IELTS Listening parts)
   image2      String?     // Second section image URL (for IELTS Listening parts)
   durationMin Int         @default(15)
-  order       Int         @default(0) // Keep as Int, use 1000+ for subsections (e.g., 1000, 1001, 1002)
+  order       Float       @default(0) // Float for subsection ordering (e.g., 0.01, 0.02 for subsections)
 
   // Parent/child relationship for IELTS Listening subsections
   parentSectionId String?      @map("parent_section_id")
