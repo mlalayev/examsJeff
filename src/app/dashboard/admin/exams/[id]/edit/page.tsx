@@ -5,6 +5,15 @@ import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft, Plus, X, BookOpen, Save, Edit, Info, Image } from "lucide-react";
 import TextFormattingPreview from "@/components/TextFormattingPreview";
 import QuestionPreview from "@/components/QuestionPreview";
+import { 
+  IELTS_SECTION_ORDER, 
+  IELTS_SECTION_DURATIONS,
+  validateIELTSListeningUniqueness,
+  sortIELTSSections,
+  getIELTSSectionDuration,
+  IELTS_SPEAKING_MIN_DURATION,
+  IELTS_SPEAKING_MAX_DURATION,
+} from "@/lib/ielts-config";
 
 type ExamCategory = "IELTS" | "TOEFL" | "SAT" | "GENERAL_ENGLISH" | "MATH" | "KIDS";
 type SectionType = "READING" | "LISTENING" | "WRITING" | "SPEAKING" | "GRAMMAR" | "VOCABULARY";
@@ -244,6 +253,15 @@ export default function EditExamPage() {
         }
       }
     }
+
+    // IELTS validation: LISTENING can only be added once
+    if (selectedCategory === "IELTS" && type === "LISTENING") {
+      const validation = validateIELTSListeningUniqueness(sections, type);
+      if (!validation.valid) {
+        alert(validation.error);
+        return;
+      }
+    }
     
     // SAT üçün avtomatik adlandırma
     let sectionTitle: string;
@@ -253,14 +271,24 @@ export default function EditExamPage() {
       const label = getSectionLabel(type, selectedCategory);
       sectionTitle = `${label} Section`;
     }
+
+    // Auto-set duration for IELTS and SAT
+    let defaultDuration = 15;
+    if (selectedCategory === "SAT") {
+      defaultDuration = type === "WRITING" ? 35 : 32;
+    } else if (selectedCategory === "IELTS") {
+      defaultDuration = getIELTSSectionDuration(type as any) || 15;
+    }
     
     const newSection: Section = {
       id: `section-${Date.now()}`,
       type,
       title: sectionTitle,
       instruction: "",
-      durationMin: selectedCategory === "SAT" ? (type === "WRITING" ? 35 : 32) : 15,
-      order: sections.length,
+      durationMin: defaultDuration,
+      order: selectedCategory === "IELTS" 
+        ? IELTS_SECTION_ORDER[type as keyof typeof IELTS_SECTION_ORDER]
+        : sections.length,
       questions: [],
     };
     

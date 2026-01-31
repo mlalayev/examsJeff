@@ -5,6 +5,15 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Plus, X, BookOpen, Save, Edit, Info, Image } from "lucide-react";
 import TextFormattingPreview from "@/components/TextFormattingPreview";
 import QuestionPreview from "@/components/QuestionPreview";
+import { 
+  IELTS_SECTION_ORDER, 
+  IELTS_SECTION_DURATIONS,
+  validateIELTSListeningUniqueness,
+  sortIELTSSections,
+  getIELTSSectionDuration,
+  IELTS_SPEAKING_MIN_DURATION,
+  IELTS_SPEAKING_MAX_DURATION,
+} from "@/lib/ielts-config";
 
 type ExamCategory = "IELTS" | "TOEFL" | "SAT" | "GENERAL_ENGLISH" | "MATH" | "KIDS";
 type SectionType = "READING" | "LISTENING" | "WRITING" | "SPEAKING" | "GRAMMAR" | "VOCABULARY";
@@ -160,16 +169,33 @@ export default function CreateExamPage() {
       alert(`This section type is not allowed for ${selectedCategory} exams`);
       return;
     }
+
+    // IELTS validation: LISTENING can only be added once
+    if (selectedCategory === "IELTS" && type === "LISTENING") {
+      const validation = validateIELTSListeningUniqueness(sections, type);
+      if (!validation.valid) {
+        alert(validation.error);
+        return;
+      }
+    }
     
     const label = getSectionLabel(type, selectedCategory);
+
+    // Auto-set duration for IELTS
+    let defaultDuration = 15;
+    if (selectedCategory === "IELTS") {
+      defaultDuration = getIELTSSectionDuration(type as any) || 15;
+    }
 
     const newSection: Section = {
       id: `section-${Date.now()}`,
       type,
       title: `${label} Section`,
       instruction: `Complete the ${label.toLowerCase()} section`,
-      durationMin: 15,
-      order: sections.length,
+      durationMin: defaultDuration,
+      order: selectedCategory === "IELTS" 
+        ? IELTS_SECTION_ORDER[type as keyof typeof IELTS_SECTION_ORDER]
+        : sections.length,
       questions: [],
       passage: type === "READING" ? undefined : undefined,
       audio: type === "LISTENING" ? undefined : undefined,
@@ -330,8 +356,23 @@ export default function CreateExamPage() {
       return;
     }
 
+    // IELTS validation: Check LISTENING uniqueness
+    if (selectedCategory === "IELTS") {
+      const validation = validateIELTSListeningUniqueness(sections);
+      if (!validation.valid) {
+        alert(validation.error);
+        return;
+      }
+    }
+
     setSaving(true);
     try {
+      // Sort sections for IELTS
+      let sortedSections = sections;
+      if (selectedCategory === "IELTS") {
+        sortedSections = sortIELTSSections(sections);
+      }
+
       const res = await fetch("/api/admin/exams", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -340,7 +381,7 @@ export default function CreateExamPage() {
           category: selectedCategory,
           track: track || null,
           durationMin: durationMin || null, // Optional timer
-          sections: sections.map((s) => {
+          sections: sortedSections.map((s, index) => {
             // Combine instruction, passage, and audio into instruction JSON
             const instructionData: any = {
               text: s.instruction,
@@ -352,7 +393,7 @@ export default function CreateExamPage() {
               instructionData.audio = s.audio;
             }
             
-            // SAT üçün avtomatik duration təyin et
+            // Auto-set duration based on category
             let sectionDurationMin = s.durationMin;
             if (selectedCategory === "SAT") {
               if (s.type === "WRITING") {
@@ -362,6 +403,9 @@ export default function CreateExamPage() {
                 // Verbal sections: 32 dəqiqə
                 sectionDurationMin = 32;
               }
+            } else if (selectedCategory === "IELTS") {
+              // IELTS fixed durations
+              sectionDurationMin = getIELTSSectionDuration(s.type as any) || s.durationMin;
             }
             
             return {
@@ -369,7 +413,7 @@ export default function CreateExamPage() {
               title: s.title,
               instruction: JSON.stringify(instructionData),
               durationMin: sectionDurationMin,
-              order: s.order,
+              order: selectedCategory === "IELTS" ? IELTS_SECTION_ORDER[s.type as keyof typeof IELTS_SECTION_ORDER] : index,
               questions: s.questions.map((q) => ({
               qtype: q.qtype,
               order: q.order,
@@ -551,11 +595,24 @@ export default function CreateExamPage() {
                   ? "No sections available" 
                   : "Select Section Type..."}
               </option>
-              {allowedSectionTypes.map((type) => (
-                <option key={type} value={type}>
-                  {getSectionLabel(type, selectedCategory)}
-                </option>
-              ))}
+              {allowedSectionTypes.map((type) => {
+                // IELTS: Disable LISTENING if it already exists
+                const isListeningDisabled = 
+                  selectedCategory === "IELTS" && 
+                  type === "LISTENING" && 
+                  sections.some(s => s.type === "LISTENING");
+
+                return (
+                  <option 
+                    key={type} 
+                    value={type}
+                    disabled={isListeningDisabled}
+                  >
+                    {getSectionLabel(type, selectedCategory)}
+                    {isListeningDisabled ? " (Already added)" : ""}
+                  </option>
+                );
+              })}
             </select>
             <button
               onClick={() => {
@@ -593,7 +650,7 @@ export default function CreateExamPage() {
           </div>
         ) : (
           <div className="space-y-3 sm:space-y-4">
-            {sections.map((section, idx) => {
+            {(selectedCategory === "IELTS" ? sortIELTSSections(sections) : sections).map((section, idx) => {
               const isActive = currentSection?.id === section.id && step === "questions";
               return (
                 <div
@@ -609,6 +666,9 @@ export default function CreateExamPage() {
                       <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
                         <h3 className="font-medium text-gray-900 text-sm sm:text-base">
                           Section {idx + 1}: {section.title}
+                          {selectedCategory === "IELTS" && (
+                            <span className="ml-2 text-xs text-gray-500">({section.durationMin} min)</span>
+                          )}
                         </h3>
                         <span className="text-xs px-2 py-1 bg-gray-100 rounded text-gray-600">
                           {section.type}

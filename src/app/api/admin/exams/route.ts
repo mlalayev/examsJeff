@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin, requireBranchAdminOrBoss } from "@/lib/auth-utils";
 import { z } from "zod";
+import { 
+  validateIELTSListeningUniqueness, 
+  sortIELTSSections,
+  IELTS_SECTION_ORDER 
+} from "@/lib/ielts-config";
 
 const questionSchema = z.object({
   qtype: z.enum(["MCQ", "ORDER", "DND_MATCH", "TF", "MCQ_SINGLE", "MCQ_MULTI", "SELECT", "GAP", "ORDER_SENTENCE", "DND_GAP", "SHORT_TEXT", "ESSAY", "INLINE_SELECT"]),
@@ -127,6 +132,20 @@ export async function POST(request: Request) {
     
     const validatedData = createExamSchema.parse(body);
     
+    // IELTS validation: Check LISTENING uniqueness
+    if (validatedData.category === "IELTS" && validatedData.sections) {
+      const validation = validateIELTSListeningUniqueness(validatedData.sections);
+      if (!validation.valid) {
+        return NextResponse.json(
+          { error: validation.error },
+          { status: 400 }
+        );
+      }
+      
+      // Sort IELTS sections in correct order
+      validatedData.sections = sortIELTSSections(validatedData.sections);
+    }
+    
     const exam = await prisma.exam.create({
       data: {
         title: validatedData.title,
@@ -144,7 +163,7 @@ export async function POST(request: Request) {
               durationMin: section.durationMin,
               order: section.order,
               questions: {
-                create: section.questions.map((q) => ({
+                create: section.questions?.map((q) => ({
                   qtype: q.qtype,
                   order: q.order,
                   prompt: {
@@ -156,7 +175,7 @@ export async function POST(request: Request) {
                   answerKey: q.answerKey,
                   maxScore: q.maxScore,
                   explanation: q.explanation,
-                })),
+                })) || [],
               },
             };
           }),
