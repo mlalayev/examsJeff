@@ -27,6 +27,7 @@ interface Section {
   audio?: string | null;
   instruction?: string;
   passage?: string | null;
+  image?: string | null; // Section image (for IELTS Listening parts)
 }
 
 interface QuestionsAreaProps {
@@ -188,6 +189,7 @@ export const QuestionsArea = React.memo(function QuestionsArea({
             questions={section.questions}
             answers={sectionAnswers}
             isLocked={isLocked}
+            section={section} // Pass full section to access image and introduction
             renderQuestionComponent={(q, value, onChange, readOnly) => 
               renderQuestionComponent(q, value, onChange, readOnly, false, null, undefined)
             }

@@ -25,7 +25,8 @@ type QuestionType =
   | "DND_GAP" 
   | "SHORT_TEXT" 
   | "ESSAY"
-  | "INLINE_SELECT";
+  | "INLINE_SELECT"
+  | "FILL_IN_BLANK";
 
 interface Section {
   id: string;
@@ -37,6 +38,8 @@ interface Section {
   questions: Question[];
   passage?: string;
   audio?: string;
+  image?: string; // Section image (for IELTS Listening parts)
+  introduction?: string; // Section introduction (for IELTS Listening parts)
 }
 
 interface Question {
@@ -60,12 +63,14 @@ const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   DND_GAP: "Drag and Drop Gap Fill",
   SHORT_TEXT: "Short Text Answer",
   ESSAY: "Essay",
+  FILL_IN_BLANK: "Fill in the Blank (IELTS)",
 };
 
 const QUESTION_TYPE_GROUPS = {
   "Variantlı sual": ["MCQ_SINGLE", "MCQ_MULTI", "TF", "INLINE_SELECT"],
   "Açıq sual": ["SHORT_TEXT", "ESSAY"],
   "Drag and Drop": ["ORDER_SENTENCE", "DND_GAP"],
+  "IELTS": ["FILL_IN_BLANK"],
 };
 
 const ALLOWED_SECTIONS_BY_CATEGORY: Record<ExamCategory, SectionType[]> = {
@@ -188,6 +193,8 @@ export default function EditExamPage() {
             order: s.order,
             passage: instructionData.passage || "",
             audio: instructionData.audio || "",
+            image: s.image || instructionData.image || null, // Section image
+            introduction: instructionData.introduction || null, // Section introduction
             questions: s.questions.map((q: any) => ({
               id: q.id,
               qtype: q.qtype,
@@ -410,6 +417,11 @@ export default function EditExamPage() {
         return { text: "Enter the question here" };
       case "ESSAY":
         return { text: "Write an essay about..." };
+      case "FILL_IN_BLANK":
+        return { 
+          text: "A wooden **1** ___ \nIncludes a sheet of **2** ___ \nPrice: £**3** ___",
+          imageUrl: "" // Optional image URL
+        };
       default:
         return { text: "" };
     }
@@ -446,6 +458,11 @@ export default function EditExamPage() {
         return { answers: ["answer1"] }; // Multiple possible correct answers
       case "ESSAY":
         return null; // No auto-grading for essays
+      case "FILL_IN_BLANK":
+        return { 
+          answers: ["train", "stickers", "17.50"], // Case-sensitive answers
+          caseSensitive: true // Mütləq case-sensitive
+        };
       default:
         return {};
     }
@@ -476,6 +493,9 @@ export default function EditExamPage() {
             if (s.audio) {
               instructionData.audio = s.audio;
             }
+            if (s.introduction) {
+              instructionData.introduction = s.introduction;
+            }
             
             // SAT üçün avtomatik duration təyin et
             let durationMin = s.durationMin;
@@ -494,6 +514,7 @@ export default function EditExamPage() {
               type: s.type,
               title: s.title,
               instruction: JSON.stringify(instructionData),
+              image: s.image || null, // Section image (for IELTS Listening parts)
               durationMin: durationMin,
               order: s.order,
               questions: s.questions.map((q) => ({
@@ -666,11 +687,22 @@ export default function EditExamPage() {
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
+                    {(section.type === "READING" || section.type === "LISTENING") && (
+                      <button
+                        onClick={() => {
+                          setEditingSection(section);
+                          setShowSectionEditModal(true);
+                        }}
+                        className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100"
+                      >
+                        <Edit className="w-3 h-3" />
+                      </button>
+                    )}
                     <button
-                      onClick={() => setActiveSection(section)}
+                      onClick={() => setCurrentSection(section)}
                       className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
                     >
-                      Edit
+                      Questions
                     </button>
                     <button
                       onClick={() => deleteSection(section.id)}
@@ -710,39 +742,81 @@ export default function EditExamPage() {
           </div>
 
           <div className="space-y-3">
-            {currentSection.questions.map((q, idx) => (
-              <div key={q.id} className="border border-gray-200 rounded-md p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-700">Q{idx + 1}</span>
-                    <span className="text-xs px-2 py-1 bg-gray-100 rounded text-gray-600">
-                      {QUESTION_TYPE_LABELS[q.qtype]}
-                    </span>
+            {currentSection.questions
+              .sort((a, b) => a.order - b.order)
+              .map((q, idx) => {
+                const moveUp = () => {
+                  if (idx === 0) return;
+                  const updatedQuestions = [...currentSection.questions];
+                  const temp = updatedQuestions[idx].order;
+                  updatedQuestions[idx].order = updatedQuestions[idx - 1].order;
+                  updatedQuestions[idx - 1].order = temp;
+                  const updatedSection = { ...currentSection, questions: updatedQuestions };
+                  setCurrentSection(updatedSection);
+                  setSections(sections.map(s => s.id === currentSection.id ? updatedSection : s));
+                };
+                
+                const moveDown = () => {
+                  if (idx === currentSection.questions.length - 1) return;
+                  const updatedQuestions = [...currentSection.questions];
+                  const temp = updatedQuestions[idx].order;
+                  updatedQuestions[idx].order = updatedQuestions[idx + 1].order;
+                  updatedQuestions[idx + 1].order = temp;
+                  const updatedSection = { ...currentSection, questions: updatedQuestions };
+                  setCurrentSection(updatedSection);
+                  setSections(sections.map(s => s.id === currentSection.id ? updatedSection : s));
+                };
+
+                return (
+                  <div key={q.id} className="border border-gray-200 rounded-md p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-gray-700">Q{idx + 1}</span>
+                        <span className="text-xs px-2 py-1 bg-gray-100 rounded text-gray-600">
+                          {QUESTION_TYPE_LABELS[q.qtype]}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={moveUp}
+                          disabled={idx === 0}
+                          className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Move up"
+                        >
+                          ↑
+                        </button>
+                        <button
+                          onClick={moveDown}
+                          disabled={idx === currentSection.questions.length - 1}
+                          className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Move down"
+                        >
+                          ↓
+                        </button>
+                        <button
+                          onClick={() => editQuestion(q)}
+                          className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
+                        >
+                          <Edit className="w-3 h-3" />
+                        </button>
+                        <button
+                          onClick={() => deleteQuestion(q.id)}
+                          className="px-2 py-1 text-xs font-medium text-red-700 bg-red-50 rounded hover:bg-red-100"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      {typeof q.prompt === "object" && q.prompt.text
+                        ? q.prompt.text
+                        : typeof q.prompt === "string"
+                        ? q.prompt
+                        : JSON.stringify(q.prompt)}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => editQuestion(q)}
-                      className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
-                    >
-                      <Edit className="w-3 h-3" />
-                    </button>
-                    <button
-                      onClick={() => deleteQuestion(q.id)}
-                      className="px-2 py-1 text-xs font-medium text-red-700 bg-red-50 rounded hover:bg-red-100"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                </div>
-                <div className="text-sm text-gray-600">
-                  {typeof q.prompt === "object" && q.prompt.text
-                    ? q.prompt.text
-                    : typeof q.prompt === "string"
-                    ? q.prompt
-                    : JSON.stringify(q.prompt)}
-                </div>
-              </div>
-            ))}
+                );
+              })}
           </div>
         </div>
       )}
@@ -1066,6 +1140,90 @@ export default function EditExamPage() {
                       • "What is the capital of France?" → dropdown appears at the end
                     </div>
                   </div>
+                ) : editingQuestion.qtype === "FILL_IN_BLANK" ? (
+                  <div className="space-y-3">
+                    <textarea
+                      value={editingQuestion.prompt?.text || ""}
+                      onChange={(e) => {
+                        const text = e.target.value;
+                        // Count blanks (___) in the text
+                        const blankCount = (text.match(/___/g) || []).length;
+                        
+                        // Initialize answers array
+                        const currentAnswers = Array.isArray(editingQuestion.answerKey?.answers) 
+                          ? editingQuestion.answerKey.answers 
+                          : [];
+                        const newAnswers = Array(blankCount).fill("").map((_, idx) => currentAnswers[idx] || "");
+                        
+                        setEditingQuestion({
+                          ...editingQuestion,
+                          prompt: { 
+                            ...editingQuestion.prompt, 
+                            text 
+                          },
+                          answerKey: {
+                            ...editingQuestion.answerKey,
+                            answers: newAnswers,
+                            caseSensitive: true, // Always case-sensitive
+                          }
+                        });
+                      }}
+                      placeholder="A wooden **1** ___&#10;Includes a sheet of **2** ___&#10;Price: £**3** ___"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white resize-y"
+                      rows={8}
+                    />
+                    <div className="text-xs text-gray-500 bg-blue-50 p-3 rounded border border-blue-200">
+                      <strong>📝 IELTS Fill in the Blank:</strong>
+                      <br />
+                      • Use <strong>___</strong> (3 underscores) where you want input fields
+                      <br />
+                      • Use <strong>**number**</strong> to number your blanks (e.g., **1**, **2**, **3**)
+                      <br />
+                      • Answers are <strong>case-sensitive</strong> (e.g., "Train" ≠ "train")
+                      <br />
+                      • You can optionally add an image in the section above
+                    </div>
+                    
+                    {/* Answer inputs for each blank */}
+                    {(editingQuestion.prompt?.text || "").match(/___/g) && (
+                      <div className="pt-3 border-t border-gray-200">
+                        <label className="block text-xs font-medium text-gray-600 mb-2">
+                          Correct Answers (case-sensitive)
+                        </label>
+                        <div className="space-y-2">
+                          {Array.from({ length: (editingQuestion.prompt?.text || "").match(/___/g)?.length || 0 }).map((_, idx) => (
+                            <div key={idx} className="flex items-center gap-2">
+                              <span className="text-xs text-gray-500 w-16">Blank {idx + 1}:</span>
+                              <input
+                                type="text"
+                                value={Array.isArray(editingQuestion.answerKey?.answers) 
+                                  ? editingQuestion.answerKey.answers[idx] || "" 
+                                  : ""}
+                                onChange={(e) => {
+                                  const answers = [...(editingQuestion.answerKey?.answers || [])];
+                                  answers[idx] = e.target.value;
+                                  
+                                  setEditingQuestion({
+                                    ...editingQuestion,
+                                    answerKey: { 
+                                      ...editingQuestion.answerKey,
+                                      answers,
+                                      caseSensitive: true,
+                                    },
+                                  });
+                                }}
+                                placeholder={`Answer for blank ${idx + 1}`}
+                                className="flex-1 px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-xs text-red-600 mt-2 font-medium">
+                          ⚠️ Answers are case-sensitive. "train" and "Train" are different.
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <>
                     <textarea
@@ -1355,6 +1513,293 @@ export default function EditExamPage() {
                 }}
               >
                 Save Question
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Section Edit Modal (for Reading Passage / Listening Audio) */}
+      {showSectionEditModal && editingSection && (
+        <div
+          className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 p-4"
+          onClick={() => {
+            setShowSectionEditModal(false);
+            setEditingSection(null);
+          }}
+        >
+          <div
+            className="bg-white border border-gray-200 rounded-md p-4 sm:p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base sm:text-lg font-medium text-gray-900">
+                {editingSection.type === "READING" ? "Edit Reading Passage" : "Edit Listening Audio"}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowSectionEditModal(false);
+                  setEditingSection(null);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {editingSection.type === "READING" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Reading Passage *
+                  </label>
+                  <textarea
+                    value={editingSection.passage || ""}
+                    onChange={(e) => {
+                      setEditingSection({
+                        ...editingSection,
+                        passage: e.target.value,
+                      });
+                    }}
+                    placeholder="Enter the reading passage text..."
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+                    rows={10}
+                  />
+                </div>
+              )}
+
+              {editingSection.type === "LISTENING" && (
+                <div className="space-y-4">
+                  {/* Audio Upload - Only for first Part or main Listening section */}
+                  {(!editingSection.title.includes("Part") || editingSection.title.includes("Part 1")) && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        Listening Audio (All Parts) *
+                      </label>
+                      {selectedCategory === "IELTS" && (
+                        <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                          <p className="text-xs text-blue-800 font-medium mb-1">
+                            📝 IELTS Listening Requirements:
+                          </p>
+                          <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
+                            <li>Must have exactly <strong>40 questions</strong> (10 per part)</li>
+                            <li>4 parts: Conversation (1), Monologue (2), Discussion (3), Lecture (4)</li>
+                            <li>Audio will play automatically with restrictions (no pause/seek for students)</li>
+                            <li><strong>One audio file for all 4 parts</strong></li>
+                          </ul>
+                        </div>
+                      )}
+                      <div className="space-y-2">
+                        {editingSection.audio && (
+                          <div className="p-2 bg-gray-50 rounded-md text-sm text-gray-600">
+                            Current: {editingSection.audio}
+                          </div>
+                        )}
+                        <input
+                          type="file"
+                          accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac,.wma"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            
+                            const validAudioExtensions = ['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac', '.wma'];
+                            const hasValidExtension = validAudioExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+                            
+                            if (!hasValidExtension) {
+                              alert("Please upload a valid audio file (mp3, wav, ogg, m4a, aac, flac, wma)");
+                              return;
+                            }
+                            
+                            setUploadingAudio(true);
+                            try {
+                              const formData = new FormData();
+                              formData.append("file", file);
+                              formData.append("type", "audio");
+                              
+                              const res = await fetch("/api/admin/upload", {
+                                method: "POST",
+                                body: formData,
+                              });
+                              
+                              if (res.ok) {
+                                const data = await res.json();
+                                // Update all Listening parts with same audio
+                                const updatedSections = sections.map(s => 
+                                  s.type === "LISTENING" ? { ...s, audio: data.path } : s
+                                );
+                                setSections(updatedSections);
+                                setEditingSection({
+                                  ...editingSection,
+                                  audio: data.path,
+                                });
+                              } else {
+                                alert("Failed to upload audio");
+                              }
+                            } catch (error) {
+                              console.error("Upload error:", error);
+                              alert("Failed to upload audio");
+                            } finally {
+                              setUploadingAudio(false);
+                            }
+                          }}
+                          disabled={uploadingAudio}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 disabled:opacity-50"
+                        />
+                        {uploadingAudio && (
+                          <p className="text-xs text-gray-500">Uploading...</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Image and Introduction - For each Part */}
+                  {editingSection.title.includes("Part") && selectedCategory === "IELTS" && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                          Part Image <span className="text-gray-500 font-normal">(Optional)</span>
+                        </label>
+                        <div className="space-y-2">
+                          {editingSection.image && (
+                            <div className="p-3 bg-white border border-gray-200 rounded-md">
+                              <img
+                                src={editingSection.image}
+                                alt="Part image"
+                                className="max-w-full h-auto max-h-48 rounded border border-gray-200"
+                              />
+                              <p className="text-xs text-gray-500 mt-2">{editingSection.image}</p>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingSection({
+                                    ...editingSection,
+                                    image: undefined,
+                                  });
+                                }}
+                                className="mt-2 text-xs text-red-600 hover:text-red-700 font-medium"
+                              >
+                                Remove Image
+                              </button>
+                            </div>
+                          )}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              
+                              setUploadingImage(true);
+                              try {
+                                const formData = new FormData();
+                                formData.append("file", file);
+                                formData.append("type", "image");
+                                
+                                const res = await fetch("/api/admin/upload", {
+                                  method: "POST",
+                                  body: formData,
+                                });
+                                
+                                if (res.ok) {
+                                  const data = await res.json();
+                                  setEditingSection({
+                                    ...editingSection,
+                                    image: data.path,
+                                  });
+                                } else {
+                                  alert("Failed to upload image");
+                                }
+                              } catch (error) {
+                                console.error("Upload error:", error);
+                                alert("Failed to upload image");
+                              } finally {
+                                setUploadingImage(false);
+                              }
+                            }}
+                            disabled={uploadingImage}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 disabled:opacity-50 bg-white"
+                          />
+                          {uploadingImage && (
+                            <p className="text-xs text-gray-500">Uploading image...</p>
+                          )}
+                          <p className="text-xs text-gray-500">
+                            Image will appear on the left side, questions on the right
+                          </p>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                          Part Introduction <span className="text-gray-500 font-normal">(Optional)</span>
+                        </label>
+                        <textarea
+                          value={editingSection.introduction || ""}
+                          onChange={(e) => {
+                            setEditingSection({
+                              ...editingSection,
+                              introduction: e.target.value,
+                            });
+                          }}
+                          placeholder="Enter introduction text for this part (e.g., 'You will hear a conversation between two people...')"
+                          className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+                          rows={4}
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Introduction will appear on the left side with the image (if provided)
+                        </p>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 mt-6 pt-4 border-t border-gray-200">
+              <button
+                onClick={() => {
+                  setShowSectionEditModal(false);
+                  setEditingSection(null);
+                }}
+                className="px-3 sm:px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (editingSection.type === "READING" && !editingSection.passage?.trim()) {
+                    alert("Please enter a reading passage");
+                    return;
+                  }
+                  if (editingSection.type === "LISTENING" && !editingSection.audio) {
+                    alert("Please upload an audio file");
+                    return;
+                  }
+                  
+                  // Update section in sections array
+                  const updatedSections = sections.map(s => 
+                    s.id === editingSection.id ? editingSection : s
+                  );
+                  setSections(updatedSections);
+                  
+                  // Update currentSection if it's the one being edited
+                  if (currentSection?.id === editingSection.id) {
+                    setCurrentSection(editingSection);
+                  }
+                  
+                  setShowSectionEditModal(false);
+                  setEditingSection(null);
+                }}
+                className="px-3 sm:px-4 py-2 text-sm font-medium text-white rounded-md flex items-center gap-2"
+                style={{ backgroundColor: "#303380" }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "#252a6b";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "#303380";
+                }}
+              >
+                <Save className="w-4 h-4" />
+                Save Changes
               </button>
             </div>
           </div>

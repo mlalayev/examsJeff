@@ -55,16 +55,16 @@ export async function GET(request: Request, { params }: { params: Promise<{ atte
     }
 
     const parseInstruction = (instruction: any) => {
-      if (!instruction) return { text: "", passage: null, audio: null };
+      if (!instruction) return { text: "", passage: null, audio: null, introduction: null };
       if (typeof instruction === "string") {
         try {
           const parsed = JSON.parse(instruction);
           if (parsed && typeof parsed === "object") {
             return parsed as Record<string, any>;
           }
-          return { text: instruction, passage: null, audio: null };
+          return { text: instruction, passage: null, audio: null, introduction: null };
         } catch {
-          return { text: instruction, passage: null, audio: null };
+          return { text: instruction, passage: null, audio: null, introduction: null };
         }
       }
       return instruction as Record<string, any>;
@@ -87,8 +87,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ atte
             instruction: instructionData?.text || "",
             passage: instructionData?.passage || null,
             audio: instructionData?.audio || null,
+            introduction: instructionData?.introduction || null,
           };
         })(),
+        image: s.image || null, // Section image (for IELTS Listening parts)
         questions: (s.questions || []).map((q: any) => ({
           ...q,
           prompt: q.prompt || {},

@@ -9,7 +9,7 @@ import {
 } from "@/lib/ielts-config";
 
 const questionSchema = z.object({
-  qtype: z.enum(["MCQ", "ORDER", "DND_MATCH", "TF", "MCQ_SINGLE", "MCQ_MULTI", "SELECT", "GAP", "ORDER_SENTENCE", "DND_GAP", "SHORT_TEXT", "ESSAY", "INLINE_SELECT"]),
+  qtype: z.enum(["MCQ", "ORDER", "DND_MATCH", "TF", "MCQ_SINGLE", "MCQ_MULTI", "SELECT", "GAP", "ORDER_SENTENCE", "DND_GAP", "SHORT_TEXT", "ESSAY", "INLINE_SELECT", "FILL_IN_BLANK"]),
   order: z.number(),
   prompt: z.any(),
   options: z.any().optional(),
@@ -22,7 +22,8 @@ const questionSchema = z.object({
 const sectionSchema = z.object({
   type: z.enum(["READING", "LISTENING", "WRITING", "SPEAKING", "GRAMMAR", "VOCABULARY"]),
   title: z.string(),
-  instruction: z.string(), // JSON string: {text, passage?, audio?}
+  instruction: z.string(), // JSON string: {text, passage?, audio?, introduction?}
+  image: z.string().nullable().optional(), // Section image (for IELTS Listening parts)
   durationMin: z.number(),
   order: z.number(),
   // Allow creating sections with zero questions (optional question list)
@@ -156,10 +157,11 @@ export async function POST(request: Request) {
         createdById: (user as any).id,
         sections: validatedData.sections ? {
           create: validatedData.sections.map((section) => {
-            return {
+              return {
               type: section.type,
               title: section.title,
               instruction: section.instruction || null, // Already JSON string from frontend
+              image: section.image || null, // Section image (for IELTS Listening parts)
               durationMin: section.durationMin,
               order: section.order,
               questions: {

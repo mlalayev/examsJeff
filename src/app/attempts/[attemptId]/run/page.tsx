@@ -42,6 +42,8 @@ interface Section {
   order: number;
   status?: string;
   audio?: string | null;
+  image?: string | null; // Section image (for IELTS Listening parts)
+  introduction?: string | null; // Section introduction (for IELTS Listening parts)
 }
 
 interface AttemptData {

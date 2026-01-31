@@ -13,10 +13,18 @@ interface Question {
   maxScore: number;
 }
 
+interface Section {
+  id: string;
+  title: string;
+  image?: string | null;
+  introduction?: string | null;
+}
+
 interface IELTSListeningViewProps {
   questions: Question[];
   answers: Record<string, any>;
   isLocked: boolean;
+  section?: Section; // Full section data for image and introduction
   renderQuestionComponent: (
     q: Question,
     value: any,
@@ -33,6 +41,7 @@ export const IELTSListeningView: React.FC<IELTSListeningViewProps> = ({
   questions,
   answers,
   isLocked,
+  section,
   renderQuestionComponent,
   onAnswerChange,
 }) => {
@@ -41,6 +50,12 @@ export const IELTSListeningView: React.FC<IELTSListeningViewProps> = ({
   // Group questions by parts
   const groupedQuestions = groupIELTSListeningQuestions(questions);
   const currentPartQuestions = groupedQuestions[activePart] || [];
+
+  // Get current part's image and introduction from section title
+  // Section title format: "Listening - Part 1", "Listening - Part 2", etc.
+  const currentPartTitle = IELTS_LISTENING_STRUCTURE.parts[activePart - 1].title;
+  const hasImage = section?.image;
+  const hasIntroduction = section?.introduction;
 
   return (
     <div>
@@ -81,34 +96,67 @@ export const IELTSListeningView: React.FC<IELTSListeningViewProps> = ({
         </div>
       </div>
 
-      {/* Part Description */}
-      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <h3 className="text-sm font-semibold text-blue-900 mb-1">
-          {IELTS_LISTENING_STRUCTURE.parts[activePart - 1].title}
-        </h3>
-        <p className="text-xs text-blue-700">
-          {IELTS_LISTENING_STRUCTURE.parts[activePart - 1].description}
-        </p>
-      </div>
-
-      {/* Questions for current part */}
-      <div className="space-y-6">
-        {currentPartQuestions.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <p>No questions in this part</p>
-          </div>
-        ) : (
-          currentPartQuestions.map((q) => {
-            const value = answers[q.id];
-            const onChange = (newValue: any) => onAnswerChange(q.id, newValue);
-            
-            return (
-              <div key={q.id}>
-                {renderQuestionComponent(q, value, onChange, isLocked)}
+      {/* Layout: Image/Introduction Left, Questions Right */}
+      <div className="flex gap-6 items-start">
+        {/* Left Side: Image and/or Introduction */}
+        {(hasImage || hasIntroduction) && (
+          <div className="flex-shrink-0 w-1/3 space-y-4">
+            {hasImage && (
+              <div>
+                <img
+                  src={section.image!}
+                  alt={`${currentPartTitle} illustration`}
+                  className="w-full h-auto rounded-lg border-2 border-gray-200 shadow-sm"
+                />
               </div>
-            );
-          })
+            )}
+            {hasIntroduction && (
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h3 className="text-sm font-semibold text-blue-900 mb-2">
+                  {currentPartTitle}
+                </h3>
+                <p className="text-sm text-blue-700 whitespace-pre-line">
+                  {section.introduction}
+                </p>
+              </div>
+            )}
+          </div>
         )}
+
+        {/* Right Side: Questions */}
+        <div className={`flex-1 ${(hasImage || hasIntroduction) ? "w-2/3" : "w-full"}`}>
+          {/* Part Description (if no custom introduction) */}
+          {!hasIntroduction && (
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <h3 className="text-sm font-semibold text-blue-900 mb-1">
+                {IELTS_LISTENING_STRUCTURE.parts[activePart - 1].title}
+              </h3>
+              <p className="text-xs text-blue-700">
+                {IELTS_LISTENING_STRUCTURE.parts[activePart - 1].description}
+              </p>
+            </div>
+          )}
+
+          {/* Questions for current part */}
+          <div className="space-y-6">
+            {currentPartQuestions.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <p>No questions in this part</p>
+              </div>
+            ) : (
+              currentPartQuestions.map((q) => {
+                const value = answers[q.id];
+                const onChange = (newValue: any) => onAnswerChange(q.id, newValue);
+                
+                return (
+                  <div key={q.id}>
+                    {renderQuestionComponent(q, value, onChange, isLocked)}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Navigation Buttons */}

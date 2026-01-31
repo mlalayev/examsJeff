@@ -308,7 +308,8 @@ model ExamSection {
   exam        Exam        @relation(fields: [examId], references: [id], onDelete: Cascade)
   type        SectionType
   title       String
-  instruction String?     @db.Text // JSON string: {text, passage?, audio?}
+  instruction String?     @db.Text // JSON string: {text, passage?, audio?, introduction?, image?}
+  image       String?     // Section image URL (for IELTS Listening parts)
   durationMin Int         @default(15)
   order       Int
 

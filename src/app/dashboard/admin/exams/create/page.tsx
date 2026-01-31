@@ -38,6 +38,8 @@ interface Section {
   questions: Question[];
   passage?: string; // Reading section üçün
   audio?: string; // Listening section üçün (MP3 file path)
+  image?: string; // Section image (for IELTS Listening parts)
+  introduction?: string; // Section introduction text (for IELTS Listening parts)
 }
 
 interface Question {
@@ -222,6 +224,8 @@ export default function CreateExamPage() {
         order: newSection.order + (index * 0.1), // 0, 0.1, 0.2, 0.3 to keep them grouped
         questions: [],
         audio: newSection.audio, // Same audio for all parts
+        image: undefined, // Each part can have its own image
+        introduction: undefined, // Each part can have its own introduction
       }));
 
       setSections([...sections, ...listeningParts]);
@@ -421,7 +425,7 @@ export default function CreateExamPage() {
           track: track || null,
           durationMin: durationMin || null, // Optional timer
           sections: sortedSections.map((s, index) => {
-            // Combine instruction, passage, and audio into instruction JSON
+            // Combine instruction, passage, audio, introduction into instruction JSON
             const instructionData: any = {
               text: s.instruction,
             };
@@ -430,6 +434,9 @@ export default function CreateExamPage() {
             }
             if (s.audio) {
               instructionData.audio = s.audio;
+            }
+            if (s.introduction) {
+              instructionData.introduction = s.introduction;
             }
             
             // Auto-set duration based on category
@@ -451,6 +458,7 @@ export default function CreateExamPage() {
               type: s.type,
               title: s.title,
               instruction: JSON.stringify(instructionData),
+              image: s.image || null, // Section image (for IELTS Listening parts)
               durationMin: sectionDurationMin,
               order: selectedCategory === "IELTS" ? IELTS_SECTION_ORDER[s.type as keyof typeof IELTS_SECTION_ORDER] : index,
               questions: s.questions.map((q) => ({
@@ -1060,77 +1068,187 @@ export default function CreateExamPage() {
               )}
 
               {editingSection.type === "LISTENING" && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Listening Audio (MP3) *
-                  </label>
-                  {selectedCategory === "IELTS" && (
-                    <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                      <p className="text-xs text-blue-800 font-medium mb-1">
-                        📝 IELTS Listening Requirements:
-                      </p>
-                      <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
-                        <li>Must have exactly <strong>40 questions</strong> (10 per part)</li>
-                        <li>4 parts: Conversation (1), Monologue (2), Discussion (3), Lecture (4)</li>
-                        <li>Audio will play automatically with restrictions (no pause/seek for students)</li>
-                      </ul>
+                <div className="space-y-4">
+                  {/* Audio Upload - Only for first Part or main Listening section */}
+                  {(!editingSection.title.includes("Part") || editingSection.title.includes("Part 1")) && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        Listening Audio (All Parts) *
+                      </label>
+                      {selectedCategory === "IELTS" && (
+                        <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                          <p className="text-xs text-blue-800 font-medium mb-1">
+                            📝 IELTS Listening Requirements:
+                          </p>
+                          <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
+                            <li>Must have exactly <strong>40 questions</strong> (10 per part)</li>
+                            <li>4 parts: Conversation (1), Monologue (2), Discussion (3), Lecture (4)</li>
+                            <li>Audio will play automatically with restrictions (no pause/seek for students)</li>
+                            <li><strong>One audio file for all 4 parts</strong></li>
+                          </ul>
+                        </div>
+                      )}
+                      <div className="space-y-2">
+                        {editingSection.audio && (
+                          <div className="p-2 bg-gray-50 rounded-md text-sm text-gray-600">
+                            Current: {editingSection.audio}
+                          </div>
+                        )}
+                        <input
+                          type="file"
+                          accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac,.wma"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            
+                            const validAudioExtensions = ['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac', '.wma'];
+                            const hasValidExtension = validAudioExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+                            
+                            if (!hasValidExtension) {
+                              alert("Please upload a valid audio file (mp3, wav, ogg, m4a, aac, flac, wma)");
+                              return;
+                            }
+                            
+                            setUploadingAudio(true);
+                            try {
+                              const formData = new FormData();
+                              formData.append("file", file);
+                              formData.append("type", "audio");
+                              
+                              const res = await fetch("/api/admin/upload", {
+                                method: "POST",
+                                body: formData,
+                              });
+                              
+                              if (res.ok) {
+                                const data = await res.json();
+                                // Update all Listening parts with same audio
+                                const updatedSections = sections.map(s => 
+                                  s.type === "LISTENING" ? { ...s, audio: data.path } : s
+                                );
+                                setSections(updatedSections);
+                                setEditingSection({
+                                  ...editingSection,
+                                  audio: data.path,
+                                });
+                              } else {
+                                alert("Failed to upload audio");
+                              }
+                            } catch (error) {
+                              console.error("Upload error:", error);
+                              alert("Failed to upload audio");
+                            } finally {
+                              setUploadingAudio(false);
+                            }
+                          }}
+                          disabled={uploadingAudio}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 disabled:opacity-50"
+                        />
+                        {uploadingAudio && (
+                          <p className="text-xs text-gray-500">Uploading...</p>
+                        )}
+                      </div>
                     </div>
                   )}
-                  <div className="space-y-2">
-                    {editingSection.audio && (
-                      <div className="p-2 bg-gray-50 rounded-md text-sm text-gray-600">
-                        Current: {editingSection.audio}
+
+                  {/* Image and Introduction - For each Part */}
+                  {editingSection.title.includes("Part") && selectedCategory === "IELTS" && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                          Part Image <span className="text-gray-500 font-normal">(Optional)</span>
+                        </label>
+                        <div className="space-y-2">
+                          {editingSection.image && (
+                            <div className="p-3 bg-white border border-gray-200 rounded-md">
+                              <img
+                                src={editingSection.image}
+                                alt="Part image"
+                                className="max-w-full h-auto max-h-48 rounded border border-gray-200"
+                              />
+                              <p className="text-xs text-gray-500 mt-2">{editingSection.image}</p>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingSection({
+                                    ...editingSection,
+                                    image: undefined,
+                                  });
+                                }}
+                                className="mt-2 text-xs text-red-600 hover:text-red-700 font-medium"
+                              >
+                                Remove Image
+                              </button>
+                            </div>
+                          )}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              
+                              setUploadingImage(true);
+                              try {
+                                const formData = new FormData();
+                                formData.append("file", file);
+                                formData.append("type", "image");
+                                
+                                const res = await fetch("/api/admin/upload", {
+                                  method: "POST",
+                                  body: formData,
+                                });
+                                
+                                if (res.ok) {
+                                  const data = await res.json();
+                                  setEditingSection({
+                                    ...editingSection,
+                                    image: data.path,
+                                  });
+                                } else {
+                                  alert("Failed to upload image");
+                                }
+                              } catch (error) {
+                                console.error("Upload error:", error);
+                                alert("Failed to upload image");
+                              } finally {
+                                setUploadingImage(false);
+                              }
+                            }}
+                            disabled={uploadingImage}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 disabled:opacity-50 bg-white"
+                          />
+                          {uploadingImage && (
+                            <p className="text-xs text-gray-500">Uploading image...</p>
+                          )}
+                          <p className="text-xs text-gray-500">
+                            Image will appear on the left side, questions on the right
+                          </p>
+                        </div>
                       </div>
-                    )}
-                    <input
-                      type="file"
-                      accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac,.wma"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        
-                        const validAudioExtensions = ['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac', '.wma'];
-                        const hasValidExtension = validAudioExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
-                        
-                        if (!hasValidExtension) {
-                          alert("Please upload a valid audio file (mp3, wav, ogg, m4a, aac, flac, wma)");
-                          return;
-                        }
-                        
-                        setUploadingAudio(true);
-                        try {
-                          const formData = new FormData();
-                          formData.append("file", file);
-                          formData.append("type", "audio");
-                          
-                          const res = await fetch("/api/admin/upload", {
-                            method: "POST",
-                            body: formData,
-                          });
-                          
-                          if (res.ok) {
-                            const data = await res.json();
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                          Part Introduction <span className="text-gray-500 font-normal">(Optional)</span>
+                        </label>
+                        <textarea
+                          value={editingSection.introduction || ""}
+                          onChange={(e) => {
                             setEditingSection({
                               ...editingSection,
-                              audio: data.path,
+                              introduction: e.target.value,
                             });
-                          } else {
-                            alert("Failed to upload audio");
-                          }
-                        } catch (error) {
-                          console.error("Upload error:", error);
-                          alert("Failed to upload audio");
-                        } finally {
-                          setUploadingAudio(false);
-                        }
-                      }}
-                      disabled={uploadingAudio}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 disabled:opacity-50"
-                    />
-                    {uploadingAudio && (
-                      <p className="text-xs text-gray-500">Uploading...</p>
-                    )}
-                  </div>
+                          }}
+                          placeholder="Enter introduction text for this part (e.g., 'You will hear a conversation between two people...')"
+                          className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+                          rows={4}
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Introduction will appear on the left side with the image (if provided)
+                        </p>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>
