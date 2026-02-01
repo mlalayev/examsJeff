@@ -71,6 +71,12 @@ export default function AttemptResultsPage() {
       const res = await fetch(`/api/attempts/${attemptId}/results`);
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to load results");
+      console.log('📊 Results data:', json);
+      console.log('📊 Sections:', json.sections?.map((s: any) => ({ 
+        type: s.type, 
+        questionsCount: s.questions?.length,
+        questions: s.questions 
+      })));
       setData(json);
     } catch (err: any) {
       console.error(err);
@@ -83,6 +89,9 @@ export default function AttemptResultsPage() {
 
   const openSectionModal = (section: any) => {
     if (data && data.role === "TEACHER") {
+      console.log('📖 Opening modal for section:', section.type);
+      console.log('📖 Section data:', section);
+      console.log('📖 Questions in this section:', data.sections?.find(s => s.type === section.type)?.questions);
       setSelectedSection(section);
       setShowModal(true);
       document.body.style.overflow = 'hidden';

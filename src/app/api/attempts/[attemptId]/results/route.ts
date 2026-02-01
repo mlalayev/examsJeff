@@ -185,6 +185,16 @@ export async function GET(
         { status: 400 }
       );
     }
+    
+    // Group sections: parent sections with their subsections
+    const parentSections = examWithSections.sections.filter((s: any) => !s.parentSectionId);
+    const subsectionsByParent = examWithSections.sections
+      .filter((s: any) => s.parentSectionId)
+      .reduce((acc: any, sub: any) => {
+        if (!acc[sub.parentSectionId]) acc[sub.parentSectionId] = [];
+        acc[sub.parentSectionId].push(sub);
+        return acc;
+      }, {});
 
     // STUDENT VIEW: Summary only
     if (role === "STUDENT" && isOwner) {
@@ -192,9 +202,17 @@ export async function GET(
       // Structure: { sectionType: { questionId: answer } }
       const allStudentAnswers = (attempt.answers as any) || {};
       
-      const perSection = examWithSections.sections.map((examSection: any) => {
+      const perSection = parentSections.map((examSection: any) => {
         const attemptSec = attempt.sections.find((as) => as.type === examSection.type);
-        const totalQuestions = examSection.questions?.length || 0;
+        
+        // Collect all questions from this section and its subsections
+        let allQuestions = [...(examSection.questions || [])];
+        const sectionSubsections = subsectionsByParent[examSection.id] || [];
+        sectionSubsections.forEach((sub: any) => {
+          allQuestions = [...allQuestions, ...(sub.questions || [])];
+        });
+        
+        const totalQuestions = allQuestions.length;
         
         // Get answers for this specific section
         const studentAnswers = (attemptSec?.answers as Record<string, any>) || allStudentAnswers[examSection.type] || {};
@@ -205,7 +223,7 @@ export async function GET(
           correctCount = attemptSec.rawScore;
         } else {
           // Compute score from answers (for JSON exams) - using optimized helper function
-          correctCount = examSection.questions.filter((q: any) => {
+          correctCount = allQuestions.filter((q: any) => {
             const studentAnswer = studentAnswers[q.id];
             const answerKey = q.answerKey as any;
             return checkAnswerCorrectness(q, studentAnswer, answerKey);
@@ -248,8 +266,8 @@ export async function GET(
       // Structure: { sectionType: { questionId: answer } }
       const allStudentAnswers = (attempt.answers as any) || {};
       
-      // Optimized: no need for Promise.all since map is synchronous
-      const fullSections = examWithSections.sections.map((examSection: any) => {
+      // Process only parent sections (subsections will be included in their parents)
+      const fullSections = parentSections.map((examSection: any) => {
         const attemptSection = attempt.sections.find(
           (as) => as.type === examSection.type
         );
@@ -257,7 +275,17 @@ export async function GET(
         // Use attemptSection.answers if available (DB exam), otherwise use section-specific answers (JSON exam)
         const studentAnswers = (attemptSection?.answers as Record<string, any>) || allStudentAnswers[examSection.type] || {};
 
-        const questions = examSection.questions.map((q: any) => {
+        // Collect all questions from this section and its subsections
+        let allQuestions = [...(examSection.questions || [])];
+        const sectionSubsections = subsectionsByParent[examSection.id] || [];
+        sectionSubsections.forEach((sub: any) => {
+          allQuestions = [...allQuestions, ...(sub.questions || [])];
+        });
+        
+        // Sort by order
+        allQuestions.sort((a: any, b: any) => a.order - b.order);
+
+        const questions = allQuestions.map((q: any) => {
           const studentAnswer = studentAnswers[q.id];
           const answerKey = q.answerKey as any;
 
@@ -393,6 +421,13 @@ export async function GET(
       const totalCorrect = fullSections.reduce((sum, s) => sum + s.correct, 0);
       const totalQuestions = fullSections.reduce((sum, s) => sum + s.total, 0);
       const totalPercentage = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
+
+      console.log('📊 Teacher view - sections:', fullSections.map(s => ({ 
+        type: s.type, 
+        questionsCount: s.questions?.length,
+        correct: s.correct,
+        total: s.total
+      })));
 
       return NextResponse.json({
         attemptId: attempt.id,
