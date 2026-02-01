@@ -109,6 +109,11 @@ model User {
   // Tuition Payment relations
   tuitionPayments TuitionPayment[] @relation("StudentTuitionPayments")
 
+  // Writing Submission relations
+  writingSubmissionsAsStudent WritingSubmission[] @relation("WritingStudent")
+  writingSubmissionsAsTeacher WritingSubmission[] @relation("WritingTeacher")
+  writingSubmissionsAsGrader  WritingSubmission[] @relation("WritingGrader")
+
   @@map("users")
 }
 
@@ -179,8 +184,9 @@ model Class {
   branch    Branch?  @relation(fields: [branchId], references: [id], onDelete: Restrict)
   createdAt DateTime @default(now())
 
-  classStudents ClassStudent[]
-  assignments   Assignment[]
+  classStudents      ClassStudent[]
+  assignments        Assignment[]
+  writingSubmissions WritingSubmission[]
 
   @@map("classes")
 }
@@ -238,8 +244,55 @@ model AttemptSection {
   endedAt    DateTime?
   status     String      @default("IN_PROGRESS")
 
+  writingSubmission WritingSubmission?
+
   @@index([attemptId, type])
   @@map("attempt_sections")
+}
+
+model WritingSubmission {
+  id                String          @id @default(cuid())
+  attemptSectionId  String          @unique
+  attemptSection    AttemptSection  @relation(fields: [attemptSectionId], references: [id], onDelete: Cascade)
+  attemptId         String
+  studentId         String
+  student           User            @relation("WritingStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  classId           String?
+  class             Class?          @relation(fields: [classId], references: [id], onDelete: SetNull)
+  teacherId         String?
+  teacher           User?           @relation("WritingTeacher", fields: [teacherId], references: [id], onDelete: SetNull)
+  
+  // Task responses
+  task1Response     String          @db.Text
+  task2Response     String          @db.Text
+  wordCountTask1    Int
+  wordCountTask2    Int
+  
+  // Timing
+  startedAt         DateTime
+  submittedAt       DateTime
+  timeSpentSeconds  Int
+  
+  // Teacher feedback
+  overallBand       Float?
+  task1Band         Float?
+  task2Band         Float?
+  overallComments   String?         @db.Text
+  task1Comments     String?         @db.Text
+  task2Comments     String?         @db.Text
+  feedbackPublished Boolean         @default(false)
+  gradedAt          DateTime?
+  gradedById        String?
+  gradedBy          User?           @relation("WritingGrader", fields: [gradedById], references: [id], onDelete: SetNull)
+  
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([studentId, submittedAt])
+  @@index([teacherId, submittedAt])
+  @@index([classId, feedbackPublished])
+  @@index([attemptId])
+  @@map("writing_submissions")
 }
 
 model Exam {

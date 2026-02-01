@@ -842,6 +842,44 @@ export default function AttemptRunnerPage() {
 
       // Save current section before switching
       if (activeSection && answers[activeSection]) {
+        const currentSection = data.sections.find(s => s.id === activeSection);
+        const targetSection = data.sections.find(s => s.id === sectionId);
+        
+        // IELTS Writing: Submit writing when leaving Writing section
+        if (data.examCategory === "IELTS" && currentSection?.type === "WRITING" && targetSection?.type !== "WRITING") {
+          try {
+            // Get all writing section answers
+            const writingSections = data.sections.filter(s => s.type === "WRITING");
+            const task1Section = writingSections.find(s => s.title.includes("Task 1"));
+            const task2Section = writingSections.find(s => s.title.includes("Task 2"));
+            
+            const task1Response = task1Section ? answers[task1Section.id]?.["writing_text"] || "" : "";
+            const task2Response = task2Section ? answers[task2Section.id]?.["writing_text"] || "" : "";
+            
+            // Only submit if we have responses
+            if (task1Response || task2Response) {
+              const writingStartTime = sectionStartTimes[writingSections[0]?.id];
+              const timeSpent = writingStartTime ? Math.floor((Date.now() - writingStartTime) / 1000) : 0;
+              
+              await fetch(`/api/attempts/${attemptId}/writing/submit`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  task1Response,
+                  task2Response,
+                  startedAt: writingStartTime ? new Date(writingStartTime).toISOString() : new Date().toISOString(),
+                  timeSpentSeconds: timeSpent,
+                }),
+              });
+              
+              console.log("✅ Writing submitted automatically");
+            }
+          } catch (error) {
+            console.error("Failed to submit writing:", error);
+            // Don't block navigation if submission fails
+          }
+        }
+        
         await saveSection(activeSection, answers[activeSection]);
       }
 
