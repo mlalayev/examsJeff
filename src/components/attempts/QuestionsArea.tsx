@@ -93,6 +93,11 @@ export const QuestionsArea = React.memo(function QuestionsArea({
         .slice(0, 4)
     : [];
 
+  // For IELTS Listening: Get audio from first part (shared across all parts)
+  const ieltsAudioSource = isIELTSListeningPart && ieltsListeningParts.length > 0
+    ? ieltsListeningParts[0].audio || audioSource
+    : audioSource;
+
   // Find all IELTS Reading passages (3 passages)
   const ieltsReadingPassages = isIELTSReadingPassage
     ? allSections
@@ -168,7 +173,7 @@ export const QuestionsArea = React.memo(function QuestionsArea({
         </div>
 
         {/* Audio Player - Only show once for first IELTS Listening part */}
-        {audioSource && (!isIELTSListeningPart || isFirstListeningPart) && (
+        {ieltsAudioSource && (!isIELTSListeningPart || shouldShowIELTSView) && (
           <div className="mb-8">
             <div className="text-center mb-4">
               <h3
@@ -182,7 +187,7 @@ export const QuestionsArea = React.memo(function QuestionsArea({
                 style={{ color: "rgba(48, 51, 128, 0.7)" }}
               >
                 {isIELTSListeningPart 
-                  ? "The audio plays continuously. Navigate between parts using the tabs below."
+                  ? "Click play to start. Audio plays continuously through all parts."
                   : "Listen to the audio and answer the questions below"
                 }
               </p>
@@ -190,12 +195,12 @@ export const QuestionsArea = React.memo(function QuestionsArea({
             {/* Use IELTS-restricted player for IELTS Listening sections (student mode) */}
             {examCategory === "IELTS" && section.type === "LISTENING" && userRole !== "TEACHER" && userRole !== "ADMIN" ? (
               <IELTSAudioPlayer 
-                src={audioSource} 
+                src={ieltsAudioSource} 
                 className="w-full"
                 allowFullControls={false}
               />
             ) : (
-              <AudioPlayer src={audioSource} className="w-full" />
+              <AudioPlayer src={ieltsAudioSource} className="w-full" />
             )}
           </div>
         )}

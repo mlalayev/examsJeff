@@ -134,13 +134,47 @@ export const IELTSListeningView: React.FC<IELTSListeningViewProps> = ({
               <p>No questions in this part</p>
             </div>
           ) : (
-            currentPartQuestions.map((q) => {
+            currentPartQuestions.map((q, idx) => {
               const value = answers[q.id];
               const onChange = (newValue: any) => onAnswerChange(q.id, newValue);
               
+              // Calculate question number based on part (Part 1: Q1-10, Part 2: Q11-20, etc.)
+              const partInfo = IELTS_LISTENING_STRUCTURE.parts[activePart - 1];
+              const questionNumber = partInfo ? partInfo.questionRange[0] + idx : idx + 1;
+              
               return (
-                <div key={q.id}>
-                  {renderQuestionComponent(q, value, onChange, isLocked)}
+                <div 
+                  key={q.id}
+                  className="bg-white rounded-xl border shadow-sm transition-all duration-200 hover:shadow-md"
+                  style={{ borderColor: "rgba(15, 17, 80, 0.63)" }}
+                >
+                  <div className="p-6">
+                    {/* Question Header with Number and Prompt */}
+                    <div className="flex items-start gap-4 mb-4">
+                      <div
+                        className="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm shadow-sm"
+                        style={{
+                          backgroundColor: "#303380",
+                          color: "white",
+                        }}
+                      >
+                        {questionNumber}
+                      </div>
+                      <div className="flex-1">
+                        {/* Show prompt text for MCQ questions */}
+                        {(q.qtype === "MCQ_SINGLE" || q.qtype === "MCQ_MULTI") && q.prompt?.text && (
+                          <p className="text-gray-800 text-base leading-relaxed font-normal mb-4" style={{ lineHeight: "1.6" }}>
+                            {q.prompt.text}
+                          </p>
+                        )}
+                        
+                        {/* Render question component */}
+                        <div>
+                          {renderQuestionComponent(q, value, onChange, isLocked)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               );
             })

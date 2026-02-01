@@ -5,7 +5,7 @@ import { z } from "zod";
 
 const questionSchema = z.object({
   id: z.string().optional(),
-  qtype: z.enum(["MCQ", "ORDER", "DND_MATCH", "TF", "MCQ_SINGLE", "MCQ_MULTI", "SELECT", "GAP", "ORDER_SENTENCE", "DND_GAP", "SHORT_TEXT", "ESSAY", "INLINE_SELECT"]),
+  qtype: z.enum(["MCQ", "ORDER", "DND_MATCH", "TF", "MCQ_SINGLE", "MCQ_MULTI", "SELECT", "GAP", "ORDER_SENTENCE", "DND_GAP", "SHORT_TEXT", "ESSAY", "INLINE_SELECT", "FILL_IN_BLANK"]),
   order: z.number(),
   prompt: z.any(),
   options: z.any().optional(),
@@ -20,6 +20,7 @@ const sectionSchema = z.object({
   type: z.enum(["READING", "LISTENING", "WRITING", "SPEAKING", "GRAMMAR", "VOCABULARY"]),
   title: z.string(),
   instruction: z.string(),
+  image: z.string().nullable().optional(), // Section image (IELTS Listening parts)
   durationMin: z.number(),
   order: z.number(),
   questions: z.array(questionSchema),
@@ -163,6 +164,7 @@ export async function PATCH(
             type: section.type,
             title: section.title,
             instruction: section.instruction || null,
+            image: section.image || null, // Section image (IELTS Listening parts)
             durationMin: section.durationMin,
             order: section.order,
           };

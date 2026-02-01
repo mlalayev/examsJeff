@@ -4,6 +4,7 @@ import { requireStudent } from "@/lib/auth-utils";
 import { SectionType, QuestionType } from "@prisma/client";
 import { scoreQuestion } from "@/lib/scoring";
 import { scoreIELTSListening } from "@/lib/ielts-listening-scoring";
+import { scoreIELTSReading } from "@/lib/ielts-reading-scoring";
 
 type AnswersByQuestionId = Record<string, any>;
 
@@ -123,6 +124,30 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
           listeningParts: listeningResult.sectionScores,
           totalRaw: listeningResult.totalRaw,
           maxScore: listeningResult.maxScore,
+        };
+        
+        totalRaw += sectionRaw;
+        totalMax += sectionMax;
+      }
+      // IELTS Reading: Special 3-passage scoring
+      else if (examWithSections.category === "IELTS" && sectionType === "READING") {
+        const readingResult = scoreIELTSReading(
+          section.questions.map(q => ({
+            id: q.id,
+            qtype: q.qtype as string,
+            answerKey: q.answerKey,
+            maxScore: q.maxScore || 1,
+            order: q.order,
+          })),
+          sectionAnswers
+        );
+        
+        sectionRaw = readingResult.totalRawScore;
+        sectionMax = readingResult.maxScore;
+        sectionRubric = {
+          passageScores: readingResult.passageScores,
+          totalRawScore: readingResult.totalRawScore,
+          maxScore: readingResult.maxScore,
         };
         
         totalRaw += sectionRaw;

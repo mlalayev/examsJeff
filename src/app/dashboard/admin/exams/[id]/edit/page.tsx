@@ -931,6 +931,22 @@ export default function EditExamPage() {
                                 </span>
                               </div>
                               <div className="flex items-center gap-2">
+                                {/* Edit Passage button for Reading subsections */}
+                                {section.type === "READING" && (
+                                  <button
+                                    onClick={() => {
+                                      setEditingSection(subsection);
+                                      setShowSectionEditModal(true);
+                                    }}
+                                    className="px-2 py-1 text-xs font-medium text-green-700 bg-green-50 rounded hover:bg-green-100 flex items-center gap-1"
+                                    title="Edit passage text"
+                                  >
+                                    <BookOpen className="w-3 h-3" />
+                                    Passage
+                                  </button>
+                                )}
+                                
+                                {/* Questions button */}
                                 <button
                                   onClick={() => setCurrentSection(subsection)}
                                   className="px-2 py-1 text-xs font-medium text-white rounded"
@@ -938,15 +954,20 @@ export default function EditExamPage() {
                                 >
                                   Questions
                                 </button>
-                                <button
-                                  onClick={() => {
-                                    setEditingSection(subsection);
-                                    setShowSectionEditModal(true);
-                                  }}
-                                  className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100"
-                                >
-                                  <Image className="w-3 h-3" />
-                                </button>
+                                
+                                {/* Image/Introduction button for Listening subsections */}
+                                {section.type === "LISTENING" && (
+                                  <button
+                                    onClick={() => {
+                                      setEditingSection(subsection);
+                                      setShowSectionEditModal(true);
+                                    }}
+                                    className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100"
+                                    title="Edit image and introduction"
+                                  >
+                                    <Image className="w-3 h-3" />
+                                  </button>
+                                )}
                               </div>
                             </div>
                           </div>

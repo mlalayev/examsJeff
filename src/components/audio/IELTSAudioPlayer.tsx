@@ -58,22 +58,8 @@ const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
   const [lastAllowedTime, setLastAllowedTime] = useState(initialTime);
   const lastAllowedTimeRef = useRef(initialTime);
 
-  // Auto-play for students on mount
-  useEffect(() => {
-    if (!allowFullControls && src && audioRef.current) {
-      // Auto-play after a short delay (browser policy)
-      const timer = setTimeout(() => {
-        audioRef.current?.play()
-          .then(() => setIsPlaying(true))
-          .catch(err => {
-            console.warn("Auto-play blocked by browser:", err);
-            // Show play button if auto-play fails
-          });
-      }, 100);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [src, allowFullControls]);
+  // NO auto-play - let student start manually
+  // Auto-play is removed to give student control
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -284,7 +270,7 @@ const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
         <div className="mb-3 flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
           <Lock className="w-4 h-4 text-amber-600" />
           <p className="text-xs text-amber-800 font-medium">
-            🎧 Audio is locked (IELTS rules) — No pause, rewind, or seeking allowed
+            🎧 Click PLAY to start. Once playing, you cannot pause, rewind, or seek (IELTS rules)
           </p>
         </div>
       )}
@@ -333,20 +319,19 @@ const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
 
       {/* Controls */}
       <div className="flex items-center justify-between gap-4">
-        {/* Play/Pause - Only show if teacher mode OR if auto-play failed */}
-        {(allowFullControls || !isPlaying) && (
-          <button
-            onClick={togglePlayPause}
-            className="p-3 rounded-full transition-all hover:scale-105"
-            style={{
-              backgroundColor: '#303380',
-              color: 'white'
-            }}
-            title={allowFullControls ? (isPlaying ? "Pause" : "Play") : "Play (auto-play may be blocked)"}
-          >
-            {isPlaying ? <Pause size={24} /> : <Play size={24} />}
-          </button>
-        )}
+        {/* Play/Pause - Always show for students */}
+        <button
+          onClick={togglePlayPause}
+          className="p-3 rounded-full transition-all hover:scale-105"
+          style={{
+            backgroundColor: '#303380',
+            color: 'white'
+          }}
+          title={isPlaying ? "Pause (not allowed in exam)" : "Play"}
+          disabled={!allowFullControls && isPlaying}
+        >
+          {isPlaying ? <Pause size={24} /> : <Play size={24} />}
+        </button>
 
         {/* Volume Control */}
         <div className="flex items-center gap-2 flex-1">

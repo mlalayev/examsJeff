@@ -97,18 +97,51 @@ export default function IELTSReadingView({
         {/* Right: Questions */}
         <div className="space-y-6 max-h-[70vh] overflow-y-auto">
           {activePassage.questions.length > 0 ? (
-            activePassage.questions.map((q, idx) => (
-              <div
-                key={q.id}
-                className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm"
-              >
-                {renderQuestionComponent ? (
-                  renderQuestionComponent(q, answers[q.id], (answer: any) => onAnswerChange(q.id, answer), false)
-                ) : (
-                  <div className="text-gray-400">Question rendering not available</div>
-                )}
-              </div>
-            ))
+            activePassage.questions.map((q, idx) => {
+              // Calculate question number (Passage 1: Q1-13, Passage 2: Q14-26, Passage 3: Q27-40)
+              const baseQuestionNumber = activeTab * 13 + 1; // Approximate, adjust as needed
+              const questionNumber = baseQuestionNumber + idx;
+              
+              return (
+                <div
+                  key={q.id}
+                  className="bg-white rounded-xl border shadow-sm transition-all duration-200 hover:shadow-md"
+                  style={{ borderColor: "rgba(15, 17, 80, 0.63)" }}
+                >
+                  <div className="p-6">
+                    {/* Question Header with Number and Prompt */}
+                    <div className="flex items-start gap-4 mb-4">
+                      <div
+                        className="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm shadow-sm"
+                        style={{
+                          backgroundColor: "#303380",
+                          color: "white",
+                        }}
+                      >
+                        {questionNumber}
+                      </div>
+                      <div className="flex-1">
+                        {/* Show prompt text for MCQ questions */}
+                        {(q.qtype === "MCQ_SINGLE" || q.qtype === "MCQ_MULTI") && q.prompt?.text && (
+                          <p className="text-gray-800 text-base leading-relaxed font-normal mb-4" style={{ lineHeight: "1.6" }}>
+                            {q.prompt.text}
+                          </p>
+                        )}
+                        
+                        {/* Render question component */}
+                        <div>
+                          {renderQuestionComponent ? (
+                            renderQuestionComponent(q, answers[q.id], (answer: any) => onAnswerChange(q.id, answer), false)
+                          ) : (
+                            <div className="text-gray-400">Question rendering not available</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
           ) : (
             <div className="text-center text-gray-400 py-12">
               <BookOpen className="mx-auto mb-2 h-10 w-10 text-gray-300" />

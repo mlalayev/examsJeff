@@ -893,7 +893,7 @@ export default function AttemptRunnerPage() {
     [data?.sections]
   );
 
-  
+
   const handleWordBankPositionChange = useCallback(
     (questionId: string, position: number) => {
       setWordBankPositions((prev) => ({
@@ -954,6 +954,75 @@ export default function AttemptRunnerPage() {
 
   const currentSection = data.sections.find((s) => s.id === activeSection);
   const isSAT = data.examCategory === "SAT";
+  const isIELTS = data.examCategory === "IELTS";
+  const isReadingSection = currentSection?.type === "READING";
+
+  // Anti-cheating: Disable copy/paste/right-click for IELTS Reading
+  useEffect(() => {
+    if (!isIELTS || !isReadingSection) return;
+
+    const handleCopy = (e: ClipboardEvent) => {
+      e.preventDefault();
+      return false;
+    };
+
+    const handleCut = (e: ClipboardEvent) => {
+      e.preventDefault();
+      return false;
+    };
+
+    const handlePaste = (e: ClipboardEvent) => {
+      e.preventDefault();
+      return false;
+    };
+
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      return false;
+    };
+
+    const handleSelectStart = (e: Event) => {
+      e.preventDefault();
+      return false;
+    };
+
+    document.addEventListener('copy', handleCopy);
+    document.addEventListener('cut', handleCut);
+    document.addEventListener('paste', handlePaste);
+    document.addEventListener('contextmenu', handleContextMenu);
+    document.addEventListener('selectstart', handleSelectStart);
+
+    // Disable text selection via CSS
+    document.body.style.userSelect = 'none';
+    document.body.style.webkitUserSelect = 'none';
+
+    return () => {
+      document.removeEventListener('copy', handleCopy);
+      document.removeEventListener('cut', handleCut);
+      document.removeEventListener('paste', handlePaste);
+      document.removeEventListener('contextmenu', handleContextMenu);
+      document.removeEventListener('selectstart', handleSelectStart);
+      document.body.style.userSelect = '';
+      document.body.style.webkitUserSelect = '';
+    };
+  }, [isIELTS, isReadingSection]);
+
+  // Anti-cheating: Page navigation warning
+  useEffect(() => {
+    if (!isIELTS || data.status === 'COMPLETED') return;
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = 'Leaving will not stop the timer. Are you sure you want to leave?';
+      return e.returnValue;
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [isIELTS, data.status]);
 
   return (
     <>
