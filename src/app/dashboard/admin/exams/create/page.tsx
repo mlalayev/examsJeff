@@ -1867,6 +1867,17 @@ export default function CreateExamPage() {
                   </div>
                 ) : editingQuestion.qtype === "ESSAY" ? (
                   <div className="space-y-3">
+                    <ImageUpload
+                      label="Essay Image (Optional)"
+                      value={editingQuestion.image || ""}
+                      onChange={(url) => {
+                        setEditingQuestion({
+                          ...editingQuestion,
+                          image: url,
+                        });
+                      }}
+                    />
+
                     <textarea
                       value={editingQuestion.prompt?.text || ""}
                       onChange={(e) => {

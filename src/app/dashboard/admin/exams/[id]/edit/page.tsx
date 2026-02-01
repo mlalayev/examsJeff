@@ -505,7 +505,14 @@ export default function EditExamPage() {
   };
 
   const saveQuestion = () => {
-    if (!currentSection || !editingQuestion) return;
+    if (!currentSection || !editingQuestion) {
+      console.error("Cannot save question: currentSection or editingQuestion is null");
+      return;
+    }
+
+    console.log("Saving question:", editingQuestion);
+    console.log("Current section:", currentSection);
+    console.log("Sections before update:", sections);
 
     // Remove rawText from prompt before saving (it's only for display)
     const questionToSave = {
@@ -518,6 +525,8 @@ export default function EditExamPage() {
     if (questionToSave.prompt && 'rawText' in questionToSave.prompt) {
       delete (questionToSave.prompt as any).rawText;
     }
+
+    console.log("Question to save:", questionToSave);
 
     const updatedSections = sections.map((s) => {
       // If current section is a subsection, update inside parent
@@ -547,6 +556,8 @@ export default function EditExamPage() {
         : s;
     });
     
+    console.log("Sections after update:", updatedSections);
+    
     setSections(updatedSections);
     
     // Update currentSection
@@ -560,8 +571,11 @@ export default function EditExamPage() {
       }
       return null;
     };
-    setCurrentSection(findCurrentSection(updatedSections));
+    const updatedCurrentSection = findCurrentSection(updatedSections);
+    console.log("Updated current section:", updatedCurrentSection);
+    setCurrentSection(updatedCurrentSection);
     setEditingQuestion(null);
+    console.log("✅ Question saved successfully!");
   };
 
   const deleteQuestion = (questionId: string) => {
@@ -1328,6 +1342,17 @@ export default function EditExamPage() {
                   </div>
                 ) : editingQuestion.qtype === "ESSAY" ? (
                   <div className="space-y-3">
+                    <ImageUpload
+                      label="Essay Image (Optional)"
+                      value={editingQuestion.image || ""}
+                      onChange={(url) => {
+                        setEditingQuestion({
+                          ...editingQuestion,
+                          image: url,
+                        });
+                      }}
+                    />
+
                     <textarea
                       value={editingQuestion.prompt?.text || ""}
                       onChange={(e) => {
@@ -1574,7 +1599,7 @@ export default function EditExamPage() {
                           Correct Answers (case-insensitive, spaces ignored)
                         </label>
                         <div className="space-y-3">
-                          {Array.from({ length: (editingQuestion.prompt?.text || "").match(/\[input\]/g)?.length || 0 }).map((_, idx) => {
+                          {Array.from({ length: (editingQuestion.prompt?.text || "").match(/___|\[input\]/g)?.length || 0 }).map((_, idx) => {
                             // Get current alternatives for this blank
                             const currentAlternatives = Array.isArray(editingQuestion.answerKey?.answers?.[idx])
                               ? editingQuestion.answerKey.answers[idx]

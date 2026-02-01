@@ -40,14 +40,14 @@ export function IELTSWritingView({
   const autosaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const storageKey = `ielts_attempt:${attemptId}:writing`;
 
-  // Get current task section
-  const currentTask = taskSections[currentTaskIndex];
+  // Get current task section (with fallback)
+  const currentTask = taskSections?.[currentTaskIndex];
   
   // Get task text from answers (use unique ID per task)
-  const task1Section = taskSections[0];
-  const task2Section = taskSections[1];
-  const task1Text = answers[task1Section?.id]?.["writing_text"] || "";
-  const task2Text = answers[task2Section?.id]?.["writing_text"] || "";
+  const task1Section = taskSections?.[0];
+  const task2Section = taskSections?.[1];
+  const task1Text = task1Section ? (answers[task1Section.id]?.["writing_text"] || "") : "";
+  const task2Text = task2Section ? (answers[task2Section.id]?.["writing_text"] || "") : "";
 
   // Load saved state on mount (for currentTaskIndex and hasStartedTask2)
   useEffect(() => {
@@ -97,11 +97,41 @@ export function IELTSWritingView({
     };
   }, []);
 
+  // Safety check: If no tasks available, show error
+  if (!taskSections || taskSections.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center py-12">
+          <div className="text-gray-500 mb-4">
+            <p className="text-lg font-medium">No writing tasks found</p>
+            <p className="text-sm mt-2">Please contact your instructor</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Safety check for currentTask
+  if (!currentTask) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center py-12">
+          <div className="text-gray-500 mb-4">
+            <p className="text-lg font-medium">Task not found</p>
+            <p className="text-sm mt-2">Please refresh the page</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const currentText = currentTaskIndex === 0 ? task1Text : task2Text;
   const setCurrentText = (value: string) => {
-    const sectionId = currentTaskIndex === 0 ? task1Section.id : task2Section.id;
-    onAnswerChange(sectionId, "writing_text", value);
-    setLastSaved(new Date());
+    const sectionId = currentTaskIndex === 0 ? task1Section?.id : task2Section?.id;
+    if (sectionId) {
+      onAnswerChange(sectionId, "writing_text", value);
+      setLastSaved(new Date());
+    }
   };
 
   const wordCount = currentText.trim().split(/\s+/).filter((word) => word.length > 0).length;
