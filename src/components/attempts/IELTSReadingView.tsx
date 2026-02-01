@@ -8,6 +8,8 @@ interface Question {
   qtype: string;
   prompt: any;
   options?: any;
+  answerKey: any;
+  maxScore: number;
   image?: string;
   order: number;
 }

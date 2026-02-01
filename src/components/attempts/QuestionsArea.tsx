@@ -8,6 +8,7 @@ import { QuestionCard } from "./QuestionCard";
 import { DndGapQuestion } from "./DndGapQuestion";
 import { IELTSListeningView } from "./IELTSListeningView";
 import IELTSReadingView from "./IELTSReadingView";
+import { IELTSWritingView } from "./IELTSWritingView";
 
 interface Question {
   id: string;
@@ -85,6 +86,9 @@ export const QuestionsArea = React.memo(function QuestionsArea({
   // For IELTS Reading: Check if this is a Reading Passage section
   const isIELTSReadingPassage = examCategory === "IELTS" && section.type === "READING";
   
+  // For IELTS Writing: Check if this is a Writing Task section
+  const isIELTSWritingTask = examCategory === "IELTS" && section.type === "WRITING";
+  
   // Find all IELTS Listening parts (4 consecutive sections)
   const ieltsListeningParts = isIELTSListeningPart 
     ? allSections
@@ -106,10 +110,18 @@ export const QuestionsArea = React.memo(function QuestionsArea({
         .slice(0, 3)
     : [];
   
+  // Find all IELTS Writing tasks (2 tasks)
+  const ieltsWritingTasks = isIELTSWritingTask
+    ? allSections
+        .filter(s => s.type === "WRITING")
+        .slice(0, 2)
+    : [];
+  
   // If current section is empty (parent section), show first subsection's content
   const isEmptyParentSection = (section.questions?.length || 0) === 0;
   const shouldShowIELTSView = isIELTSListeningPart && ieltsListeningParts.length > 0;
   const shouldShowReadingView = isIELTSReadingPassage && ieltsReadingPassages.length > 0;
+  const shouldShowWritingView = isIELTSWritingTask && ieltsWritingTasks.length > 0;
   
   // Is this the first Listening part? (only first part shows audio player)
   const isFirstListeningPart = shouldShowIELTSView && ieltsListeningParts[0].id === section.id;
@@ -296,6 +308,36 @@ export const QuestionsArea = React.memo(function QuestionsArea({
             <div className="text-center py-12">
               <div className="text-gray-500 mb-4">
                 <p className="text-lg font-medium">No reading passages found</p>
+                <p className="text-sm mt-2">Please contact your instructor</p>
+              </div>
+            </div>
+          )
+        ) : examCategory === "IELTS" && section.type === "WRITING" ? (
+          // IELTS Writing: Show Task 1 and Task 2 in one view
+          shouldShowWritingView ? (
+            <IELTSWritingView
+              attemptId={answers.__attemptId || "unknown"} // Pass attemptId for storage key
+              taskSections={ieltsWritingTasks.map(s => ({
+                id: s.id,
+                title: s.title,
+                instruction: s.instruction || "",
+                minWords: s.title.includes("Task 1") ? 150 : 250,
+                suggestedTime: s.title.includes("Task 1") ? 20 : 40,
+                questions: s.questions || [],
+              }))}
+              writingType="ACADEMIC" // TODO: Get from exam metadata
+              answers={answers}
+              isLocked={isLocked}
+              onAnswerChange={(sectionId, taskKey, value) => {
+                // Save writing text as answer
+                onAnswerChange(sectionId, { [taskKey]: value });
+              }}
+            />
+          ) : (
+            // If no tasks found
+            <div className="text-center py-12">
+              <div className="text-gray-500 mb-4">
+                <p className="text-lg font-medium">No writing tasks found</p>
                 <p className="text-sm mt-2">Please contact your instructor</p>
               </div>
             </div>

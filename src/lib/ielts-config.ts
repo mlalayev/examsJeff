@@ -55,28 +55,74 @@ export const IELTS_READING_CONFIG = {
   ],
 } as const;
 
+/**
+ * IELTS Writing structure
+ */
+export const IELTS_WRITING_CONFIG = {
+  TOTAL_DURATION: 60, // minutes
+  TASKS: [
+    {
+      id: 1,
+      title: "Task 1",
+      minWords: 150,
+      suggestedTime: 20, // minutes
+      academicType: "Report (graph/chart/diagram/process/map)",
+      generalType: "Letter (formal/semi-formal/informal)",
+    },
+    {
+      id: 2,
+      title: "Task 2",
+      minWords: 250,
+      suggestedTime: 40, // minutes
+      type: "Essay (both Academic & General)",
+    },
+  ],
+} as const;
+
 export type ReadingType = "ACADEMIC" | "GENERAL";
+export type WritingType = "ACADEMIC" | "GENERAL";
 
 export type IELTSSectionType = keyof typeof IELTS_SECTION_ORDER;
 
 /**
- * Validate IELTS section uniqueness (LISTENING can only be added once)
+ * Validate IELTS section uniqueness (LISTENING, READING, WRITING can only be added once)
  */
-export function validateIELTSListeningUniqueness(
+export function validateIELTSSectionUniqueness(
   sections: Array<{ type: string }>,
   newSectionType?: string
 ): { valid: boolean; error?: string } {
-  const listeningCount = sections.filter(s => s.type === "LISTENING").length;
+  const sectionCounts = {
+    LISTENING: sections.filter(s => s.type === "LISTENING").length,
+    READING: sections.filter(s => s.type === "READING").length,
+    WRITING: sections.filter(s => s.type === "WRITING").length,
+  };
   
-  if (newSectionType === "LISTENING" && listeningCount >= 1) {
+  if (newSectionType === "LISTENING" && sectionCounts.LISTENING >= 1) {
     return {
       valid: false,
       error: "LISTENING section can only be added once per IELTS exam"
     };
   }
   
+  if (newSectionType === "READING" && sectionCounts.READING >= 1) {
+    return {
+      valid: false,
+      error: "READING section can only be added once per IELTS exam"
+    };
+  }
+  
+  if (newSectionType === "WRITING" && sectionCounts.WRITING >= 1) {
+    return {
+      valid: false,
+      error: "WRITING section can only be added once per IELTS exam"
+    };
+  }
+  
   return { valid: true };
 }
+
+// Backward compatibility alias
+export const validateIELTSListeningUniqueness = validateIELTSSectionUniqueness;
 
 /**
  * Sort IELTS sections in correct order

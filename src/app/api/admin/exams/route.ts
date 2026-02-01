@@ -38,6 +38,8 @@ const createExamSchema = z.object({
   title: z.string().min(1).max(200),
   category: z.enum(["IELTS", "TOEFL", "SAT", "GENERAL_ENGLISH", "MATH", "KIDS"]),
   track: z.string().nullable().optional(),
+  readingType: z.string().nullable().optional(), // IELTS Reading type: ACADEMIC or GENERAL
+  writingType: z.string().nullable().optional(), // IELTS Writing type: ACADEMIC or GENERAL
   durationMin: z.number().nullable().optional(), // Optional exam timer
   isActive: z.boolean().default(true),
   sections: z.array(sectionSchema).optional(),
@@ -169,6 +171,8 @@ export async function POST(request: Request) {
         title: validatedData.title,
         category: validatedData.category,
         track: validatedData.track,
+        readingType: validatedData.readingType,
+        writingType: validatedData.writingType,
         durationMin: validatedData.durationMin,
         isActive: validatedData.isActive ?? true,
         createdById: (user as any).id,

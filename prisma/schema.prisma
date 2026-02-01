@@ -248,6 +248,7 @@ model Exam {
   category        ExamCategory @default(IELTS)
   track           String? // e.g. "A2" (General English üçün)
   readingType     String?      @default("ACADEMIC") // IELTS Reading type: ACADEMIC or GENERAL
+  writingType     String?      @default("ACADEMIC") // IELTS Writing type: ACADEMIC or GENERAL
   isActive        Boolean      @default(true)
   durationMin     Int? // Optional: overall exam duration in minutes
   sectionPassword String? // Optional: password for section navigation (IELTS/SAT)

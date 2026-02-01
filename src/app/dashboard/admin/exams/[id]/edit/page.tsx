@@ -137,6 +137,8 @@ export default function EditExamPage() {
   const [examTitle, setExamTitle] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<ExamCategory | null>(null);
   const [track, setTrack] = useState("");
+  const [readingType, setReadingType] = useState<"ACADEMIC" | "GENERAL">("ACADEMIC"); // IELTS Reading type
+  const [writingType, setWritingType] = useState<"ACADEMIC" | "GENERAL">("ACADEMIC"); // IELTS Writing type
   const [sections, setSections] = useState<Section[]>([]);
   const [currentSection, setCurrentSection] = useState<Section | null>(null);
   const [showQuestionTypeModal, setShowQuestionTypeModal] = useState(false);
@@ -163,6 +165,8 @@ export default function EditExamPage() {
         setExamTitle(exam.title);
         setSelectedCategory(exam.category);
         setTrack(exam.track || "");
+        setReadingType(exam.readingType || "ACADEMIC");
+        setWritingType(exam.writingType || "ACADEMIC");
         
         // Parse sections and questions
         // Group IELTS Listening sections into subsections
@@ -314,6 +318,15 @@ export default function EditExamPage() {
         return;
       }
     }
+
+    // IELTS validation: WRITING can only be added once
+    if (selectedCategory === "IELTS" && type === "WRITING") {
+      const hasWriting = currentSections.some(s => s.type === "WRITING");
+      if (hasWriting) {
+        alert("WRITING section can only be added once per IELTS exam");
+        return;
+      }
+    }
     
     // SAT üçün avtomatik adlandırma
     let sectionTitle: string;
@@ -396,6 +409,38 @@ export default function EditExamPage() {
       newSection.subsections = subsections;
       setSections([...currentSections, newSection]);
       setCurrentSection(subsections[0]); // Start with Passage 1
+      setStep("questions");
+    }
+    // IELTS Writing: 1 əsas section + 2 task subsection yarat
+    else if (selectedCategory === "IELTS" && type === "WRITING") {
+      const tasks = [
+        { 
+          title: "Task 1", 
+          instruction: writingType === "ACADEMIC" 
+            ? "Describe the information shown in the graph/chart/diagram. Write at least 150 words." 
+            : "Write a letter based on the situation given. Write at least 150 words."
+        },
+        { 
+          title: "Task 2", 
+          instruction: "Write an essay in response to the question. Give reasons and examples. Write at least 250 words."
+        },
+      ];
+
+      const subsections: Section[] = tasks.map((task, index) => ({
+        id: `subsection-${Date.now()}-${index}`,
+        type: "WRITING",
+        title: task.title,
+        instruction: task.instruction,
+        durationMin: 0,
+        order: index,
+        questions: [],
+        isSubsection: true,
+        parentId: newSection.id,
+      }));
+
+      newSection.subsections = subsections;
+      setSections([...currentSections, newSection]);
+      setCurrentSection(subsections[0]); // Start with Task 1
       setStep("questions");
     }
     else {
@@ -651,6 +696,8 @@ export default function EditExamPage() {
           title: examTitle,
           category: selectedCategory,
           track: track || null,
+          readingType: selectedCategory === "IELTS" ? readingType : null,
+          writingType: selectedCategory === "IELTS" ? writingType : null,
           sections: flattenedSections.map((s) => {
             const instructionData: any = {
               text: s.instruction,
@@ -798,6 +845,36 @@ export default function EditExamPage() {
                 placeholder="e.g., A1, A2, B1"
               />
             </div>
+          )}
+          {selectedCategory === "IELTS" && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Reading Type
+                </label>
+                <select
+                  value={readingType}
+                  onChange={(e) => setReadingType(e.target.value as "ACADEMIC" | "GENERAL")}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+                >
+                  <option value="ACADEMIC">Academic</option>
+                  <option value="GENERAL">General Training</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Writing Type
+                </label>
+                <select
+                  value={writingType}
+                  onChange={(e) => setWritingType(e.target.value as "ACADEMIC" | "GENERAL")}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+                >
+                  <option value="ACADEMIC">Academic</option>
+                  <option value="GENERAL">General Training</option>
+                </select>
+              </div>
+            </>
           )}
         </div>
       </div>
