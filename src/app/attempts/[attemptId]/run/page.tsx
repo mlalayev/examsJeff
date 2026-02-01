@@ -956,6 +956,7 @@ export default function AttemptRunnerPage() {
   const isSAT = data.examCategory === "SAT";
   const isIELTS = data.examCategory === "IELTS";
   const isReadingSection = currentSection?.type === "READING";
+  const attemptStatus = data.status;
 
   // Anti-cheating: Disable copy/paste/right-click for IELTS Reading
   useEffect(() => {
@@ -1009,7 +1010,7 @@ export default function AttemptRunnerPage() {
 
   // Anti-cheating: Page navigation warning
   useEffect(() => {
-    if (!isIELTS || data.status === 'COMPLETED') return;
+    if (!isIELTS || attemptStatus === 'COMPLETED' || attemptStatus === 'SUBMITTED') return;
 
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
@@ -1022,7 +1023,7 @@ export default function AttemptRunnerPage() {
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [isIELTS, data.status]);
+  }, [isIELTS, attemptStatus]);
 
   return (
     <>
