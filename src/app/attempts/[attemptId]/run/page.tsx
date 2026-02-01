@@ -31,6 +31,7 @@ interface Question {
   answerKey: any;
   order: number;
   maxScore: number;
+  image?: string | null; // Question-level image (for FILL_IN_BLANK)
 }
 
 interface Section {
@@ -559,7 +560,7 @@ export default function AttemptRunnerPage() {
         return (
           <QFillInBlank
             prompt={q.prompt}
-            image={q.image}
+            image={q.image || undefined}
             value={value || {}}
             onChange={onChange}
           />
@@ -745,9 +746,45 @@ export default function AttemptRunnerPage() {
       stats[section.id] = { answered, total };
     });
 
+    // For IELTS: Merge Listening subsections stats into first Listening section
+    if (data.examCategory === "IELTS") {
+      const listeningSections = data.sections.filter(s => s.type === "LISTENING");
+      if (listeningSections.length > 1) {
+        const firstListeningId = listeningSections[0].id;
+        let totalAnswered = 0;
+        let totalQuestions = 0;
+        
+        listeningSections.forEach(section => {
+          const sectionStat = stats[section.id] || { answered: 0, total: 0 };
+          totalAnswered += sectionStat.answered;
+          totalQuestions += sectionStat.total;
+        });
+        
+        // Update first Listening section stats with merged data
+        stats[firstListeningId] = { answered: totalAnswered, total: totalQuestions };
+      }
+
+      // Same for Reading
+      const readingSections = data.sections.filter(s => s.type === "READING");
+      if (readingSections.length > 1) {
+        const firstReadingId = readingSections[0].id;
+        let totalAnswered = 0;
+        let totalQuestions = 0;
+        
+        readingSections.forEach(section => {
+          const sectionStat = stats[section.id] || { answered: 0, total: 0 };
+          totalAnswered += sectionStat.answered;
+          totalQuestions += sectionStat.total;
+        });
+        
+        stats[firstReadingId] = { answered: totalAnswered, total: totalQuestions };
+      }
+    }
+
     return stats;
   }, [
     data?.sections,
+    data?.examCategory,
     answers,
     countAnsweredForQuestion,
     countTotalForQuestion,
@@ -777,6 +814,28 @@ export default function AttemptRunnerPage() {
         // Əgər istifadəçi cari modulu submit etmədən növbəti modula keçmək istəyirsə
         if (targetIndex > currentIndex && !lockedSections.has(activeSection)) {
           alert("Please submit the current module before moving to the next one.");
+          return;
+        }
+      }
+
+      // IELTS üçün: Listening bölməsindən çıxdıqda lock et
+      if (data.examCategory === "IELTS") {
+        const currentSection = data.sections.find(s => s.id === activeSection);
+        const targetSection = data.sections.find(s => s.id === sectionId);
+        
+        // Əgər cari section Listening-dirsə və target Reading/Writing-dirsə
+        if (currentSection?.type === "LISTENING" && 
+            (targetSection?.type === "READING" || targetSection?.type === "WRITING" || targetSection?.type === "SPEAKING")) {
+          // Lock all Listening sections
+          const listeningIds = data.sections
+            .filter(s => s.type === "LISTENING")
+            .map(s => s.id);
+          setLockedSections(prev => new Set([...prev, ...listeningIds]));
+        }
+        
+        // Əgər istifadəçi lock edilmiş Listening-ə qayıtmaq istəyirsə
+        if (targetSection?.type === "LISTENING" && lockedSections.has(sectionId)) {
+          alert("You cannot return to Listening section after moving to Reading/Writing.");
           return;
         }
       }
@@ -923,6 +982,7 @@ export default function AttemptRunnerPage() {
               onSubmit={handleSubmitClick}
               onSubmitModule={isSAT ? handleSubmitModuleClick : undefined}
               getShortSectionTitle={getShortSectionTitle}
+              examCategory={data.examCategory}
             />
 
             {currentSection && (

@@ -57,6 +57,9 @@ export const QuestionCard = React.memo(function QuestionCard({
     (question.prompt.text.includes("____") ||
       question.prompt.text.includes("___"));
 
+  // FILL_IN_BLANK has its own layout, no need to show prompt.text separately
+  const isFillInBlank = question.qtype === "FILL_IN_BLANK";
+
   return (
     <div
       className="bg-white rounded-xl border shadow-sm transition-all duration-200 hover:shadow-md"
@@ -130,7 +133,7 @@ export const QuestionCard = React.memo(function QuestionCard({
               {questionNumber}
             </div>
             <div className="flex-1 pt-0.5">
-              {!(isPrepositionDnD || isGapWithBlanks) && (
+              {!(isPrepositionDnD || isGapWithBlanks || isFillInBlank) && (
                 <p
                   className="text-gray-800 text-base leading-relaxed font-normal mb-4"
                   style={{ lineHeight: "1.6" }}

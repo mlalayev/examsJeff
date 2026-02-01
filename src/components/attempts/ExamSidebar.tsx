@@ -27,6 +27,7 @@ interface ExamSidebarProps {
   onSubmit: () => void | Promise<void>;
   onSubmitModule?: () => void | Promise<void>;
   getShortSectionTitle: (title: string) => string;
+  examCategory?: string; // IELTS, SAT, TOEFL
 }
 
 export const ExamSidebar = React.memo(function ExamSidebar({
@@ -43,7 +44,26 @@ export const ExamSidebar = React.memo(function ExamSidebar({
   onSubmit,
   onSubmitModule,
   getShortSectionTitle,
+  examCategory,
 }: ExamSidebarProps) {
+  // Filter sections: For IELTS, show only first LISTENING and first READING
+  const displayedSections = examCategory === "IELTS" 
+    ? sections.filter((section, index, arr) => {
+        if (section.type === "LISTENING") {
+          // Show only the first LISTENING section
+          const firstListeningIndex = arr.findIndex(s => s.type === "LISTENING");
+          return index === firstListeningIndex;
+        }
+        if (section.type === "READING") {
+          // Show only the first READING section
+          const firstReadingIndex = arr.findIndex(s => s.type === "READING");
+          return index === firstReadingIndex;
+        }
+        // Show all other sections normally
+        return true;
+      })
+    : sections;
+
   return (
     <div className="lg:w-64 flex-shrink-0">
       <div
@@ -97,7 +117,7 @@ export const ExamSidebar = React.memo(function ExamSidebar({
             }
           `}</style>
           <div className="space-y-2 pr-1">
-            {sections.map((section, index) => {
+            {displayedSections.map((section, index) => {
               const isActive = activeSection === section.id;
               const isLocked = lockedSections.has(section.id);
               const stats = sectionStats[section.id] || {
