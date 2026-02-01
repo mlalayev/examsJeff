@@ -87,12 +87,18 @@ export const QuestionsArea = React.memo(function QuestionsArea({
   
   // Find all IELTS Listening parts (4 consecutive sections)
   const ieltsListeningParts = isIELTSListeningPart 
-    ? allSections.filter(s => s.type === "LISTENING").slice(0, 4)
+    ? allSections
+        .filter(s => s.type === "LISTENING")
+        .filter(s => s.questions && s.questions.length > 0) // Only sections with questions
+        .slice(0, 4)
     : [];
 
   // Find all IELTS Reading passages (3 passages)
   const ieltsReadingPassages = isIELTSReadingPassage
-    ? allSections.filter(s => s.type === "READING").slice(0, 3)
+    ? allSections
+        .filter(s => s.type === "READING")
+        .filter(s => s.questions && s.questions.length > 0) // Only passages with questions
+        .slice(0, 3)
     : [];
   
   // Is this the first Listening part? (only first part shows audio player)
