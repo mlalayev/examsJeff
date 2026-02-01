@@ -101,15 +101,16 @@ export const QuestionsArea = React.memo(function QuestionsArea({
         .slice(0, 3)
     : [];
   
+  // If current section is empty (parent section), show first subsection's content
+  const isEmptyParentSection = (section.questions?.length || 0) === 0;
+  const shouldShowIELTSView = isIELTSListeningPart && ieltsListeningParts.length > 0;
+  const shouldShowReadingView = isIELTSReadingPassage && ieltsReadingPassages.length > 0;
+  
   // Is this the first Listening part? (only first part shows audio player)
-  const isFirstListeningPart = isIELTSListeningPart && 
-    ieltsListeningParts.length > 0 && 
-    ieltsListeningParts[0].id === section.id;
+  const isFirstListeningPart = shouldShowIELTSView && ieltsListeningParts[0].id === section.id;
 
   // Is this the first Reading passage?
-  const isFirstReadingPassage = isIELTSReadingPassage &&
-    ieltsReadingPassages.length > 0 &&
-    ieltsReadingPassages[0].id === section.id;
+  const isFirstReadingPassage = shouldShowReadingView && ieltsReadingPassages[0].id === section.id;
   
   // Collect all answers from all 4 Listening parts
   const allListeningAnswers = isIELTSListeningPart
@@ -241,8 +242,8 @@ export const QuestionsArea = React.memo(function QuestionsArea({
             </div>
           </div>
         ) : examCategory === "IELTS" && section.type === "LISTENING" ? (
-          // IELTS Listening: Show all 4 parts in one view (only on first part)
-          isFirstListeningPart ? (
+          // IELTS Listening: Always show all 4 parts in one view
+          shouldShowIELTSView ? (
             <IELTSListeningView
               partSections={ieltsListeningParts.map(s => ({
                 id: s.id,
@@ -259,17 +260,17 @@ export const QuestionsArea = React.memo(function QuestionsArea({
               onAnswerChange={onAnswerChange}
             />
           ) : (
-            // For non-first parts, show message to go back
+            // If no subsections found
             <div className="text-center py-12">
               <div className="text-gray-500 mb-4">
-                <p className="text-lg font-medium">This is Part {currentSectionIndex + 1} of IELTS Listening</p>
-                <p className="text-sm mt-2">Please navigate using the section tabs at the top</p>
+                <p className="text-lg font-medium">No listening parts found</p>
+                <p className="text-sm mt-2">Please contact your instructor</p>
               </div>
             </div>
           )
         ) : examCategory === "IELTS" && section.type === "READING" ? (
-          // IELTS Reading: Show all 3 passages in one view (only on first passage)
-          isFirstReadingPassage ? (
+          // IELTS Reading: Always show all 3 passages in one view
+          shouldShowReadingView ? (
             <IELTSReadingView
               partSections={ieltsReadingPassages.map(s => ({
                 id: s.id,
@@ -286,11 +287,11 @@ export const QuestionsArea = React.memo(function QuestionsArea({
               }
             />
           ) : (
-            // For non-first passages, show message to go back
+            // If no passages found
             <div className="text-center py-12">
               <div className="text-gray-500 mb-4">
-                <p className="text-lg font-medium">This is Passage {currentSectionIndex - ieltsListeningParts.length + 1} of IELTS Reading</p>
-                <p className="text-sm mt-2">Please navigate using the section tabs at the top</p>
+                <p className="text-lg font-medium">No reading passages found</p>
+                <p className="text-sm mt-2">Please contact your instructor</p>
               </div>
             </div>
           )
