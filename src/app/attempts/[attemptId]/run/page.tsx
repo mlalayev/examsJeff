@@ -955,12 +955,12 @@ export default function AttemptRunnerPage() {
   const currentSection = data.sections.find((s) => s.id === activeSection);
   const isSAT = data.examCategory === "SAT";
   const isIELTS = data.examCategory === "IELTS";
-  const isReadingSection = currentSection?.type === "READING";
+  const currentSectionType = currentSection?.type;
   const attemptStatus = data.status;
 
   // Anti-cheating: Disable copy/paste/right-click for IELTS Reading
   useEffect(() => {
-    if (!isIELTS || !isReadingSection) return;
+    if (!isIELTS || currentSectionType !== "READING") return;
 
     const handleCopy = (e: ClipboardEvent) => {
       e.preventDefault();
@@ -1006,7 +1006,7 @@ export default function AttemptRunnerPage() {
       document.body.style.userSelect = '';
       document.body.style.webkitUserSelect = '';
     };
-  }, [isIELTS, isReadingSection]);
+  }, [isIELTS, currentSectionType]);
 
   // Anti-cheating: Page navigation warning
   useEffect(() => {
