@@ -110,10 +110,11 @@ export const QuestionsArea = React.memo(function QuestionsArea({
         .slice(0, 3)
     : [];
   
-  // Find all IELTS Writing tasks (2 tasks)
+  // Find all IELTS Writing tasks (2 tasks - subsections only, no parent)
   const ieltsWritingTasks = isIELTSWritingTask
     ? allSections
         .filter(s => s.type === "WRITING")
+        .filter(s => s.questions && s.questions.length === 0) // Writing subsections have no questions
         .slice(0, 2)
     : [];
   
