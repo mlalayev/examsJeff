@@ -893,6 +893,7 @@ export default function AttemptRunnerPage() {
     [data?.sections]
   );
 
+  
   const handleWordBankPositionChange = useCallback(
     (questionId: string, position: number) => {
       setWordBankPositions((prev) => ({
