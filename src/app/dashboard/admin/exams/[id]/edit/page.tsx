@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft, Plus, X, BookOpen, Save, Edit, Info, Image, Volume2 } from "lucide-react";
 import TextFormattingPreview from "@/components/TextFormattingPreview";
 import QuestionPreview from "@/components/QuestionPreview";
+import ImageUpload from "@/components/ImageUpload";
 import { 
   IELTS_SECTION_ORDER, 
   IELTS_SECTION_DURATIONS,
@@ -1506,26 +1507,16 @@ export default function EditExamPage() {
                     </div>
 
                     {/* Image Upload */}
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                        Image (Optional)
-                      </label>
-                      <input
-                        type="text"
-                        value={editingQuestion.image || ""}
-                        onChange={(e) => {
-                          setEditingQuestion({
-                            ...editingQuestion,
-                            image: e.target.value,
-                          });
-                        }}
-                        placeholder="Image URL"
-                        className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Add an image URL for visual context (e.g., form, diagram)
-                      </p>
-                    </div>
+                    <ImageUpload
+                      label="Image (Optional)"
+                      value={editingQuestion.image || ""}
+                      onChange={(url) => {
+                        setEditingQuestion({
+                          ...editingQuestion,
+                          image: url,
+                        });
+                      }}
+                    />
 
                     {/* Question Text */}
                     <textarea
@@ -2125,78 +2116,27 @@ export default function EditExamPage() {
                   {/* Image and Introduction - For subsections only */}
                   {editingSection.isSubsection && selectedCategory === "IELTS" && (
                     <>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                          Part Image <span className="text-gray-500 font-normal">(Optional)</span>
-                        </label>
-                        <div className="space-y-2">
-                          {editingSection.image && (
-                            <div className="p-3 bg-white border border-gray-200 rounded-md">
-                              <img
-                                src={editingSection.image}
-                                alt="Part image"
-                                className="max-w-full h-auto max-h-48 rounded border border-gray-200"
-                              />
-                              <p className="text-xs text-gray-500 mt-2">{editingSection.image}</p>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setEditingSection({
-                                    ...editingSection,
-                                    image: undefined,
-                                  });
-                                }}
-                                className="mt-2 text-xs text-red-600 hover:text-red-700 font-medium"
-                              >
-                                Remove Image
-                              </button>
-                            </div>
-                          )}
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={async (e) => {
-                              const file = e.target.files?.[0];
-                              if (!file) return;
-                              
-                              setUploadingImage(true);
-                              try {
-                                const formData = new FormData();
-                                formData.append("file", file);
-                                formData.append("type", "image");
-                                
-                                const res = await fetch("/api/admin/upload", {
-                                  method: "POST",
-                                  body: formData,
-                                });
-                                
-                                if (res.ok) {
-                                  const data = await res.json();
-                                  setEditingSection({
-                                    ...editingSection,
-                                    image: data.path,
-                                  });
-                                } else {
-                                  alert("Failed to upload image");
-                                }
-                              } catch (error) {
-                                console.error("Upload error:", error);
-                                alert("Failed to upload image");
-                              } finally {
-                                setUploadingImage(false);
-                              }
-                            }}
-                            disabled={uploadingImage}
-                            className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 disabled:opacity-50 bg-white"
-                          />
-                          {uploadingImage && (
-                            <p className="text-xs text-gray-500">Uploading image...</p>
-                          )}
-                          <p className="text-xs text-gray-500">
-                            Image will appear on the left side, questions on the right
-                          </p>
-                        </div>
-                      </div>
+                      <ImageUpload
+                        label="Part Image (Optional)"
+                        value={editingSection.image || ""}
+                        onChange={(url) => {
+                          setEditingSection({
+                            ...editingSection,
+                            image: url,
+                          });
+                        }}
+                      />
+
+                      <ImageUpload
+                        label="Second Part Image (Optional)"
+                        value={editingSection.image2 || ""}
+                        onChange={(url) => {
+                          setEditingSection({
+                            ...editingSection,
+                            image2: url,
+                          });
+                        }}
+                      />
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1.5">
