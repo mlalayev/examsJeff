@@ -117,6 +117,22 @@ export default function AttemptResultsPage() {
           return Object.values(answer).join(", ");
         }
         return JSON.stringify(answer);
+      case "FILL_IN_BLANK":
+        if (typeof answer === "object" && answer !== null && !Array.isArray(answer)) {
+          // Convert { "0": "answer1", "1": "answer2" } to numbered list
+          const entries = Object.entries(answer).sort(([a], [b]) => parseInt(a) - parseInt(b));
+          return entries.map(([idx, val]) => `${parseInt(idx) + 1}. ${val || "(blank)"}`).join(", ");
+        }
+        // For correct answer (array of alternatives)
+        if (Array.isArray(answer)) {
+          return answer.map((alternatives, idx) => {
+            if (Array.isArray(alternatives)) {
+              return `${idx + 1}. ${alternatives.join(" / ")}`;
+            }
+            return `${idx + 1}. ${alternatives}`;
+          }).join(", ");
+        }
+        return JSON.stringify(answer);
       case "SHORT_TEXT":
       case "ESSAY":
         return answer || "No answer";
@@ -440,7 +456,7 @@ export default function AttemptResultsPage() {
                               Correct Answer:
                             </span>
                             <p className="text-sm font-medium mt-1 text-gray-900">
-                              {formatAnswer(q.qtype, q.correctAnswer?.value ?? q.correctAnswer?.index ?? q.correctAnswer?.indices ?? q.correctAnswer?.answers?.[0] ?? q.correctAnswer?.order ?? q.correctAnswer?.blanks, q.options)}
+                              {formatAnswer(q.qtype, q.qtype === "FILL_IN_BLANK" ? q.correctAnswer : (q.correctAnswer?.value ?? q.correctAnswer?.index ?? q.correctAnswer?.indices ?? q.correctAnswer?.answers?.[0] ?? q.correctAnswer?.order ?? q.correctAnswer?.blanks), q.options)}
                             </p>
                           </div>
                           {q.explanation && (

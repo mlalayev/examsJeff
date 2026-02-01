@@ -110,13 +110,19 @@ export const QuestionsArea = React.memo(function QuestionsArea({
         .slice(0, 3)
     : [];
   
-  // Find all IELTS Writing tasks (2 tasks - subsections only, no parent)
+  // Find all IELTS Writing tasks (2 tasks - Task 1 and Task 2 subsections only)
   const ieltsWritingTasks = isIELTSWritingTask
     ? allSections
-        .filter(s => s.type === "WRITING")
-        .filter(s => s.questions && s.questions.length === 0) // Writing subsections have no questions
+        .filter(s => s.type === "WRITING" && s.title && (s.title.includes("Task 1") || s.title.includes("Task 2")))
         .slice(0, 2)
     : [];
+  
+  console.log("🔍 Writing Debug:", {
+    isIELTSWritingTask,
+    allWritingSections: allSections.filter(s => s.type === "WRITING"),
+    ieltsWritingTasks,
+    currentSection: section,
+  });
   
   // If current section is empty (parent section), show first subsection's content
   const isEmptyParentSection = (section.questions?.length || 0) === 0;

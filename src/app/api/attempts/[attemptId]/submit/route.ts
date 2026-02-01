@@ -22,6 +22,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
         studentId: true,
         examId: true,
         status: true,
+        answers: true, // For JSON exams
         sections: {
           select: {
             id: true,
@@ -77,10 +78,26 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
     // Map attempt section answers from database
     let answersByType: Record<string, AnswersByQuestionId> = {};
     
-    for (const as of attempt.sections) {
-      if (as.answers) {
-        answersByType[as.type as string] = as.answers as AnswersByQuestionId;
+    // Check if this is a JSON exam (answers stored in attempt.answers field)
+    const isJsonExam = attempt.sections.length === 0;
+    
+    console.log('Submit - Exam type:', { isJsonExam, sectionsCount: attempt.sections.length, hasAnswersField: !!attempt.answers });
+    
+    if (isJsonExam && attempt.answers) {
+      // For JSON exams, answers are in attempt.answers: { LISTENING: { q1: ans1 }, READING: { q2: ans2 } }
+      const allAnswers = attempt.answers as any;
+      answersByType = { ...allAnswers };
+      // Remove sectionStartTimes if present (not actual answers)
+      delete answersByType.sectionStartTimes;
+      console.log('Submit - JSON exam answers by type:', Object.keys(answersByType));
+    } else {
+      // For DB exams, answers are in attempt.sections
+      for (const as of attempt.sections) {
+        if (as.answers) {
+          answersByType[as.type as string] = as.answers as AnswersByQuestionId;
+        }
       }
+      console.log('Submit - DB exam answers by type:', Object.keys(answersByType));
     }
 
     // Calculate scores for all sections
@@ -104,6 +121,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
 
       // Get answers for this section
       const sectionAnswers = answersByType[sectionType] || {};
+      
+      console.log(`Submit - Section ${sectionType}: ${Object.keys(sectionAnswers).length} answers, ${section.questions.length} questions`);
 
       // IELTS Listening: Special 4-part scoring
       if (examWithSections.category === "IELTS" && sectionType === "LISTENING") {
@@ -172,6 +191,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
 
             const answer = sectionAnswers[q.id];
             const correct = scoreQuestion(qtype, answer, q.answerKey);
+            
+            // Debug log for FILL_IN_BLANK
+            if (qtype === "FILL_IN_BLANK") {
+              console.log(`FILL_IN_BLANK question ${q.id}:`, {
+                hasAnswer: !!answer,
+                answer: JSON.stringify(answer),
+                answerKey: JSON.stringify(q.answerKey),
+                correct
+              });
+            }
+            
             // Each question's maxScore may be >1; scale with correct (0/1)
             if (typeof q.maxScore === "number") {
               sectionRaw += correct ? q.maxScore : 0;

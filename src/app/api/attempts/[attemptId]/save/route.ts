@@ -89,14 +89,25 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
       return NextResponse.json({ success: true, updated: 1 });
     } else {
       // For DB exams, update attempt_section
-      console.log('Saving DB exam section:', { sectionType, answersCount: Object.keys(answers).length });
+      console.log('Saving DB exam section:', { sectionType, answersCount: Object.keys(answers || {}).length });
+      
+      // Ensure answers is not null/undefined
+      if (!answers) {
+        console.warn('No answers to save for section:', sectionType);
+        return NextResponse.json({ success: true, updated: 0 });
+      }
       
       const updated = await prisma.attemptSection.updateMany({
         where: { attemptId, type: sectionType as any },
         data: { answers },
       });
 
-      console.log('DB exam section saved:', { updated: updated.count });
+      console.log('DB exam section saved:', { updated: updated.count, sectionType });
+      
+      if (updated.count === 0) {
+        console.warn('No attempt_section found to update:', { attemptId, sectionType });
+      }
+      
       return NextResponse.json({ success: true, updated: updated.count });
     }
   } catch (error) {

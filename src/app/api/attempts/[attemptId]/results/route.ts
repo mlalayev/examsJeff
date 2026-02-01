@@ -56,6 +56,46 @@ function checkAnswerCorrectness(q: any, studentAnswer: any, answerKey: any): boo
       }
     }
     return false;
+  } else if (q.qtype === "FILL_IN_BLANK") {
+    // IELTS Fill in the Blank: { "0": "answer1", "1": "answer2", ... }
+    // answerKey format: { answers: [["alt1", "alt2"], ["alt3"], ...] }
+    const correctAnswers = answerKey?.answers || [];
+    
+    if (!studentAnswer || typeof studentAnswer !== "object") return false;
+    
+    // Check each blank
+    for (let i = 0; i < correctAnswers.length; i++) {
+      const studentAns = studentAnswer[String(i)];
+      if (!studentAns || typeof studentAns !== "string") return false;
+      
+      const alternatives = correctAnswers[i];
+      
+      // Handle both old format (string) and new format (array of strings)
+      const alternativesArray = Array.isArray(alternatives) ? alternatives : [alternatives];
+      
+      if (!Array.isArray(alternativesArray) || alternativesArray.length === 0) return false;
+      
+      // Normalize student answer (trim + lowercase)
+      const normalizedStudent = studentAns.trim().toLowerCase();
+      
+      // Check if student answer matches any alternative
+      const isMatch = alternativesArray.some((alt: string | string[]) => {
+        // Handle nested arrays (backward compatibility)
+        if (Array.isArray(alt)) {
+          return alt.some((a: string) => {
+            if (typeof a !== "string") return false;
+            return a.trim().toLowerCase() === normalizedStudent;
+          });
+        }
+        
+        if (typeof alt !== "string") return false;
+        return alt.trim().toLowerCase() === normalizedStudent;
+      });
+      
+      if (!isMatch) return false;
+    }
+    
+    return true;
   }
   return false;
 }
@@ -251,6 +291,11 @@ export async function GET(
             // For DND_GAP: show the blanks
             else if (q.qtype === "DND_GAP") {
               displayCorrectAnswer = answerKey?.blanks || [];
+            }
+            // For FILL_IN_BLANK: show the answers with alternatives
+            else if (q.qtype === "FILL_IN_BLANK") {
+              displayCorrectAnswer = answerKey?.answers || [];
+              // Keep student answer as is (it's already an object like { "0": "answer1", "1": "answer2" })
             }
             // For GAP: show accepted answers
             else if (q.qtype === "GAP") {

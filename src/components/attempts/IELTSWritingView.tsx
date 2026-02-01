@@ -40,6 +40,14 @@ export function IELTSWritingView({
   const autosaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const storageKey = `ielts_attempt:${attemptId}:writing`;
 
+  console.log("📝 IELTSWritingView render:", {
+    attemptId,
+    taskSectionsCount: taskSections?.length,
+    taskSections,
+    currentTaskIndex,
+    writingType,
+  });
+
   // Get current task section (with fallback)
   const currentTask = taskSections?.[currentTaskIndex];
   
@@ -48,6 +56,14 @@ export function IELTSWritingView({
   const task2Section = taskSections?.[1];
   const task1Text = task1Section ? (answers[task1Section.id]?.["writing_text"] || "") : "";
   const task2Text = task2Section ? (answers[task2Section.id]?.["writing_text"] || "") : "";
+
+  console.log("📝 Task data:", {
+    currentTask,
+    task1Section,
+    task2Section,
+    task1Text: task1Text.substring(0, 50),
+    task2Text: task2Text.substring(0, 50),
+  });
 
   // Load saved state on mount (for currentTaskIndex and hasStartedTask2)
   useEffect(() => {
