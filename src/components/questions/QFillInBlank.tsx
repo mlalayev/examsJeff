@@ -51,55 +51,50 @@ export default function QFillInBlank({ prompt, image, value, onChange }: QFillIn
 
   return (
     <div className="space-y-4">
-      {/* Layout: Image left, Text + Inputs right */}
-      <div className={`flex ${imageUrl ? "gap-6" : ""} items-start`}>
-        {/* Image (if exists) */}
-        {imageUrl && (
-          <div className="flex-shrink-0 w-1/3">
-            <img
-              src={imageUrl}
-              alt="Question illustration"
-              className="w-full h-auto rounded-lg border-2 border-gray-200 shadow-sm"
-            />
-          </div>
-        )}
-
-        {/* Text + Input fields - vertical layout */}
-        <div className={`flex-1 ${imageUrl ? "w-2/3" : "w-full"}`}>
-          {/* Title */}
-          {titlePart && (
-            <div className="mb-4 text-base font-medium text-gray-900">
-              <FormattedText text={titlePart} />
-            </div>
-          )}
-
-          {/* Items with inputs */}
-          <div className="space-y-4">
-            {items.map((item, index) => {
-              const hasBlank = item.includes("___");
-              
-              return (
-                <div key={index} className="space-y-2">
-                  {/* Item text */}
-                  <div className="text-gray-800">
-                    <FormattedText text={item} />
-                  </div>
-                  
-                  {/* Input field if this item has a blank */}
-                  {hasBlank && (
-                    <input
-                      type="text"
-                      value={value[String(index)] || ""}
-                      onChange={(e) => handleChange(index, e.target.value)}
-                      className="w-full px-3 py-2 border-2 border-gray-300 rounded-md text-base focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
-                      placeholder={`Answer ${index + 1}`}
-                    />
-                  )}
-                </div>
-              );
-            })}
-          </div>
+      {/* Title */}
+      {titlePart && (
+        <div className="mb-4 text-base font-medium text-gray-900">
+          <FormattedText text={titlePart} />
         </div>
+      )}
+
+      {/* Image (full width if exists) */}
+      {imageUrl && (
+        <div className="w-full mb-6">
+          <img
+            src={imageUrl}
+            alt="Question illustration"
+            className="w-full max-w-3xl mx-auto h-auto rounded-lg border-2 border-gray-200 shadow-sm"
+          />
+        </div>
+      )}
+
+      {/* Items with inputs */}
+      <div className="space-y-4">
+        {items.map((item, index) => {
+          const hasBlank = item.includes("___");
+          
+          return (
+            <div key={index} className="space-y-2">
+              {/* Item text */}
+              <div className="text-gray-800">
+                <FormattedText text={item} />
+              </div>
+              
+              {/* Input field if this item has a blank */}
+              {hasBlank && (
+                <input
+                  type="text"
+                  value={value[String(index)] || ""}
+                  onChange={(e) => handleChange(index, e.target.value)}
+                  className="px-3 py-2 border-2 border-gray-300 rounded-md text-base focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                  style={{ width: "240px" }}
+                  placeholder={`Answer ${index + 1}`}
+                />
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Case-insensitive info */}

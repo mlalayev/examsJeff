@@ -880,14 +880,17 @@ export default function AttemptRunnerPage() {
   const handleAnswerChange = useCallback(
     (questionId: string, value: any) => {
       if (!data?.sections) return;
-      const currentSection = data.sections.find(
-        (s) => s.id === activeSection
+      
+      // Find which section this question belongs to
+      const questionSection = data.sections.find(s => 
+        s.questions.some(q => q.id === questionId)
       );
-      if (currentSection) {
-        setAnswer(currentSection.id, questionId, value);
+      
+      if (questionSection) {
+        setAnswer(questionSection.id, questionId, value);
       }
     },
-    [activeSection, data?.sections]
+    [data?.sections]
   );
 
   const handleWordBankPositionChange = useCallback(
