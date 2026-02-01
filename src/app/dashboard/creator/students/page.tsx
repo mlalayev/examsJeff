@@ -105,7 +105,7 @@ export default function CreatorStudentsPage() {
   };
 
   const categories = [
-    { id: "GENERAL_ENGLISH", name: "General English", tracks: ["A1", "A2", "B1", "B1+", "B2"] },
+    { id: "GENERAL_ENGLISH", name: "General English", tracks: ["A1", "A2", "B1", "B1+", "B2", "C1", "C2"] },
     { id: "IELTS", name: "IELTS" },
     { id: "TOEFL", name: "TOEFL" },
     { id: "SAT", name: "SAT" },

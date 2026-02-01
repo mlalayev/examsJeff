@@ -12,7 +12,7 @@ export async function GET() {
 export async function POST() {
   try {
     await requireAdmin();
-    const names = ["A1", "A2", "B1", "B1+", "B2"];
+    const names = ["A1", "A2", "B1", "B1+", "B2", "C1", "C2"];
     const ops = names.map((name) =>
       prisma.track.upsert({
         where: { name },

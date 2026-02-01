@@ -49,7 +49,7 @@ export default function AssignExamModal({
   const [submitting, setSubmitting] = useState(false);
 
   const categories: Category[] = [
-    { id: "GENERAL_ENGLISH", name: "General English", tracks: ["A1", "A2", "B1", "B1+", "B2"] },
+    { id: "GENERAL_ENGLISH", name: "General English", tracks: ["A1", "A2", "B1", "B1+", "B2", "C1", "C2"] },
     { id: "IELTS", name: "IELTS" },
     { id: "TOEFL", name: "TOEFL" },
     { id: "SAT", name: "SAT" },
@@ -371,7 +371,7 @@ export default function AssignExamModal({
                 <p className="text-slate-600">Choose the appropriate level for {selectedCategoryData.name}</p>
               </div>
               
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4">
                 {selectedCategoryData.tracks.map((track, index) => (
                   <button
                     key={track}
