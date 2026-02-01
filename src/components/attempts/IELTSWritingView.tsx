@@ -10,6 +10,7 @@ interface WritingTask {
   instruction: string;
   minWords: number;
   suggestedTime: number;
+  image?: string; // Task image
   questions: any[]; // Empty or minimal questions array
 }
 
@@ -180,6 +181,17 @@ export function IELTSWritingView({
       {/* Main Content */}
       <div className="flex-1 overflow-auto px-6 py-6">
         <div className="max-w-5xl mx-auto bg-white rounded-lg shadow-md p-8">
+          {/* Task Image (if provided) */}
+          {currentTask.image && (
+            <div className="mb-6">
+              <img
+                src={currentTask.image}
+                alt={`${currentTask.title} illustration`}
+                className="w-full max-w-3xl mx-auto h-auto rounded-lg border-2 border-gray-200 shadow-sm"
+              />
+            </div>
+          )}
+
           {/* Task Instruction */}
           <div className="mb-6 p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
             <h3 className="font-bold text-lg mb-2 text-gray-800">

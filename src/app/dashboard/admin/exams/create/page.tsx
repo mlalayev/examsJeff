@@ -1403,9 +1403,11 @@ export default function CreateExamPage() {
               <h3 className="text-base sm:text-lg font-medium text-gray-900">
                 {editingSection.type === "READING" 
                   ? "Edit Reading Passage" 
-                  : editingSection.isSubsection 
-                    ? `Edit ${editingSection.title} - Image & Introduction`
-                    : "Edit Listening Audio"
+                  : editingSection.type === "WRITING"
+                    ? `Edit ${editingSection.title} - Task Image & Instruction`
+                    : editingSection.isSubsection 
+                      ? `Edit ${editingSection.title} - Image & Introduction`
+                      : "Edit Listening Audio"
                 }
               </h3>
               <button
@@ -1583,6 +1585,43 @@ export default function CreateExamPage() {
                     </>
                   )}
                 </div>
+              )}
+
+              {/* WRITING - Task Image & Instruction */}
+              {editingSection.type === "WRITING" && editingSection.isSubsection && (
+                <>
+                  <ImageUpload
+                    label="Task Image (Optional)"
+                    value={editingSection.image || ""}
+                    onChange={(url) => {
+                      setEditingSection({
+                        ...editingSection,
+                        image: url,
+                      });
+                    }}
+                  />
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Task Instruction *
+                    </label>
+                    <textarea
+                      value={editingSection.instruction || ""}
+                      onChange={(e) => {
+                        setEditingSection({
+                          ...editingSection,
+                          instruction: e.target.value,
+                        });
+                      }}
+                      placeholder="Enter task instruction (e.g., 'Summarise the information by selecting and reporting the main features...')"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+                      rows={6}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Task instruction will appear above the writing area
+                    </p>
+                  </div>
+                </>
               )}
             </div>
 
@@ -2023,8 +2062,8 @@ export default function CreateExamPage() {
                       value={editingQuestion.prompt?.text || ""}
                       onChange={(e) => {
                         const text = e.target.value;
-                        // Count blanks ([input]) in the text
-                        const blankCount = (text.match(/\[input\]/g) || []).length;
+                        // Count blanks - support both ___ and [input]
+                        const blankCount = (text.match(/___|\[input\]/g) || []).length;
                         
                         // Initialize answers array
                         const currentAnswers = Array.isArray(editingQuestion.answerKey?.answers) 
@@ -2045,7 +2084,7 @@ export default function CreateExamPage() {
                           }
                         });
                       }}
-                      placeholder="Complete the sentences below:&#10;---&#10;1. A wooden [input]&#10;2. Includes a sheet of [input]&#10;3. Price: £[input]"
+                      placeholder="Complete the sentences below:&#10;---&#10;1. A wooden ___&#10;2. Includes a sheet of ___&#10;3. Price: £___"
                       className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white resize-y"
                       rows={8}
                     />
@@ -2056,9 +2095,9 @@ export default function CreateExamPage() {
                       <br />
                       • Use <strong>---</strong> to separate title from items
                       <br />
-                      • Each line after --- is one item (e.g., 1. Text [input])
+                      • Each line after --- is one item (e.g., 1. Text ___)
                       <br />
-                      • Use <strong>[input]</strong> for blank spaces
+                      • Use <strong>___</strong> (3 underscores) or <strong>[input]</strong> for blank spaces
                       <br />
                       • Use <strong>**text**</strong> for bold formatting
                       <br />
@@ -2068,7 +2107,7 @@ export default function CreateExamPage() {
                     </div>
                     
                     {/* Answer inputs for each blank - multiple alternatives */}
-                    {(editingQuestion.prompt?.text || "").match(/\[input\]/g) && (
+                    {(editingQuestion.prompt?.text || "").match(/___|\[input\]/g) && (
                       <div className="pt-3 border-t border-gray-200">
                         <label className="block text-xs font-medium text-gray-600 mb-2">
                           Correct Answers (case-insensitive, spaces ignored)

@@ -321,6 +321,7 @@ export const QuestionsArea = React.memo(function QuestionsArea({
                 id: s.id,
                 title: s.title,
                 instruction: s.instruction || "",
+                image: s.image || undefined, // Pass task image
                 minWords: s.title.includes("Task 1") ? 150 : 250,
                 suggestedTime: s.title.includes("Task 1") ? 20 : 40,
                 questions: s.questions || [],

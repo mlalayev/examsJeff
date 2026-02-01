@@ -151,7 +151,10 @@ export default function QuestionPreview({ question }: QuestionPreviewProps) {
               
               // If we have explicit title, use full text as items; otherwise use itemsPart
               const itemsText = questionTitle ? text : itemsPart;
-              const items = itemsText.split("\n").filter((line: string) => line.trim());
+              
+              // Normalize ___ to [input] for processing
+              const normalizedItemsText = itemsText.replace(/___/g, "[input]");
+              const items = normalizedItemsText.split("\n").filter((line: string) => line.trim());
 
               return (
                 <>
@@ -190,10 +193,12 @@ export default function QuestionPreview({ question }: QuestionPreviewProps) {
                   <div className="space-y-4 pl-14">
                     {items.map((item: string, idx: number) => {
                       const hasBlank = item.includes("[input]");
+                      // Replace [input] with ___ for display
+                      const displayItem = item.replace(/\[input\]/g, "___");
                       return (
                         <div key={idx} className="space-y-2">
                           <div className="text-gray-800">
-                            <FormattedText text={item} />
+                            <FormattedText text={displayItem} />
                           </div>
                           {hasBlank && (
                             <input

@@ -51,8 +51,11 @@ export default function QFillInBlank({ prompt, image, value, onChange }: QFillIn
   // Split items by newline
   const items = itemsText.split("\n").filter(line => line.trim());
   
+  // Support both ___ and [input] for blanks
+  const normalizedItems = items.map(item => item.replace(/___/g, "[input]"));
+  
   // Count how many items have [input]
-  const blankCount = items.filter(item => item.includes("[input]")).length;
+  const blankCount = normalizedItems.filter(item => item.includes("[input]")).length;
 
   const handleChange = (index: number, newValue: string) => {
     onChange({
@@ -83,14 +86,14 @@ export default function QFillInBlank({ prompt, image, value, onChange }: QFillIn
 
       {/* Items with inputs */}
       <div className="space-y-4">
-        {items.map((item, index) => {
+        {normalizedItems.map((item, index) => {
           const hasBlank = item.includes("[input]");
           
           return (
             <div key={index} className="space-y-2">
-              {/* Item text */}
+              {/* Item text - replace [input] with underline for display */}
               <div className="text-gray-800">
-                <FormattedText text={item} />
+                <FormattedText text={item.replace(/\[input\]/g, "___")} />
               </div>
               
               {/* Input field if this item has a blank */}
