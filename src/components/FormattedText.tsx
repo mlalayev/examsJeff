@@ -10,7 +10,7 @@ interface FormattedTextProps {
 
 /**
  * Component that renders text with custom formatting applied
- * Supports: **bold**, __underline__, ~~strikethrough~~, &&italic&&
+ * Supports: **bold**, __underline__, --strikethrough--, ~~italic~~
  */
 export default function FormattedText({ text, className = "" }: FormattedTextProps) {
   const segments = parseFormattedText(text);

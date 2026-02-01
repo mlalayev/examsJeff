@@ -6,6 +6,7 @@ import FormattedText from "../FormattedText";
 interface QFillInBlankProps {
   prompt: {
     text: string;
+    title?: string; // NEW: Optional question title
     imageUrl?: string;
   };
   image?: string; // Question-level image
@@ -19,28 +20,39 @@ interface QFillInBlankProps {
  * NEW Format:
  * Title line (optional, before ---)
  * ---
- * 1. Text with blank ___
- * 2. Another text ___
+ * 1. Text with blank [input]
+ * 2. Another text [input]
  * 
  * Example prompt.text:
- * "Complete the sentences below:\n---\n1. A wooden ___\n2. Includes a sheet of ___\n3. Price: £___"
+ * "Complete the sentences below:\n---\n1. A wooden [input]\n2. Includes a sheet of [input]\n3. Price: £[input]"
+ * 
+ * OR use prompt.title:
+ * prompt.title = "Complete the form below"
+ * prompt.text = "1. Name: [input]\n2. Age: [input]"
  * 
  * This will render:
- * Title: "Complete the sentences below:"
- * Then each line as: "1. A wooden ___" + [Input field]
+ * Title: "Complete the sentences below:" (or prompt.title)
+ * Then each line as: "1. A wooden [input]" + [Input field]
  */
 export default function QFillInBlank({ prompt, image, value, onChange }: QFillInBlankProps) {
   const text = prompt?.text || "";
   const imageUrl = image || prompt?.imageUrl;
+  const questionTitle = prompt?.title || ""; // NEW: Support title field
 
   // Split by --- to separate title from items
   const [titlePart = "", itemsPart = ""] = text.split("---").map(s => s.trim());
   
-  // Split items by newline
-  const items = itemsPart.split("\n").filter(line => line.trim());
+  // Use explicit title if provided, otherwise use titlePart from text
+  const displayTitle = questionTitle || titlePart;
   
-  // Count how many items have ___
-  const blankCount = items.filter(item => item.includes("___")).length;
+  // If we have explicit title, use full text as items; otherwise use itemsPart
+  const itemsText = questionTitle ? text : itemsPart;
+  
+  // Split items by newline
+  const items = itemsText.split("\n").filter(line => line.trim());
+  
+  // Count how many items have [input]
+  const blankCount = items.filter(item => item.includes("[input]")).length;
 
   const handleChange = (index: number, newValue: string) => {
     onChange({
@@ -52,9 +64,9 @@ export default function QFillInBlank({ prompt, image, value, onChange }: QFillIn
   return (
     <div className="space-y-4">
       {/* Title */}
-      {titlePart && (
+      {displayTitle && (
         <div className="mb-4 text-base font-medium text-gray-900">
-          <FormattedText text={titlePart} />
+          <FormattedText text={displayTitle} />
         </div>
       )}
 
@@ -72,7 +84,7 @@ export default function QFillInBlank({ prompt, image, value, onChange }: QFillIn
       {/* Items with inputs */}
       <div className="space-y-4">
         {items.map((item, index) => {
-          const hasBlank = item.includes("___");
+          const hasBlank = item.includes("[input]");
           
           return (
             <div key={index} className="space-y-2">

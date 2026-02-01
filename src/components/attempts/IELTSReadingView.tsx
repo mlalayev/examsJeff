@@ -58,23 +58,44 @@ export default function IELTSReadingView({
   return (
     <div className="space-y-4">
       {/* Tab Navigation - 3 Passages */}
-      <div className="flex gap-2 border-b border-gray-200">
-        {partSections.map((passage, index) => (
-          <button
-            key={passage.id}
-            onClick={() => setActiveTab(index)}
-            className={`px-6 py-3 font-semibold transition-colors relative ${
-              activeTab === index
-                ? "text-[#303380] border-b-2 border-[#303380]"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            {passage.title}
-            <span className="ml-2 text-xs text-gray-400">
-              ({passage.questions.length} questions)
-            </span>
-          </button>
-        ))}
+      <div className="flex gap-2 border-b border-gray-200 bg-white px-4">
+        {partSections.map((passage, index) => {
+          // Calculate question range for this passage
+          const questionStart = index === 0 ? 1 : (index === 1 ? 14 : 27);
+          const questionEnd = index === 0 ? 13 : (index === 1 ? 26 : 40);
+          
+          // Count answered questions for this passage
+          const answeredCount = passage.questions.filter(q => {
+            const answer = answers[q.id];
+            if (answer === null || answer === undefined || answer === "") return false;
+            if (typeof answer === "object") {
+              return Object.keys(answer).length > 0 && Object.values(answer).some(v => v !== "" && v !== null && v !== undefined);
+            }
+            return true;
+          }).length;
+          const totalCount = passage.questions.length;
+          
+          return (
+            <button
+              key={passage.id}
+              onClick={() => setActiveTab(index)}
+              className={`px-6 py-3 font-semibold transition-colors relative ${
+                activeTab === index
+                  ? "text-[#303380] border-b-3 border-[#303380] bg-blue-50"
+                  : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
+              }`}
+              style={activeTab === index ? { borderBottomWidth: "3px" } : {}}
+            >
+              Part {index + 1}
+              <div className="text-xs text-gray-500 font-normal mt-1">
+                Q{questionStart}-{questionEnd}
+              </div>
+              <div className="text-xs font-semibold mt-0.5" style={{ color: activeTab === index ? "#303380" : "#6B7280" }}>
+                {answeredCount}/{totalCount}
+              </div>
+            </button>
+          );
+        })}
       </div>
 
       {/* Passage Content */}

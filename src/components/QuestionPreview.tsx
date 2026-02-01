@@ -141,8 +141,17 @@ export default function QuestionPreview({ question }: QuestionPreviewProps) {
           <div className="space-y-4">
             {(() => {
               const text = question.prompt?.text || "";
+              const questionTitle = question.prompt?.title || "";
+              const imageUrl = question.image || question.prompt?.imageUrl;
+              
               const [titlePart = "", itemsPart = ""] = text.split("---").map((s: string) => s.trim());
-              const items = itemsPart.split("\n").filter((line: string) => line.trim());
+              
+              // Use explicit title if provided, otherwise use titlePart from text
+              const displayTitle = questionTitle || titlePart;
+              
+              // If we have explicit title, use full text as items; otherwise use itemsPart
+              const itemsText = questionTitle ? text : itemsPart;
+              const items = itemsText.split("\n").filter((line: string) => line.trim());
 
               return (
                 <>
@@ -157,19 +166,30 @@ export default function QuestionPreview({ question }: QuestionPreviewProps) {
                     >
                       1
                     </div>
-                    {titlePart && (
+                    {displayTitle && (
                       <div className="flex-1 pt-2">
                         <div className="text-base font-medium text-gray-900">
-                          <FormattedText text={titlePart} />
+                          <FormattedText text={displayTitle} />
                         </div>
                       </div>
                     )}
                   </div>
 
+                  {/* Image (if provided) */}
+                  {imageUrl && (
+                    <div className="w-full mb-6 pl-14">
+                      <img
+                        src={imageUrl}
+                        alt="Question illustration"
+                        className="w-full max-w-3xl h-auto rounded-lg border-2 border-gray-200 shadow-sm"
+                      />
+                    </div>
+                  )}
+
                   {/* Items */}
                   <div className="space-y-4 pl-14">
                     {items.map((item: string, idx: number) => {
-                      const hasBlank = item.includes("___");
+                      const hasBlank = item.includes("[input]");
                       return (
                         <div key={idx} className="space-y-2">
                           <div className="text-gray-800">
@@ -180,8 +200,9 @@ export default function QuestionPreview({ question }: QuestionPreviewProps) {
                               type="text"
                               disabled
                               placeholder={`Answer ${idx + 1}`}
-                              className="w-full px-3 py-2 border-2 rounded-md text-base bg-gray-50 cursor-not-allowed"
+                              className="px-3 py-2 border-2 rounded-md text-base bg-gray-50 cursor-not-allowed"
                               style={{
+                                width: "240px",
                                 borderColor: "rgba(48, 51, 128, 0.2)",
                                 color: "#9CA3AF",
                               }}

@@ -1,6 +1,10 @@
 /**
  * Text formatting utility for custom markdown-like syntax
- * Supports: bold (**text**), underline (__text__), strikethrough (~~text~~), italic (&&text&&)
+ * Supports: 
+ * - **text** = bold
+ * - __text__ = underline
+ * - --text-- = strikethrough (line through)
+ * - ~~text~~ = italic
  */
 
 export interface FormattedSegment {
@@ -22,8 +26,8 @@ export function parseFormattedText(text: string): FormattedSegment[] {
   const patterns = [
     { marker: "**", key: "bold" as const },
     { marker: "__", key: "underline" as const },
-    { marker: "~~", key: "strikethrough" as const },
-    { marker: "&&", key: "italic" as const },
+    { marker: "--", key: "strikethrough" as const },
+    { marker: "~~", key: "italic" as const },
   ];
 
   // Step 1: Find all marker positions and types
@@ -230,8 +234,8 @@ export function getFormattingExamples(): Array<{ syntax: string; description: st
   return [
     { syntax: "**bold text**", description: "Bold" },
     { syntax: "__underlined text__", description: "Underline" },
-    { syntax: "~~strikethrough text~~", description: "Strikethrough" },
-    { syntax: "&&italic text&&", description: "Italic" },
+    { syntax: "--strikethrough text--", description: "Strikethrough (Line Through)" },
+    { syntax: "~~italic text~~", description: "Italic" },
     { syntax: "__**combined formatting**__", description: "Combined (underline + bold)" },
   ];
 }

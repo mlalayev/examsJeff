@@ -128,7 +128,7 @@ export function IELTSWritingView({
               IELTS Writing {writingType === "ACADEMIC" ? "(Academic)" : "(General Training)"}
             </h2>
             <p className="text-sm text-gray-600 mt-1">
-              Task {currentTaskIndex + 1} of 2 • Minimum {minWords} words
+              Write at least {minWords} words for each task
             </p>
           </div>
           
@@ -141,32 +141,40 @@ export function IELTSWritingView({
         </div>
       </div>
 
-      {/* Task Navigation Tabs */}
-      <div className="bg-white border-b px-6 py-2 flex gap-4">
-        <button
-          onClick={goToTask1}
-          disabled={isLocked}
-          className={`px-4 py-2 font-medium transition-colors ${
-            currentTaskIndex === 0
-              ? "text-blue-600 border-b-2 border-blue-600"
-              : "text-gray-600 hover:text-gray-800"
-          } disabled:opacity-50 disabled:cursor-not-allowed`}
-        >
-          Task 1
-        </button>
-        <button
-          onClick={goToTask2}
-          disabled={isLocked || (!hasStartedTask2 && currentTaskIndex === 0)}
-          className={`px-4 py-2 font-medium transition-colors ${
-            currentTaskIndex === 1
-              ? "text-blue-600 border-b-2 border-blue-600"
-              : hasStartedTask2
-              ? "text-gray-600 hover:text-gray-800"
-              : "text-gray-400 cursor-not-allowed"
-          } disabled:opacity-50 disabled:cursor-not-allowed`}
-        >
-          Task 2 {!hasStartedTask2 && <span className="text-xs ml-1">(Start Task 1 first)</span>}
-        </button>
+      {/* Task Navigation Tabs - Similar to Reading/Listening */}
+      <div className="flex gap-2 border-b border-gray-200 bg-white px-6">
+        {taskSections.map((task, index) => {
+          const taskText = index === 0 ? task1Text : task2Text;
+          const taskWordCount = taskText.trim().split(/\s+/).filter((word) => word.length > 0).length;
+          const taskMinWords = index === 0 ? 150 : 250;
+          
+          return (
+            <button
+              key={task.id}
+              onClick={() => index === 0 ? goToTask1() : goToTask2()}
+              disabled={isLocked || (index === 1 && !hasStartedTask2 && currentTaskIndex === 0)}
+              className={`px-6 py-3 font-semibold transition-colors relative ${
+                currentTaskIndex === index
+                  ? "text-[#303380] border-b-3 border-[#303380] bg-blue-50"
+                  : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+              style={currentTaskIndex === index ? { borderBottomWidth: "3px" } : {}}
+            >
+              Part {index + 1}
+              <div className="text-xs text-gray-500 font-normal mt-1">
+                Min {taskMinWords} words
+              </div>
+              <div className="text-xs font-semibold mt-0.5" style={{ color: currentTaskIndex === index ? "#303380" : "#6B7280" }}>
+                {taskWordCount} words
+              </div>
+              {index === 1 && !hasStartedTask2 && currentTaskIndex === 0 && (
+                <div className="text-xs text-orange-600 font-normal mt-0.5">
+                  (Start Part 1 first)
+                </div>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* Main Content */}
@@ -210,31 +218,16 @@ export function IELTSWritingView({
             />
           </div>
 
-          {/* Navigation Buttons */}
-          <div className="flex justify-between items-center pt-4 border-t">
-            {currentTaskIndex === 0 ? (
-              <div className="text-sm text-gray-500">
-                Complete Task 1 before moving to Task 2
-              </div>
-            ) : (
-              <button
-                onClick={goToTask1}
-                disabled={isLocked}
-                className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-gray-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Back to Task 1
-              </button>
-            )}
-
+          {/* Navigation Buttons - Minimal */}
+          <div className="flex justify-end items-center pt-4 border-t">
             {currentTaskIndex === 0 && (
               <button
                 onClick={goToTask2}
                 disabled={isLocked}
-                className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:text-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Continue to Task 2
-                <ArrowRight className="w-5 h-5" />
+                Continue to Part 2
+                <ArrowRight className="w-4 h-4" />
               </button>
             )}
           </div>
