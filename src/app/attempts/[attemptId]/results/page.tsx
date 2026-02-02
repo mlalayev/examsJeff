@@ -61,6 +61,9 @@ export default function AttemptResultsPage() {
   const [loading, setLoading] = useState(true);
   const [selectedSection, setSelectedSection] = useState<any>(null);
   const [showModal, setShowModal] = useState(false);
+  const [editingQuestion, setEditingQuestion] = useState<string | null>(null);
+  const [editedAnswers, setEditedAnswers] = useState<Record<string, any>>({});
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetchResults();
@@ -101,7 +104,55 @@ export default function AttemptResultsPage() {
   const closeModal = () => {
     setShowModal(false);
     setSelectedSection(null);
+    setEditingQuestion(null);
+    setEditedAnswers({});
     document.body.style.overflow = 'unset';
+  };
+
+  const handleEditAnswer = (questionId: string, currentAnswer: any) => {
+    setEditingQuestion(questionId);
+    setEditedAnswers({ [questionId]: currentAnswer });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingQuestion(null);
+    setEditedAnswers({});
+  };
+
+  const handleSaveAnswer = async (questionId: string, qtype: string) => {
+    if (!selectedSection || !data) return;
+    
+    setSaving(true);
+    try {
+      const newAnswer = editedAnswers[questionId];
+      
+      const res = await fetch(`/api/attempts/${attemptId}/update-answer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sectionType: selectedSection.type,
+          questionId,
+          answer: newAnswer,
+        }),
+      });
+      
+      if (!res.ok) {
+        const json = await res.json();
+        throw new Error(json.error || 'Failed to update answer');
+      }
+      
+      // Refresh results
+      await fetchResults();
+      setEditingQuestion(null);
+      setEditedAnswers({});
+      
+      alert('Answer updated successfully!');
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Failed to update answer');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const formatAnswer = (qtype: string, answer: any, options: any): string => {
@@ -127,10 +178,22 @@ export default function AttemptResultsPage() {
         }
         return JSON.stringify(answer);
       case "FILL_IN_BLANK":
+        // For student answer (object with blank indices)
         if (typeof answer === "object" && answer !== null && !Array.isArray(answer)) {
+          // Get all keys and sort them numerically
+          const keys = Object.keys(answer).sort((a, b) => parseInt(a) - parseInt(b));
+          
+          // If empty object or no keys
+          if (keys.length === 0) {
+            return "No answer";
+          }
+          
           // Convert { "0": "answer1", "1": "answer2" } to numbered list
-          const entries = Object.entries(answer).sort(([a], [b]) => parseInt(a) - parseInt(b));
-          return entries.map(([idx, val]) => `${parseInt(idx) + 1}. ${val || "(blank)"}`).join(", ");
+          return keys.map((key) => {
+            const val = answer[key];
+            const blankNum = parseInt(key) + 1;
+            return `${blankNum}. ${val && val.trim() ? val : "(empty)"}`;
+          }).join(", ");
         }
         // For correct answer (array of alternatives)
         if (Array.isArray(answer)) {
@@ -141,7 +204,7 @@ export default function AttemptResultsPage() {
             return `${idx + 1}. ${alternatives}`;
           }).join(", ");
         }
-        return JSON.stringify(answer);
+        return "No answer";
       case "SHORT_TEXT":
       case "ESSAY":
         return answer || "No answer";
@@ -453,12 +516,103 @@ export default function AttemptResultsPage() {
                         {/* Answers */}
                         <div className="space-y-2">
                           <div>
-                            <span className="text-xs font-medium uppercase text-gray-600">
-                              Student Answer:
-                            </span>
-                            <p className="text-sm mt-1 text-gray-800">
-                              {formatAnswer(q.qtype, q.studentAnswer, q.options)}
-                            </p>
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs font-medium uppercase text-gray-600">
+                                Student Answer:
+                              </span>
+                              {editingQuestion !== q.id && (
+                                <button
+                                  onClick={() => handleEditAnswer(q.id, q.studentAnswer)}
+                                  className="text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                                >
+                                  Edit
+                                </button>
+                              )}
+                            </div>
+                            
+                            {editingQuestion === q.id ? (
+                              <div className="space-y-2">
+                                {q.qtype === "FILL_IN_BLANK" ? (
+                                  <div className="space-y-2">
+                                    {(() => {
+                                      const currentAnswer = editedAnswers[q.id] || q.studentAnswer || {};
+                                      const blankCount = Array.isArray(q.correctAnswer) ? q.correctAnswer.length : Object.keys(currentAnswer).length;
+                                      const maxBlanks = Math.max(blankCount, Object.keys(currentAnswer).length);
+                                      
+                                      return Array.from({ length: maxBlanks }, (_, i) => (
+                                        <div key={i} className="flex items-center gap-2">
+                                          <span className="text-xs font-medium text-gray-600">Blank {i + 1}:</span>
+                                          <input
+                                            type="text"
+                                            value={currentAnswer[String(i)] || ""}
+                                            onChange={(e) => {
+                                              setEditedAnswers({
+                                                ...editedAnswers,
+                                                [q.id]: {
+                                                  ...currentAnswer,
+                                                  [String(i)]: e.target.value,
+                                                },
+                                              });
+                                            }}
+                                            className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
+                                            placeholder={`Answer for blank ${i + 1}`}
+                                          />
+                                        </div>
+                                      ));
+                                    })()}
+                                  </div>
+                                ) : q.qtype === "MCQ_SINGLE" || q.qtype === "SELECT" || q.qtype === "INLINE_SELECT" ? (
+                                  <select
+                                    value={editedAnswers[q.id] ?? ""}
+                                    onChange={(e) => setEditedAnswers({ ...editedAnswers, [q.id]: parseInt(e.target.value) })}
+                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                  >
+                                    <option value="">Select answer</option>
+                                    {q.options?.choices?.map((choice: string, idx: number) => (
+                                      <option key={idx} value={idx}>{choice}</option>
+                                    ))}
+                                  </select>
+                                ) : q.qtype === "TF" ? (
+                                  <select
+                                    value={editedAnswers[q.id] ?? ""}
+                                    onChange={(e) => setEditedAnswers({ ...editedAnswers, [q.id]: parseInt(e.target.value) })}
+                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                  >
+                                    <option value="">Select answer</option>
+                                    <option value="0">True</option>
+                                    <option value="1">False</option>
+                                  </select>
+                                ) : (
+                                  <input
+                                    type="text"
+                                    value={typeof editedAnswers[q.id] === 'string' ? editedAnswers[q.id] : JSON.stringify(editedAnswers[q.id] || "")}
+                                    onChange={(e) => setEditedAnswers({ ...editedAnswers, [q.id]: e.target.value })}
+                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                  />
+                                )}
+                                
+                                <div className="flex gap-2 mt-2">
+                                  <button
+                                    onClick={() => handleSaveAnswer(q.id, q.qtype)}
+                                    disabled={saving}
+                                    className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600 disabled:opacity-50"
+                                  >
+                                    {saving ? 'Saving...' : 'Save'}
+                                  </button>
+                                  <button
+                                    onClick={handleCancelEdit}
+                                    disabled={saving}
+                                    className="px-3 py-1 bg-gray-500 text-white rounded text-sm hover:bg-gray-600 disabled:opacity-50"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="text-sm mt-1 text-gray-800">
+                                {formatAnswer(q.qtype, q.studentAnswer, q.options)}
+                              </p>
+                            )}
                           </div>
                           <div>
                             <span className="text-xs font-medium uppercase text-gray-600">

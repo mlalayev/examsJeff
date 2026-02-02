@@ -92,10 +92,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
       console.log('Submit - JSON exam answers by type:', Object.keys(answersByType));
     } else {
       // For DB exams, answers are in attempt.sections
-      for (const as of attempt.sections) {
-        if (as.answers) {
-          answersByType[as.type as string] = as.answers as AnswersByQuestionId;
-        }
+    for (const as of attempt.sections) {
+      if (as.answers) {
+        answersByType[as.type as string] = as.answers as AnswersByQuestionId;
+      }
       }
       console.log('Submit - DB exam answers by type:', Object.keys(answersByType));
     }

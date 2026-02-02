@@ -57,10 +57,10 @@ export default function QFillInBlank({ prompt, image, value, onChange }: QFillIn
   // Count how many items have [input]
   const blankCount = normalizedItems.filter(item => item.includes("[input]")).length;
 
-  const handleChange = (index: number, newValue: string) => {
+  const handleChange = (blankIndex: number, newValue: string) => {
     onChange({
       ...value,
-      [String(index)]: newValue,
+      [String(blankIndex)]: newValue,
     });
   };
 
@@ -86,30 +86,35 @@ export default function QFillInBlank({ prompt, image, value, onChange }: QFillIn
 
       {/* Items with inputs */}
       <div className="space-y-4">
-        {normalizedItems.map((item, index) => {
-          const hasBlank = item.includes("[input]");
-          
-          return (
-            <div key={index} className="space-y-2">
-              {/* Item text - replace [input] with underline for display */}
-              <div className="text-gray-800">
-                <FormattedText text={item.replace(/\[input\]/g, "___")} />
+        {(() => {
+          let blankCounter = 0;
+          return normalizedItems.map((item, itemIndex) => {
+            const hasBlank = item.includes("[input]");
+            const currentBlankIndex = hasBlank ? blankCounter : -1;
+            if (hasBlank) blankCounter++;
+            
+            return (
+              <div key={itemIndex} className="space-y-2">
+                {/* Item text - replace [input] with underline for display */}
+                <div className="text-gray-800">
+                  <FormattedText text={item.replace(/\[input\]/g, "___")} />
+                </div>
+                
+                {/* Input field if this item has a blank */}
+                {hasBlank && currentBlankIndex >= 0 && (
+                  <input
+                    type="text"
+                    value={value[String(currentBlankIndex)] || ""}
+                    onChange={(e) => handleChange(currentBlankIndex, e.target.value)}
+                    className="px-3 py-2 border-2 border-gray-300 rounded-md text-base focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                    style={{ width: "240px" }}
+                    placeholder={`Answer ${currentBlankIndex + 1}`}
+                  />
+                )}
               </div>
-              
-              {/* Input field if this item has a blank */}
-              {hasBlank && (
-                <input
-                  type="text"
-                  value={value[String(index)] || ""}
-                  onChange={(e) => handleChange(index, e.target.value)}
-                  className="px-3 py-2 border-2 border-gray-300 rounded-md text-base focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
-                  style={{ width: "240px" }}
-                  placeholder={`Answer ${index + 1}`}
-                />
-              )}
-            </div>
-          );
-        })}
+            );
+          });
+        })()}
       </div>
 
       {/* Case-insensitive info */}
