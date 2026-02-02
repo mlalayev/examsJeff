@@ -62,7 +62,10 @@ export async function POST(
         sectionType,
         questionId,
         currentAnswersForSection: currentAnswers[sectionType],
+        currentAnswerForQuestion: currentAnswers[sectionType]?.[questionId],
         newAnswer: answer,
+        newAnswerType: typeof answer,
+        newAnswerJSON: JSON.stringify(answer),
       });
       
       const updatedAnswers = {
@@ -83,7 +86,10 @@ export async function POST(
         sectionType, 
         questionId, 
         answer,
-        updatedSectionAnswers: updatedAnswers[sectionType]
+        answerType: typeof answer,
+        answerJSON: JSON.stringify(answer),
+        updatedSectionAnswers: updatedAnswers[sectionType],
+        updatedQuestionAnswer: updatedAnswers[sectionType][questionId]
       });
     } else {
       // For DB exams, update attempt_section.answers
@@ -97,6 +103,18 @@ export async function POST(
       }
 
       const currentAnswers = (attemptSection.answers as any) || {};
+      
+      console.log('🔄 DB EXAM BEFORE UPDATE:', {
+        attemptId,
+        sectionType,
+        questionId,
+        currentAnswers,
+        currentAnswerForQuestion: currentAnswers[questionId],
+        newAnswer: answer,
+        newAnswerType: typeof answer,
+        newAnswerJSON: JSON.stringify(answer),
+      });
+      
       const updatedAnswers = {
         ...currentAnswers,
         [questionId]: answer,
@@ -107,7 +125,16 @@ export async function POST(
         data: { answers: updatedAnswers },
       });
 
-      console.log('Updated DB exam answer:', { attemptId, sectionType, questionId, answer });
+      console.log('✅ DB EXAM AFTER UPDATE:', { 
+        attemptId, 
+        sectionType, 
+        questionId, 
+        answer,
+        answerType: typeof answer,
+        answerJSON: JSON.stringify(answer),
+        updatedAnswers,
+        updatedQuestionAnswer: updatedAnswers[questionId]
+      });
     }
 
     return NextResponse.json({ success: true });

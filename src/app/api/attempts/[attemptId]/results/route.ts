@@ -296,7 +296,9 @@ export async function GET(
           examSectionType: examSection.type,
           hasAttemptSection: !!attemptSection,
           attemptSectionAnswers: attemptSection?.answers,
+          attemptSectionAnswersJSON: JSON.stringify(attemptSection?.answers || {}),
           allStudentAnswersKeys: Object.keys(allStudentAnswers),
+          allStudentAnswersPreview: JSON.stringify(allStudentAnswers).substring(0, 1000),
           subsectionsCount: sectionSubsections.length,
           subsectionTypes: sectionSubsections.map((s: any) => s.type),
         });
@@ -304,20 +306,35 @@ export async function GET(
         if (attemptSection?.answers) {
           // DB exam: use attemptSection.answers
           studentAnswers = { ...(attemptSection.answers as Record<string, any>) };
-          console.log(`📦 DB exam - using attemptSection.answers:`, Object.keys(studentAnswers));
+          console.log(`📦 DB exam - using attemptSection.answers:`, {
+            count: Object.keys(studentAnswers).length,
+            keys: Object.keys(studentAnswers),
+            sample: Object.entries(studentAnswers).slice(0, 3).map(([k, v]) => ({ key: k, value: v, type: typeof v }))
+          });
         } else {
           // JSON exam: collect from parent section and all subsections
           studentAnswers = { ...(allStudentAnswers[examSection.type] || {}) };
-          console.log(`📦 JSON exam - parent section ${examSection.type}:`, Object.keys(studentAnswers));
+          console.log(`📦 JSON exam - parent section ${examSection.type}:`, {
+            count: Object.keys(studentAnswers).length,
+            keys: Object.keys(studentAnswers),
+            sample: Object.entries(studentAnswers).slice(0, 3).map(([k, v]) => ({ key: k, value: v, type: typeof v }))
+          });
           
           // Also collect answers from subsections
           sectionSubsections.forEach((sub: any) => {
             const subAnswers = allStudentAnswers[sub.type] || {};
-            console.log(`📦 Adding subsection ${sub.type} with ${Object.keys(subAnswers).length} answers:`, Object.keys(subAnswers));
+            console.log(`📦 Adding subsection ${sub.type}:`, {
+              count: Object.keys(subAnswers).length,
+              keys: Object.keys(subAnswers),
+              sample: Object.entries(subAnswers).slice(0, 3).map(([k, v]) => ({ key: k, value: v, type: typeof v }))
+            });
             studentAnswers = { ...studentAnswers, ...subAnswers };
           });
           
-          console.log(`✅ Total collected answers:`, Object.keys(studentAnswers).length);
+          console.log(`✅ Total collected answers:`, {
+            count: Object.keys(studentAnswers).length,
+            allKeys: Object.keys(studentAnswers)
+          });
         }
         
         // Sort by order
@@ -334,8 +351,10 @@ export async function GET(
               hasStudentAnswer: !!studentAnswer,
               studentAnswerRaw: studentAnswer,
               studentAnswerType: typeof studentAnswer,
-              studentAnswerKeys: studentAnswer ? Object.keys(studentAnswer) : [],
-              allAvailableAnswerKeys: Object.keys(studentAnswers).slice(0, 5), // First 5 keys
+              studentAnswerKeys: studentAnswer && typeof studentAnswer === 'object' ? Object.keys(studentAnswer) : [],
+              studentAnswerValues: studentAnswer && typeof studentAnswer === 'object' ? Object.values(studentAnswer) : [],
+              studentAnswerJSON: JSON.stringify(studentAnswer),
+              allAvailableAnswerKeys: Object.keys(studentAnswers).slice(0, 10), // First 10 keys
               answerKeyFormat: answerKey,
             });
           }

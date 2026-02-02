@@ -178,11 +178,64 @@ export default function AttemptResultsPage() {
         answer,
         answerType: typeof answer,
         answerKeys: answer && typeof answer === 'object' ? Object.keys(answer) : [],
+        answerValues: answer && typeof answer === 'object' ? Object.values(answer) : [],
         isNull: answer === null,
         isUndefined: answer === undefined,
+        rawAnswer: JSON.stringify(answer),
       });
     }
     
+    // Special handling for FILL_IN_BLANK BEFORE the general check
+    if (qtype === "FILL_IN_BLANK") {
+      // For student answer (object with blank indices)
+      if (typeof answer === "object" && answer !== null && !Array.isArray(answer)) {
+        // Get all keys and sort them numerically
+        const keys = Object.keys(answer).sort((a, b) => parseInt(a) - parseInt(b));
+        
+        // If empty object or no keys
+        if (keys.length === 0) {
+          console.log('⚠️ FILL_IN_BLANK: Empty object, no keys');
+          return "No answer";
+        }
+        
+        // Check if all values are empty/undefined/null
+        const hasAnyValue = keys.some(key => {
+          const val = answer[key];
+          return val !== null && val !== undefined && String(val).trim() !== '';
+        });
+        
+        if (!hasAnyValue) {
+          console.log('⚠️ FILL_IN_BLANK: All values are empty');
+          return "No answer";
+        }
+        
+        // Convert { "0": "answer1", "1": "answer2" } to numbered list
+        const formatted = keys.map((key) => {
+          const val = answer[key];
+          const blankNum = parseInt(key) + 1;
+          if (val === null || val === undefined || String(val).trim() === '') {
+            return `${blankNum}. (empty)`;
+          }
+          return `${blankNum}. ${String(val).trim()}`;
+        }).join(", ");
+        
+        console.log('✅ FILL_IN_BLANK formatted:', formatted);
+        return formatted;
+      }
+      // For correct answer (array of alternatives)
+      if (Array.isArray(answer)) {
+        return answer.map((alternatives, idx) => {
+          if (Array.isArray(alternatives)) {
+            return `${idx + 1}. ${alternatives.join(" / ")}`;
+          }
+          return `${idx + 1}. ${alternatives}`;
+        }).join(", ");
+      }
+      console.log('⚠️ FILL_IN_BLANK: Not object or array');
+      return "No answer";
+    }
+    
+    // General check for other question types
     if (!answer && answer !== 0 && answer !== false) {
       console.log(`⚠️ No answer detected for ${qtype}`);
       return "No answer";
@@ -207,34 +260,6 @@ export default function AttemptResultsPage() {
           return Object.values(answer).join(", ");
         }
         return JSON.stringify(answer);
-      case "FILL_IN_BLANK":
-        // For student answer (object with blank indices)
-        if (typeof answer === "object" && answer !== null && !Array.isArray(answer)) {
-          // Get all keys and sort them numerically
-          const keys = Object.keys(answer).sort((a, b) => parseInt(a) - parseInt(b));
-          
-          // If empty object or no keys
-          if (keys.length === 0) {
-            return "No answer";
-          }
-          
-          // Convert { "0": "answer1", "1": "answer2" } to numbered list
-          return keys.map((key) => {
-            const val = answer[key];
-            const blankNum = parseInt(key) + 1;
-            return `${blankNum}. ${val && val.trim() ? val : "(empty)"}`;
-          }).join(", ");
-        }
-        // For correct answer (array of alternatives)
-        if (Array.isArray(answer)) {
-          return answer.map((alternatives, idx) => {
-            if (Array.isArray(alternatives)) {
-              return `${idx + 1}. ${alternatives.join(" / ")}`;
-            }
-            return `${idx + 1}. ${alternatives}`;
-          }).join(", ");
-        }
-        return "No answer";
       case "SHORT_TEXT":
       case "ESSAY":
         return answer || "No answer";
@@ -649,7 +674,21 @@ export default function AttemptResultsPage() {
                               Correct Answer:
                             </span>
                             <p className="text-sm font-medium mt-1 text-gray-900">
-                              {formatAnswer(q.qtype, q.qtype === "FILL_IN_BLANK" ? q.correctAnswer : (q.correctAnswer?.value ?? q.correctAnswer?.index ?? q.correctAnswer?.indices ?? q.correctAnswer?.answers?.[0] ?? q.correctAnswer?.order ?? q.correctAnswer?.blanks), q.options)}
+                              {(() => {
+                                // For FILL_IN_BLANK, use the full correctAnswer array
+                                if (q.qtype === "FILL_IN_BLANK") {
+                                  return formatAnswer(q.qtype, q.correctAnswer, q.options);
+                                }
+                                // For other types, extract the appropriate field
+                                const correctValue = q.correctAnswer?.value ?? 
+                                  q.correctAnswer?.index ?? 
+                                  q.correctAnswer?.indices ?? 
+                                  q.correctAnswer?.answers?.[0] ?? 
+                                  q.correctAnswer?.order ?? 
+                                  q.correctAnswer?.blanks ??
+                                  q.correctAnswer;
+                                return formatAnswer(q.qtype, correctValue, q.options);
+                              })()}
                             </p>
                           </div>
                           {q.explanation && (
