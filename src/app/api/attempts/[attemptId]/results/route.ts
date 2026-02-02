@@ -272,15 +272,31 @@ export async function GET(
           (as) => as.type === examSection.type
         );
 
-        // Use attemptSection.answers if available (DB exam), otherwise use section-specific answers (JSON exam)
-        const studentAnswers = (attemptSection?.answers as Record<string, any>) || allStudentAnswers[examSection.type] || {};
-
         // Collect all questions from this section and its subsections
         let allQuestions = [...(examSection.questions || [])];
         const sectionSubsections = subsectionsByParent[examSection.id] || [];
         sectionSubsections.forEach((sub: any) => {
           allQuestions = [...allQuestions, ...(sub.questions || [])];
         });
+
+        // Collect student answers from parent section AND all subsections
+        // For JSON exams: answers are in allStudentAnswers[sectionType]
+        // For DB exams: answers are in attemptSection.answers
+        let studentAnswers: Record<string, any> = {};
+        
+        if (attemptSection?.answers) {
+          // DB exam: use attemptSection.answers
+          studentAnswers = { ...(attemptSection.answers as Record<string, any>) };
+        } else {
+          // JSON exam: collect from parent section and all subsections
+          studentAnswers = { ...(allStudentAnswers[examSection.type] || {}) };
+          
+          // Also collect answers from subsections
+          sectionSubsections.forEach((sub: any) => {
+            const subAnswers = allStudentAnswers[sub.type] || {};
+            studentAnswers = { ...studentAnswers, ...subAnswers };
+          });
+        }
         
         // Sort by order
         allQuestions.sort((a: any, b: any) => a.order - b.order);
