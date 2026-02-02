@@ -1,206 +1,371 @@
 "use client";
 
-import React, { useState } from "react";
-import { IELTS_LISTENING_STRUCTURE, groupIELTSListeningQuestions } from "@/lib/ielts-listening-helper";
+import React, { useState, useEffect, useMemo } from "react";
+import { IELTSAudioPlayer } from "@/components/audio/IELTSAudioPlayer";
+import { Clock, CheckCircle2 } from "lucide-react";
 
 interface Question {
   id: string;
-  qtype: string;
-  prompt: any;
-  options: any;
-  answerKey: any;
   order: number;
-  maxScore: number;
 }
 
-interface PartSection {
+interface Section {
   id: string;
+  type: string;
   title: string;
-  image?: string | null;
-  image2?: string | null; // Second image
-  introduction?: string | null;
   questions: Question[];
+  audio?: string | null;
+  durationMin: number;
 }
 
 interface IELTSListeningViewProps {
-  partSections: PartSection[]; // All 4 Listening parts
-  answers: Record<string, any>; // All answers across all parts
-  isLocked: boolean;
-  renderQuestionComponent: (
-    q: Question,
-    value: any,
-    onChange: (v: any) => void,
-    readOnly: boolean
-  ) => React.ReactNode;
-  onAnswerChange: (questionId: string, value: any) => void;
+  section: Section;
+  answers: Record<string, any>;
+  onPartChange?: (part: number) => void;
+  currentPart?: number;
+  onTimeExpired?: () => void;
+  attemptId?: string; // For localStorage
 }
 
-/**
- * IELTS Listening View - Shows 4 parts with tab navigation
- * Audio plays continuously across all parts
- */
-export const IELTSListeningView: React.FC<IELTSListeningViewProps> = ({
-  partSections,
+export function IELTSListeningView({
+  section,
   answers,
-  isLocked,
-  renderQuestionComponent,
-  onAnswerChange,
-}) => {
-  const [activePart, setActivePart] = useState(1);
-  
-  // Get current part section (1-indexed → 0-indexed)
-  const currentPartSection = partSections[activePart - 1];
-  if (!currentPartSection) {
-    return <div className="text-center py-8 text-red-500">Part {activePart} not found</div>;
-  }
+  onPartChange,
+  currentPart = 1,
+  onTimeExpired,
+  attemptId,
+}: IELTSListeningViewProps) {
+  // Get localStorage key for timer
+  const getTimerStorageKey = () => {
+    if (!attemptId || !section.id) return null;
+    return `ielts_listening_timer_${attemptId}_${section.id}`;
+  };
 
-  const currentPartQuestions = currentPartSection.questions || [];
-  const currentPartTitle = IELTS_LISTENING_STRUCTURE.parts[activePart - 1]?.title || `Part ${activePart}`;
-  const hasImage = !!currentPartSection.image;
-  const hasImage2 = !!currentPartSection.image2;
-  const hasIntroduction = !!currentPartSection.introduction;
+  // Initialize timer from localStorage or default
+  const initializeTimer = () => {
+    if (typeof window === "undefined") return section.durationMin * 60;
+    
+    const storageKey = getTimerStorageKey();
+    if (!storageKey) return section.durationMin * 60;
+
+    const savedTimer = localStorage.getItem(storageKey);
+    if (savedTimer) {
+      try {
+        const { endTime } = JSON.parse(savedTimer);
+        const now = Date.now();
+        const remaining = Math.max(0, Math.floor((endTime - now) / 1000));
+        
+        if (remaining > 0) {
+          return remaining;
+        } else {
+          // Timer expired, remove from localStorage
+          localStorage.removeItem(storageKey);
+          return 0;
+        }
+      } catch (e) {
+        console.error("Failed to parse saved timer:", e);
+        localStorage.removeItem(storageKey);
+      }
+    }
+    
+    // No saved timer, start fresh
+    const startTime = Date.now();
+    const endTime = startTime + section.durationMin * 60 * 1000;
+    localStorage.setItem(storageKey, JSON.stringify({ startTime, endTime }));
+    return section.durationMin * 60;
+  };
+
+  const [timeRemaining, setTimeRemaining] = useState(() => {
+    if (typeof window === "undefined") return section.durationMin * 60;
+    return initializeTimer();
+  });
+  const [isExpired, setIsExpired] = useState(timeRemaining === 0);
+
+  // Split questions into 4 parts (10 questions each)
+  const parts = useMemo(() => {
+    const questions = section.questions || [];
+    return [
+      questions.filter((q) => q.order >= 1 && q.order <= 10), // Part 1: Q1-10
+      questions.filter((q) => q.order >= 11 && q.order <= 20), // Part 2: Q11-20
+      questions.filter((q) => q.order >= 21 && q.order <= 30), // Part 3: Q21-30
+      questions.filter((q) => q.order >= 31 && q.order <= 40), // Part 4: Q31-40
+    ];
+  }, [section.questions]);
+
+  // Calculate progress for each part
+  const partProgress = useMemo(() => {
+    return parts.map((partQuestions) => {
+      const answered = partQuestions.filter((q) => {
+        const answer = answers[q.id];
+        return answer !== undefined && answer !== null && answer !== "";
+      }).length;
+      return {
+        answered,
+        total: partQuestions.length,
+        percentage: partQuestions.length > 0 ? (answered / partQuestions.length) * 100 : 0,
+      };
+    });
+  }, [parts, answers]);
+
+  // Calculate overall progress
+  const overallProgress = useMemo(() => {
+    const totalQuestions = section.questions?.length || 0;
+    const answeredQuestions = section.questions?.filter((q) => {
+      const answer = answers[q.id];
+      return answer !== undefined && answer !== null && answer !== "";
+    }).length || 0;
+    return {
+      answered: answeredQuestions,
+      total: totalQuestions,
+      percentage: totalQuestions > 0 ? (answeredQuestions / totalQuestions) * 100 : 0,
+    };
+  }, [section.questions, answers]);
+
+  // Initialize timer from localStorage on mount
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    
+    const storageKey = getTimerStorageKey();
+    if (!storageKey) return;
+
+    const savedTimer = localStorage.getItem(storageKey);
+    if (savedTimer) {
+      try {
+        const { endTime } = JSON.parse(savedTimer);
+        const now = Date.now();
+        const remaining = Math.max(0, Math.floor((endTime - now) / 1000));
+        
+        if (remaining > 0) {
+          setTimeRemaining(remaining);
+          setIsExpired(false);
+        } else {
+          // Timer expired
+          setTimeRemaining(0);
+          setIsExpired(true);
+          localStorage.removeItem(storageKey);
+          if (onTimeExpired) {
+            onTimeExpired();
+          }
+        }
+      } catch (e) {
+        console.error("Failed to parse saved timer:", e);
+        localStorage.removeItem(storageKey);
+      }
+    } else {
+      // No saved timer, start fresh
+      const startTime = Date.now();
+      const endTime = startTime + section.durationMin * 60 * 1000;
+      localStorage.setItem(storageKey, JSON.stringify({ startTime, endTime }));
+      setTimeRemaining(section.durationMin * 60);
+      setIsExpired(false);
+    }
+  }, [attemptId, section.id, section.durationMin, onTimeExpired]);
+
+  // Timer effect - countdown and save to localStorage
+  useEffect(() => {
+    if (isExpired) return;
+
+    const interval = setInterval(() => {
+      setTimeRemaining((prev) => {
+        if (prev <= 1) {
+          setIsExpired(true);
+          // Clear timer from localStorage when expired
+          const storageKey = getTimerStorageKey();
+          if (storageKey && typeof window !== "undefined") {
+            localStorage.removeItem(storageKey);
+          }
+          if (onTimeExpired) {
+            onTimeExpired();
+          }
+          return 0;
+        }
+        
+        // Update localStorage with remaining time
+        const storageKey = getTimerStorageKey();
+        if (storageKey && typeof window !== "undefined") {
+          const now = Date.now();
+          const endTime = now + (prev - 1) * 1000;
+          const startTime = endTime - section.durationMin * 60 * 1000;
+          localStorage.setItem(storageKey, JSON.stringify({ startTime, endTime }));
+        }
+        
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isExpired, onTimeExpired, section.durationMin, attemptId, section.id]);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const getTimeColor = () => {
+    if (isExpired) return "text-red-600";
+    if (timeRemaining < 300) return "text-orange-600"; // Less than 5 minutes
+    return "text-gray-700";
+  };
+
+  const audioSource = section.audio || section.questions?.[0]?.prompt?.audio;
 
   return (
-    <div>
-      {/* Part Navigation */}
-      <div className="mb-6 border-b border-gray-200">
-        <div className="flex space-x-1 overflow-x-auto pb-2">
-          {partSections.map((partSection, idx) => {
-            const partId = idx + 1;
-            const partInfo = IELTS_LISTENING_STRUCTURE.parts[idx];
-            const partQuestions = partSection.questions || [];
-            const answeredCount = partQuestions.filter(q => 
-              answers[q.id] !== undefined && answers[q.id] !== null && answers[q.id] !== ""
-            ).length;
-            const isActive = activePart === partId;
+    <div className="space-y-6">
+      {/* Audio Player */}
+      {audioSource ? (
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200 shadow-sm">
+          <div className="text-center mb-4">
+            <h3 className="text-xl font-bold text-gray-900 mb-1">
+              🎧 Listening Audio
+            </h3>
+            <p className="text-sm text-gray-600">
+              Listen to the audio and answer the questions below
+            </p>
+          </div>
+          <IELTSAudioPlayer src={audioSource} className="w-full" />
+        </div>
+      ) : (
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200 shadow-sm">
+          <div className="text-center mb-4">
+            <h3 className="text-xl font-bold text-gray-900 mb-1">
+              🎧 Listening Audio
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Audio file will be available during the actual exam
+            </p>
+          </div>
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <p className="text-sm text-yellow-800 text-center">
+              ⚠️ Audio file not available. Please contact your teacher.
+            </p>
+          </div>
+        </div>
+      )}
 
+      {/* Timer and Part Selection - Fixed Top Right */}
+      <div 
+        className="fixed top-4 right-4 z-50 flex items-center gap-3 rounded-lg shadow-lg p-2"
+        style={{
+          backgroundColor: "#D8D8E0",
+          borderColor: "rgba(48, 51, 128, 0.1)",
+          border: "1px solid",
+        }}
+      >
+        {/* Part Selection - Small Squares */}
+        <div className="flex items-center gap-2">
+          {[1, 2, 3, 4].map((partNum) => {
+            const progress = partProgress[partNum - 1];
+            const isActive = currentPart === partNum;
             return (
               <button
-                key={partSection.id}
-                onClick={() => setActivePart(partId)}
-                className={`
-                  flex-shrink-0 px-4 py-3 rounded-t-lg border-b-2 transition-all
-                  ${isActive 
-                    ? "border-[#303380] bg-[#303380]/5 text-[#303380] font-semibold" 
-                    : "border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                key={partNum}
+                onClick={() => onPartChange?.(partNum)}
+                className="relative w-16 h-16 rounded-lg border-2 transition-all duration-200 flex flex-col items-center justify-center"
+                style={isActive ? {
+                  backgroundColor: "#303380",
+                  borderColor: "#303380",
+                  color: "white",
+                  boxShadow: "0 4px 6px rgba(48, 51, 128, 0.3)",
+                } : {
+                  backgroundColor: "white",
+                  borderColor: "rgba(48, 51, 128, 0.15)",
+                  color: "rgba(48, 51, 128, 0.9)",
+                }}
+                onMouseEnter={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.borderColor = "rgba(48, 51, 128, 0.3)";
+                    e.currentTarget.style.backgroundColor = "rgba(48, 51, 128, 0.02)";
                   }
-                `}
+                }}
+                onMouseLeave={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.borderColor = "rgba(48, 51, 128, 0.15)";
+                    e.currentTarget.style.backgroundColor = "white";
+                  }
+                }}
+                title={`Part ${partNum}: ${progress.answered}/${progress.total}`}
               >
-                <div className="text-sm">
-                  <div className="font-medium">{partInfo?.title || `Part ${partId}`}</div>
-                  <div className="text-xs mt-1 opacity-75">
-                    Q{partInfo?.questionRange[0]}–{partInfo?.questionRange[1]}
-                  </div>
-                  <div className="text-xs mt-1">
-                    {answeredCount}/{partQuestions.length}
-                  </div>
+                <div 
+                  className="text-xs font-bold mb-1"
+                  style={{ color: isActive ? "white" : "rgba(48, 51, 128, 0.9)" }}
+                >
+                  P{partNum}
                 </div>
+                {/* Mini Progress Bar */}
+                <div 
+                  className="w-10 rounded-full h-1 overflow-hidden"
+                  style={{ 
+                    backgroundColor: isActive 
+                      ? "rgba(255, 255, 255, 0.3)" 
+                      : "rgba(48, 51, 128, 0.1)" 
+                  }}
+                >
+                  <div
+                    className="h-full rounded-full transition-all duration-300 ease-out"
+                    style={{ 
+                      width: `${progress.percentage}%`,
+                      backgroundColor: isActive 
+                        ? "white" 
+                        : progress.percentage === 100 
+                          ? "#10b981" 
+                          : "#303380"
+                    }}
+                  />
+                  </div>
+                <div 
+                  className="text-[10px] font-semibold mt-0.5"
+                  style={{ 
+                    color: isActive 
+                      ? "white" 
+                      : "rgba(48, 51, 128, 0.7)" 
+                  }}
+                >
+                  {progress.answered}/{progress.total}
+                  </div>
+                {progress.percentage === 100 && (
+                  <div className="absolute -top-1 -right-1">
+                    <CheckCircle2 
+                      className="w-3 h-3" 
+                      style={{ 
+                        color: isActive 
+                          ? "rgba(255, 255, 255, 0.8)" 
+                          : "#10b981" 
+                      }}
+                    />
+                </div>
+                )}
               </button>
             );
           })}
-        </div>
       </div>
 
-      {/* Layout: Image Top, Questions Below */}
-      <div className="space-y-6">
-        {/* Images */}
-        {(hasImage || hasImage2) && (
-          <div className="flex gap-4 justify-center">
-            {hasImage && (
-              <div className="flex-1 max-w-2xl">
-                <img
-                  src={currentPartSection.image!}
-                  alt={`${currentPartTitle} illustration`}
-                  className="w-full h-auto rounded-lg border-2 border-gray-200 shadow-sm"
-                />
-              </div>
-            )}
-            {hasImage2 && (
-              <div className="flex-1 max-w-2xl">
-                <img
-                  src={currentPartSection.image2!}
-                  alt={`${currentPartTitle} illustration 2`}
-                  className="w-full h-auto rounded-lg border-2 border-gray-200 shadow-sm"
-                />
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Questions */}
-        <div className="space-y-6">
-          {currentPartQuestions.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <p>No questions in this part</p>
-            </div>
-          ) : (
-            currentPartQuestions.map((q, idx) => {
-              const value = answers[q.id];
-              const onChange = (newValue: any) => onAnswerChange(q.id, newValue);
-              
-              // Calculate question number based on part (Part 1: Q1-10, Part 2: Q11-20, etc.)
-              const partInfo = IELTS_LISTENING_STRUCTURE.parts[activePart - 1];
-              const questionNumber = partInfo ? partInfo.questionRange[0] + idx : idx + 1;
-              
-              return (
-                <div 
-                  key={q.id}
-                  className="bg-white rounded-xl border shadow-sm transition-all duration-200 hover:shadow-md"
-                  style={{ borderColor: "rgba(15, 17, 80, 0.63)" }}
-                >
-                  <div className="p-6">
-                    {/* Question Header with Number and Prompt */}
-                    <div className="flex items-start gap-4 mb-4">
-                      <div
-                        className="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm shadow-sm"
+        {/* Timer */}
+        <div 
+          className="flex items-center gap-2 px-4 py-2 rounded-lg border-2"
+          style={isExpired ? {
+            backgroundColor: "rgba(239, 68, 68, 0.1)",
+            borderColor: "rgba(239, 68, 68, 0.3)",
+          } : {
+            backgroundColor: "white",
+            borderColor: "rgba(48, 51, 128, 0.15)",
+          }}
+        >
+          <Clock 
+            className="w-4 h-4" 
+            style={{ color: getTimeColor() === "text-red-600" ? "#dc2626" : getTimeColor() === "text-orange-600" ? "#ea580c" : "rgba(48, 51, 128, 0.7)" }}
+          />
+          <span 
+            className="text-lg font-bold tabular-nums"
                         style={{
-                          backgroundColor: "#303380",
-                          color: "white",
-                        }}
-                      >
-                        {questionNumber}
-                      </div>
-                      <div className="flex-1">
-                        {/* Show prompt text for MCQ questions */}
-                        {(q.qtype === "MCQ_SINGLE" || q.qtype === "MCQ_MULTI") && q.prompt?.text && (
-                          <p className="text-gray-800 text-base leading-relaxed font-normal mb-4" style={{ lineHeight: "1.6" }}>
-                            {q.prompt.text}
-                          </p>
-                        )}
-                        
-                        {/* Render question component */}
-                        <div>
-                          {renderQuestionComponent(q, value, onChange, isLocked)}
-                        </div>
-                      </div>
+              color: getTimeColor() === "text-red-600" ? "#dc2626" : getTimeColor() === "text-orange-600" ? "#ea580c" : "rgba(48, 51, 128, 0.9)" 
+            }}
+          >
+            {formatTime(timeRemaining)}
+          </span>
                     </div>
                   </div>
                 </div>
               );
-            })
-          )}
-        </div>
-      </div>
-
-      {/* Navigation Buttons */}
-      <div className="mt-6 flex justify-between">
-        <button
-          onClick={() => setActivePart(Math.max(1, activePart - 1))}
-          disabled={activePart === 1}
-          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          ← Previous Part
-        </button>
-        <button
-          onClick={() => setActivePart(Math.min(4, activePart + 1))}
-          disabled={activePart === 4}
-          className="px-4 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-          style={{ backgroundColor: "#303380" }}
-        >
-          Next Part →
-        </button>
-      </div>
-    </div>
-  );
-};
+}
 

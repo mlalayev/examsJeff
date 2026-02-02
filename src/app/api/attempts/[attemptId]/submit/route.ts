@@ -3,8 +3,6 @@ import { prisma } from "@/lib/prisma";
 import { requireStudent } from "@/lib/auth-utils";
 import { SectionType, QuestionType } from "@prisma/client";
 import { scoreQuestion } from "@/lib/scoring";
-import { scoreIELTSListening } from "@/lib/ielts-listening-scoring";
-import { scoreIELTSReading } from "@/lib/ielts-reading-scoring";
 
 type AnswersByQuestionId = Record<string, any>;
 
@@ -124,56 +122,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
       
       console.log(`Submit - Section ${sectionType}: ${Object.keys(sectionAnswers).length} answers, ${section.questions.length} questions`);
 
-      // IELTS Listening: Special 4-part scoring
-      if (examWithSections.category === "IELTS" && sectionType === "LISTENING") {
-        const listeningResult = scoreIELTSListening(
-          section.questions.map(q => ({
-            id: q.id,
-            qtype: q.qtype as string,
-            answerKey: q.answerKey,
-            maxScore: q.maxScore || 1,
-            order: q.order,
-          })),
-          sectionAnswers
-        );
-        
-        sectionRaw = listeningResult.totalRaw;
-        sectionMax = listeningResult.maxScore;
-        sectionRubric = {
-          listeningParts: listeningResult.sectionScores,
-          totalRaw: listeningResult.totalRaw,
-          maxScore: listeningResult.maxScore,
-        };
-        
-        totalRaw += sectionRaw;
-        totalMax += sectionMax;
-      }
-      // IELTS Reading: Special 3-passage scoring
-      else if (examWithSections.category === "IELTS" && sectionType === "READING") {
-        const readingResult = scoreIELTSReading(
-          section.questions.map(q => ({
-            id: q.id,
-            qtype: q.qtype as string,
-            answerKey: q.answerKey,
-            maxScore: q.maxScore || 1,
-            order: q.order,
-          })),
-          sectionAnswers
-        );
-        
-        sectionRaw = readingResult.totalRawScore;
-        sectionMax = readingResult.maxScore;
-        sectionRubric = {
-          passageScores: readingResult.passageScores,
-          totalRawScore: readingResult.totalRawScore,
-          maxScore: readingResult.maxScore,
-        };
-        
-        totalRaw += sectionRaw;
-        totalMax += sectionMax;
-      }
       // For writing, don't auto-score; calculate maxScore but keep raw null
-      else if (!isWriting) {
+      if (!isWriting) {
         for (const q of section.questions) {
           try {
             const qtype = q.qtype as QuestionType;
@@ -192,15 +142,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
             const answer = sectionAnswers[q.id];
             const correct = scoreQuestion(qtype, answer, q.answerKey);
             
-            // Debug log for FILL_IN_BLANK
-            if (qtype === "FILL_IN_BLANK") {
-              console.log(`FILL_IN_BLANK question ${q.id}:`, {
-                hasAnswer: !!answer,
-                answer: JSON.stringify(answer),
-                answerKey: JSON.stringify(q.answerKey),
-                correct
-              });
-            }
             
             // Each question's maxScore may be >1; scale with correct (0/1)
             if (typeof q.maxScore === "number") {

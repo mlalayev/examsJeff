@@ -130,8 +130,43 @@ export default function AttemptResultsPage() {
   };
 
   const handleEditAnswer = (questionId: string, currentAnswer: any) => {
+    // Find the question
+    const question = data?.sections
+      ?.flatMap(s => s.questions || [])
+      .find(q => q.id === questionId);
+    
+    if (!question) {
+      alert('Question not found');
+      return;
+    }
+    
+    let answerToEdit = currentAnswer;
+    
+    // For MCQ_SINGLE/SELECT: convert text to index if needed
+    if ((question.qtype === "MCQ_SINGLE" || question.qtype === "SELECT" || question.qtype === "INLINE_SELECT")) {
+      if (typeof currentAnswer === "string") {
+        const choices = question.options?.choices || [];
+        const index = choices.findIndex((c: string) => c === currentAnswer);
+        answerToEdit = index >= 0 ? index : undefined;
+      } else if (typeof currentAnswer === "number") {
+        answerToEdit = currentAnswer;
+      } else {
+        answerToEdit = undefined;
+      }
+    }
+    // For FILL_IN_BLANK: ensure it's an object
+    else if (question.qtype === "FILL_IN_BLANK") {
+      if (!currentAnswer || typeof currentAnswer !== "object" || Array.isArray(currentAnswer)) {
+        answerToEdit = {};
+      } else {
+        answerToEdit = currentAnswer;
+      }
+    }
+    
+    console.log('✏️ EDIT:', { questionId, qtype: question.qtype, original: currentAnswer, normalized: answerToEdit });
+    
     setEditingQuestion(questionId);
-    setEditedAnswers({ [questionId]: currentAnswer });
+    setEditedAnswers({ [questionId]: answerToEdit });
   };
 
   const handleCancelEdit = () => {
@@ -140,50 +175,62 @@ export default function AttemptResultsPage() {
   };
 
   const handleSaveAnswer = async (questionId: string, qtype: string) => {
-    if (!selectedSection || !data) return;
+    if (!selectedSection || !data) {
+      alert('Error: Missing section or data');
+      return;
+    }
+    
+    // Get the answer from editedAnswers, or keep the original if not edited
+    let answerToSave = editedAnswers[questionId];
+    
+    // If answer is not in editedAnswers, use the original student answer
+    if (answerToSave === undefined) {
+      const question = data.sections
+        ?.flatMap(s => s.questions || [])
+        .find(q => q.id === questionId);
+      answerToSave = question?.studentAnswer;
+    }
+    
+    console.log('💾 SAVING:', {
+      questionId,
+      qtype,
+      sectionType: selectedSection.type,
+      answerToSave,
+      answerType: typeof answerToSave,
+      editedAnswersKeys: Object.keys(editedAnswers),
+    });
     
     setSaving(true);
     try {
-      const newAnswer = editedAnswers[questionId];
-      
-      console.log('💾 Saving answer:', {
-        questionId,
-        qtype,
-        sectionType: selectedSection.type,
-        newAnswer,
-        newAnswerType: typeof newAnswer,
-      });
-      
-      const res = await fetch(`/api/attempts/${attemptId}/update-answer`, {
+      const response = await fetch(`/api/attempts/${attemptId}/update-answer`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sectionType: selectedSection.type,
           questionId,
-          answer: newAnswer,
+          answer: answerToSave,
         }),
       });
       
-      const responseData = await res.json();
-      console.log('💾 Save response:', responseData);
+      const result = await response.json();
       
-      if (!res.ok) {
-        throw new Error(responseData.error || 'Failed to update answer');
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to save answer');
       }
       
-      // Refresh results with cache busting
-      console.log('🔄 Refreshing results after save...');
-      await fetchResults();
+      console.log('✅ SAVED SUCCESSFULLY:', result);
       
-      // Force update the UI by closing edit mode
+      // Close edit mode
       setEditingQuestion(null);
       setEditedAnswers({});
       
-      console.log('✅ Answer saved and results refreshed');
-      alert('Answer updated successfully!');
-    } catch (err: any) {
-      console.error('❌ Error saving answer:', err);
-      alert(err.message || 'Failed to update answer');
+      // Refresh the data
+      await fetchResults();
+      
+      alert('Answer saved successfully!');
+    } catch (error: any) {
+      console.error('❌ SAVE ERROR:', error);
+      alert('Error: ' + (error.message || 'Failed to save answer'));
     } finally {
       setSaving(false);
     }
@@ -264,7 +311,15 @@ export default function AttemptResultsPage() {
         return answer ? "True" : "False";
       case "MCQ_SINGLE":
       case "SELECT":
-        return options?.choices?.[answer] || `Option ${answer}`;
+      case "INLINE_SELECT":
+        // Answer can be either a number (index) or already converted text
+        if (typeof answer === "number" && options?.choices?.[answer]) {
+          return options.choices[answer];
+        }
+        if (typeof answer === "string") {
+          return answer; // Already converted to text by API
+        }
+        return answer !== undefined && answer !== null ? `Option ${answer}` : "No answer";
       case "MCQ_MULTI":
         if (!Array.isArray(answer)) return "No answer";
         return answer.map((idx) => options?.choices?.[idx] || `Option ${idx}`).join(", ");
@@ -636,11 +691,24 @@ export default function AttemptResultsPage() {
                                   </div>
                                 ) : q.qtype === "MCQ_SINGLE" || q.qtype === "SELECT" || q.qtype === "INLINE_SELECT" ? (
                                   <select
-                                    value={editedAnswers[q.id] ?? ""}
-                                    onChange={(e) => setEditedAnswers({ ...editedAnswers, [q.id]: parseInt(e.target.value) })}
+                                    value={
+                                      editedAnswers[q.id] !== undefined 
+                                        ? String(editedAnswers[q.id]) 
+                                        : (typeof q.studentAnswer === "number" 
+                                            ? String(q.studentAnswer) 
+                                            : (typeof q.studentAnswer === "string"
+                                                ? String(q.options?.choices?.findIndex((c: string) => c === q.studentAnswer) ?? "")
+                                                : ""))
+                                    }
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      const numValue = val === "" ? undefined : parseInt(val);
+                                      console.log('📝 SELECT CHANGED:', { questionId: q.id, val, numValue });
+                                      setEditedAnswers({ ...editedAnswers, [q.id]: numValue });
+                                    }}
                                     className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                                   >
-                                    <option value="">Select answer</option>
+                                    <option value="">-- Select answer --</option>
                                     {q.options?.choices?.map((choice: string, idx: number) => (
                                       <option key={idx} value={idx}>{choice}</option>
                                     ))}

@@ -6,17 +6,7 @@ import { ArrowLeft, Plus, X, BookOpen, Save, Edit, Info, Image, Volume2 } from "
 import TextFormattingPreview from "@/components/TextFormattingPreview";
 import QuestionPreview from "@/components/QuestionPreview";
 import ImageUpload from "@/components/ImageUpload";
-import { 
-  IELTS_SECTION_ORDER, 
-  IELTS_SECTION_DURATIONS,
-  validateIELTSListeningUniqueness,
-  sortIELTSSections,
-  getIELTSSectionDuration,
-  IELTS_SPEAKING_MIN_DURATION,
-  IELTS_SPEAKING_MAX_DURATION,
-} from "@/lib/ielts-config";
-
-type ExamCategory = "IELTS" | "TOEFL" | "SAT" | "GENERAL_ENGLISH" | "MATH" | "KIDS";
+type ExamCategory = "TOEFL" | "SAT" | "GENERAL_ENGLISH" | "MATH" | "KIDS";
 type SectionType = "READING" | "LISTENING" | "WRITING" | "SPEAKING" | "GRAMMAR" | "VOCABULARY";
 type QuestionType = 
   | "MCQ_SINGLE" 
@@ -26,8 +16,7 @@ type QuestionType =
   | "DND_GAP" 
   | "SHORT_TEXT" 
   | "ESSAY"
-  | "INLINE_SELECT"
-  | "FILL_IN_BLANK";
+  | "INLINE_SELECT";
 
 interface Section {
   id: string;
@@ -67,18 +56,15 @@ const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   DND_GAP: "Drag and Drop Gap Fill",
   SHORT_TEXT: "Short Text Answer",
   ESSAY: "Essay",
-  FILL_IN_BLANK: "Fill in the Blank (IELTS)",
 };
 
 const QUESTION_TYPE_GROUPS = {
   "Variantlı sual": ["MCQ_SINGLE", "MCQ_MULTI", "TF", "INLINE_SELECT"],
   "Açıq sual": ["SHORT_TEXT", "ESSAY"],
   "Drag and Drop": ["ORDER_SENTENCE", "DND_GAP"],
-  "IELTS": ["FILL_IN_BLANK"],
 };
 
 const ALLOWED_SECTIONS_BY_CATEGORY: Record<ExamCategory, SectionType[]> = {
-  IELTS: ["READING", "LISTENING", "WRITING", "SPEAKING"],
   TOEFL: ["READING", "LISTENING", "WRITING", "SPEAKING"],
   SAT: ["READING", "WRITING"],
   GENERAL_ENGLISH: ["READING", "LISTENING", "WRITING", "GRAMMAR", "VOCABULARY"],

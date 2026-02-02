@@ -46,8 +46,8 @@ export const ExamSidebar = React.memo(function ExamSidebar({
   getShortSectionTitle,
   examCategory,
 }: ExamSidebarProps) {
-  // Filter sections: For IELTS, show only first LISTENING and first READING
-  const displayedSections = examCategory === "IELTS" 
+  // Filter sections
+  const displayedSections = false 
     ? sections.filter((section, index, arr) => {
         if (section.type === "LISTENING") {
           // Show only the first LISTENING section

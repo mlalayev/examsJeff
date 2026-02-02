@@ -24,10 +24,18 @@ export default function AdminExamsPage() {
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
   const [filterActive, setFilterActive] = useState<boolean | null>(null);
   const [togglingExamId, setTogglingExamId] = useState<string | null>(null);
+  const [creatingSample, setCreatingSample] = useState(false);
 
   useEffect(() => {
     fetchExams();
   }, [filterCategory, filterActive]);
+
+  // Debug: Log exams when they change
+  useEffect(() => {
+    if (exams.length > 0) {
+      console.log("Exams loaded:", exams.length, exams.map(e => ({ title: e.title, category: e.category, isActive: e.isActive })));
+    }
+  }, [exams]);
 
   const fetchExams = async () => {
     try {
@@ -39,6 +47,13 @@ export default function AdminExamsPage() {
       if (res.ok) {
         const data = await res.json();
         setExams(data.exams || []);
+      } else {
+        const error = await res.json();
+        console.error("Error fetching exams:", error);
+        // Don't show alert for 403/401 errors
+        if (res.status !== 403 && res.status !== 401) {
+          console.error("Failed to fetch exams:", error.error || "Unknown error");
+        }
       }
     } catch (error) {
       console.error("Error fetching exams:", error);
@@ -89,6 +104,39 @@ export default function AdminExamsPage() {
     } catch (error) {
       console.error("Error deleting exam:", error);
       alert("Failed to delete exam");
+    }
+  };
+
+  const handleCreateSample = async () => {
+    if (!confirm("Create IELTS Mock Test Sample 1? This will create a sample exam with Listening, Reading, Writing, and Speaking sections.")) {
+      return;
+    }
+
+    setCreatingSample(true);
+    try {
+      const res = await fetch("/api/admin/seed/ielts-mock-sample-1", {
+        method: "POST",
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        alert(`Success! IELTS Mock Test Sample 1 created with ${data.exam.sectionsCount} sections and ${data.exam.totalQuestions} questions.`);
+        await fetchExams();
+      } else {
+        const error = await res.json();
+        const errorMsg = error.error || "Failed to create sample exam";
+        alert(errorMsg);
+        console.error("Failed to create sample:", error);
+        // If exam already exists, refresh the list anyway
+        if (errorMsg.includes("already exists")) {
+          await fetchExams();
+        }
+      }
+    } catch (error) {
+      console.error("Error creating sample:", error);
+      alert("Failed to create sample exam");
+    } finally {
+      setCreatingSample(false);
     }
   };
 
@@ -169,6 +217,20 @@ export default function AdminExamsPage() {
             <option value="true">Active</option>
             <option value="false">Inactive</option>
           </select>
+          <button
+            onClick={handleCreateSample}
+            disabled={creatingSample}
+            className="px-3 sm:px-4 py-2 text-sm font-medium text-white border border-transparent rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ backgroundColor: "#10b981" }}
+            onMouseEnter={(e) => {
+              if (!creatingSample) e.currentTarget.style.backgroundColor = "#059669";
+            }}
+            onMouseLeave={(e) => {
+              if (!creatingSample) e.currentTarget.style.backgroundColor = "#10b981";
+            }}
+          >
+            {creatingSample ? "Creating..." : "Create IELTS Sample"}
+          </button>
           <Link
             href="/dashboard/admin/exams/upload"
             className="px-3 sm:px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 whitespace-nowrap"

@@ -58,12 +58,17 @@ export async function DELETE(
     await requireAdminOrBranchAdmin();
     const { examId } = await params;
     
-    // Check if exam has bookings
+    // Check if exam exists
     const exam = await prisma.exam.findUnique({
       where: { id: examId },
-      include: {
+      select: {
+        id: true,
+        title: true,
         _count: {
-          select: { bookings: true }
+          select: { 
+            bookings: true,
+            assignments: true 
+          }
         }
       }
     });
@@ -72,18 +77,17 @@ export async function DELETE(
       return NextResponse.json({ error: "Exam not found" }, { status: 404 });
     }
     
-    if (exam._count.bookings > 0) {
-      return NextResponse.json(
-        { error: `Cannot delete exam with ${exam._count.bookings} booking(s). Set inactive instead.` },
-        { status: 400 }
-      );
-    }
-    
+    // Delete exam (bookings and attempts will be cascade deleted)
+    // Note: Bookings have onDelete: Cascade, so they will be automatically deleted
     await prisma.exam.delete({
       where: { id: examId }
     });
     
-    return NextResponse.json({ message: "Exam deleted successfully" });
+    return NextResponse.json({ 
+      message: "Exam deleted successfully",
+      deletedBookings: exam._count.bookings,
+      deletedAssignments: exam._count.assignments || 0
+    });
     
   } catch (error) {
     if (error instanceof Error && error.message.includes("Forbidden")) {

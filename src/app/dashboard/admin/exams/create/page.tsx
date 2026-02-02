@@ -6,17 +6,7 @@ import { ArrowLeft, Plus, X, BookOpen, Save, Edit, Info, Image, Volume2 } from "
 import TextFormattingPreview from "@/components/TextFormattingPreview";
 import QuestionPreview from "@/components/QuestionPreview";
 import ImageUpload from "@/components/ImageUpload";
-import { 
-  IELTS_SECTION_ORDER, 
-  IELTS_SECTION_DURATIONS,
-  validateIELTSListeningUniqueness,
-  sortIELTSSections,
-  getIELTSSectionDuration,
-  IELTS_SPEAKING_MIN_DURATION,
-  IELTS_SPEAKING_MAX_DURATION,
-} from "@/lib/ielts-config";
-
-type ExamCategory = "IELTS" | "TOEFL" | "SAT" | "GENERAL_ENGLISH" | "MATH" | "KIDS";
+type ExamCategory = "TOEFL" | "SAT" | "GENERAL_ENGLISH" | "MATH" | "KIDS";
 type SectionType = "READING" | "LISTENING" | "WRITING" | "SPEAKING" | "GRAMMAR" | "VOCABULARY";
 type QuestionType = 
   | "MCQ_SINGLE" 
@@ -26,8 +16,7 @@ type QuestionType =
   | "DND_GAP" 
   | "SHORT_TEXT" 
   | "ESSAY"
-  | "INLINE_SELECT"
-  | "FILL_IN_BLANK";
+  | "INLINE_SELECT";
 
 interface Section {
   id: string;
@@ -68,19 +57,16 @@ const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   DND_GAP: "Drag & Drop Gap Fill",
   SHORT_TEXT: "Short Text Answer",
   ESSAY: "Essay",
-  FILL_IN_BLANK: "Fill in the Blank (IELTS)",
 };
 
 const QUESTION_TYPE_GROUPS = {
   "Variantlı sual": ["MCQ_SINGLE", "MCQ_MULTI", "TF", "INLINE_SELECT"],
   "Açıq sual": ["SHORT_TEXT", "ESSAY"],
   "Drag and Drop": ["ORDER_SENTENCE", "DND_GAP"],
-  "IELTS": ["FILL_IN_BLANK"],
 };
 
 // Category-ə görə icazə verilən section tipləri
 const ALLOWED_SECTIONS_BY_CATEGORY: Record<ExamCategory, SectionType[]> = {
-  IELTS: ["READING", "LISTENING", "WRITING", "SPEAKING"],
   TOEFL: ["READING", "LISTENING", "WRITING", "SPEAKING"],
   SAT: ["READING", "WRITING"], // SAT-də LISTENING və SPEAKING yoxdur
   GENERAL_ENGLISH: ["READING", "LISTENING", "WRITING", "GRAMMAR", "VOCABULARY"], // SPEAKING yoxdur
@@ -119,8 +105,6 @@ export default function CreateExamPage() {
   const [examTitle, setExamTitle] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<ExamCategory | null>(null);
   const [track, setTrack] = useState("");
-  const [readingType, setReadingType] = useState<"ACADEMIC" | "GENERAL">("ACADEMIC"); // IELTS Reading type
-  const [writingType, setWritingType] = useState<"ACADEMIC" | "GENERAL">("ACADEMIC"); // IELTS Writing type
   const [durationMin, setDurationMin] = useState<number | null>(null); // Optional exam timer
   const [sections, setSections] = useState<Section[]>([]);
   const [currentSection, setCurrentSection] = useState<Section | null>(null);
@@ -142,7 +126,7 @@ export default function CreateExamPage() {
     return () => clearTimeout(timer);
   }, []);
 
-  const categories: ExamCategory[] = ["IELTS", "TOEFL", "SAT", "GENERAL_ENGLISH", "MATH", "KIDS"];
+  const categories: ExamCategory[] = ["TOEFL", "SAT", "GENERAL_ENGLISH", "MATH", "KIDS"];
 
   // Seçilmiş category üçün icazə verilən section tipləri
   const allowedSectionTypes = selectedCategory 
@@ -184,41 +168,10 @@ export default function CreateExamPage() {
     }
 
     const currentSections = sections || []; // Guard against undefined
-
-    // IELTS validation: LISTENING can only be added once
-    if (selectedCategory === "IELTS" && type === "LISTENING") {
-      const validation = validateIELTSListeningUniqueness(currentSections, type);
-      if (!validation.valid) {
-        alert(validation.error);
-        return;
-      }
-    }
-
-    // IELTS validation: READING can only be added once
-    if (selectedCategory === "IELTS" && type === "READING") {
-      const hasReading = currentSections.some(s => s.type === "READING");
-      if (hasReading) {
-        alert("READING section can only be added once per IELTS exam");
-        return;
-      }
-    }
-
-    // IELTS validation: WRITING can only be added once
-    if (selectedCategory === "IELTS" && type === "WRITING") {
-      const hasWriting = currentSections.some(s => s.type === "WRITING");
-      if (hasWriting) {
-        alert("WRITING section can only be added once per IELTS exam");
-        return;
-      }
-    }
     
     const label = getSectionLabel(type, selectedCategory);
 
-    // Auto-set duration for IELTS
-    let defaultDuration = 15;
-    if (selectedCategory === "IELTS") {
-      defaultDuration = getIELTSSectionDuration(type as any) || 15;
-    }
+    const defaultDuration = 15;
 
     const newSection: Section = {
       id: `section-${Date.now()}`,
@@ -226,100 +179,11 @@ export default function CreateExamPage() {
       title: `${label} Section`,
       instruction: `Complete the ${label.toLowerCase()} section`,
       durationMin: defaultDuration,
-      order: selectedCategory === "IELTS" 
-        ? IELTS_SECTION_ORDER[type as keyof typeof IELTS_SECTION_ORDER]
-        : currentSections.length,
+      order: currentSections.length,
       questions: [],
       passage: type === "READING" ? undefined : undefined,
       audio: type === "LISTENING" ? undefined : undefined,
     };
-
-    // IELTS Listening: 1 əsas section + 4 subsection yarat
-    if (selectedCategory === "IELTS" && type === "LISTENING") {
-      const parts = [
-        { title: "Part 1", instruction: "Conversation between two people in everyday social context" },
-        { title: "Part 2", instruction: "Monologue in everyday social context" },
-        { title: "Part 3", instruction: "Conversation (up to 4 people) in educational/training context" },
-        { title: "Part 4", instruction: "Academic monologue" },
-      ];
-
-      const subsections: Section[] = parts.map((part, index) => ({
-        id: `subsection-${Date.now()}-${index}`,
-        type: "LISTENING",
-        title: part.title,
-        instruction: part.instruction,
-        durationMin: 0,
-        order: index,
-        questions: [],
-        image: undefined,
-        introduction: undefined,
-        isSubsection: true,
-        parentId: newSection.id,
-      }));
-
-      newSection.subsections = subsections;
-      setSections([...currentSections, newSection]);
-      setCurrentSection(subsections[0]); // Start with Part 1
-      setStep("questions");
-    } 
-    // IELTS Reading: 1 əsas section + 3 passage subsection yarat
-    else if (selectedCategory === "IELTS" && type === "READING") {
-      const passages = [
-        { title: "Passage 1", instruction: "Questions 1-13 (Easier text)" },
-        { title: "Passage 2", instruction: "Questions 14-26 (Medium difficulty)" },
-        { title: "Passage 3", instruction: "Questions 27-40 (Harder academic text)" },
-      ];
-
-      const subsections: Section[] = passages.map((passage, index) => ({
-        id: `subsection-${Date.now()}-${index}`,
-        type: "READING",
-        title: passage.title,
-        instruction: passage.instruction,
-        durationMin: 0,
-        order: index,
-        questions: [],
-        passage: "", // Empty passage text, admin will fill
-        isSubsection: true,
-        parentId: newSection.id,
-      }));
-
-      newSection.subsections = subsections;
-      setSections([...currentSections, newSection]);
-      setCurrentSection(subsections[0]); // Start with Passage 1
-      setStep("questions");
-    }
-    // IELTS Writing: 1 əsas section + 2 task subsection yarat
-    else if (selectedCategory === "IELTS" && type === "WRITING") {
-      const tasks = [
-        { 
-          title: "Task 1", 
-          instruction: writingType === "ACADEMIC" 
-            ? "Describe the information shown in the graph/chart/diagram. Write at least 150 words." 
-            : "Write a letter based on the situation given. Write at least 150 words."
-        },
-        { 
-          title: "Task 2", 
-          instruction: "Write an essay in response to the question. Give reasons and examples. Write at least 250 words."
-        },
-      ];
-
-      const subsections: Section[] = tasks.map((task, index) => ({
-        id: `subsection-${Date.now()}-${index}`,
-        type: "WRITING",
-        title: task.title,
-        instruction: task.instruction,
-        durationMin: 0,
-        order: index,
-        questions: [],
-        isSubsection: true,
-        parentId: newSection.id,
-      }));
-
-      newSection.subsections = subsections;
-      setSections([...currentSections, newSection]);
-      setCurrentSection(subsections[0]); // Start with Task 1
-      setStep("questions");
-    }
     else {
       setSections([...currentSections, newSection]);
       setCurrentSection(newSection);
@@ -469,7 +333,7 @@ export default function CreateExamPage() {
 
   const addSubsection = (parentSectionId: string) => {
     const parentSection = sections.find(s => s.id === parentSectionId);
-    if (!parentSection || parentSection.type !== "LISTENING" || selectedCategory !== "IELTS") return;
+    if (!parentSection) return;
 
     const currentSubsections = parentSection.subsections || [];
     const nextPartNumber = currentSubsections.length + 1;
@@ -519,11 +383,6 @@ export default function CreateExamPage() {
         return { text: "Enter the question here" };
       case "ESSAY":
         return { text: "Write an essay about..." };
-      case "FILL_IN_BLANK":
-        return { 
-          text: "Complete the sentences below:\n---\n1. A wooden ___\n2. Includes a sheet of ___\n3. Price: £___",
-          imageUrl: "" // Optional image URL
-        };
       default:
         return { text: "" };
     }
@@ -560,11 +419,6 @@ export default function CreateExamPage() {
         return { answers: ["answer1"] }; // Multiple possible correct answers
       case "ESSAY":
         return null; // No auto-grading for essays
-      case "FILL_IN_BLANK":
-        return { 
-          answers: ["train", "stickers", "17.50"], // Case-insensitive answers
-          caseSensitive: false // Case-insensitive (böyük kiçik hərf fərqi yoxdur)
-        };
       default:
         return {};
     }
@@ -576,22 +430,9 @@ export default function CreateExamPage() {
       return;
     }
 
-    // IELTS validation: Check LISTENING uniqueness
-    if (selectedCategory === "IELTS") {
-      const validation = validateIELTSListeningUniqueness(sections);
-      if (!validation.valid) {
-        alert(validation.error);
-        return;
-      }
-    }
-
     setSaving(true);
     try {
-      // Sort sections for IELTS
       let sortedSections = sections;
-      if (selectedCategory === "IELTS") {
-        sortedSections = sortIELTSSections(sections);
-      }
 
       // Flatten subsections for API
       // For IELTS Listening: skip parent section, send only subsections with parentTitle reference
@@ -621,8 +462,8 @@ export default function CreateExamPage() {
           title: examTitle,
           category: selectedCategory,
           track: track || null,
-          readingType: selectedCategory === "IELTS" ? readingType : null, // IELTS Reading type
-          writingType: selectedCategory === "IELTS" ? writingType : null, // IELTS Writing type
+          readingType: null,
+          writingType: null,
           durationMin: durationMin || null, // Optional timer
           sections: flattenedSections.map((s, index) => {
             // Combine instruction, passage, audio, introduction, image, image2 into instruction JSON
@@ -655,9 +496,6 @@ export default function CreateExamPage() {
                 // Verbal sections: 32 dəqiqə
                 sectionDurationMin = 32;
               }
-            } else if (selectedCategory === "IELTS") {
-              // IELTS fixed durations
-              sectionDurationMin = getIELTSSectionDuration(s.type as any) || s.durationMin;
             }
             
             return {
@@ -670,7 +508,7 @@ export default function CreateExamPage() {
               parentTitle: s.parentTitle || null, // Temporary reference for server to match
               parentOrder: s.parentOrder !== undefined ? s.parentOrder : null, // Temporary reference
               durationMin: sectionDurationMin,
-              order: selectedCategory === "IELTS" ? IELTS_SECTION_ORDER[s.type as keyof typeof IELTS_SECTION_ORDER] : index,
+              order: index,
               questions: (s.questions || []).map((q) => ({
               qtype: q.qtype,
               order: q.order,
@@ -754,7 +592,6 @@ export default function CreateExamPage() {
               <div className="font-medium text-gray-900 mb-1">{category}</div>
               <div className="text-xs sm:text-sm text-gray-500">
                 {category === "GENERAL_ENGLISH" && "Unit-based exams"}
-                {category === "IELTS" && "International English Language Testing System"}
                 {category === "TOEFL" && "Test of English as a Foreign Language"}
                 {category === "SAT" && "Scholastic Assessment Test"}
                 {category === "MATH" && "Mathematics exams"}
@@ -818,36 +655,6 @@ export default function CreateExamPage() {
                 <option value="C2">C2</option>
               </select>
             </div>
-          )}
-          {selectedCategory === "IELTS" && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Reading Type
-                </label>
-                <select
-                  value={readingType}
-                  onChange={(e) => setReadingType(e.target.value as "ACADEMIC" | "GENERAL")}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
-                >
-                  <option value="ACADEMIC">Academic</option>
-                  <option value="GENERAL">General Training</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Writing Type
-                </label>
-                <select
-                  value={writingType}
-                  onChange={(e) => setWritingType(e.target.value as "ACADEMIC" | "GENERAL")}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
-                >
-                  <option value="ACADEMIC">Academic</option>
-                  <option value="GENERAL">General Training</option>
-                </select>
-              </div>
-            </>
           )}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -2031,193 +1838,6 @@ export default function CreateExamPage() {
                       <br />
                       • "What is the capital of France?" → dropdown appears at the end
                     </div>
-                  </div>
-                ) : editingQuestion.qtype === "FILL_IN_BLANK" ? (
-                  <div className="space-y-3">
-                    {/* Question Title/Name */}
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                        Question Name (Optional)
-                      </label>
-                      <input
-                        type="text"
-                        value={editingQuestion.prompt?.title || ""}
-                        onChange={(e) => {
-                          setEditingQuestion({
-                            ...editingQuestion,
-                            prompt: { 
-                              ...editingQuestion.prompt, 
-                              title: e.target.value 
-                            },
-                          });
-                        }}
-                        placeholder="e.g., Complete the form below"
-                        className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
-                      />
-                    </div>
-
-                    {/* Image Upload */}
-                    <ImageUpload
-                      label="Image (Optional)"
-                      value={editingQuestion.image || ""}
-                      onChange={(url) => {
-                        setEditingQuestion({
-                          ...editingQuestion,
-                          image: url,
-                        });
-                      }}
-                    />
-
-                    {/* Question Text */}
-                    <textarea
-                      value={editingQuestion.prompt?.text || ""}
-                      onChange={(e) => {
-                        const text = e.target.value;
-                        // Count blanks - support both ___ and [input]
-                        const blankCount = (text.match(/___|\[input\]/g) || []).length;
-                        
-                        // Initialize answers array
-                        const currentAnswers = Array.isArray(editingQuestion.answerKey?.answers) 
-                          ? editingQuestion.answerKey.answers 
-                          : [];
-                        const newAnswers = Array(blankCount).fill("").map((_, idx) => currentAnswers[idx] || "");
-                        
-                        setEditingQuestion({
-                          ...editingQuestion,
-                          prompt: { 
-                            ...editingQuestion.prompt, 
-                            text 
-                          },
-                          answerKey: {
-                            ...editingQuestion.answerKey,
-                            answers: newAnswers,
-                            caseSensitive: false, // Case-insensitive
-                          }
-                        });
-                      }}
-                      placeholder="Complete the sentences below:&#10;---&#10;1. A wooden ___&#10;2. Includes a sheet of ___&#10;3. Price: £___"
-                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white resize-y"
-                      rows={8}
-                    />
-                    <div className="text-xs text-gray-500 bg-blue-50 p-3 rounded border border-blue-200">
-                      <strong>📝 IELTS Fill in the Blank:</strong>
-                      <br />
-                      • First line: Question title/instruction
-                      <br />
-                      • Use <strong>---</strong> to separate title from items
-                      <br />
-                      • Each line after --- is one item (e.g., 1. Text ___)
-                      <br />
-                      • Use <strong>___</strong> (3 underscores) or <strong>[input]</strong> for blank spaces
-                      <br />
-                      • Use <strong>**text**</strong> for bold formatting
-                      <br />
-                      • Answers are <strong>not case-sensitive</strong> (e.g., "train", "Train", "TRAIN" are all correct)
-                      <br />
-                      • You can add an image above for visual context
-                    </div>
-                    
-                    {/* Answer inputs for each blank - multiple alternatives */}
-                    {(editingQuestion.prompt?.text || "").match(/___|\[input\]/g) && (
-                      <div className="pt-3 border-t border-gray-200">
-                        <label className="block text-xs font-medium text-gray-600 mb-2">
-                          Correct Answers (case-insensitive, spaces ignored)
-                        </label>
-                        <div className="space-y-3">
-                          {Array.from({ length: (editingQuestion.prompt?.text || "").match(/\[input\]/g)?.length || 0 }).map((_, idx) => {
-                            // Get current alternatives for this blank
-                            const currentAlternatives = Array.isArray(editingQuestion.answerKey?.answers?.[idx])
-                              ? editingQuestion.answerKey.answers[idx]
-                              : (typeof editingQuestion.answerKey?.answers?.[idx] === "string" 
-                                  ? [editingQuestion.answerKey.answers[idx]] 
-                                  : [""]);
-                            
-                            return (
-                              <div key={idx} className="bg-gray-50 p-3 rounded-md border border-gray-200">
-                                <div className="flex items-center justify-between mb-2">
-                                  <span className="text-xs font-semibold text-gray-700">Blank {idx + 1}</span>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const answers = [...(editingQuestion.answerKey?.answers || [])];
-                                      const alternatives = Array.isArray(answers[idx]) ? [...answers[idx]] : (typeof answers[idx] === "string" ? [answers[idx]] : [""]);
-                                      alternatives.push("");
-                                      answers[idx] = alternatives;
-                                      
-                                      setEditingQuestion({
-                                        ...editingQuestion,
-                                        answerKey: { 
-                                          ...editingQuestion.answerKey,
-                                          answers,
-                                        },
-                                      });
-                                    }}
-                                    className="text-xs text-blue-600 hover:text-blue-700 font-medium"
-                                  >
-                                    + Add Alternative
-                                  </button>
-                                </div>
-                                
-                                <div className="space-y-2">
-                                  {currentAlternatives.map((alt: string, altIdx: number) => (
-                                    <div key={altIdx} className="flex items-center gap-2">
-                                      <input
-                                        type="text"
-                                        value={alt || ""}
-                                        onChange={(e) => {
-                                          const answers = [...(editingQuestion.answerKey?.answers || [])];
-                                          const alternatives = Array.isArray(answers[idx]) ? [...answers[idx]] : (typeof answers[idx] === "string" ? [answers[idx]] : [""]);
-                                          alternatives[altIdx] = e.target.value;
-                                          answers[idx] = alternatives;
-                                          
-                                          setEditingQuestion({
-                                            ...editingQuestion,
-                                            answerKey: { 
-                                              ...editingQuestion.answerKey,
-                                              answers,
-                                            },
-                                          });
-                                        }}
-                                        placeholder={`Alternative ${altIdx + 1} (e.g., "90%", "ninety percent")`}
-                                        className="flex-1 px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
-                                      />
-                                      {currentAlternatives.length > 1 && (
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            const answers = [...(editingQuestion.answerKey?.answers || [])];
-                                            const alternatives = Array.isArray(answers[idx]) ? [...answers[idx]] : [answers[idx]];
-                                            alternatives.splice(altIdx, 1);
-                                            answers[idx] = alternatives.length === 1 ? alternatives : alternatives;
-                                            
-                                            setEditingQuestion({
-                                              ...editingQuestion,
-                                              answerKey: { 
-                                                ...editingQuestion.answerKey,
-                                                answers,
-                                              },
-                                            });
-                                          }}
-                                          className="text-xs text-red-600 hover:text-red-700 font-medium"
-                                        >
-                                          Remove
-                                        </button>
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                        <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                          <p className="text-xs text-blue-800">
-                            <strong>ℹ️ Note:</strong> Answers are case-insensitive and spaces are ignored.<br/>
-                            Examples: "90%", "90 %", "9 0 %" are all treated as the same answer.
-                          </p>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 ) : (
                   <>

@@ -1,219 +1,78 @@
 "use client";
 
-import React, { useRef, useState, useEffect } from "react";
-import { Play, Pause, Volume2, VolumeX, Lock } from "lucide-react";
+import React, { useState, useRef, useEffect } from 'react';
+import { Play } from 'lucide-react';
 
 interface IELTSAudioPlayerProps {
   src?: string | null;
   className?: string;
-  /**
-   * If true, enables full controls (for teacher/admin preview)
-   * If false (default), enforces IELTS restrictions (student mode)
-   */
-  allowFullControls?: boolean;
-  /**
-   * Callback when audio ends
-   */
-  onEnded?: () => void;
-  /**
-   * Initial time to start from (for page reload recovery)
-   */
-  initialTime?: number;
-  /**
-   * Callback to save current time (for auto-save)
-   */
-  onTimeUpdate?: (currentTime: number) => void;
 }
 
-/**
- * IELTS-compliant audio player with strict playback restrictions for students.
- * 
- * Student restrictions:
- * - No pause
- * - No seek/rewind
- * - No speed control
- * - No download
- * - Auto-play on mount
- * - Blocks keyboard shortcuts
- * 
- * Teacher/Admin mode:
- * - Full controls enabled
- */
-const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({ 
-  src, 
-  className = "",
-  allowFullControls = false,
-  onEnded,
-  initialTime = 0,
-  onTimeUpdate,
-}) => {
+export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({ src, className = "" }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(initialTime);
+  const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(1);
-  const [isMuted, setIsMuted] = useState(false);
-  
-  // Track the maximum time the user has reached (forward-only for students)
-  const [lastAllowedTime, setLastAllowedTime] = useState(initialTime);
-  const lastAllowedTimeRef = useRef(initialTime);
-
-  // NO auto-play - let student start manually
-  // Auto-play is removed to give student control
+  const [hasStarted, setHasStarted] = useState(false);
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !src) return;
 
-    // Set initial time if provided
-    if (initialTime > 0) {
-      audio.currentTime = initialTime;
-      setLastAllowedTime(initialTime);
-      lastAllowedTimeRef.current = initialTime;
-    }
+    // Reset player when src changes
+    setIsPlaying(false);
+    setCurrentTime(0);
+    setDuration(0);
+    setHasStarted(false);
+    audio.load();
 
-    // Time update handler
-    const handleTimeUpdate = () => {
-      const currentTime = audio.currentTime;
-      setCurrentTime(currentTime);
-      
-      // Update lastAllowedTime (forward progress only)
-      if (currentTime > lastAllowedTimeRef.current) {
-        lastAllowedTimeRef.current = currentTime;
-        setLastAllowedTime(currentTime);
-      }
-      
-      // Callback for auto-save
-      if (onTimeUpdate) {
-        onTimeUpdate(currentTime);
-      }
-    };
-
-    // Prevent seeking backwards (student mode only)
-    const handleSeeking = () => {
-      if (!allowFullControls) {
-        const currentTime = audio.currentTime;
-        
-        // If user tries to seek beyond lastAllowedTime, clamp it
-        if (currentTime > lastAllowedTimeRef.current + 0.5) {
-          // Allow small forward jumps (buffering), but not manual seeks
-          audio.currentTime = lastAllowedTimeRef.current;
-        } else if (currentTime < lastAllowedTimeRef.current - 0.5) {
-          // Block backward seeks
-          audio.currentTime = lastAllowedTimeRef.current;
-        }
-      }
-    };
-
-    const handleLoadedMetadata = () => {
-      setDuration(audio.duration);
-    };
-
+    const updateTime = () => setCurrentTime(audio.currentTime);
+    const updateDuration = () => setDuration(audio.duration);
     const handleEnded = () => {
       setIsPlaying(false);
-      if (onEnded) {
-        onEnded();
-      }
+      setCurrentTime(0);
     };
 
-    // Block context menu (prevent download)
-    const handleContextMenu = (e: Event) => {
-      if (!allowFullControls) {
-        e.preventDefault();
-      }
-    };
-
-    audio.addEventListener('timeupdate', handleTimeUpdate);
-    audio.addEventListener('seeking', handleSeeking);
-    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('timeupdate', updateTime);
+    audio.addEventListener('loadedmetadata', updateDuration);
     audio.addEventListener('ended', handleEnded);
-    audio.addEventListener('contextmenu', handleContextMenu);
 
     return () => {
-      audio.removeEventListener('timeupdate', handleTimeUpdate);
-      audio.removeEventListener('seeking', handleSeeking);
-      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('timeupdate', updateTime);
+      audio.removeEventListener('loadedmetadata', updateDuration);
       audio.removeEventListener('ended', handleEnded);
-      audio.removeEventListener('contextmenu', handleContextMenu);
     };
-  }, [src, allowFullControls, onEnded, onTimeUpdate, initialTime]);
+  }, [src]);
 
-  // Block keyboard shortcuts (student mode)
-  useEffect(() => {
-    if (!allowFullControls) {
-      const handleKeyDown = (e: KeyboardEvent) => {
-        // Block space, arrows, etc.
-        if (
-          e.code === 'Space' || 
-          e.code === 'ArrowLeft' || 
-          e.code === 'ArrowRight' ||
-          e.code === 'ArrowUp' ||
-          e.code === 'ArrowDown'
-        ) {
-          e.preventDefault();
-        }
-      };
-
-      window.addEventListener('keydown', handleKeyDown);
-      return () => window.removeEventListener('keydown', handleKeyDown);
-    }
-  }, [allowFullControls]);
-
-  const formatTime = (seconds: number): string => {
-    if (!isFinite(seconds)) return "0:00";
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const togglePlayPause = () => {
+  const handlePlay = () => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    if (isPlaying) {
-      audio.pause();
-      setIsPlaying(false);
-    } else {
-      audio.play()
-        .then(() => setIsPlaying(true))
-        .catch(err => console.error("Play error:", err));
+    if (!hasStarted) {
+      setHasStarted(true);
+      // Disable pause and seek controls
+      audio.controls = false;
+      // Prevent seeking
+      audio.addEventListener('seeking', (e) => {
+        e.preventDefault();
+        audio.currentTime = currentTime;
+      });
     }
-  };
-
-  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newVolume = parseFloat(e.target.value);
-    setVolume(newVolume);
-    if (audioRef.current) {
-      audioRef.current.volume = newVolume;
-    }
-    setIsMuted(newVolume === 0);
-  };
-
-  const toggleMute = () => {
-    if (audioRef.current) {
-      if (isMuted) {
-        audioRef.current.volume = volume || 0.5;
-        setIsMuted(false);
-      } else {
-        audioRef.current.volume = 0;
-        setIsMuted(true);
-      }
-    }
-  };
-
-  // Teacher mode: allow seeking
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!allowFullControls) return; // Block for students
     
-    const newTime = parseFloat(e.target.value);
-    if (audioRef.current) {
-      audioRef.current.currentTime = newTime;
-      setCurrentTime(newTime);
-    }
+    audio.play().catch((err) => {
+      console.error("Error playing audio:", err);
+    });
+    setIsPlaying(true);
   };
 
-  const progressPercentage = duration > 0 ? (currentTime / duration) * 100 : 0;
-  const allowedProgressPercentage = duration > 0 ? (lastAllowedTime / duration) * 100 : 0;
+  const formatTime = (time: number) => {
+    if (isNaN(time)) return '0:00';
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  const progressPercentage = duration ? (currentTime / duration) * 100 : 0;
 
   if (!src) {
     return (
@@ -224,92 +83,32 @@ const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
   }
 
   return (
-    <div 
-      className={`bg-white rounded-lg border p-4 w-full ${className}`}
-      style={{
-        backgroundColor: 'rgba(48, 51, 128, 0.02)',
-        borderColor: 'rgba(48, 51, 128, 0.1)'
-      }}
-      onContextMenu={(e) => !allowFullControls && e.preventDefault()}
-    >
-      <style jsx>{`
-        input[type="range"]::-webkit-slider-thumb {
-          appearance: none;
-          height: 16px;
-          width: 16px;
-          border-radius: 50%;
-          background: #303380;
-          cursor: ${allowFullControls ? 'pointer' : 'not-allowed'};
-          border: 2px solid white;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
-        input[type="range"]::-webkit-slider-thumb:hover {
-          background: ${allowFullControls ? '#252a6b' : '#303380'};
-          transform: ${allowFullControls ? 'scale(1.1)' : 'scale(1)'};
-        }
-        input[type="range"]::-moz-range-thumb {
-          height: 16px;
-          width: 16px;
-          border-radius: 50%;
-          background: #303380;
-          cursor: ${allowFullControls ? 'pointer' : 'not-allowed'};
-          border: 2px solid white;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
-      `}</style>
-      
+    <div className={`bg-white rounded-lg border p-4 w-full ${className}`}
+         style={{
+           backgroundColor: 'rgba(48, 51, 128, 0.02)',
+           borderColor: 'rgba(48, 51, 128, 0.1)'
+         }}>
       <audio 
         ref={audioRef} 
         src={src} 
         preload="metadata"
-        // No controls attribute - we handle everything
+        controls={false}
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => setIsPlaying(false)}
+        onEnded={() => {
+          setIsPlaying(false);
+          setCurrentTime(0);
+        }}
       />
-
-      {/* IELTS Lock Notice (Student Mode) */}
-      {!allowFullControls && (
-        <div className="mb-3 flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
-          <Lock className="w-4 h-4 text-amber-600" />
-          <p className="text-xs text-amber-800 font-medium">
-            🎧 Click PLAY to start. Once playing, you cannot pause, rewind, or seek (IELTS rules)
-          </p>
-        </div>
-      )}
-
-      {/* Progress Bar */}
+      
+      {/* Progress Bar - Read only, no interaction */}
       <div className="mb-4">
-        {allowFullControls ? (
-          // Teacher: Full seek bar
-          <input
-            type="range"
-            min="0"
-            max={duration || 0}
-            value={currentTime}
-            onChange={handleSeek}
-            className="w-full h-1 rounded-lg appearance-none cursor-pointer"
-            style={{
-              background: `linear-gradient(to right, #303380 0%, #303380 ${progressPercentage}%, rgba(48, 51, 128, 0.2) ${progressPercentage}%, rgba(48, 51, 128, 0.2) 100%)`,
-              outline: 'none'
-            }}
-          />
-        ) : (
-          // Student: Read-only progress bar (shows allowed progress)
-          <div className="relative w-full h-1 rounded-lg bg-gray-200">
-            <div 
-              className="absolute top-0 left-0 h-full rounded-lg transition-all"
-              style={{
-                width: `${allowedProgressPercentage}%`,
-                backgroundColor: '#303380'
-              }}
-            />
-            <div 
-              className="absolute top-0 left-0 h-full rounded-lg"
-              style={{
-                width: `${progressPercentage}%`,
-                backgroundColor: 'rgba(48, 51, 128, 0.5)'
-              }}
-            />
-          </div>
-        )}
+        <div
+          className="w-full h-2 rounded-lg pointer-events-none"
+          style={{
+            background: `linear-gradient(to right, #303380 0%, #303380 ${progressPercentage}%, rgba(48, 51, 128, 0.2) ${progressPercentage}%, rgba(48, 51, 128, 0.2) 100%)`,
+          }}
+        />
         <div className="flex justify-between text-xs mt-1"
              style={{ color: 'rgba(48, 51, 128, 0.7)' }}>
           <span>{formatTime(currentTime)}</span>
@@ -317,61 +116,47 @@ const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
         </div>
       </div>
 
-      {/* Controls */}
-      <div className="flex items-center justify-between gap-4">
-        {/* Play/Pause - Always show for students */}
+      {/* Play Button Only */}
+      <div className="flex items-center justify-center">
         <button
-          onClick={togglePlayPause}
-          className="p-3 rounded-full transition-all hover:scale-105"
-          style={{
-            backgroundColor: '#303380',
+          onClick={handlePlay}
+          disabled={isPlaying}
+          className="p-4 rounded-full transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+          style={{ 
+            backgroundColor: isPlaying ? '#10b981' : '#303380',
             color: 'white'
           }}
-          title={isPlaying ? "Pause (not allowed in exam)" : "Play"}
-          disabled={!allowFullControls && isPlaying}
+          onMouseEnter={(e) => {
+            if (!isPlaying) {
+              e.currentTarget.style.backgroundColor = '#252a6b';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!isPlaying) {
+              e.currentTarget.style.backgroundColor = '#303380';
+            }
+          }}
         >
-          {isPlaying ? <Pause size={24} /> : <Play size={24} />}
+          {isPlaying ? (
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <span className="ml-1">Playing...</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Play className="w-5 h-5" />
+              <span className="ml-1">{hasStarted ? 'Resume' : 'Start Listening'}</span>
+            </div>
+          )}
         </button>
-
-        {/* Volume Control */}
-        <div className="flex items-center gap-2 flex-1">
-          <button
-            onClick={toggleMute}
-            className="p-2 rounded-full hover:bg-gray-100 transition"
-            style={{ color: '#303380' }}
-          >
-            {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
-          </button>
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
-            value={isMuted ? 0 : volume}
-            onChange={handleVolumeChange}
-            className="flex-1 h-1 rounded-lg appearance-none cursor-pointer"
-            style={{
-              background: `linear-gradient(to right, #303380 0%, #303380 ${(isMuted ? 0 : volume) * 100}%, rgba(48, 51, 128, 0.2) ${(isMuted ? 0 : volume) * 100}%, rgba(48, 51, 128, 0.2) 100%)`,
-              outline: 'none'
-            }}
-          />
-        </div>
-
-        {/* Mode indicator */}
-        {!allowFullControls && isPlaying && (
-          <div className="text-xs px-3 py-1 rounded-full bg-green-100 text-green-700 font-medium">
-            Playing
-          </div>
-        )}
       </div>
+
+      {isPlaying && (
+        <p className="text-center text-xs text-gray-500 mt-2">
+          Audio is playing. You cannot pause or skip.
+        </p>
+      )}
     </div>
   );
 };
-
-export default IELTSAudioPlayer;
-
-
-
-
-
 

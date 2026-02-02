@@ -33,8 +33,8 @@ export default function QuestionPreview({ question }: QuestionPreviewProps) {
       </div>
       
       <div className="bg-white rounded-xl border shadow-sm p-6" style={{ borderColor: "rgba(15, 17, 80, 0.63)" }}>
-        {/* Question Text (skip for FILL_IN_BLANK - it has custom layout) */}
-        {question.prompt?.text && question.qtype !== "FILL_IN_BLANK" && (
+        {/* Question Text */}
+        {question.prompt?.text && (
           <div className="mb-4">
             <div className="flex items-start gap-4">
               <div
@@ -136,98 +136,6 @@ export default function QuestionPreview({ question }: QuestionPreviewProps) {
           </div>
         )}
 
-        {/* Fill in the Blank (IELTS) */}
-        {question.qtype === "FILL_IN_BLANK" && (
-          <div className="space-y-4">
-            {(() => {
-              const text = question.prompt?.text || "";
-              const questionTitle = question.prompt?.title || "";
-              const imageUrl = question.image || question.prompt?.imageUrl;
-              
-              const [titlePart = "", itemsPart = ""] = text.split("---").map((s: string) => s.trim());
-              
-              // Use explicit title if provided, otherwise use titlePart from text
-              const displayTitle = questionTitle || titlePart;
-              
-              // If we have explicit title, use full text as items; otherwise use itemsPart
-              const itemsText = questionTitle ? text : itemsPart;
-              
-              // Normalize ___ to [input] for processing
-              const normalizedItemsText = itemsText.replace(/___/g, "[input]");
-              const items = normalizedItemsText.split("\n").filter((line: string) => line.trim());
-
-              return (
-                <>
-                  {/* Question number + Title */}
-                  <div className="flex items-start gap-4 mb-4">
-                    <div
-                      className="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm shadow-sm"
-                      style={{
-                        backgroundColor: "#303380",
-                        color: "white",
-                      }}
-                    >
-                      1
-                    </div>
-                    {displayTitle && (
-                      <div className="flex-1 pt-2">
-                        <div className="text-base font-medium text-gray-900">
-                          <FormattedText text={displayTitle} />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Image (if provided) */}
-                  {imageUrl && (
-                    <div className="w-full mb-6 pl-14">
-                      <img
-                        src={imageUrl}
-                        alt="Question illustration"
-                        className="w-full max-w-3xl h-auto rounded-lg border-2 border-gray-200 shadow-sm"
-                      />
-                    </div>
-                  )}
-
-                  {/* Items */}
-                  <div className="space-y-4 pl-14">
-                    {items.map((item: string, idx: number) => {
-                      const hasBlank = item.includes("[input]");
-                      // Replace [input] with ___ for display
-                      const displayItem = item.replace(/\[input\]/g, "___");
-                      return (
-                        <div key={idx} className="space-y-2">
-                          <div className="text-gray-800">
-                            <FormattedText text={displayItem} />
-                          </div>
-                          {hasBlank && (
-                            <input
-                              type="text"
-                              disabled
-                              placeholder={`Answer ${idx + 1}`}
-                              className="px-3 py-2 border-2 rounded-md text-base bg-gray-50 cursor-not-allowed"
-                              style={{
-                                width: "240px",
-                                borderColor: "rgba(48, 51, 128, 0.2)",
-                                color: "#9CA3AF",
-                              }}
-                            />
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  
-                  <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                    <p className="text-sm text-blue-800">
-                      <strong>ℹ️ Note:</strong> Answers are not case-sensitive
-                    </p>
-                  </div>
-                </>
-              );
-            })()}
-          </div>
-        )}
       </div>
 
       <p className="text-xs text-gray-500 mt-2 italic">

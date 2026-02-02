@@ -2,13 +2,10 @@
 
 import React, { useMemo } from "react";
 import AudioPlayer from "@/components/audio/AudioPlayer";
-import IELTSAudioPlayer from "@/components/audio/IELTSAudioPlayer";
 import QDndGroup from "@/components/questions/QDndGroup";
 import { QuestionCard } from "./QuestionCard";
 import { DndGapQuestion } from "./DndGapQuestion";
 import { IELTSListeningView } from "./IELTSListeningView";
-import IELTSReadingView from "./IELTSReadingView";
-import { IELTSWritingView } from "./IELTSWritingView";
 
 interface Question {
   id: string;
@@ -56,6 +53,10 @@ interface QuestionsAreaProps {
   userRole?: string; // For teacher preview
   allSections?: Section[]; // All sections for IELTS Listening multi-part view
   currentSectionIndex?: number; // Current section index in exam
+  listeningPart?: number; // Current listening part (1-4)
+  onListeningPartChange?: (part: number) => void; // Callback for part change
+  onTimeExpired?: () => void; // Callback for timer expiration
+  attemptId?: string; // For localStorage timer
 }
 
 export const QuestionsArea = React.memo(function QuestionsArea({
@@ -73,84 +74,28 @@ export const QuestionsArea = React.memo(function QuestionsArea({
   userRole,
   allSections = [],
   currentSectionIndex = 0,
+  listeningPart = 1,
+  onListeningPartChange,
+  onTimeExpired,
+  attemptId,
 }: QuestionsAreaProps) {
   const audioSource = section.audio || section.questions?.[0]?.prompt?.audio;
   const readingPassage =
     section.passage || section.questions?.[0]?.prompt?.passage;
 
+  // Debug: Log IELTS Listening conditions
+  if (section.type === "LISTENING" && examCategory === "IELTS") {
+    console.log("🎧 IELTS Listening Debug:", {
+      sectionType: section.type,
+      examCategory,
+      hasAudio: !!audioSource,
+      audioSource,
+      sectionAudio: section.audio,
+      questionsCount: section.questions?.length,
+    });
+  }
+
   const sectionAnswers = answers[section.id] || {};
-
-  // For IELTS Listening: Check if this is a Listening Part section
-  const isIELTSListeningPart = examCategory === "IELTS" && section.type === "LISTENING";
-  
-  // For IELTS Reading: Check if this is a Reading Passage section
-  const isIELTSReadingPassage = examCategory === "IELTS" && section.type === "READING";
-  
-  // For IELTS Writing: Check if this is a Writing Task section
-  const isIELTSWritingTask = examCategory === "IELTS" && section.type === "WRITING";
-  
-  // Find all IELTS Listening parts (4 consecutive sections)
-  const ieltsListeningParts = isIELTSListeningPart 
-    ? allSections
-        .filter(s => s.type === "LISTENING")
-        .filter(s => s.questions && s.questions.length > 0) // Only sections with questions
-        .slice(0, 4)
-    : [];
-
-  // For IELTS Listening: Get audio from first part (shared across all parts)
-  const ieltsAudioSource = isIELTSListeningPart && ieltsListeningParts.length > 0
-    ? ieltsListeningParts[0].audio || audioSource
-    : audioSource;
-
-  // Find all IELTS Reading passages (3 passages)
-  const ieltsReadingPassages = isIELTSReadingPassage
-    ? allSections
-        .filter(s => s.type === "READING")
-        .filter(s => s.questions && s.questions.length > 0) // Only passages with questions
-        .slice(0, 3)
-    : [];
-  
-  // Find all IELTS Writing tasks (2 tasks - Task 1 and Task 2 subsections only)
-  const ieltsWritingTasks = isIELTSWritingTask
-    ? allSections
-        .filter(s => s.type === "WRITING" && s.title && (s.title.includes("Task 1") || s.title.includes("Task 2")))
-        .slice(0, 2)
-    : [];
-  
-  console.log("🔍 Writing Debug:", {
-    isIELTSWritingTask,
-    allWritingSections: allSections.filter(s => s.type === "WRITING"),
-    ieltsWritingTasks,
-    currentSection: section,
-  });
-  
-  // If current section is empty (parent section), show first subsection's content
-  const isEmptyParentSection = (section.questions?.length || 0) === 0;
-  const shouldShowIELTSView = isIELTSListeningPart && ieltsListeningParts.length > 0;
-  const shouldShowReadingView = isIELTSReadingPassage && ieltsReadingPassages.length > 0;
-  const shouldShowWritingView = isIELTSWritingTask && ieltsWritingTasks.length > 0;
-  
-  // Is this the first Listening part? (only first part shows audio player)
-  const isFirstListeningPart = shouldShowIELTSView && ieltsListeningParts[0].id === section.id;
-
-  // Is this the first Reading passage?
-  const isFirstReadingPassage = shouldShowReadingView && ieltsReadingPassages[0].id === section.id;
-  
-  // Collect all answers from all 4 Listening parts
-  const allListeningAnswers = isIELTSListeningPart
-    ? ieltsListeningParts.reduce((acc, partSection) => {
-        const partAnswers = answers[partSection.id] || {};
-        return { ...acc, ...partAnswers };
-      }, {})
-    : sectionAnswers;
-
-  // Collect all answers from all 3 Reading passages
-  const allReadingAnswers = isIELTSReadingPassage
-    ? ieltsReadingPassages.reduce((acc, passageSection) => {
-        const passageAnswers = answers[passageSection.id] || {};
-        return { ...acc, ...passageAnswers };
-      }, {})
-    : sectionAnswers;
 
   // Calculate base question numbers for DND_GAP questions
   const baseQuestionNumbers = useMemo(() => {
@@ -191,8 +136,22 @@ export const QuestionsArea = React.memo(function QuestionsArea({
           <h2 className="text-2xl font-bold text-slate-900">{section.title}</h2>
         </div>
 
-        {/* Audio Player - Only show once for first IELTS Listening part */}
-        {ieltsAudioSource && (!isIELTSListeningPart || shouldShowIELTSView) && (
+        {/* IELTS Listening View */}
+        {section.type === "LISTENING" && examCategory === "IELTS" && (
+          <div className="mb-8">
+            <IELTSListeningView
+              section={section}
+              answers={answers[section.id] || {}}
+              currentPart={listeningPart}
+              onPartChange={onListeningPartChange}
+              onTimeExpired={onTimeExpired}
+              attemptId={attemptId}
+            />
+          </div>
+        )}
+
+        {/* Regular Audio Player for non-IELTS */}
+        {audioSource && !(section.type === "LISTENING" && examCategory === "IELTS") && (
           <div className="mb-8">
             <div className="text-center mb-4">
               <h3
@@ -205,22 +164,10 @@ export const QuestionsArea = React.memo(function QuestionsArea({
                 className="text-sm"
                 style={{ color: "rgba(48, 51, 128, 0.7)" }}
               >
-                {isIELTSListeningPart 
-                  ? "Click play to start. Audio plays continuously through all parts."
-                  : "Listen to the audio and answer the questions below"
-                }
+                Listen to the audio and answer the questions below
               </p>
             </div>
-            {/* Use IELTS-restricted player for IELTS Listening sections (student mode) */}
-            {examCategory === "IELTS" && section.type === "LISTENING" && userRole !== "TEACHER" && userRole !== "ADMIN" ? (
-              <IELTSAudioPlayer 
-                src={ieltsAudioSource} 
-                className="w-full"
-                allowFullControls={false}
-              />
-            ) : (
-              <AudioPlayer src={ieltsAudioSource} className="w-full" />
-            )}
+            <AudioPlayer src={audioSource} className="w-full" />
           </div>
         )}
 
@@ -265,96 +212,31 @@ export const QuestionsArea = React.memo(function QuestionsArea({
               />
             </div>
           </div>
-        ) : examCategory === "IELTS" && section.type === "LISTENING" ? (
-          // IELTS Listening: Always show all 4 parts in one view
-          shouldShowIELTSView ? (
-            <IELTSListeningView
-              partSections={ieltsListeningParts.map(s => ({
-                id: s.id,
-                title: s.title,
-                image: s.image,
-                introduction: s.introduction || s.instruction, // Use introduction field, fallback to instruction
-                questions: s.questions,
-              }))}
-              answers={allListeningAnswers}
-              isLocked={isLocked}
-              renderQuestionComponent={(q, value, onChange, readOnly) => 
-                renderQuestionComponent(q, value, onChange, readOnly, false, null, undefined)
-              }
-              onAnswerChange={onAnswerChange}
-            />
-          ) : (
-            // If no subsections found
-            <div className="text-center py-12">
-              <div className="text-gray-500 mb-4">
-                <p className="text-lg font-medium">No listening parts found</p>
-                <p className="text-sm mt-2">Please contact your instructor</p>
-              </div>
-            </div>
-          )
-        ) : examCategory === "IELTS" && section.type === "READING" ? (
-          // IELTS Reading: Always show all 3 passages in one view
-          shouldShowReadingView ? (
-            <IELTSReadingView
-              partSections={ieltsReadingPassages.map(s => ({
-                id: s.id,
-                title: s.title,
-                passage: s.passage || "",
-                introduction: s.introduction || s.instruction,
-                questions: s.questions,
-              }))}
-              answers={allReadingAnswers}
-              onAnswerChange={onAnswerChange}
-              examCategory={examCategory}
-              renderQuestionComponent={(q, value, onChange, readOnly) =>
-                renderQuestionComponent(q, value, onChange, readOnly, false, null, undefined)
-              }
-            />
-          ) : (
-            // If no passages found
-            <div className="text-center py-12">
-              <div className="text-gray-500 mb-4">
-                <p className="text-lg font-medium">No reading passages found</p>
-                <p className="text-sm mt-2">Please contact your instructor</p>
-              </div>
-            </div>
-          )
-        ) : examCategory === "IELTS" && section.type === "WRITING" ? (
-          // IELTS Writing: Show Task 1 and Task 2 in one view
-          shouldShowWritingView ? (
-            <IELTSWritingView
-              attemptId={answers.__attemptId || "unknown"} // Pass attemptId for storage key
-              taskSections={ieltsWritingTasks.map(s => ({
-                id: s.id,
-                title: s.title,
-                instruction: s.instruction || "",
-                image: s.image || undefined, // Pass task image
-                minWords: s.title.includes("Task 1") ? 150 : 250,
-                suggestedTime: s.title.includes("Task 1") ? 20 : 40,
-                questions: s.questions || [],
-              }))}
-              writingType="ACADEMIC" // TODO: Get from exam metadata
-              answers={answers}
-              isLocked={isLocked}
-              onAnswerChange={(sectionId, taskKey, value) => {
-                // Save writing text as answer
-                onAnswerChange(sectionId, { [taskKey]: value });
-              }}
-            />
-          ) : (
-            // If no tasks found
-            <div className="text-center py-12">
-              <div className="text-gray-500 mb-4">
-                <p className="text-lg font-medium">No writing tasks found</p>
-                <p className="text-sm mt-2">Please contact your instructor</p>
-              </div>
-            </div>
-          )
         ) : (
           <div className="space-y-5">
-            {section.questions.map((q, idx) => {
+            {(section.type === "LISTENING" && examCategory === "IELTS"
+              ? section.questions
+                  .filter((q) => {
+                    // Filter questions by selected part
+                    if (listeningPart === 1) return q.order >= 1 && q.order <= 10;
+                    if (listeningPart === 2) return q.order >= 11 && q.order <= 20;
+                    if (listeningPart === 3) return q.order >= 21 && q.order <= 30;
+                    if (listeningPart === 4) return q.order >= 31 && q.order <= 40;
+                    return true;
+                  })
+                  .sort((a, b) => a.order - b.order) // Sort by order
+              : section.questions
+            ).map((q, idx) => {
               const value = sectionAnswers[q.id];
-              const baseQuestionNum = baseQuestionNumbers[idx] || 0;
+              // For IELTS Listening, use the actual question order number
+              let baseQuestionNum = 0;
+              if (section.type === "LISTENING" && examCategory === "IELTS") {
+                // Use actual order number directly (Q1 = 1, Q2 = 2, Q11 = 11, etc.)
+                // For display, we show the actual order number
+                baseQuestionNum = q.order;
+              } else {
+                baseQuestionNum = baseQuestionNumbers[idx] || 0;
+              }
 
               // DND_GAP special handling
               if (q.qtype === "DND_GAP" && q.prompt?.textWithBlanks) {
@@ -403,7 +285,7 @@ export const QuestionsArea = React.memo(function QuestionsArea({
                   value={value}
                   onChange={(v) => onAnswerChange(q.id, v)}
                   isLocked={isLocked}
-                  questionNumber={baseQuestionNum + 1}
+                  questionNumber={section.type === "LISTENING" && examCategory === "IELTS" ? baseQuestionNum : baseQuestionNum + 1}
                   renderQuestionComponent={renderQuestionComponent}
                 />
               );

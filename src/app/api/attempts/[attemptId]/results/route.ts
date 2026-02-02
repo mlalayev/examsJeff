@@ -56,46 +56,6 @@ function checkAnswerCorrectness(q: any, studentAnswer: any, answerKey: any): boo
       }
     }
     return false;
-  } else if (q.qtype === "FILL_IN_BLANK") {
-    // IELTS Fill in the Blank: { "0": "answer1", "1": "answer2", ... }
-    // answerKey format: { answers: [["alt1", "alt2"], ["alt3"], ...] }
-    const correctAnswers = answerKey?.answers || [];
-    
-    if (!studentAnswer || typeof studentAnswer !== "object") return false;
-    
-    // Check each blank
-    for (let i = 0; i < correctAnswers.length; i++) {
-      const studentAns = studentAnswer[String(i)];
-      if (!studentAns || typeof studentAns !== "string") return false;
-      
-      const alternatives = correctAnswers[i];
-      
-      // Handle both old format (string) and new format (array of strings)
-      const alternativesArray = Array.isArray(alternatives) ? alternatives : [alternatives];
-      
-      if (!Array.isArray(alternativesArray) || alternativesArray.length === 0) return false;
-      
-      // Normalize student answer (trim + lowercase)
-      const normalizedStudent = studentAns.trim().toLowerCase();
-      
-      // Check if student answer matches any alternative
-      const isMatch = alternativesArray.some((alt: string | string[]) => {
-        // Handle nested arrays (backward compatibility)
-        if (Array.isArray(alt)) {
-          return alt.some((a: string) => {
-            if (typeof a !== "string") return false;
-            return a.trim().toLowerCase() === normalizedStudent;
-          });
-        }
-        
-        if (typeof alt !== "string") return false;
-        return alt.trim().toLowerCase() === normalizedStudent;
-      });
-      
-      if (!isMatch) return false;
-    }
-    
-    return true;
   }
   return false;
 }
@@ -111,12 +71,8 @@ export async function GET(
   { params }: { params: Promise<{ attemptId: string }> }
 ) {
   try {
-    console.log('🔍 GET /api/attempts/[attemptId]/results called at', new Date().toLocaleTimeString());
-    
     const user = await requireAuth();
     const { attemptId } = await params;
-    
-    console.log('🔍 Fetching results for attempt:', attemptId, 'user:', user.email, 'role:', user.role);
 
     // Fetch attempt with exam details in a single query (optimized)
     const attempt = await prisma.attempt.findUnique({
@@ -270,13 +226,6 @@ export async function GET(
       // Structure: { sectionType: { questionId: answer } }
       const allStudentAnswers = (attempt.answers as any) || {};
       
-      console.log('🎯 TEACHER VIEW - Raw attempt.answers structure:', {
-        attemptId: attempt.id,
-        hasAnswers: !!attempt.answers,
-        answersKeys: Object.keys(allStudentAnswers),
-        fullAnswersPreview: JSON.stringify(allStudentAnswers).substring(0, 500),
-      });
-      
       // Process only parent sections (subsections will be included in their parents)
       const fullSections = parentSections.map((examSection: any) => {
         const attemptSection = attempt.sections.find(
@@ -294,50 +243,18 @@ export async function GET(
         // For JSON exams: answers are in allStudentAnswers[sectionType]
         // For DB exams: answers are in attemptSection.answers
         let studentAnswers: Record<string, any> = {};
-        
-        console.log(`🔍 Collecting answers for section ${examSection.type}:`, {
-          examSectionId: examSection.id,
-          examSectionType: examSection.type,
-          hasAttemptSection: !!attemptSection,
-          attemptSectionAnswers: attemptSection?.answers,
-          attemptSectionAnswersJSON: JSON.stringify(attemptSection?.answers || {}),
-          allStudentAnswersKeys: Object.keys(allStudentAnswers),
-          allStudentAnswersPreview: JSON.stringify(allStudentAnswers).substring(0, 1000),
-          subsectionsCount: sectionSubsections.length,
-          subsectionTypes: sectionSubsections.map((s: any) => s.type),
-        });
           
         if (attemptSection?.answers) {
           // DB exam: use attemptSection.answers
           studentAnswers = { ...(attemptSection.answers as Record<string, any>) };
-          console.log(`📦 DB exam - using attemptSection.answers:`, {
-            count: Object.keys(studentAnswers).length,
-            keys: Object.keys(studentAnswers),
-            sample: Object.entries(studentAnswers).slice(0, 3).map(([k, v]) => ({ key: k, value: v, type: typeof v }))
-          });
         } else {
           // JSON exam: collect from parent section and all subsections
           studentAnswers = { ...(allStudentAnswers[examSection.type] || {}) };
-          console.log(`📦 JSON exam - parent section ${examSection.type}:`, {
-            count: Object.keys(studentAnswers).length,
-            keys: Object.keys(studentAnswers),
-            sample: Object.entries(studentAnswers).slice(0, 3).map(([k, v]) => ({ key: k, value: v, type: typeof v }))
-          });
           
           // Also collect answers from subsections
           sectionSubsections.forEach((sub: any) => {
             const subAnswers = allStudentAnswers[sub.type] || {};
-            console.log(`📦 Adding subsection ${sub.type}:`, {
-              count: Object.keys(subAnswers).length,
-              keys: Object.keys(subAnswers),
-              sample: Object.entries(subAnswers).slice(0, 3).map(([k, v]) => ({ key: k, value: v, type: typeof v }))
-            });
             studentAnswers = { ...studentAnswers, ...subAnswers };
-          });
-          
-          console.log(`✅ Total collected answers:`, {
-            count: Object.keys(studentAnswers).length,
-            allKeys: Object.keys(studentAnswers)
           });
         }
         
@@ -348,20 +265,6 @@ export async function GET(
           const studentAnswer = studentAnswers[q.id];
           const answerKey = q.answerKey as any;
 
-          // Debug logging for all questions
-          if (q.qtype === "FILL_IN_BLANK") {
-            console.log(`📝 FILL_IN_BLANK Question ${q.id}:`, {
-              questionId: q.id,
-              hasStudentAnswer: !!studentAnswer,
-              studentAnswerRaw: studentAnswer,
-              studentAnswerType: typeof studentAnswer,
-              studentAnswerKeys: studentAnswer && typeof studentAnswer === 'object' ? Object.keys(studentAnswer) : [],
-              studentAnswerValues: studentAnswer && typeof studentAnswer === 'object' ? Object.values(studentAnswer) : [],
-              studentAnswerJSON: JSON.stringify(studentAnswer),
-              allAvailableAnswerKeys: Object.keys(studentAnswers).slice(0, 10), // First 10 keys
-              answerKeyFormat: answerKey,
-            });
-          }
 
           // Use optimized helper function for correctness check
           const isCorrect = checkAnswerCorrectness(q, studentAnswer, answerKey);
@@ -373,9 +276,13 @@ export async function GET(
             // For INLINE_SELECT, MCQ_SINGLE, SELECT: show text instead of index
             if (q.qtype === "INLINE_SELECT" || q.qtype === "MCQ_SINGLE" || q.qtype === "SELECT") {
               const choices = q.options?.choices || [];
-              if (typeof studentAnswer === "number" && choices[studentAnswer]) {
+              if (typeof studentAnswer === "number" && choices[studentAnswer] !== undefined) {
                 displayStudentAnswer = choices[studentAnswer];
+              } else if (typeof studentAnswer === "string") {
+                // Already a string (maybe from previous edit), keep it
+                displayStudentAnswer = studentAnswer;
               }
+              // For correct answer, convert to text
               if (typeof answerKey?.index === "number" && choices[answerKey.index]) {
                 displayCorrectAnswer = choices[answerKey.index];
               }
@@ -393,18 +300,6 @@ export async function GET(
             // For DND_GAP: show the blanks
             else if (q.qtype === "DND_GAP") {
               displayCorrectAnswer = answerKey?.blanks || [];
-            }
-            // For FILL_IN_BLANK: show the answers with alternatives
-            else if (q.qtype === "FILL_IN_BLANK") {
-              displayCorrectAnswer = answerKey?.answers || [];
-              // Keep student answer as is (it's already an object like { "0": "answer1", "1": "answer2" })
-              // But make sure it's not undefined/null
-              if (!displayStudentAnswer) {
-                console.log(`⚠️ FILL_IN_BLANK ${q.id} has no student answer!`, {
-                  studentAnswer,
-                  displayStudentAnswer,
-                });
-              }
             }
             // For GAP: show accepted answers
             else if (q.qtype === "GAP") {
@@ -494,21 +389,12 @@ export async function GET(
             total: totalCount,
             percentage: totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0,
             questions,
-            // IELTS Listening: Include part scores from rubric
-            listeningParts: attemptSection?.rubric?.listeningParts || undefined,
           };
         });
 
       const totalCorrect = fullSections.reduce((sum, s) => sum + s.correct, 0);
       const totalQuestions = fullSections.reduce((sum, s) => sum + s.total, 0);
       const totalPercentage = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
-
-      console.log('📊 Teacher view - sections:', fullSections.map(s => ({ 
-        type: s.type, 
-        questionsCount: s.questions?.length,
-        correct: s.correct,
-        total: s.total
-      })));
 
       return NextResponse.json({
         attemptId: attempt.id,

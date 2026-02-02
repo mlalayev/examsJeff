@@ -2,14 +2,9 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin, requireBranchAdminOrBoss } from "@/lib/auth-utils";
 import { z } from "zod";
-import { 
-  validateIELTSListeningUniqueness, 
-  sortIELTSSections,
-  IELTS_SECTION_ORDER 
-} from "@/lib/ielts-config";
 
 const questionSchema = z.object({
-  qtype: z.enum(["MCQ", "ORDER", "DND_MATCH", "TF", "MCQ_SINGLE", "MCQ_MULTI", "SELECT", "GAP", "ORDER_SENTENCE", "DND_GAP", "SHORT_TEXT", "ESSAY", "INLINE_SELECT", "FILL_IN_BLANK"]),
+  qtype: z.enum(["MCQ", "ORDER", "DND_MATCH", "TF", "MCQ_SINGLE", "MCQ_MULTI", "SELECT", "GAP", "ORDER_SENTENCE", "DND_GAP", "SHORT_TEXT", "ESSAY", "INLINE_SELECT"]),
   order: z.number(),
   prompt: z.any(),
   options: z.any().optional(),

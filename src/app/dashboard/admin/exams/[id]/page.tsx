@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, BookOpen, Clock, FileText, Edit, Trash2, CheckCircle, XCircle } from "lucide-react";
-import IELTSAudioPlayer from "@/components/audio/IELTSAudioPlayer";
+import AudioPlayer from "@/components/audio/AudioPlayer";
 
 interface ExamSection {
   id: string;
@@ -391,9 +391,8 @@ export default function AdminExamDetailPage() {
                     {instructionData.audio && (
                       <div className="mt-3">
                         <p className="text-xs font-medium text-gray-700 mb-2">🎧 Audio Preview (Teacher Mode):</p>
-                        <IELTSAudioPlayer 
+                        <AudioPlayer 
                           src={instructionData.audio}
-                          allowFullControls={true}
                           className="max-w-2xl"
                         />
                       </div>
