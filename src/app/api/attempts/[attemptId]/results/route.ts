@@ -266,6 +266,13 @@ export async function GET(
       // Structure: { sectionType: { questionId: answer } }
       const allStudentAnswers = (attempt.answers as any) || {};
       
+      console.log('🎯 TEACHER VIEW - Raw attempt.answers structure:', {
+        attemptId: attempt.id,
+        hasAnswers: !!attempt.answers,
+        answersKeys: Object.keys(allStudentAnswers),
+        fullAnswersPreview: JSON.stringify(allStudentAnswers).substring(0, 500),
+      });
+      
       // Process only parent sections (subsections will be included in their parents)
       const fullSections = parentSections.map((examSection: any) => {
         const attemptSection = attempt.sections.find(
@@ -284,18 +291,33 @@ export async function GET(
         // For DB exams: answers are in attemptSection.answers
         let studentAnswers: Record<string, any> = {};
         
+        console.log(`🔍 Collecting answers for section ${examSection.type}:`, {
+          examSectionId: examSection.id,
+          examSectionType: examSection.type,
+          hasAttemptSection: !!attemptSection,
+          attemptSectionAnswers: attemptSection?.answers,
+          allStudentAnswersKeys: Object.keys(allStudentAnswers),
+          subsectionsCount: sectionSubsections.length,
+          subsectionTypes: sectionSubsections.map((s: any) => s.type),
+        });
+          
         if (attemptSection?.answers) {
           // DB exam: use attemptSection.answers
           studentAnswers = { ...(attemptSection.answers as Record<string, any>) };
+          console.log(`📦 DB exam - using attemptSection.answers:`, Object.keys(studentAnswers));
         } else {
           // JSON exam: collect from parent section and all subsections
           studentAnswers = { ...(allStudentAnswers[examSection.type] || {}) };
+          console.log(`📦 JSON exam - parent section ${examSection.type}:`, Object.keys(studentAnswers));
           
           // Also collect answers from subsections
           sectionSubsections.forEach((sub: any) => {
             const subAnswers = allStudentAnswers[sub.type] || {};
+            console.log(`📦 Adding subsection ${sub.type} with ${Object.keys(subAnswers).length} answers:`, Object.keys(subAnswers));
             studentAnswers = { ...studentAnswers, ...subAnswers };
           });
+          
+          console.log(`✅ Total collected answers:`, Object.keys(studentAnswers).length);
         }
         
         // Sort by order
@@ -304,6 +326,19 @@ export async function GET(
         const questions = allQuestions.map((q: any) => {
           const studentAnswer = studentAnswers[q.id];
           const answerKey = q.answerKey as any;
+
+          // Debug logging for all questions
+          if (q.qtype === "FILL_IN_BLANK") {
+            console.log(`📝 FILL_IN_BLANK Question ${q.id}:`, {
+              questionId: q.id,
+              hasStudentAnswer: !!studentAnswer,
+              studentAnswerRaw: studentAnswer,
+              studentAnswerType: typeof studentAnswer,
+              studentAnswerKeys: studentAnswer ? Object.keys(studentAnswer) : [],
+              allAvailableAnswerKeys: Object.keys(studentAnswers).slice(0, 5), // First 5 keys
+              answerKeyFormat: answerKey,
+            });
+          }
 
           // Use optimized helper function for correctness check
           const isCorrect = checkAnswerCorrectness(q, studentAnswer, answerKey);
@@ -340,6 +375,13 @@ export async function GET(
             else if (q.qtype === "FILL_IN_BLANK") {
               displayCorrectAnswer = answerKey?.answers || [];
               // Keep student answer as is (it's already an object like { "0": "answer1", "1": "answer2" })
+              // But make sure it's not undefined/null
+              if (!displayStudentAnswer) {
+                console.log(`⚠️ FILL_IN_BLANK ${q.id} has no student answer!`, {
+                  studentAnswer,
+                  displayStudentAnswer,
+                });
+              }
             }
             // For GAP: show accepted answers
             else if (q.qtype === "GAP") {

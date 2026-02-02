@@ -80,6 +80,22 @@ export default function AttemptResultsPage() {
         questionsCount: s.questions?.length,
         questions: s.questions 
       })));
+      
+      // Debug FILL_IN_BLANK questions specifically
+      json.sections?.forEach((section: any) => {
+        section.questions?.forEach((q: any) => {
+          if (q.qtype === "FILL_IN_BLANK") {
+            console.log('🔍 FILL_IN_BLANK in frontend:', {
+              questionId: q.id,
+              studentAnswer: q.studentAnswer,
+              studentAnswerType: typeof q.studentAnswer,
+              correctAnswer: q.correctAnswer,
+              isCorrect: q.isCorrect,
+            });
+          }
+        });
+      });
+      
       setData(json);
     } catch (err: any) {
       console.error(err);
@@ -156,7 +172,21 @@ export default function AttemptResultsPage() {
   };
 
   const formatAnswer = (qtype: string, answer: any, options: any): string => {
-    if (!answer && answer !== 0 && answer !== false) return "No answer";
+    // Debug logging
+    if (qtype === "FILL_IN_BLANK") {
+      console.log('🎨 formatAnswer called for FILL_IN_BLANK:', {
+        answer,
+        answerType: typeof answer,
+        answerKeys: answer && typeof answer === 'object' ? Object.keys(answer) : [],
+        isNull: answer === null,
+        isUndefined: answer === undefined,
+      });
+    }
+    
+    if (!answer && answer !== 0 && answer !== false) {
+      console.log(`⚠️ No answer detected for ${qtype}`);
+      return "No answer";
+    }
 
     switch (qtype) {
       case "TF":

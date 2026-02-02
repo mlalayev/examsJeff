@@ -57,6 +57,14 @@ export async function POST(
       // Structure: { sectionType1: { q1: answer1, q2: answer2 }, sectionType2: { q3: answer3 } }
       const currentAnswers = (attempt.answers as any) || {};
       
+      console.log('🔄 BEFORE UPDATE:', {
+        attemptId,
+        sectionType,
+        questionId,
+        currentAnswersForSection: currentAnswers[sectionType],
+        newAnswer: answer,
+      });
+      
       const updatedAnswers = {
         ...currentAnswers,
         [sectionType]: {
@@ -70,7 +78,13 @@ export async function POST(
         data: { answers: updatedAnswers },
       });
 
-      console.log('Updated JSON exam answer:', { attemptId, sectionType, questionId, answer });
+      console.log('✅ AFTER UPDATE - Updated JSON exam answer:', { 
+        attemptId, 
+        sectionType, 
+        questionId, 
+        answer,
+        updatedSectionAnswers: updatedAnswers[sectionType]
+      });
     } else {
       // For DB exams, update attempt_section.answers
       const attemptSection = attempt.sections.find((s) => s.type === sectionType);
