@@ -71,29 +71,33 @@ export default function AttemptResultsPage() {
 
   const fetchResults = async () => {
     try {
-      const res = await fetch(`/api/attempts/${attemptId}/results`);
+      // Add timestamp to prevent caching
+      const timestamp = new Date().getTime();
+      const res = await fetch(`/api/attempts/${attemptId}/results?t=${timestamp}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+      });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to load results");
-      console.log('📊 Results data:', json);
+      
+      console.log('📊 Results data fetched at', new Date().toLocaleTimeString(), ':', json);
       console.log('📊 Sections:', json.sections?.map((s: any) => ({ 
         type: s.type, 
         questionsCount: s.questions?.length,
         questions: s.questions 
       })));
       
-      // Debug FILL_IN_BLANK questions specifically
+      // Debug ALL questions to see which ones have answers
       json.sections?.forEach((section: any) => {
-        section.questions?.forEach((q: any) => {
-          if (q.qtype === "FILL_IN_BLANK") {
-            console.log('🔍 FILL_IN_BLANK in frontend:', {
-              questionId: q.id,
-              studentAnswer: q.studentAnswer,
-              studentAnswerType: typeof q.studentAnswer,
-              correctAnswer: q.correctAnswer,
-              isCorrect: q.isCorrect,
-            });
-          }
-        });
+        console.log(`📋 Section ${section.type} questions:`, section.questions?.map((q: any) => ({
+          id: q.id,
+          qtype: q.qtype,
+          hasAnswer: !!q.studentAnswer,
+          answer: q.studentAnswer,
+          answerType: typeof q.studentAnswer,
+        })));
       });
       
       setData(json);
@@ -142,6 +146,14 @@ export default function AttemptResultsPage() {
     try {
       const newAnswer = editedAnswers[questionId];
       
+      console.log('💾 Saving answer:', {
+        questionId,
+        qtype,
+        sectionType: selectedSection.type,
+        newAnswer,
+        newAnswerType: typeof newAnswer,
+      });
+      
       const res = await fetch(`/api/attempts/${attemptId}/update-answer`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -152,19 +164,25 @@ export default function AttemptResultsPage() {
         }),
       });
       
+      const responseData = await res.json();
+      console.log('💾 Save response:', responseData);
+      
       if (!res.ok) {
-        const json = await res.json();
-        throw new Error(json.error || 'Failed to update answer');
+        throw new Error(responseData.error || 'Failed to update answer');
       }
       
-      // Refresh results
+      // Refresh results with cache busting
+      console.log('🔄 Refreshing results after save...');
       await fetchResults();
+      
+      // Force update the UI by closing edit mode
       setEditingQuestion(null);
       setEditedAnswers({});
       
+      console.log('✅ Answer saved and results refreshed');
       alert('Answer updated successfully!');
     } catch (err: any) {
-      console.error(err);
+      console.error('❌ Error saving answer:', err);
       alert(err.message || 'Failed to update answer');
     } finally {
       setSaving(false);

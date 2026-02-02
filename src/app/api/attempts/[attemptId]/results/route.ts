@@ -111,8 +111,12 @@ export async function GET(
   { params }: { params: Promise<{ attemptId: string }> }
 ) {
   try {
+    console.log('🔍 GET /api/attempts/[attemptId]/results called at', new Date().toLocaleTimeString());
+    
     const user = await requireAuth();
     const { attemptId } = await params;
+    
+    console.log('🔍 Fetching results for attempt:', attemptId, 'user:', user.email, 'role:', user.role);
 
     // Fetch attempt with exam details in a single query (optimized)
     const attempt = await prisma.attempt.findUnique({
