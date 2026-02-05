@@ -9,7 +9,8 @@ export type QuestionType =
   | "DND_GAP" 
   | "SHORT_TEXT" 
   | "ESSAY"
-  | "INLINE_SELECT";
+  | "INLINE_SELECT"
+  | "FILL_IN_BLANK";
 
 export interface Section {
   id: string;
@@ -27,6 +28,9 @@ export interface Section {
   subsections?: Section[];
   isSubsection?: boolean;
   parentId?: string;
+  parentSectionId?: string; // For API submission (subsections)
+  parentTitle?: string; // Temporary reference for server to match parent
+  parentOrder?: number; // Temporary reference for server to match parent
 }
 
 export interface Question {

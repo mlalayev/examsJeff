@@ -6,97 +6,21 @@ import { ArrowLeft, Plus, X, BookOpen, Save, Edit, Info, Image, Volume2 } from "
 import TextFormattingPreview from "@/components/TextFormattingPreview";
 import QuestionPreview from "@/components/QuestionPreview";
 import ImageUpload from "@/components/ImageUpload";
-type ExamCategory = "TOEFL" | "SAT" | "GENERAL_ENGLISH" | "MATH" | "KIDS";
-type SectionType = "READING" | "LISTENING" | "WRITING" | "SPEAKING" | "GRAMMAR" | "VOCABULARY";
-type QuestionType = 
-  | "MCQ_SINGLE" 
-  | "MCQ_MULTI" 
-  | "TF" 
-  | "TF_NG"
-  | "ORDER_SENTENCE" 
-  | "DND_GAP" 
-  | "SHORT_TEXT" 
-  | "ESSAY"
-  | "INLINE_SELECT"
-  | "FILL_IN_BLANK";
+import type { ExamCategory, SectionType, QuestionType, Section, Question } from "@/components/admin/exams/create/types";
+import { 
+  ALLOWED_SECTIONS_BY_CATEGORY, 
+  getSectionLabel,
+  QUESTION_TYPE_LABELS,
+  QUESTION_TYPE_GROUPS,
+  IELTS_SECTION_DURATIONS,
+  IELTS_SECTION_ORDER,
+  sortIELTSSections,
+  getIELTSSectionDuration,
+  validateIELTSListeningUniqueness,
+} from "@/components/admin/exams/create/constants";
+import { getDefaultPrompt, getDefaultOptions, getDefaultAnswerKey } from "@/components/admin/exams/create/questionHelpers";
 
-interface Section {
-  id: string;
-  type: SectionType;
-  title: string;
-  instruction: string;
-  durationMin: number;
-  order: number;
-  questions: Question[];
-  passage?: string;
-  audio?: string;
-  image?: string; // Section image (for IELTS Listening parts)
-  introduction?: string; // Section introduction (for IELTS Listening parts)
-  subsections?: Section[]; // IELTS Listening subsections (Part 1-4)
-  isSubsection?: boolean; // Bu subsection-dır?
-  parentId?: string; // Parent section ID (for subsections)
-}
-
-interface Question {
-  id: string;
-  qtype: QuestionType;
-  order: number;
-  prompt: any;
-  options?: any;
-  answerKey: any;
-  maxScore: number;
-  explanation?: any;
-  image?: string;
-}
-
-const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
-  MCQ_SINGLE: "Multiple Choice (Single)",
-  MCQ_MULTI: "Multiple Choice (Multiple)",
-  TF: "True/False",
-  TF_NG: "True / False / Not Given",
-  INLINE_SELECT: "Inline Select",
-  ORDER_SENTENCE: "Order Sentence (Drag & Drop)",
-  DND_GAP: "Drag and Drop Gap Fill",
-  SHORT_TEXT: "Short Text Answer",
-  ESSAY: "Essay",
-};
-
-const QUESTION_TYPE_GROUPS = {
-  "Variantlı sual": ["MCQ_SINGLE", "MCQ_MULTI", "TF", "TF_NG", "INLINE_SELECT"],
-  "Açıq sual": ["SHORT_TEXT", "ESSAY"],
-  "Drag and Drop": ["ORDER_SENTENCE", "DND_GAP"],
-};
-
-const ALLOWED_SECTIONS_BY_CATEGORY: Record<ExamCategory, SectionType[]> = {
-  TOEFL: ["READING", "LISTENING", "WRITING", "SPEAKING"],
-  SAT: ["READING", "WRITING"],
-  GENERAL_ENGLISH: ["READING", "LISTENING", "WRITING", "GRAMMAR", "VOCABULARY"],
-  MATH: ["GRAMMAR", "VOCABULARY"],
-  KIDS: ["READING", "LISTENING", "GRAMMAR", "VOCABULARY"],
-};
-
-const SECTION_TYPE_LABELS: Record<SectionType, string> = {
-  READING: "Reading",
-  LISTENING: "Listening",
-  WRITING: "Writing",
-  SPEAKING: "Speaking",
-  GRAMMAR: "Grammar",
-  VOCABULARY: "Vocabulary",
-};
-
-// SAT üçün xüsusi label-lər:
-// - READING -> Verbal
-// - WRITING -> Math
-const getSectionLabel = (
-  type: SectionType,
-  selectedCategory: ExamCategory | null
-): string => {
-  if (selectedCategory === "SAT") {
-    if (type === "READING") return "Verbal";
-    if (type === "WRITING") return "Math";
-  }
-  return SECTION_TYPE_LABELS[type];
-};
+// Types and constants are now imported from shared files
 
 // SAT üçün avtomatik section adı yaratmaq
 const getSATSectionTitle = (
@@ -195,6 +119,7 @@ export default function EditExamPage() {
             passage: instructionData.passage || "",
             audio: instructionData.audio || "",
             image: s.image || instructionData.image || null,
+            image2: s.image2 || instructionData.image2 || null,
             introduction: instructionData.introduction || null,
             questions: s.questions.map((q: any) => ({
               id: q.id,
@@ -332,7 +257,7 @@ export default function EditExamPage() {
     if (selectedCategory === "SAT") {
       defaultDuration = type === "WRITING" ? 35 : 32;
     } else if (selectedCategory === "IELTS") {
-      defaultDuration = getIELTSSectionDuration(type as any) || 15;
+      defaultDuration = getIELTSSectionDuration(type) || 15;
     }
     
     const newSection: Section = {

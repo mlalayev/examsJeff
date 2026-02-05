@@ -2,167 +2,23 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Plus, X, BookOpen, Save, Edit, Info, Image, Volume2, Headphones, PenTool, Mic } from "lucide-react";
+import { ArrowLeft, Save, X, BookOpen, Plus, Edit, Info, Image, Volume2 } from "lucide-react";
 import TextFormattingPreview from "@/components/TextFormattingPreview";
 import QuestionPreview from "@/components/QuestionPreview";
 import ImageUpload from "@/components/ImageUpload";
-type ExamCategory = "IELTS" | "TOEFL" | "SAT" | "GENERAL_ENGLISH" | "MATH" | "KIDS";
-type SectionType = "READING" | "LISTENING" | "WRITING" | "SPEAKING" | "GRAMMAR" | "VOCABULARY";
-type QuestionType = 
-  | "MCQ_SINGLE" 
-  | "MCQ_MULTI" 
-  | "TF" 
-  | "TF_NG"
-  | "ORDER_SENTENCE" 
-  | "DND_GAP" 
-  | "SHORT_TEXT" 
-  | "ESSAY"
-  | "INLINE_SELECT";
-
-interface Section {
-  id: string;
-  type: SectionType;
-  title: string;
-  instruction: string;
-  durationMin: number;
-  order: number;
-  questions: Question[];
-  passage?: string; // Reading section üçün
-  audio?: string; // Listening section üçün (MP3 file path)
-  image?: string; // First image (for IELTS Listening parts)
-  image2?: string; // Second image (for IELTS Listening parts)
-  introduction?: string; // Section introduction text (for IELTS Listening parts)
-  subsections?: Section[]; // IELTS Listening subsections (Part 1-4)
-  isSubsection?: boolean; // Bu subsection-dır?
-  parentId?: string; // Parent section ID (for subsections)
-}
-
-interface Question {
-  id: string;
-  qtype: QuestionType;
-  order: number;
-  prompt: any;
-  options?: any;
-  answerKey: any;
-  maxScore: number;
-  explanation?: any;
-  image?: string; // SAT və MATH üçün şəkil (file path)
-}
-
-const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
-  MCQ_SINGLE: "Multiple Choice (Single)",
-  MCQ_MULTI: "Multiple Choice (Multiple)",
-  TF: "True/False",
-  TF_NG: "True / False / Not Given",
-  INLINE_SELECT: "Inline Select",
-  ORDER_SENTENCE: "Order Sentence (Drag & Drop)",
-  DND_GAP: "Drag & Drop Gap Fill",
-  SHORT_TEXT: "Short Text Answer",
-  ESSAY: "Essay",
-};
-
-const QUESTION_TYPE_GROUPS = {
-  "Variantlı sual": ["MCQ_SINGLE", "MCQ_MULTI", "TF", "TF_NG", "INLINE_SELECT"],
-  "Açıq sual": ["SHORT_TEXT", "ESSAY"],
-  "Drag and Drop": ["ORDER_SENTENCE", "DND_GAP"],
-};
-
-// IELTS sections-i düzgün ardıcıllıqla sort edən helper
-// 1) LISTENING
-// 2) READING
-// 3) WRITING
-// 4) SPEAKING
-const sortIELTSSections = (sections: Section[]): Section[] => {
-  const order: Record<SectionType, number> = {
-    LISTENING: 1,
-    READING: 2,
-    WRITING: 3,
-    SPEAKING: 4,
-    GRAMMAR: 5,
-    VOCABULARY: 6,
-  };
-
-  return [...sections].sort((a, b) => {
-    const aOrder = order[a.type] ?? 99;
-    const bOrder = order[b.type] ?? 99;
-    if (aOrder !== bOrder) return aOrder - bOrder;
-    return a.order - b.order;
-  });
-};
-
-// Category-ə görə icazə verilən section tipləri
-const ALLOWED_SECTIONS_BY_CATEGORY: Record<ExamCategory, SectionType[]> = {
-  IELTS: ["READING", "LISTENING", "WRITING", "SPEAKING"],
-  TOEFL: ["READING", "LISTENING", "WRITING", "SPEAKING"],
-  SAT: ["READING", "WRITING"], // SAT-də LISTENING və SPEAKING yoxdur
-  GENERAL_ENGLISH: ["READING", "LISTENING", "WRITING", "GRAMMAR", "VOCABULARY"], // SPEAKING yoxdur
-  MATH: ["GRAMMAR", "VOCABULARY"], // MATH üçün READING, LISTENING, WRITING, SPEAKING yoxdur
-  KIDS: ["READING", "LISTENING", "GRAMMAR", "VOCABULARY"], // KIDS üçün WRITING və SPEAKING yoxdur
-};
-
-// Section type label-ləri (default)
-const SECTION_TYPE_LABELS: Record<SectionType, string> = {
-  READING: "Reading",
-  LISTENING: "Listening",
-  WRITING: "Writing",
-  SPEAKING: "Speaking",
-  GRAMMAR: "Grammar",
-  VOCABULARY: "Vocabulary",
-};
-
-// SAT üçün xüsusi label-lər:
-// - READING -> Verbal
-// - WRITING -> Math
-const getSectionLabel = (
-  type: SectionType,
-  selectedCategory: ExamCategory | null
-): string => {
-  if (selectedCategory === "SAT") {
-    if (type === "READING") return "Verbal";
-    if (type === "WRITING") return "Math";
-  }
-  return SECTION_TYPE_LABELS[type];
-};
-
-// IELTS section-ları üçün rəng sxemləri
-const IELTS_SECTION_COLORS: Record<SectionType, { border: string; bg: string; iconBg: string }> = {
-  LISTENING: { border: "#3B82F6", bg: "#EFF6FF", iconBg: "#3B82F6" }, // Blue
-  READING: { border: "#10B981", bg: "#ECFDF5", iconBg: "#10B981" }, // Green
-  WRITING: { border: "#F59E0B", bg: "#FFFBEB", iconBg: "#F59E0B" }, // Amber
-  SPEAKING: { border: "#EF4444", bg: "#FEF2F2", iconBg: "#EF4444" }, // Red
-  GRAMMAR: { border: "#8B5CF6", bg: "#F5F3FF", iconBg: "#8B5CF6" }, // Purple
-  VOCABULARY: { border: "#EC4899", bg: "#FDF2F8", iconBg: "#EC4899" }, // Pink
-};
-
-// IELTS section-ları üçün icon-lar
-const IELTS_SECTION_ICONS: Record<SectionType, typeof Headphones> = {
-  LISTENING: Headphones,
-  READING: BookOpen,
-  WRITING: PenTool,
-  SPEAKING: Mic,
-  GRAMMAR: BookOpen,
-  VOCABULARY: BookOpen,
-};
-
-// IELTS section-ları üçün default duration-lar (dəqiqə)
-const IELTS_SECTION_DURATIONS: Record<SectionType, number> = {
-  LISTENING: 30,
-  READING: 60,
-  WRITING: 60,
-  SPEAKING: 11,
-  GRAMMAR: 15,
-  VOCABULARY: 15,
-};
-
-// IELTS section-ları üçün default instruction-lar
-const IELTS_SECTION_INSTRUCTIONS: Record<SectionType, string> = {
-  LISTENING: "You will hear a number of different recordings and you will have to answer questions on what you hear. There will be time for you to read the instructions and questions and you will have a chance to check your work. All the recordings will be played ONCE only.",
-  READING: "You should spend about 20 minutes on each of the three reading passages. The test contains 40 questions. Each question carries one mark.",
-  WRITING: "You should spend about 20 minutes on Task 1 and 40 minutes on Task 2. You must write at least 150 words for Task 1 and 250 words for Task 2.",
-  SPEAKING: "The Speaking test consists of three parts. The test takes between 11 and 14 minutes. You will speak to a certified IELTS examiner.",
-  GRAMMAR: "Complete the grammar section",
-  VOCABULARY: "Complete the vocabulary section",
-};
+import CategorySelector from "@/components/admin/exams/create/CategorySelector";
+import ExamInfoForm from "@/components/admin/exams/create/ExamInfoForm";
+import SectionsList from "@/components/admin/exams/create/SectionsList";
+import QuestionTypeModal from "@/components/admin/exams/create/QuestionTypeModal";
+import type { ExamCategory, SectionType, QuestionType, Section, Question } from "@/components/admin/exams/create/types";
+import { 
+  ALLOWED_SECTIONS_BY_CATEGORY, 
+  IELTS_SECTION_INSTRUCTIONS, 
+  IELTS_SECTION_DURATIONS,
+  getSectionLabel,
+  QUESTION_TYPE_LABELS
+} from "@/components/admin/exams/create/constants";
+import { getDefaultPrompt, getDefaultOptions, getDefaultAnswerKey } from "@/components/admin/exams/create/questionHelpers";
 
 export default function CreateExamPage() {
   const router = useRouter();
@@ -194,19 +50,14 @@ export default function CreateExamPage() {
 
   const categories: ExamCategory[] = ["IELTS", "TOEFL", "SAT", "GENERAL_ENGLISH", "MATH", "KIDS"];
 
-  // Seçilmiş category üçün icazə verilən section tipləri
-  const allowedSectionTypes = selectedCategory 
-    ? ALLOWED_SECTIONS_BY_CATEGORY[selectedCategory] 
-    : [];
-
   const handleCategorySelect = (category: ExamCategory) => {
     setSelectedCategory(category);
-    
+
     // Category dəyişəndə, əgər artıq section-lar varsa və onlar yeni category-ə uyğun deyilsə, təmizlə
     const allowedTypes = ALLOWED_SECTIONS_BY_CATEGORY[category];
     const currentSections = sections || []; // Guard against undefined
-    const hasInvalidSections = currentSections.some(section => !allowedTypes.includes(section.type));
-    
+    const hasInvalidSections = currentSections.some((section: Section) => !allowedTypes.includes(section.type));
+
     if (hasInvalidSections) {
       if (confirm("Changing category will remove sections that are not allowed for this exam type. Continue?")) {
         setSections([]);
@@ -268,7 +119,7 @@ export default function CreateExamPage() {
       alert("Please select an exam category first");
       return;
     }
-    
+
     const allowedTypes = ALLOWED_SECTIONS_BY_CATEGORY[selectedCategory];
     if (!allowedTypes.includes(type)) {
       alert(`This section type is not allowed for ${selectedCategory} exams`);
@@ -276,7 +127,7 @@ export default function CreateExamPage() {
     }
 
     const currentSections = sections || []; // Guard against undefined
-    
+
     const label = getSectionLabel(type, selectedCategory);
 
     const defaultDuration = 15;
@@ -293,9 +144,9 @@ export default function CreateExamPage() {
       audio: type === "LISTENING" ? undefined : undefined,
     };
 
-      setSections([...currentSections, newSection]);
-      setCurrentSection(newSection);
-      setStep("questions");
+    setSections([...currentSections, newSection]);
+    setCurrentSection(newSection);
+    setStep("questions");
   };
 
   const addQuestion = (qtype: QuestionType) => {
@@ -336,17 +187,17 @@ export default function CreateExamPage() {
       delete (questionToSave.prompt as any).rawText;
     }
 
-    const updatedSections = sections.map((s) => {
+    const updatedSections = sections.map((s: Section) => {
       // If current section is a subsection, update inside parent
-      if (currentSection.isSubsection && s.subsections) {
+      if (currentSection?.isSubsection && s.subsections) {
         return {
           ...s,
-          subsections: s.subsections.map(sub =>
+          subsections: s.subsections.map((sub: Section) =>
             sub.id === currentSection.id
               ? {
                   ...sub,
-                  questions: editingQuestion.id.startsWith("q-") && sub.questions.find((q) => q.id === editingQuestion.id)
-                    ? sub.questions.map((q) => (q.id === editingQuestion.id ? questionToSave : q))
+                  questions: editingQuestion.id.startsWith("q-") && sub.questions.find((q: Question) => q.id === editingQuestion.id)
+                    ? sub.questions.map((q: Question) => (q.id === editingQuestion.id ? questionToSave : q))
                     : [...sub.questions, questionToSave],
                 }
               : sub
@@ -354,23 +205,24 @@ export default function CreateExamPage() {
         };
       }
       // Regular section
-      return s.id === currentSection.id
+      return s.id === currentSection?.id
         ? {
-            ...s,
-            questions: editingQuestion.id.startsWith("q-") && s.questions.find((q) => q.id === editingQuestion.id)
-              ? s.questions.map((q) => (q.id === editingQuestion.id ? questionToSave : q))
-              : [...s.questions, questionToSave],
-          }
+          ...s,
+          questions: editingQuestion.id.startsWith("q-") && s.questions.find((q: Question) => q.id === editingQuestion.id)
+            ? s.questions.map((q: Question) => (q.id === editingQuestion.id ? questionToSave : q))
+            : [...s.questions, questionToSave],
+        }
         : s;
     });
     setSections(updatedSections);
-    
+
     // Update currentSection
     const findCurrentSection = (sections: Section[]): Section | null => {
+      if (!currentSection) return null;
       for (const s of sections) {
         if (s.id === currentSection.id) return s;
         if (s.subsections) {
-          const found = s.subsections.find(sub => sub.id === currentSection.id);
+          const found = s.subsections.find((sub: Section) => sub.id === currentSection.id);
           if (found) return found;
         }
       }
@@ -394,31 +246,32 @@ export default function CreateExamPage() {
 
   const deleteQuestion = (questionId: string) => {
     if (!currentSection) return;
-    const updatedSections = sections.map((s) => {
+    const updatedSections = sections.map((s: Section) => {
       // If current section is a subsection
-      if (currentSection.isSubsection && s.subsections) {
+      if (currentSection?.isSubsection && s.subsections) {
         return {
           ...s,
-          subsections: s.subsections.map(sub =>
+          subsections: s.subsections.map((sub: Section) =>
             sub.id === currentSection.id
-              ? { ...sub, questions: sub.questions.filter((q) => q.id !== questionId) }
+              ? { ...sub, questions: sub.questions.filter((q: Question) => q.id !== questionId) }
               : sub
           ),
         };
       }
       // Regular section
-      return s.id === currentSection.id
-        ? { ...s, questions: s.questions.filter((q) => q.id !== questionId) }
+      return s.id === currentSection?.id
+        ? { ...s, questions: s.questions.filter((q: Question) => q.id !== questionId) }
         : s;
     });
     setSections(updatedSections);
-    
+
     // Update currentSection
     const findCurrentSection = (sections: Section[]): Section | null => {
+      if (!currentSection) return null;
       for (const s of sections) {
         if (s.id === currentSection.id) return s;
         if (s.subsections) {
-          const found = s.subsections.find(sub => sub.id === currentSection.id);
+          const found = s.subsections.find((sub: Section) => sub.id === currentSection.id);
           if (found) return found;
         }
       }
@@ -429,7 +282,7 @@ export default function CreateExamPage() {
 
   const deleteSection = (sectionId: string) => {
     if (confirm("Are you sure you want to delete this section? All questions in this section will be deleted.")) {
-      const updatedSections = sections.filter((s) => s.id !== sectionId);
+      const updatedSections = sections.filter((s: Section) => s.id !== sectionId);
       setSections(updatedSections);
       if (currentSection?.id === sectionId) {
         setCurrentSection(null);
@@ -439,7 +292,7 @@ export default function CreateExamPage() {
   };
 
   const addSubsection = (parentSectionId: string) => {
-    const parentSection = sections.find(s => s.id === parentSectionId);
+    const parentSection = sections.find((s: Section) => s.id === parentSectionId);
     if (!parentSection) return;
 
     const currentSubsections = parentSection.subsections || [];
@@ -460,7 +313,7 @@ export default function CreateExamPage() {
       parentId: parentSectionId,
     };
 
-    const updatedSections = sections.map(s => {
+    const updatedSections = sections.map((s: Section) => {
       if (s.id === parentSectionId) {
         return {
           ...s,
@@ -473,67 +326,6 @@ export default function CreateExamPage() {
     setSections(updatedSections);
   };
 
-  const getDefaultPrompt = (qtype: QuestionType): any => {
-    switch (qtype) {
-      case "TF":
-        return { text: "Enter the statement here" };
-      case "TF_NG":
-        return { text: "Enter the statement here" };
-      case "MCQ_SINGLE":
-      case "MCQ_MULTI":
-        return { text: "Enter the question here" };
-      case "INLINE_SELECT":
-        return { text: "Enter the question here" };
-      case "ORDER_SENTENCE":
-        return { tokens: ["token1", "token2", "token3"] };
-      case "DND_GAP":
-        return { textWithBlanks: "Enter text with blanks (use ___ for blanks)" };
-      case "SHORT_TEXT":
-        return { text: "Enter the question here" };
-      case "ESSAY":
-        return { text: "Write an essay about..." };
-      default:
-        return { text: "" };
-    }
-  };
-
-  const getDefaultOptions = (qtype: QuestionType): any => {
-    switch (qtype) {
-      case "MCQ_SINGLE":
-      case "MCQ_MULTI":
-        return { choices: ["Option 1", "Option 2", "Option 3", "Option 4"] };
-      case "INLINE_SELECT":
-        return { choices: ["Option 1", "Option 2", "Option 3"] };
-      case "DND_GAP":
-        return { bank: [] }; // Will be auto-generated from answers
-      default:
-        return undefined;
-    }
-  };
-
-  const getDefaultAnswerKey = (qtype: QuestionType): any => {
-    switch (qtype) {
-      case "TF":
-        return { value: true };
-      case "TF_NG":
-        return { value: "TRUE" }; // TRUE | FALSE | NOT_GIVEN
-      case "MCQ_SINGLE":
-      case "INLINE_SELECT":
-        return { index: 0 };
-      case "MCQ_MULTI":
-        return { indices: [0, 1] };
-      case "ORDER_SENTENCE":
-        return { order: [] };
-      case "DND_GAP":
-        return { blanks: ["word1", "word2"] };
-      case "SHORT_TEXT":
-        return { answers: ["answer1"] }; // Multiple possible correct answers
-      case "ESSAY":
-        return null; // No auto-grading for essays
-      default:
-        return {};
-    }
-  };
 
   const saveExam = async () => {
     if (!selectedCategory || !examTitle.trim() || sections.length === 0) {
@@ -576,7 +368,7 @@ export default function CreateExamPage() {
           readingType: null,
           writingType: null,
           durationMin: durationMin || null, // Optional timer
-          sections: flattenedSections.map((s, index) => {
+          sections: flattenedSections.map((s: Section, index: number) => {
             // Combine instruction, passage, audio, introduction, image, image2 into instruction JSON
             const instructionData: any = {
               text: s.instruction,
@@ -596,7 +388,7 @@ export default function CreateExamPage() {
             if (s.image2) {
               instructionData.image2 = s.image2;
             }
-            
+
             // Auto-set duration based on category
             let sectionDurationMin = s.durationMin;
             if (selectedCategory === "SAT") {
@@ -608,7 +400,7 @@ export default function CreateExamPage() {
                 sectionDurationMin = 32;
               }
             }
-            
+
             return {
               type: s.type,
               title: s.title,
@@ -620,16 +412,16 @@ export default function CreateExamPage() {
               parentOrder: s.parentOrder !== undefined ? s.parentOrder : null, // Temporary reference
               durationMin: sectionDurationMin,
               order: index,
-              questions: (s.questions || []).map((q) => ({
-              qtype: q.qtype,
-              order: q.order,
-              prompt: q.prompt,
-              options: q.options,
-              answerKey: q.answerKey,
-              maxScore: q.maxScore,
-              explanation: q.explanation,
-              image: q.image || null,
-            })),
+              questions: (s.questions || []).map((q: Question) => ({
+                qtype: q.qtype,
+                order: q.order,
+                prompt: q.prompt,
+                options: q.options,
+                answerKey: q.answerKey,
+                maxScore: q.maxScore,
+                explanation: q.explanation,
+                image: q.image || null,
+              })),
             };
           }),
         }),
@@ -693,24 +485,7 @@ export default function CreateExamPage() {
           <p className="text-gray-500 mt-1 text-sm sm:text-base">Select the exam category</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-          {categories.map((category) => (
-            <button
-              key={category}
-              onClick={() => handleCategorySelect(category)}
-              className="p-4 sm:p-6 border border-gray-200 rounded-md hover:border-gray-300 hover:bg-gray-50 transition text-left"
-            >
-              <div className="font-medium text-gray-900 mb-1">{category}</div>
-              <div className="text-xs sm:text-sm text-gray-500">
-                {category === "GENERAL_ENGLISH" && "Unit-based exams"}
-                {category === "TOEFL" && "Test of English as a Foreign Language"}
-                {category === "SAT" && "Scholastic Assessment Test"}
-                {category === "MATH" && "Mathematics exams"}
-                {category === "KIDS" && "Kids exams"}
-              </div>
-            </button>
-          ))}
-        </div>
+        <CategorySelector categories={categories} onSelect={handleCategorySelect} />
       </div>
     );
   }
@@ -731,349 +506,57 @@ export default function CreateExamPage() {
       </div>
 
       {/* Exam Info */}
-      <div className="bg-white border border-gray-200 rounded-md p-4 sm:p-6 mb-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Exam Title *
-            </label>
-            <input
-              type="text"
-              value={examTitle}
-              onChange={(e) => setExamTitle(e.target.value)}
-              placeholder="e.g., General English A2 - Unit 1"
-              className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
-            />
-          </div>
-          {selectedCategory === "GENERAL_ENGLISH" && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Track (Level) *
-              </label>
-              <select
-                value={track}
-                onChange={(e) => setTrack(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
-                required
-              >
-                <option value="">Select level</option>
-                <option value="A1">A1</option>
-                <option value="A2">A2</option>
-                <option value="B1">B1</option>
-                <option value="B1+">B1+</option>
-                <option value="B2">B2</option>
-                <option value="C1">C1</option>
-                <option value="C2">C2</option>
-              </select>
-            </div>
-          )}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Duration (minutes) <span className="text-gray-400 font-normal">(Optional)</span>
-            </label>
-            <input
-              type="number"
-              value={durationMin || ""}
-              onChange={(e) => setDurationMin(e.target.value ? parseInt(e.target.value) : null)}
-              placeholder="e.g., 60"
-              min="1"
-              className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
-            />
-          </div>
-        </div>
-      </div>
+      <ExamInfoForm
+        examTitle={examTitle}
+        onExamTitleChange={setExamTitle}
+        selectedCategory={selectedCategory}
+        track={track}
+        onTrackChange={setTrack}
+        durationMin={durationMin}
+        onDurationMinChange={setDurationMin}
+      />
 
       {/* Sections */}
-      <div className="mb-6">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 mb-4">
-          <h2 className="text-lg sm:text-xl font-medium text-gray-900">Sections</h2>
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
-            <select
-              value={selectedSectionType}
-              onChange={(e) => setSelectedSectionType(e.target.value as SectionType | "")}
-              disabled={!selectedCategory || allowedSectionTypes.length === 0}
-              className="flex-1 sm:flex-none px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 min-w-[160px] disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <option value="">
-                {!selectedCategory 
-                  ? "Select exam category first" 
-                  : allowedSectionTypes.length === 0 
-                  ? "No sections available" 
-                  : "Select Section Type..."}
-              </option>
-              {allowedSectionTypes.map((type) => {
-                // IELTS: Disable section if it already exists (all 4 sections are auto-created)
-                const isSectionDisabled = 
-                  selectedCategory === "IELTS" && 
-                  sections.some(s => s.type === type);
-
-                return (
-                  <option 
-                    key={type} 
-                    value={type}
-                    disabled={isSectionDisabled}
-                  >
-                    {getSectionLabel(type, selectedCategory)}
-                    {isSectionDisabled ? " (Already added)" : ""}
-                  </option>
-                );
-              })}
-            </select>
-            <button
-              onClick={() => {
-                if (selectedSectionType) {
-                  addSection(selectedSectionType);
-                  setSelectedSectionType("");
-                }
-              }}
-              disabled={!selectedSectionType}
-              className="px-3 sm:px-4 py-2 text-sm font-medium text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              style={{ backgroundColor: "#303380" }}
-              onMouseEnter={(e) => {
-                if (!e.currentTarget.disabled) {
-                  e.currentTarget.style.backgroundColor = "#252a6b";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!e.currentTarget.disabled) {
-                  e.currentTarget.style.backgroundColor = "#303380";
-                }
-              }}
-            >
-              <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">Add Section</span>
-              <span className="sm:hidden">Add</span>
-            </button>
-          </div>
-        </div>
-
-        {sections.length === 0 ? (
-          <div className="bg-gray-50 border border-dashed border-gray-300 rounded-md p-8 sm:p-12 text-center">
-            <BookOpen className="w-8 h-8 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600 mb-2 text-sm sm:text-base">No sections added yet</p>
-            <p className="text-xs sm:text-sm text-gray-500">Select a section type and click "Add Section" to get started</p>
-          </div>
-        ) : (
-          <div className="space-y-3 sm:space-y-4">
-            {(selectedCategory === "IELTS" ? sortIELTSSections(sections) : sections).map((section, idx) => {
-              const isActive = currentSection?.id === section.id && step === "questions";
-              const hasSubsections = section.subsections && section.subsections.length > 0;
-              
-              // IELTS üçün rəng və icon
-              const isIELTS = selectedCategory === "IELTS";
-              const sectionColors = isIELTS ? IELTS_SECTION_COLORS[section.type] : null;
-              const SectionIcon = isIELTS ? IELTS_SECTION_ICONS[section.type] : BookOpen;
-              
-              return (
-                <div key={section.id}>
-                  {/* Main Section */}
-                  <div
-                    className={`rounded-md p-4 sm:p-6 transition ${
-                      isIELTS && sectionColors ? "border-2" : "border-l-4"
-                    } ${
-                      isActive && !isIELTS
-                        ? "bg-slate-50"
-                        : "hover:bg-gray-50"
-                    }`}
-                    style={isIELTS && sectionColors ? {
-                      borderColor: sectionColors.border,
-                      backgroundColor: isActive ? sectionColors.bg : "white",
-                    } : {
-                      borderLeftColor: isActive ? "#1e293b" : "#e5e7eb",
-                      backgroundColor: isActive ? "#f8fafc" : "white",
-                    }}
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-                      <div className="flex-1">
-                        <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
-                          {/* Icon - sol üstdə */}
-                          {isIELTS && sectionColors && (
-                            <div 
-                              className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center"
-                              style={{ backgroundColor: sectionColors.iconBg }}
-                            >
-                              <SectionIcon className="w-4 h-4 text-white" />
-                            </div>
-                          )}
-                          <h3 className="font-medium text-gray-900 text-sm sm:text-base">
-                            Section {idx + 1}: {section.title}
-                            {selectedCategory === "IELTS" && (
-                              <span className="ml-2 text-xs text-gray-500">({section.durationMin} min)</span>
-                            )}
-                          </h3>
-                          <span className="text-xs px-2 py-1 bg-gray-100 rounded text-gray-600">
-                            {section.type}
-                          </span>
-                          {!hasSubsections && (
-                            <span className="text-xs sm:text-sm text-gray-500">
-                              ({section.questions.length} {section.questions.length === 1 ? "question" : "questions"})
-                            </span>
-                          )}
-                          {hasSubsections && (
-                            <span className="text-xs sm:text-sm text-blue-600 font-medium">
-                              ({section.subsections?.length || 0} parts)
-                            </span>
-                          )}
-                          {isActive && (
-                            <span className="text-xs px-2 py-1 bg-slate-900 text-white rounded-full font-medium">
-                              Editing
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs sm:text-sm text-gray-600">{section.instruction}</p>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        {!hasSubsections && (
-                          <button
-                            onClick={() => {
-                              setCurrentSection(section);
-                              setStep("questions");
-                            }}
-                            className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium text-white flex items-center gap-1.5 sm:gap-2"
-                            style={{ backgroundColor: "#303380" }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.backgroundColor = "#252a6b";
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.backgroundColor = "#303380";
-                            }}
-                          >
-                            <Edit className="w-3 h-3 sm:w-4 sm:h-4" />
-                            <span className="hidden sm:inline">{isActive ? "Continue Editing" : "Edit Section"}</span>
-                            <span className="sm:hidden">Edit</span>
-                          </button>
-                        )}
-                        {/* IELTS Listening: Upload Audio button */}
-                        {section.type === "LISTENING" && selectedCategory === "IELTS" && hasSubsections && (
-                          <>
-                            <button
-                              onClick={() => {
-                                setEditingSection(section);
-                                setShowSectionEditModal(true);
-                              }}
-                              className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-blue-700 bg-blue-50 rounded-md hover:bg-blue-100 flex items-center gap-1.5"
-                            >
-                              <Volume2 className="w-3 h-3 sm:w-4 sm:h-4" />
-                              <span className="hidden sm:inline">{section.audio ? "Change Audio" : "Upload Audio"}</span>
-                              <span className="sm:hidden">Audio</span>
-                            </button>
-                            <button
-                              onClick={() => addSubsection(section.id)}
-                              className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-green-700 bg-green-50 rounded-md hover:bg-green-100 flex items-center gap-1.5"
-                            >
-                              <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
-                              <span className="hidden sm:inline">Add Part</span>
-                              <span className="sm:hidden">Part</span>
-                            </button>
-                          </>
-                        )}
-                        <button
-                          onClick={() => deleteSection(section.id)}
-                          disabled={isActive}
-                          className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-red-700 bg-red-50 rounded-md hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 sm:gap-2"
-                        >
-                          <X className="w-3 h-3 sm:w-4 sm:h-4" />
-                          <span className="hidden sm:inline">Delete</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Subsections (indented and different background) */}
-                  {hasSubsections && (
-                    <div className="ml-6 mt-2 space-y-2">
-                      {section.subsections?.map((subsection, subIdx) => {
-                        const isSubActive = currentSection?.id === subsection.id && step === "questions";
-                        return (
-                          <div
-                            key={subsection.id}
-                            className={`bg-slate-50 border-l-4 rounded-r-md p-3 sm:p-4 transition ${
-                              isSubActive
-                                ? "border-l-[#303380] bg-[#303380]/5 shadow-sm"
-                                : "border-l-gray-300 hover:border-l-gray-400"
-                            }`}
-                          >
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3">
-                              <div className="flex-1">
-                                <div className="flex flex-wrap items-center gap-2 mb-1">
-                                  <h4 className="font-medium text-gray-800 text-sm">
-                                    {subsection.title}
-                                  </h4>
-                                  <span className="text-xs text-gray-500">
-                                    ({subsection.questions.length} questions)
-                                  </span>
-                                  {isSubActive && (
-                                    <span className="text-xs px-2 py-0.5 bg-[#303380] text-white rounded-full font-medium">
-                                      Editing
-                                    </span>
-                                  )}
-                                </div>
-                                <p className="text-xs text-gray-600">{subsection.instruction}</p>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => {
-                                    setCurrentSection(subsection);
-                                    setStep("questions");
-                                  }}
-                                  className="px-2 sm:px-3 py-1 rounded text-xs font-medium text-white flex items-center gap-1"
-                                  style={{ backgroundColor: "#303380" }}
-                                  onMouseEnter={(e) => {
-                                    e.currentTarget.style.backgroundColor = "#252a6b";
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    e.currentTarget.style.backgroundColor = "#303380";
-                                  }}
-                                >
-                                  <Edit className="w-3 h-3" />
-                                  <span>Questions</span>
-                                </button>
-                                {/* Edit Image/Introduction button */}
-                                <button
-                                  onClick={() => {
-                                    setEditingSection(subsection);
-                                    setShowSectionEditModal(true);
-                                  }}
-                                  className="px-2 sm:px-3 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100 flex items-center gap-1"
-                                >
-                                  <Image className="w-3 h-3" />
-                                  <span>Image/Intro</span>
-                                </button>
-                                {/* Delete subsection button */}
-                                <button
-                                  onClick={() => {
-                                    const updatedSections = sections.map(s => {
-                                      if (s.id === subsection.parentId) {
-                                        return {
-                                          ...s,
-                                          subsections: s.subsections?.filter(sub => sub.id !== subsection.id) || [],
-                                        };
-                                      }
-                                      return s;
-                                    });
-                                    setSections(updatedSections);
-                                    if (currentSection?.id === subsection.id) {
-                                      setCurrentSection(null);
-                                    }
-                                  }}
-                                  className="px-2 sm:px-3 py-1 text-xs font-medium text-red-700 bg-red-50 rounded hover:bg-red-100 flex items-center gap-1"
-                                >
-                                  <X className="w-3 h-3" />
-                                  <span>Delete</span>
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+      <SectionsList
+        sections={sections}
+        selectedCategory={selectedCategory}
+        currentSection={currentSection}
+        step={step}
+        selectedSectionType={selectedSectionType}
+        onSectionTypeChange={setSelectedSectionType}
+        onAddSection={addSection}
+        onSectionEdit={(section) => {
+          setCurrentSection(section);
+          setStep("questions");
+        }}
+        onSectionDelete={deleteSection}
+        onAddSubsection={addSubsection}
+        onSectionEditModal={(section) => {
+          setEditingSection(section);
+          setShowSectionEditModal(true);
+        }}
+        onSubsectionEdit={(subsection) => {
+          setCurrentSection(subsection);
+          setStep("questions");
+        }}
+        onSubsectionDelete={(subsection, sections, setSections, setCurrentSection) => {
+          const updatedSections = sections.map((s: Section) => {
+            if (s.id === subsection.parentId) {
+              return {
+                ...s,
+                subsections: s.subsections?.filter((sub: Section) => sub.id !== subsection.id) || [],
+              };
+            }
+            return s;
+          });
+          setSections(updatedSections);
+          if (currentSection?.id === subsection.id) {
+            setCurrentSection(null);
+          }
+        }}
+        setSections={setSections}
+        setCurrentSection={setCurrentSection}
+      />
 
       {/* Questions Editor */}
       {currentSection && step === "questions" && (
@@ -1081,23 +564,23 @@ export default function CreateExamPage() {
           {/* Editing Indicator */}
           <div className="absolute top-4 right-4 sm:top-6 sm:right-6 flex items-center gap-2">
             <div className="flex items-center gap-0.5">
-              <span 
-                className="w-1.5 h-1.5 bg-slate-900 rounded-full" 
-                style={{ 
+              <span
+                className="w-1.5 h-1.5 bg-slate-900 rounded-full"
+                style={{
                   animation: 'bounce-slow 1.2s infinite',
                   animationDelay: '0s'
                 }}
               ></span>
-              <span 
-                className="w-1.5 h-1.5 bg-slate-900 rounded-full" 
-                style={{ 
+              <span
+                className="w-1.5 h-1.5 bg-slate-900 rounded-full"
+                style={{
                   animation: 'bounce-slow 1.2s infinite',
                   animationDelay: '0.2s'
                 }}
               ></span>
-              <span 
-                className="w-1.5 h-1.5 bg-slate-900 rounded-full" 
-                style={{ 
+              <span
+                className="w-1.5 h-1.5 bg-slate-900 rounded-full"
+                style={{
                   animation: 'bounce-slow 1.2s infinite',
                   animationDelay: '0.4s'
                 }}
@@ -1107,7 +590,7 @@ export default function CreateExamPage() {
               <span className="typing-text">Editing</span>
             </span>
           </div>
-          
+
           <style jsx>{`
             .typing-text {
               display: inline-block;
@@ -1261,8 +744,8 @@ export default function CreateExamPage() {
                   {typeof q.prompt === "object" && q.prompt.text
                     ? q.prompt.text
                     : typeof q.prompt === "string"
-                    ? q.prompt
-                    : JSON.stringify(q.prompt)}
+                      ? q.prompt
+                      : JSON.stringify(q.prompt)}
                 </div>
                 {q.image && (
                   <div className="mt-2 text-xs text-gray-500">
@@ -1283,48 +766,11 @@ export default function CreateExamPage() {
       )}
 
       {/* Question Type Modal */}
-      {showQuestionTypeModal && (
-        <div
-          className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 p-4"
-          onClick={() => setShowQuestionTypeModal(false)}
-        >
-          <div
-            className="bg-white border border-gray-200 rounded-md p-4 sm:p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base sm:text-lg font-medium text-gray-900">Select Question Type</h3>
-              <button
-                onClick={() => setShowQuestionTypeModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="w-4 h-4 sm:w-5 sm:h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4 sm:space-y-6">
-              {Object.entries(QUESTION_TYPE_GROUPS).map(([groupName, types], groupIndex) => (
-                <div key={groupName} className={groupIndex > 0 ? "pt-4 sm:pt-6 border-t-2 border-gray-300" : ""}>
-                  <h4 className="font-medium text-gray-900 mb-2 sm:mb-3 text-sm sm:text-base">{groupName}</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {types.map((type) => (
-                      <button
-                        key={type}
-                        onClick={() => addQuestion(type as QuestionType)}
-                        className="px-3 sm:px-4 py-2 sm:py-3 border border-gray-200 rounded-md hover:border-gray-300 hover:bg-gray-50 text-left transition text-sm"
-                      >
-                        <div className="font-medium text-gray-900">
-                          {QUESTION_TYPE_LABELS[type as QuestionType]}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+      <QuestionTypeModal
+        isOpen={showQuestionTypeModal}
+        onClose={() => setShowQuestionTypeModal(false)}
+        onSelect={(type) => addQuestion(type)}
+      />
 
       {/* Section Edit Modal (for Reading Passage / Listening Audio) */}
       {showSectionEditModal && editingSection && (
@@ -1341,11 +787,11 @@ export default function CreateExamPage() {
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base sm:text-lg font-medium text-gray-900">
-                {editingSection.type === "READING" 
-                  ? "Edit Reading Passage" 
+                {editingSection.type === "READING"
+                  ? "Edit Reading Passage"
                   : editingSection.type === "WRITING"
                     ? `Edit ${editingSection.title} - Task Image & Instruction`
-                    : editingSection.isSubsection 
+                    : editingSection.isSubsection
                       ? `Edit ${editingSection.title} - Image & Introduction`
                       : "Edit Listening Audio"
                 }
@@ -1419,35 +865,35 @@ export default function CreateExamPage() {
                           onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (!file) return;
-                            
+
                             const validAudioExtensions = ['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac', '.wma'];
                             const hasValidExtension = validAudioExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
-                            
+
                             if (!hasValidExtension) {
                               alert("Please upload a valid audio file (mp3, wav, ogg, m4a, aac, flac, wma)");
                               return;
                             }
-                            
+
                             setUploadingAudio(true);
                             try {
                               const formData = new FormData();
                               formData.append("file", file);
                               formData.append("type", "audio");
-                              
+
                               const res = await fetch("/api/admin/upload", {
                                 method: "POST",
                                 body: formData,
                               });
-                              
+
                               if (res.ok) {
                                 const data = await res.json();
                                 // Update main section and all its subsections with same audio
-                                const updatedSections = sections.map(s => {
+                                const updatedSections = sections.map((s: Section) => {
                                   if (s.id === editingSection.id) {
                                     return {
                                       ...s,
                                       audio: data.path,
-                                      subsections: s.subsections?.map(sub => ({ ...sub, audio: data.path })),
+                                      subsections: s.subsections?.map((sub: Section) => ({ ...sub, audio: data.path })),
                                     };
                                   }
                                   return s;
@@ -1585,14 +1031,14 @@ export default function CreateExamPage() {
                     alert("Please upload an audio file");
                     return;
                   }
-                  
+
                   // Update section in sections array
                   const updatedSections = sections.map((s) => {
                     // If editing a subsection, update it inside parent's subsections
                     if (editingSection.isSubsection && s.subsections) {
                       return {
                         ...s,
-                        subsections: s.subsections.map(sub => 
+                        subsections: s.subsections.map(sub =>
                           sub.id === editingSection.id ? editingSection : sub
                         ),
                       };
@@ -1604,12 +1050,12 @@ export default function CreateExamPage() {
                     return s;
                   });
                   setSections(updatedSections);
-                  
+
                   // Update currentSection if it's the same
                   if (currentSection?.id === editingSection.id) {
                     setCurrentSection(editingSection);
                   }
-                  
+
                   setShowSectionEditModal(false);
                   setEditingSection(null);
                 }}
@@ -1641,7 +1087,7 @@ export default function CreateExamPage() {
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base sm:text-lg font-medium text-gray-900">
-                {editingQuestion.id.startsWith("q-") && currentSection?.questions.find((q) => q.id === editingQuestion.id)
+                {editingQuestion.id.startsWith("q-") && currentSection?.questions.find((q: Question) => q.id === editingQuestion.id)
                   ? "Edit Question"
                   : "Add Question"}
               </h3>
@@ -1698,18 +1144,18 @@ export default function CreateExamPage() {
                     onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (!file) return;
-                      
+
                       setUploadingImage(true);
                       try {
                         const formData = new FormData();
                         formData.append("file", file);
                         formData.append("type", "image");
-                        
+
                         const res = await fetch("/api/admin/upload", {
                           method: "POST",
                           body: formData,
                         });
-                        
+
                         if (res.ok) {
                           const data = await res.json();
                           setEditingQuestion({
@@ -1746,8 +1192,8 @@ export default function CreateExamPage() {
                 {editingQuestion.qtype === "ORDER_SENTENCE" ? (
                   <div className="space-y-2">
                     <textarea
-                      value={editingQuestion.prompt?.rawText !== undefined 
-                        ? editingQuestion.prompt.rawText 
+                      value={editingQuestion.prompt?.rawText !== undefined
+                        ? editingQuestion.prompt.rawText
                         : (Array.isArray(editingQuestion.prompt?.tokens) ? editingQuestion.prompt.tokens.join("\n") : "")}
                       onChange={(e) => {
                         // Store the raw text value to allow Enter key to work
@@ -1756,7 +1202,7 @@ export default function CreateExamPage() {
                         const tokens = rawText.split("\n").filter((line) => line.trim() !== "");
                         setEditingQuestion({
                           ...editingQuestion,
-                          prompt: { 
+                          prompt: {
                             tokens,
                             rawText // Store raw text for display
                           },
@@ -1837,23 +1283,23 @@ export default function CreateExamPage() {
                           const textWithBlanks = e.target.value;
                           // Split by newlines to get sentences
                           const sentences = textWithBlanks.split('\n').filter(line => line.trim());
-                          
+
                           // Count total blanks across all sentences
                           let totalBlanks = 0;
                           sentences.forEach(sentence => {
                             const blanksInSentence = sentence.split(/___+|________+/).length - 1;
                             totalBlanks += blanksInSentence;
                           });
-                          
+
                           // Initialize blanks array with existing values or empty strings
-                          const currentBlanks = Array.isArray(editingQuestion.answerKey?.blanks) 
-                            ? editingQuestion.answerKey.blanks 
+                          const currentBlanks = Array.isArray(editingQuestion.answerKey?.blanks)
+                            ? editingQuestion.answerKey.blanks
                             : [];
                           const newBlanks = Array(totalBlanks).fill("").map((_, idx) => currentBlanks[idx] || "");
-                          
+
                           // Auto-generate word bank from answers
                           const wordBank = newBlanks.filter(b => b.trim() !== "");
-                          
+
                           setEditingQuestion({
                             ...editingQuestion,
                             prompt: { textWithBlanks: textWithBlanks },
@@ -1869,9 +1315,9 @@ export default function CreateExamPage() {
                         Enter one sentence per line. Each sentence can have multiple ___ blanks.
                       </p>
                     </div>
-                    
+
                     {/* Show answer inputs for each blank in each sentence */}
-                    {(editingQuestion.prompt?.textWithBlanks || "").split('\n').filter(line => line.trim()).length > 0 && (
+                    {(editingQuestion.prompt?.textWithBlanks || "").split('\n').filter((line: string) => line.trim()).length > 0 && (
                       <div className="pt-3 border-t border-gray-200">
                         <label className="block text-xs font-medium text-gray-600 mb-2">
                           Correct Answers (one per blank)
@@ -1880,19 +1326,19 @@ export default function CreateExamPage() {
                           {(() => {
                             const sentences = (editingQuestion.prompt?.textWithBlanks || "")
                               .split('\n')
-                              .filter(line => line.trim());
-                            
+                              .filter((line: string) => line.trim());
+
                             let blankIndex = 0;
-                            return sentences.map((sentence, sentenceIdx) => {
+                            return sentences.map((sentence: string, sentenceIdx: number) => {
                               const blanksInSentence = sentence.split(/___+|________+/).length - 1;
                               const sentenceStartBlank = blankIndex;
                               const blanksForThisSentence = [];
-                              
+
                               for (let i = 0; i < blanksInSentence; i++) {
                                 blanksForThisSentence.push(blankIndex);
                                 blankIndex++;
                               }
-                              
+
                               return (
                                 <div key={sentenceIdx} className="bg-gray-50 p-3 rounded-lg space-y-2">
                                   <div className="flex items-start gap-2">
@@ -1908,15 +1354,15 @@ export default function CreateExamPage() {
                                       <span className="text-xs text-gray-500 w-20">Blank {localBlankIdx + 1}:</span>
                                       <input
                                         type="text"
-                                        value={Array.isArray(editingQuestion.answerKey?.blanks) 
-                                          ? editingQuestion.answerKey.blanks[globalBlankIdx] || "" 
+                                        value={Array.isArray(editingQuestion.answerKey?.blanks)
+                                          ? editingQuestion.answerKey.blanks[globalBlankIdx] || ""
                                           : ""}
                                         onChange={(e) => {
                                           const blanks = [...(editingQuestion.answerKey?.blanks || [])];
                                           blanks[globalBlankIdx] = e.target.value;
                                           // Auto-generate word bank from all answers
                                           const wordBank = blanks.filter(b => b && b.trim() !== "");
-                                          
+
                                           setEditingQuestion({
                                             ...editingQuestion,
                                             answerKey: { blanks },
@@ -1951,7 +1397,7 @@ export default function CreateExamPage() {
                       rows={3}
                     />
                     <div className="text-xs text-gray-500 bg-blue-50 p-2 rounded border border-blue-200">
-                      <strong>Tip:</strong> Use ___ (3 underscores) where you want the dropdown to appear inline. 
+                      <strong>Tip:</strong> Use ___ (3 underscores) where you want the dropdown to appear inline.
                       If you don't use ___, the dropdown will appear at the end of the sentence.
                       <br />
                       <strong>Examples:</strong>
@@ -1989,137 +1435,137 @@ export default function CreateExamPage() {
               {(editingQuestion.qtype === "MCQ_SINGLE" ||
                 editingQuestion.qtype === "MCQ_MULTI" ||
                 editingQuestion.qtype === "INLINE_SELECT") && (
-                <div className="p-4 bg-gray-50 border-l-2 border-r-2 border-b-2 border-gray-300">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Options
-                  </label>
-                  <div className="space-y-3">
-                    {(editingQuestion.options?.choices || []).map((opt: string, idx: number) => (
-                      <div key={idx} className="space-y-2">
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            value={opt}
-                            onChange={(e) => {
-                              const newOptions = [...(editingQuestion.options?.choices || [])];
-                              newOptions[idx] = e.target.value;
-                              setEditingQuestion({
-                                ...editingQuestion,
-                                options: {
-                                  ...editingQuestion.options,
-                                  choices: newOptions,
-                                },
-                              });
-                            }}
-                            className="flex-1 px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
-                            placeholder={`Option ${idx + 1}`}
-                          />
-                          <label className="cursor-pointer">
+                  <div className="p-4 bg-gray-50 border-l-2 border-r-2 border-b-2 border-gray-300">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Options
+                    </label>
+                    <div className="space-y-3">
+                      {(editingQuestion.options?.choices || []).map((opt: string, idx: number) => (
+                        <div key={idx} className="space-y-2">
+                          <div className="flex gap-2">
                             <input
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              onChange={async (e) => {
-                                const file = e.target.files?.[0];
-                                if (!file) return;
-
-                                const formData = new FormData();
-                                formData.append("file", file);
-
-                                try {
-                                  const res = await fetch("/api/upload", {
-                                    method: "POST",
-                                    body: formData,
-                                  });
-                                  const data = await res.json();
-                                  
-                                  if (data.url) {
-                                    const newOptionsImages = [...(editingQuestion.options?.choiceImages || [])];
-                                    newOptionsImages[idx] = data.url;
-                                    setEditingQuestion({
-                                      ...editingQuestion,
-                                      options: {
-                                        ...editingQuestion.options,
-                                        choiceImages: newOptionsImages,
-                                      },
-                                    });
-                                  }
-                                } catch (error) {
-                                  console.error("Upload error:", error);
-                                  alert("Failed to upload image");
-                                }
-                              }}
-                            />
-                            <div className="px-2 py-2 text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors">
-                              <Image className="w-3 h-3 sm:w-4 sm:h-4" />
-                            </div>
-                          </label>
-                          <button
-                            onClick={() => {
-                              const newOptions = [...(editingQuestion.options?.choices || [])];
-                              newOptions.splice(idx, 1);
-                              const newImages = [...(editingQuestion.options?.choiceImages || [])];
-                              newImages.splice(idx, 1);
-                              setEditingQuestion({
-                                ...editingQuestion,
-                                options: {
-                                  ...editingQuestion.options,
-                                  choices: newOptions,
-                                  choiceImages: newImages,
-                                },
-                              });
-                            }}
-                            className="px-2 py-2 text-red-700 bg-red-50 hover:bg-red-100 rounded-md"
-                          >
-                            <X className="w-3 h-3 sm:w-4 sm:h-4" />
-                          </button>
-                        </div>
-                        {editingQuestion.options?.choiceImages?.[idx] && (
-                          <div className="relative inline-block">
-                            <img
-                              src={editingQuestion.options.choiceImages[idx]}
-                              alt={`Option ${idx + 1}`}
-                              className="h-20 w-auto rounded border border-gray-200"
-                            />
-                            <button
-                              onClick={() => {
-                                const newImages = [...(editingQuestion.options?.choiceImages || [])];
-                                newImages[idx] = undefined;
+                              type="text"
+                              value={opt}
+                              onChange={(e) => {
+                                const newOptions = [...(editingQuestion.options?.choices || [])];
+                                newOptions[idx] = e.target.value;
                                 setEditingQuestion({
                                   ...editingQuestion,
                                   options: {
                                     ...editingQuestion.options,
+                                    choices: newOptions,
+                                  },
+                                });
+                              }}
+                              className="flex-1 px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
+                              placeholder={`Option ${idx + 1}`}
+                            />
+                            <label className="cursor-pointer">
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+
+                                  const formData = new FormData();
+                                  formData.append("file", file);
+
+                                  try {
+                                    const res = await fetch("/api/upload", {
+                                      method: "POST",
+                                      body: formData,
+                                    });
+                                    const data = await res.json();
+
+                                    if (data.url) {
+                                      const newOptionsImages = [...(editingQuestion.options?.choiceImages || [])];
+                                      newOptionsImages[idx] = data.url;
+                                      setEditingQuestion({
+                                        ...editingQuestion,
+                                        options: {
+                                          ...editingQuestion.options,
+                                          choiceImages: newOptionsImages,
+                                        },
+                                      });
+                                    }
+                                  } catch (error) {
+                                    console.error("Upload error:", error);
+                                    alert("Failed to upload image");
+                                  }
+                                }}
+                              />
+                              <div className="px-2 py-2 text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors">
+                                <Image className="w-3 h-3 sm:w-4 sm:h-4" />
+                              </div>
+                            </label>
+                            <button
+                              onClick={() => {
+                                const newOptions = [...(editingQuestion.options?.choices || [])];
+                                newOptions.splice(idx, 1);
+                                const newImages = [...(editingQuestion.options?.choiceImages || [])];
+                                newImages.splice(idx, 1);
+                                setEditingQuestion({
+                                  ...editingQuestion,
+                                  options: {
+                                    ...editingQuestion.options,
+                                    choices: newOptions,
                                     choiceImages: newImages,
                                   },
                                 });
                               }}
-                              className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 text-xs"
+                              className="px-2 py-2 text-red-700 bg-red-50 hover:bg-red-100 rounded-md"
                             >
-                              ×
+                              <X className="w-3 h-3 sm:w-4 sm:h-4" />
                             </button>
                           </div>
-                        )}
-                      </div>
-                    ))}
-                    <button
-                      onClick={() => {
-                        const newOptions = [...(editingQuestion.options?.choices || []), ""];
-                        setEditingQuestion({
-                          ...editingQuestion,
-                          options: {
-                            ...editingQuestion.options,
-                            choices: newOptions,
-                          },
-                        });
-                      }}
-                      className="w-full px-3 py-2 border border-dashed border-gray-300 rounded-md text-gray-600 hover:border-gray-400 hover:bg-gray-50 text-sm"
-                    >
-                      <Plus className="w-3 h-3 sm:w-4 sm:h-4 inline mr-2" />
-                      Add Option
-                    </button>
+                          {editingQuestion.options?.choiceImages?.[idx] && (
+                            <div className="relative inline-block">
+                              <img
+                                src={editingQuestion.options.choiceImages[idx]}
+                                alt={`Option ${idx + 1}`}
+                                className="h-20 w-auto rounded border border-gray-200"
+                              />
+                              <button
+                                onClick={() => {
+                                  const newImages = [...(editingQuestion.options?.choiceImages || [])];
+                                  newImages[idx] = undefined;
+                                  setEditingQuestion({
+                                    ...editingQuestion,
+                                    options: {
+                                      ...editingQuestion.options,
+                                      choiceImages: newImages,
+                                    },
+                                  });
+                                }}
+                                className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 text-xs"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      <button
+                        onClick={() => {
+                          const newOptions = [...(editingQuestion.options?.choices || []), ""];
+                          setEditingQuestion({
+                            ...editingQuestion,
+                            options: {
+                              ...editingQuestion.options,
+                              choices: newOptions,
+                            },
+                          });
+                        }}
+                        className="w-full px-3 py-2 border border-dashed border-gray-300 rounded-md text-gray-600 hover:border-gray-400 hover:bg-gray-50 text-sm"
+                      >
+                        <Plus className="w-3 h-3 sm:w-4 sm:h-4 inline mr-2" />
+                        Add Option
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
               {/* Answer Key */}
               <div className="p-4 bg-gray-50 border-l-2 border-r-2 border-b-2 border-gray-300 rounded-b-md">
@@ -2143,23 +1589,23 @@ export default function CreateExamPage() {
                 )}
                 {(editingQuestion.qtype === "MCQ_SINGLE" ||
                   editingQuestion.qtype === "INLINE_SELECT") && (
-                  <select
-                    value={editingQuestion.answerKey?.index ?? 0}
-                    onChange={(e) => {
-                      setEditingQuestion({
-                        ...editingQuestion,
-                        answerKey: { index: parseInt(e.target.value) },
-                      });
-                    }}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
-                  >
-                    {(editingQuestion.options?.choices || []).map((opt: string, idx: number) => (
-                      <option key={idx} value={idx}>
-                        {opt || `Option ${idx + 1}`}
-                      </option>
-                    ))}
-                  </select>
-                )}
+                    <select
+                      value={editingQuestion.answerKey?.index ?? 0}
+                      onChange={(e) => {
+                        setEditingQuestion({
+                          ...editingQuestion,
+                          answerKey: { index: parseInt(e.target.value) },
+                        });
+                      }}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
+                    >
+                      {(editingQuestion.options?.choices || []).map((opt: string, idx: number) => (
+                        <option key={idx} value={idx}>
+                          {opt || `Option ${idx + 1}`}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 {editingQuestion.qtype === "MCQ_MULTI" && (
                   <div className="space-y-2 p-3 bg-white border border-gray-200 rounded-md">
                     {(editingQuestion.options?.choices || []).map((opt: string, idx: number) => (
