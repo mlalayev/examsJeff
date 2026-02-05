@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Plus, X, BookOpen, Save, Edit, Info, Image, Volume2 } from "lucide-react";
+import { ArrowLeft, Plus, X, BookOpen, Save, Edit, Info, Image, Volume2, Headphones, PenTool, Mic } from "lucide-react";
 import TextFormattingPreview from "@/components/TextFormattingPreview";
 import QuestionPreview from "@/components/QuestionPreview";
 import ImageUpload from "@/components/ImageUpload";
@@ -11,7 +11,7 @@ type SectionType = "READING" | "LISTENING" | "WRITING" | "SPEAKING" | "GRAMMAR" 
 type QuestionType = 
   | "MCQ_SINGLE" 
   | "MCQ_MULTI" 
-  | "TF"
+  | "TF" 
   | "TF_NG"
   | "ORDER_SENTENCE" 
   | "DND_GAP" 
@@ -124,6 +124,46 @@ const getSectionLabel = (
   return SECTION_TYPE_LABELS[type];
 };
 
+// IELTS section-ları üçün rəng sxemləri
+const IELTS_SECTION_COLORS: Record<SectionType, { border: string; bg: string; iconBg: string }> = {
+  LISTENING: { border: "#3B82F6", bg: "#EFF6FF", iconBg: "#3B82F6" }, // Blue
+  READING: { border: "#10B981", bg: "#ECFDF5", iconBg: "#10B981" }, // Green
+  WRITING: { border: "#F59E0B", bg: "#FFFBEB", iconBg: "#F59E0B" }, // Amber
+  SPEAKING: { border: "#EF4444", bg: "#FEF2F2", iconBg: "#EF4444" }, // Red
+  GRAMMAR: { border: "#8B5CF6", bg: "#F5F3FF", iconBg: "#8B5CF6" }, // Purple
+  VOCABULARY: { border: "#EC4899", bg: "#FDF2F8", iconBg: "#EC4899" }, // Pink
+};
+
+// IELTS section-ları üçün icon-lar
+const IELTS_SECTION_ICONS: Record<SectionType, typeof Headphones> = {
+  LISTENING: Headphones,
+  READING: BookOpen,
+  WRITING: PenTool,
+  SPEAKING: Mic,
+  GRAMMAR: BookOpen,
+  VOCABULARY: BookOpen,
+};
+
+// IELTS section-ları üçün default duration-lar (dəqiqə)
+const IELTS_SECTION_DURATIONS: Record<SectionType, number> = {
+  LISTENING: 30,
+  READING: 60,
+  WRITING: 60,
+  SPEAKING: 11,
+  GRAMMAR: 15,
+  VOCABULARY: 15,
+};
+
+// IELTS section-ları üçün default instruction-lar
+const IELTS_SECTION_INSTRUCTIONS: Record<SectionType, string> = {
+  LISTENING: "You will hear a number of different recordings and you will have to answer questions on what you hear. There will be time for you to read the instructions and questions and you will have a chance to check your work. All the recordings will be played ONCE only.",
+  READING: "You should spend about 20 minutes on each of the three reading passages. The test contains 40 questions. Each question carries one mark.",
+  WRITING: "You should spend about 20 minutes on Task 1 and 40 minutes on Task 2. You must write at least 150 words for Task 1 and 250 words for Task 2.",
+  SPEAKING: "The Speaking test consists of three parts. The test takes between 11 and 14 minutes. You will speak to a certified IELTS examiner.",
+  GRAMMAR: "Complete the grammar section",
+  VOCABULARY: "Complete the vocabulary section",
+};
+
 export default function CreateExamPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -171,11 +211,53 @@ export default function CreateExamPage() {
       if (confirm("Changing category will remove sections that are not allowed for this exam type. Continue?")) {
         setSections([]);
         setCurrentSection(null);
-      setStep("sections");
+        setStep("sections");
       } else {
         return; // İstifadəçi ləğv etdi
       }
     } else {
+      // IELTS seçildikdə avtomatik 4 section yarat
+      if (category === "IELTS" && currentSections.length === 0) {
+        const ieltsSections: Section[] = [
+          {
+            id: `section-${Date.now()}-1`,
+            type: "LISTENING",
+            title: "Listening Section",
+            instruction: IELTS_SECTION_INSTRUCTIONS.LISTENING,
+            durationMin: IELTS_SECTION_DURATIONS.LISTENING,
+            order: 0,
+            questions: [],
+          },
+          {
+            id: `section-${Date.now()}-2`,
+            type: "READING",
+            title: "Reading Section",
+            instruction: IELTS_SECTION_INSTRUCTIONS.READING,
+            durationMin: IELTS_SECTION_DURATIONS.READING,
+            order: 1,
+            questions: [],
+          },
+          {
+            id: `section-${Date.now()}-3`,
+            type: "WRITING",
+            title: "Writing Section",
+            instruction: IELTS_SECTION_INSTRUCTIONS.WRITING,
+            durationMin: IELTS_SECTION_DURATIONS.WRITING,
+            order: 2,
+            questions: [],
+          },
+          {
+            id: `section-${Date.now()}-4`,
+            type: "SPEAKING",
+            title: "Speaking Section",
+            instruction: IELTS_SECTION_INSTRUCTIONS.SPEAKING,
+            durationMin: IELTS_SECTION_DURATIONS.SPEAKING,
+            order: 3,
+            questions: [],
+          },
+        ];
+        setSections(ieltsSections);
+      }
       setStep("sections");
     }
   };
@@ -211,9 +293,9 @@ export default function CreateExamPage() {
       audio: type === "LISTENING" ? undefined : undefined,
     };
 
-    setSections([...currentSections, newSection]);
-    setCurrentSection(newSection);
-    setStep("questions");
+      setSections([...currentSections, newSection]);
+      setCurrentSection(newSection);
+      setStep("questions");
   };
 
   const addQuestion = (qtype: QuestionType) => {
@@ -720,20 +802,19 @@ export default function CreateExamPage() {
                   : "Select Section Type..."}
               </option>
               {allowedSectionTypes.map((type) => {
-                // IELTS: Disable LISTENING if it already exists
-                const isListeningDisabled = 
+                // IELTS: Disable section if it already exists (all 4 sections are auto-created)
+                const isSectionDisabled = 
                   selectedCategory === "IELTS" && 
-                  type === "LISTENING" && 
-                  sections.some(s => s.type === "LISTENING");
+                  sections.some(s => s.type === type);
 
                 return (
                   <option 
                     key={type} 
                     value={type}
-                    disabled={isListeningDisabled}
+                    disabled={isSectionDisabled}
                   >
                     {getSectionLabel(type, selectedCategory)}
-                    {isListeningDisabled ? " (Already added)" : ""}
+                    {isSectionDisabled ? " (Already added)" : ""}
                   </option>
                 );
               })}
@@ -778,19 +859,42 @@ export default function CreateExamPage() {
               const isActive = currentSection?.id === section.id && step === "questions";
               const hasSubsections = section.subsections && section.subsections.length > 0;
               
+              // IELTS üçün rəng və icon
+              const isIELTS = selectedCategory === "IELTS";
+              const sectionColors = isIELTS ? IELTS_SECTION_COLORS[section.type] : null;
+              const SectionIcon = isIELTS ? IELTS_SECTION_ICONS[section.type] : BookOpen;
+              
               return (
                 <div key={section.id}>
                   {/* Main Section */}
                   <div
-                    className={`bg-white border rounded-md p-4 sm:p-6 transition ${
-                      isActive
-                        ? "border-slate-900 bg-slate-50"
-                        : "border-gray-200 hover:border-gray-300"
+                    className={`rounded-md p-4 sm:p-6 transition ${
+                      isIELTS && sectionColors ? "border-2" : "border-l-4"
+                    } ${
+                      isActive && !isIELTS
+                        ? "bg-slate-50"
+                        : "hover:bg-gray-50"
                     }`}
+                    style={isIELTS && sectionColors ? {
+                      borderColor: sectionColors.border,
+                      backgroundColor: isActive ? sectionColors.bg : "white",
+                    } : {
+                      borderLeftColor: isActive ? "#1e293b" : "#e5e7eb",
+                      backgroundColor: isActive ? "#f8fafc" : "white",
+                    }}
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                       <div className="flex-1">
                         <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
+                          {/* Icon - sol üstdə */}
+                          {isIELTS && sectionColors && (
+                            <div 
+                              className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center"
+                              style={{ backgroundColor: sectionColors.iconBg }}
+                            >
+                              <SectionIcon className="w-4 h-4 text-white" />
+                            </div>
+                          )}
                           <h3 className="font-medium text-gray-900 text-sm sm:text-base">
                             Section {idx + 1}: {section.title}
                             {selectedCategory === "IELTS" && (
@@ -807,7 +911,7 @@ export default function CreateExamPage() {
                           )}
                           {hasSubsections && (
                             <span className="text-xs sm:text-sm text-blue-600 font-medium">
-                              ({section.subsections.length} parts)
+                              ({section.subsections?.length || 0} parts)
                             </span>
                           )}
                           {isActive && (
@@ -878,7 +982,7 @@ export default function CreateExamPage() {
                   {/* Subsections (indented and different background) */}
                   {hasSubsections && (
                     <div className="ml-6 mt-2 space-y-2">
-                      {section.subsections.map((subsection, subIdx) => {
+                      {section.subsections?.map((subsection, subIdx) => {
                         const isSubActive = currentSection?.id === subsection.id && step === "questions";
                         return (
                           <div

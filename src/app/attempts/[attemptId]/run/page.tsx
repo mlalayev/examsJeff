@@ -155,9 +155,9 @@ export default function AttemptRunnerPage() {
       const res = await fetch(`/api/attempts/${attemptId}`);
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to load");
-
+      
       setData(json);
-
+      
       // Load answers from localStorage first (if exists)
       let loadedAnswers: Record<string, Record<string, any>> = {};
       if (typeof window !== "undefined") {
@@ -172,7 +172,7 @@ export default function AttemptRunnerPage() {
           }
         }
       }
-
+      
       // Convert savedAnswers from section.type to section.id (from server)
       if (json.savedAnswers && json.sections) {
         const convertedAnswers: Record<string, Record<string, any>> = {};
@@ -181,7 +181,7 @@ export default function AttemptRunnerPage() {
             convertedAnswers[section.id] = json.savedAnswers[section.type];
           }
         });
-
+        
         // Merge: localStorage takes priority, but merge with server data
         Object.keys(convertedAnswers).forEach((sectionId) => {
           if (!loadedAnswers[sectionId]) {
@@ -195,9 +195,9 @@ export default function AttemptRunnerPage() {
           }
         });
       }
-
+      
       setAnswers(loadedAnswers);
-
+      
       // Save merged answers back to localStorage
       if (typeof window !== "undefined" && Object.keys(loadedAnswers).length > 0) {
         const storageKey = getLocalStorageKey(attemptId);
@@ -218,7 +218,7 @@ export default function AttemptRunnerPage() {
             try {
               const { startTime, endTime } = JSON.parse(savedTimer);
               const now = Date.now();
-
+              
               // Check if timer is still valid (not expired)
               if (endTime && now < endTime && startTime) {
                 restoredStartTimes[section.id] = startTime;
@@ -233,7 +233,7 @@ export default function AttemptRunnerPage() {
             }
           }
         });
-
+        
         // Merge with server data (localStorage takes priority)
         finalStartTimes = { ...finalStartTimes, ...restoredStartTimes };
       }
@@ -280,7 +280,7 @@ export default function AttemptRunnerPage() {
       if (!data?.sections) return;
       const section = data.sections.find(s => s.id === sectionId);
       if (!section) return;
-
+      
       setSaving(sectionId);
       try {
         const res = await fetch(`/api/attempts/${attemptId}/save`, {
@@ -347,33 +347,33 @@ export default function AttemptRunnerPage() {
     if (data?.examCategory === "SAT" && data?.sections) {
       const currentIndex = data.sections.findIndex((s) => s.id === sectionId);
       if (currentIndex < data.sections.length - 1) {
-        const nextSection = data.sections[currentIndex + 1];
-
-        // Clear old timer from localStorage for next section
-        if (typeof window !== "undefined") {
-          const nextStorageKey = `sat_timer_${attemptId}_${nextSection.id}`;
-          localStorage.removeItem(nextStorageKey);
-        }
-
-        // Always start new timer for next section
-        const newStartTime = Date.now();
-        const newStartTimes = {
-          ...sectionStartTimes,
-          [nextSection.id]: newStartTime,
-        };
-        setSectionStartTimes(newStartTimes);
-        setAccessedSections((prev) => new Set([...prev, nextSection.id]));
-
-        // Save start time
-        await fetch(`/api/attempts/${attemptId}/save`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            sectionStartTimes: newStartTimes,
-          }),
-        });
-
-        setActiveSection(nextSection.id);
+      const nextSection = data.sections[currentIndex + 1];
+      
+      // Clear old timer from localStorage for next section
+      if (typeof window !== "undefined") {
+        const nextStorageKey = `sat_timer_${attemptId}_${nextSection.id}`;
+        localStorage.removeItem(nextStorageKey);
+      }
+      
+      // Always start new timer for next section
+      const newStartTime = Date.now();
+      const newStartTimes = {
+        ...sectionStartTimes,
+        [nextSection.id]: newStartTime,
+      };
+      setSectionStartTimes(newStartTimes);
+      setAccessedSections((prev) => new Set([...prev, nextSection.id]));
+      
+      // Save start time
+      await fetch(`/api/attempts/${attemptId}/save`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sectionStartTimes: newStartTimes,
+        }),
+      });
+      
+      setActiveSection(nextSection.id);
       } else {
         // Last module
         alert("This was the last module. You can now submit the entire exam.");
@@ -394,7 +394,7 @@ export default function AttemptRunnerPage() {
     if (!data?.sections) return;
     const section = data.sections.find(s => s.id === sectionId);
     if (!section) return;
-
+    
     if (
       !confirm(
         `Are you sure you want to end the "${section.title}" section? You won't be able to edit it after.`
@@ -427,26 +427,26 @@ export default function AttemptRunnerPage() {
 
     // Save current module
     await saveSection(activeSection, answers[activeSection] || {});
-
+    
     // Clear timer from localStorage
     if (typeof window !== "undefined") {
       const storageKey = `sat_timer_${attemptId}_${activeSection}`;
       localStorage.removeItem(storageKey);
     }
-
+    
     // Lock current module
     setLockedSections((prev) => new Set([...prev, activeSection]));
 
     // Move to next module if exists
     if (currentSectionIndex < data.sections.length - 1) {
       const nextSection = data.sections[currentSectionIndex + 1];
-
+      
       // Clear old timer from localStorage for next section
       if (typeof window !== "undefined") {
         const nextStorageKey = `sat_timer_${attemptId}_${nextSection.id}`;
         localStorage.removeItem(nextStorageKey);
       }
-
+      
       // Always start new timer for next section
       const newStartTime = Date.now();
       const newStartTimes = {
@@ -455,7 +455,7 @@ export default function AttemptRunnerPage() {
       };
       setSectionStartTimes(newStartTimes);
       setAccessedSections((prev) => new Set([...prev, nextSection.id]));
-
+      
       // Save start time
       await fetch(`/api/attempts/${attemptId}/save`, {
         method: "POST",
@@ -464,7 +464,7 @@ export default function AttemptRunnerPage() {
           sectionStartTimes: newStartTimes,
         }),
       });
-
+      
       setActiveSection(nextSection.id);
     } else {
       // Last module - show message
@@ -484,7 +484,7 @@ export default function AttemptRunnerPage() {
         saveSection(sectionId, answers[sectionId] || {})
       );
       await Promise.all(savePromises);
-
+      
       const res = await fetch(`/api/attempts/${attemptId}/submit`, {
         method: "POST",
       });
@@ -502,7 +502,7 @@ export default function AttemptRunnerPage() {
         // Clear answers
         const answersKey = getLocalStorageKey(attemptId);
         localStorage.removeItem(answersKey);
-
+        
         // Clear all timers for this attempt (SAT and IELTS)
         if (data?.sections) {
           data.sections.forEach((section) => {
@@ -566,41 +566,41 @@ export default function AttemptRunnerPage() {
         onDropComplete,
       };
 
-      switch (q.qtype) {
-        case "MCQ_SINGLE":
-          return <QMcqSingle {...props} />;
-        case "MCQ_MULTI":
-          return <QMcqMulti {...props} />;
-        case "TF":
-          return <QTF {...props} />;
+    switch (q.qtype) {
+      case "MCQ_SINGLE":
+        return <QMcqSingle {...props} />;
+      case "MCQ_MULTI":
+        return <QMcqMulti {...props} />;
+      case "TF":
+        return <QTF {...props} />;
         case "TF_NG":
           return <QTFNG {...props} />;
-        case "INLINE_SELECT":
-          return <QInlineSelect {...props} />;
-        case "ORDER_SENTENCE":
-          return <QOrderSentence {...props} />;
-        case "DND_GAP":
-          return <QDndGap {...props} />;
+      case "INLINE_SELECT":
+        return <QInlineSelect {...props} />;
+      case "ORDER_SENTENCE":
+        return <QOrderSentence {...props} />;
+       case "DND_GAP":
+         return <QDndGap {...props} />;
         case "GAP": // Legacy support - treat as SHORT_TEXT
-        case "SHORT_TEXT":
-          return <QOpenText {...props} />;
-        case "ESSAY":
-          return (
-            <textarea
-              value={value || ""}
-              onChange={(e) => onChange(e.target.value)}
-              disabled={readOnly}
+       case "SHORT_TEXT":
+         return <QOpenText {...props} />;
+       case "ESSAY":
+         return (
+           <textarea
+             value={value || ""}
+             onChange={(e) => onChange(e.target.value)}
+             disabled={readOnly}
               className="mt-2 w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-400 min-h-[200px] disabled:bg-gray-50 resize-y"
               placeholder="Write your essay here..."
-            />
-          );
-        default:
-          return (
+           />
+         );
+       default:
+    return (
             <div className="text-sm text-gray-500">
               Unsupported question type: {q.qtype}
-            </div>
-          );
-      }
+      </div>
+    );
+  }
     },
     []
   );
@@ -636,47 +636,47 @@ export default function AttemptRunnerPage() {
   // Helper function to count answered questions
   const countAnsweredForQuestion = useCallback(
     (q: Question, answer: any): number => {
-      if (q.qtype === "DND_GAP" && q.prompt?.textWithBlanks) {
-        const text = q.prompt.textWithBlanks;
-        let sentences: string[] = [];
+                          if (q.qtype === "DND_GAP" && q.prompt?.textWithBlanks) {
+                            const text = q.prompt.textWithBlanks;
+                            let sentences: string[] = [];
         if (text.includes("\n")) {
           sentences = text.split("\n").filter((line: string) => line.trim());
         } else if (text.includes("1.") && text.includes("2.")) {
           sentences = text
             .split(/(?=\d+\.\s)/)
             .filter((line: string) => line.trim());
-        } else {
+                            } else {
           sentences = text
             .split(/(?<=\.)\s+(?=[A-Z])/)
             .filter((line: string) => line.trim());
-        }
-
-        if (answer && typeof answer === "object" && !Array.isArray(answer)) {
-          let answeredBlanks = 0;
-          sentences.forEach((sentence, sentenceIdx) => {
+                            }
+                            
+                            if (answer && typeof answer === "object" && !Array.isArray(answer)) {
+                              let answeredBlanks = 0;
+                              sentences.forEach((sentence, sentenceIdx) => {
             const blanksInSentence =
               sentence.split(/___+|________+/).length - 1;
-            const sentenceAnswers = answer[sentenceIdx.toString()];
-            if (Array.isArray(sentenceAnswers)) {
-              for (let blankIdx = 0; blankIdx < blanksInSentence; blankIdx++) {
-                const blankAnswer = sentenceAnswers[blankIdx];
+                                const sentenceAnswers = answer[sentenceIdx.toString()];
+                                if (Array.isArray(sentenceAnswers)) {
+                                  for (let blankIdx = 0; blankIdx < blanksInSentence; blankIdx++) {
+                                    const blankAnswer = sentenceAnswers[blankIdx];
                 if (
                   blankAnswer !== undefined &&
                   blankAnswer !== null &&
                   blankAnswer !== ""
                 ) {
-                  answeredBlanks++;
-                }
-              }
-            }
-          });
+                                      answeredBlanks++;
+                                    }
+                                  }
+                                }
+                              });
           return answeredBlanks;
-        }
+                            }
         return 0;
-      } else {
+                          } else {
         if (answer === null || answer === undefined || answer === "") return 0;
-        if (typeof answer === "object") {
-          if (Array.isArray(answer)) {
+                            if (typeof answer === "object") {
+                              if (Array.isArray(answer)) {
             return answer.length > 0 ? 1 : 0;
           }
           return Object.keys(answer).length > 0 ? 1 : 0;
@@ -689,26 +689,26 @@ export default function AttemptRunnerPage() {
 
   // Helper function to count total questions
   const countTotalForQuestion = useCallback((q: Question): number => {
-    if (q.qtype === "DND_GAP" && q.prompt?.textWithBlanks) {
-      const text = q.prompt.textWithBlanks;
-      let sentences: string[] = [];
+                            if (q.qtype === "DND_GAP" && q.prompt?.textWithBlanks) {
+                              const text = q.prompt.textWithBlanks;
+                              let sentences: string[] = [];
       if (text.includes("\n")) {
         sentences = text.split("\n").filter((line: string) => line.trim());
       } else if (text.includes("1.") && text.includes("2.")) {
         sentences = text
           .split(/(?=\d+\.\s)/)
           .filter((line: string) => line.trim());
-      } else {
+                              } else {
         sentences = text
           .split(/(?<=\.)\s+(?=[A-Z])/)
           .filter((line: string) => line.trim());
-      }
-
-      let totalBlanks = 0;
+                              }
+                              
+                              let totalBlanks = 0;
       sentences.forEach((sentence) => {
-        const blanksInSentence = sentence.split(/___+|________+/).length - 1;
-        totalBlanks += blanksInSentence;
-      });
+                                const blanksInSentence = sentence.split(/___+|________+/).length - 1;
+                                totalBlanks += blanksInSentence;
+                              });
       return totalBlanks > 0 ? totalBlanks : 1;
     }
     return 1;
@@ -769,13 +769,13 @@ export default function AttemptRunnerPage() {
         const firstListeningId = listeningSections[0].id;
         let totalAnswered = 0;
         let totalQuestions = 0;
-
+        
         listeningSections.forEach(section => {
           const sectionStat = stats[section.id] || { answered: 0, total: 0 };
           totalAnswered += sectionStat.answered;
           totalQuestions += sectionStat.total;
         });
-
+        
         // Update first Listening section stats with merged data
         stats[firstListeningId] = { answered: totalAnswered, total: totalQuestions };
       }
@@ -786,13 +786,13 @@ export default function AttemptRunnerPage() {
         const firstReadingId = readingSections[0].id;
         let totalAnswered = 0;
         let totalQuestions = 0;
-
+        
         readingSections.forEach(section => {
           const sectionStat = stats[section.id] || { answered: 0, total: 0 };
           totalAnswered += sectionStat.answered;
           totalQuestions += sectionStat.total;
         });
-
+        
         stats[firstReadingId] = { answered: totalAnswered, total: totalQuestions };
       }
     }
@@ -820,7 +820,7 @@ export default function AttemptRunnerPage() {
       if (data.examCategory === "SAT") {
         const currentIndex = data.sections.findIndex((s) => s.id === activeSection);
         const targetIndex = data.sections.findIndex((s) => s.id === sectionId);
-
+        
         // Əgər istifadəçi əvvəlki modula keçmək istəyirsə
         if (targetIndex < currentIndex) {
           alert("You cannot go back to previous modules in SAT exams.");
@@ -838,17 +838,17 @@ export default function AttemptRunnerPage() {
       if (data.examCategory === "IELTS") {
         const currentSection = data.sections.find(s => s.id === activeSection);
         const targetSection = data.sections.find(s => s.id === sectionId);
-
+        
         // Əgər cari section Listening-dirsə və target Reading/Writing-dirsə
-        if (currentSection?.type === "LISTENING" &&
-          (targetSection?.type === "READING" || targetSection?.type === "WRITING" || targetSection?.type === "SPEAKING")) {
+        if (currentSection?.type === "LISTENING" && 
+            (targetSection?.type === "READING" || targetSection?.type === "WRITING" || targetSection?.type === "SPEAKING")) {
           // Lock all Listening sections
           const listeningIds = data.sections
             .filter(s => s.type === "LISTENING")
             .map(s => s.id);
           setLockedSections(prev => new Set([...prev, ...listeningIds]));
         }
-
+        
         // Əgər istifadəçi lock edilmiş Listening-ə qayıtmaq istəyirsə
         if (targetSection?.type === "LISTENING" && lockedSections.has(sectionId)) {
           alert("You cannot return to Listening section after moving to Reading/Writing.");
@@ -860,7 +860,7 @@ export default function AttemptRunnerPage() {
       if (activeSection && answers[activeSection]) {
         const currentSection = data.sections.find(s => s.id === activeSection);
         const targetSection = data.sections.find(s => s.id === sectionId);
-
+        
         // IELTS Writing: Submit writing when leaving Writing section
         if (data.examCategory === "IELTS" && currentSection?.type === "WRITING" && targetSection?.type !== "WRITING") {
           try {
@@ -868,15 +868,15 @@ export default function AttemptRunnerPage() {
             const writingSections = data.sections.filter(s => s.type === "WRITING");
             const task1Section = writingSections.find(s => s.title.includes("Task 1"));
             const task2Section = writingSections.find(s => s.title.includes("Task 2"));
-
+            
             const task1Response = task1Section ? answers[task1Section.id]?.["writing_text"] || "" : "";
             const task2Response = task2Section ? answers[task2Section.id]?.["writing_text"] || "" : "";
-
+            
             // Only submit if we have responses
             if (task1Response || task2Response) {
               const writingStartTime = sectionStartTimes[writingSections[0]?.id];
               const timeSpent = writingStartTime ? Math.floor((Date.now() - writingStartTime) / 1000) : 0;
-
+              
               await fetch(`/api/attempts/${attemptId}/writing/submit`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -887,7 +887,7 @@ export default function AttemptRunnerPage() {
                   timeSpentSeconds: timeSpent,
                 }),
               });
-
+              
               console.log("✅ Writing submitted automatically");
             }
           } catch (error) {
@@ -895,7 +895,7 @@ export default function AttemptRunnerPage() {
             // Don't block navigation if submission fails
           }
         }
-
+        
         await saveSection(activeSection, answers[activeSection]);
       }
 
@@ -906,7 +906,7 @@ export default function AttemptRunnerPage() {
           const storageKey = `sat_timer_${attemptId}_${sectionId}`;
           localStorage.removeItem(storageKey);
         }
-
+        
         // Always start new timer
         const newStartTime = Date.now();
         const newStartTimes = {
@@ -915,7 +915,7 @@ export default function AttemptRunnerPage() {
         };
         setSectionStartTimes(newStartTimes);
         setAccessedSections((prev) => new Set([...prev, sectionId]));
-
+        
         // Save start time immediately
         await fetch(`/api/attempts/${attemptId}/save`, {
           method: "POST",
@@ -934,12 +934,12 @@ export default function AttemptRunnerPage() {
   const handleAnswerChange = useCallback(
     (questionId: string, value: any) => {
       if (!data?.sections) return;
-
+      
       // Find which section this question belongs to
-      const questionSection = data.sections.find(s =>
+      const questionSection = data.sections.find(s => 
         s.questions.some(q => q.id === questionId)
       );
-
+      
       if (questionSection) {
         setAnswer(questionSection.id, questionId, value);
       }
@@ -967,7 +967,7 @@ export default function AttemptRunnerPage() {
       if (currentSection && lockedSections.has(currentSection.id)) return;
 
       setDraggedOptions((prev) => ({
-        ...prev,
+                                                   ...prev,
         [questionId]: label,
       }));
       e.dataTransfer.effectAllowed = "move";
@@ -978,7 +978,7 @@ export default function AttemptRunnerPage() {
 
   const handleDragEnd = useCallback((questionId: string) => {
     setDraggedOptions((prev) => ({
-      ...prev,
+                                                   ...prev,
       [questionId]: null,
     }));
   }, []);
@@ -1011,7 +1011,7 @@ export default function AttemptRunnerPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
         {/* SAT Timer */}
         {isSAT && currentSection && !lockedSections.has(currentSection.id) && (
           <SectionTimer
@@ -1025,7 +1025,7 @@ export default function AttemptRunnerPage() {
         )}
 
         <div className="w-full px-4 sm:px-6 lg:px-12 xl:px-16 pt-3 pb-3">
-          <div className="flex flex-col lg:flex-row gap-6">
+        <div className="flex flex-col lg:flex-row gap-6">
             <ExamSidebar
               examTitle={data.examTitle}
               sections={data.sections}
@@ -1069,9 +1069,9 @@ export default function AttemptRunnerPage() {
                 onWritingPartChange={setWritingPart}
               />
             )}
-          </div>
-        </div>
-      </div>
+                   </div>
+                </div>
+              </div>
 
       {/* Modals and Notifications */}
       <ResumeNotification
@@ -1096,6 +1096,6 @@ export default function AttemptRunnerPage() {
         isOpen={showSuccessModal}
         onClose={handleSuccessModalClose}
       />
-    </>
+                             </>
   );
 }

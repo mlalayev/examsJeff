@@ -11,7 +11,7 @@ type SectionType = "READING" | "LISTENING" | "WRITING" | "SPEAKING" | "GRAMMAR" 
 type QuestionType = 
   | "MCQ_SINGLE" 
   | "MCQ_MULTI" 
-  | "TF"
+  | "TF" 
   | "TF_NG"
   | "ORDER_SENTENCE" 
   | "DND_GAP" 
