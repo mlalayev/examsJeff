@@ -11,12 +11,14 @@ type SectionType = "READING" | "LISTENING" | "WRITING" | "SPEAKING" | "GRAMMAR" 
 type QuestionType = 
   | "MCQ_SINGLE" 
   | "MCQ_MULTI" 
-  | "TF" 
+  | "TF"
+  | "TF_NG"
   | "ORDER_SENTENCE" 
   | "DND_GAP" 
   | "SHORT_TEXT" 
   | "ESSAY"
-  | "INLINE_SELECT";
+  | "INLINE_SELECT"
+  | "FILL_IN_BLANK";
 
 interface Section {
   id: string;
@@ -51,6 +53,7 @@ const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   MCQ_SINGLE: "Multiple Choice (Single)",
   MCQ_MULTI: "Multiple Choice (Multiple)",
   TF: "True/False",
+  TF_NG: "True / False / Not Given",
   INLINE_SELECT: "Inline Select",
   ORDER_SENTENCE: "Order Sentence (Drag & Drop)",
   DND_GAP: "Drag and Drop Gap Fill",
@@ -59,7 +62,7 @@ const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
 };
 
 const QUESTION_TYPE_GROUPS = {
-  "Variantlı sual": ["MCQ_SINGLE", "MCQ_MULTI", "TF", "INLINE_SELECT"],
+  "Variantlı sual": ["MCQ_SINGLE", "MCQ_MULTI", "TF", "TF_NG", "INLINE_SELECT"],
   "Açıq sual": ["SHORT_TEXT", "ESSAY"],
   "Drag and Drop": ["ORDER_SENTENCE", "DND_GAP"],
 };
@@ -605,6 +608,8 @@ export default function EditExamPage() {
     switch (qtype) {
       case "TF":
         return { text: "Enter the statement here" };
+      case "TF_NG":
+        return { text: "Enter the statement here" };
       case "MCQ_SINGLE":
       case "MCQ_MULTI":
         return { text: "Enter the question here" };
@@ -646,6 +651,8 @@ export default function EditExamPage() {
     switch (qtype) {
       case "TF":
         return { value: true };
+      case "TF_NG":
+        return { value: "TRUE" };
       case "MCQ_SINGLE":
       case "INLINE_SELECT":
         return { index: 0 };
@@ -1328,17 +1335,6 @@ export default function EditExamPage() {
                   </div>
                 ) : editingQuestion.qtype === "ESSAY" ? (
                   <div className="space-y-3">
-                    <ImageUpload
-                      label="Essay Image (Optional)"
-                      value={editingQuestion.image || ""}
-                      onChange={(url) => {
-                        setEditingQuestion({
-                          ...editingQuestion,
-                          image: url,
-                        });
-                      }}
-                    />
-
                     <textarea
                       value={editingQuestion.prompt?.text || ""}
                       onChange={(e) => {

@@ -47,6 +47,7 @@ enum QuestionType {
   ORDER
   DND_MATCH
   TF
+  TF_NG
   MCQ_SINGLE
   MCQ_MULTI
   SELECT

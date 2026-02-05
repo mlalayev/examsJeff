@@ -46,6 +46,13 @@ export function scoreQuestion(qtype: QuestionType, studentAnswer: any, answerKey
       // Exact boolean match
       return studentAnswer === answerKey?.value ? 1 : 0;
     }
+    case "TF_NG": {
+      // Value is one of "TRUE" | "FALSE" | "NOT_GIVEN"
+      if (!studentAnswer || !answerKey?.value) return 0;
+      const normalize = (v: any) =>
+        typeof v === "string" ? v.trim().toUpperCase() : String(v).trim().toUpperCase();
+      return normalize(studentAnswer) === normalize(answerKey.value) ? 1 : 0;
+    }
     case "MCQ_SINGLE": {
       // Selected index === answerKey.index
       const correctIdx = answerKey?.index;

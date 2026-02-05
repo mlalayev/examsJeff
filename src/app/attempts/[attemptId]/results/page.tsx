@@ -309,6 +309,14 @@ export default function AttemptResultsPage() {
     switch (qtype) {
       case "TF":
         return answer ? "True" : "False";
+      case "TF_NG":
+        if (typeof answer === "string") {
+          const upper = answer.toUpperCase();
+          if (upper === "TRUE") return "True";
+          if (upper === "FALSE") return "False";
+          if (upper === "NOT_GIVEN") return "Not Given";
+        }
+        return "No answer";
       case "MCQ_SINGLE":
       case "SELECT":
       case "INLINE_SELECT":
@@ -722,6 +730,17 @@ export default function AttemptResultsPage() {
                                     <option value="">Select answer</option>
                                     <option value="0">True</option>
                                     <option value="1">False</option>
+                                  </select>
+                                ) : q.qtype === "TF_NG" ? (
+                                  <select
+                                    value={editedAnswers[q.id] ?? ""}
+                                    onChange={(e) => setEditedAnswers({ ...editedAnswers, [q.id]: e.target.value })}
+                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                  >
+                                    <option value="">Select answer</option>
+                                    <option value="TRUE">True</option>
+                                    <option value="FALSE">False</option>
+                                    <option value="NOT_GIVEN">Not Given</option>
                                   </select>
                                 ) : (
                                   <input

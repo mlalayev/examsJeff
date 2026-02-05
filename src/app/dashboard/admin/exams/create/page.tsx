@@ -6,12 +6,13 @@ import { ArrowLeft, Plus, X, BookOpen, Save, Edit, Info, Image, Volume2 } from "
 import TextFormattingPreview from "@/components/TextFormattingPreview";
 import QuestionPreview from "@/components/QuestionPreview";
 import ImageUpload from "@/components/ImageUpload";
-type ExamCategory = "TOEFL" | "SAT" | "GENERAL_ENGLISH" | "MATH" | "KIDS";
+type ExamCategory = "IELTS" | "TOEFL" | "SAT" | "GENERAL_ENGLISH" | "MATH" | "KIDS";
 type SectionType = "READING" | "LISTENING" | "WRITING" | "SPEAKING" | "GRAMMAR" | "VOCABULARY";
 type QuestionType = 
   | "MCQ_SINGLE" 
   | "MCQ_MULTI" 
-  | "TF" 
+  | "TF"
+  | "TF_NG"
   | "ORDER_SENTENCE" 
   | "DND_GAP" 
   | "SHORT_TEXT" 
@@ -52,6 +53,7 @@ const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   MCQ_SINGLE: "Multiple Choice (Single)",
   MCQ_MULTI: "Multiple Choice (Multiple)",
   TF: "True/False",
+  TF_NG: "True / False / Not Given",
   INLINE_SELECT: "Inline Select",
   ORDER_SENTENCE: "Order Sentence (Drag & Drop)",
   DND_GAP: "Drag & Drop Gap Fill",
@@ -60,13 +62,37 @@ const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
 };
 
 const QUESTION_TYPE_GROUPS = {
-  "Variantlı sual": ["MCQ_SINGLE", "MCQ_MULTI", "TF", "INLINE_SELECT"],
+  "Variantlı sual": ["MCQ_SINGLE", "MCQ_MULTI", "TF", "TF_NG", "INLINE_SELECT"],
   "Açıq sual": ["SHORT_TEXT", "ESSAY"],
   "Drag and Drop": ["ORDER_SENTENCE", "DND_GAP"],
 };
 
+// IELTS sections-i düzgün ardıcıllıqla sort edən helper
+// 1) LISTENING
+// 2) READING
+// 3) WRITING
+// 4) SPEAKING
+const sortIELTSSections = (sections: Section[]): Section[] => {
+  const order: Record<SectionType, number> = {
+    LISTENING: 1,
+    READING: 2,
+    WRITING: 3,
+    SPEAKING: 4,
+    GRAMMAR: 5,
+    VOCABULARY: 6,
+  };
+
+  return [...sections].sort((a, b) => {
+    const aOrder = order[a.type] ?? 99;
+    const bOrder = order[b.type] ?? 99;
+    if (aOrder !== bOrder) return aOrder - bOrder;
+    return a.order - b.order;
+  });
+};
+
 // Category-ə görə icazə verilən section tipləri
 const ALLOWED_SECTIONS_BY_CATEGORY: Record<ExamCategory, SectionType[]> = {
+  IELTS: ["READING", "LISTENING", "WRITING", "SPEAKING"],
   TOEFL: ["READING", "LISTENING", "WRITING", "SPEAKING"],
   SAT: ["READING", "WRITING"], // SAT-də LISTENING və SPEAKING yoxdur
   GENERAL_ENGLISH: ["READING", "LISTENING", "WRITING", "GRAMMAR", "VOCABULARY"], // SPEAKING yoxdur
@@ -126,7 +152,7 @@ export default function CreateExamPage() {
     return () => clearTimeout(timer);
   }, []);
 
-  const categories: ExamCategory[] = ["TOEFL", "SAT", "GENERAL_ENGLISH", "MATH", "KIDS"];
+  const categories: ExamCategory[] = ["IELTS", "TOEFL", "SAT", "GENERAL_ENGLISH", "MATH", "KIDS"];
 
   // Seçilmiş category üçün icazə verilən section tipləri
   const allowedSectionTypes = selectedCategory 
@@ -184,11 +210,10 @@ export default function CreateExamPage() {
       passage: type === "READING" ? undefined : undefined,
       audio: type === "LISTENING" ? undefined : undefined,
     };
-    else {
-      setSections([...currentSections, newSection]);
-      setCurrentSection(newSection);
-      setStep("questions");
-    }
+
+    setSections([...currentSections, newSection]);
+    setCurrentSection(newSection);
+    setStep("questions");
   };
 
   const addQuestion = (qtype: QuestionType) => {
@@ -370,6 +395,8 @@ export default function CreateExamPage() {
     switch (qtype) {
       case "TF":
         return { text: "Enter the statement here" };
+      case "TF_NG":
+        return { text: "Enter the statement here" };
       case "MCQ_SINGLE":
       case "MCQ_MULTI":
         return { text: "Enter the question here" };
@@ -406,6 +433,8 @@ export default function CreateExamPage() {
     switch (qtype) {
       case "TF":
         return { value: true };
+      case "TF_NG":
+        return { value: "TRUE" }; // TRUE | FALSE | NOT_GIVEN
       case "MCQ_SINGLE":
       case "INLINE_SELECT":
         return { index: 0 };
@@ -1674,17 +1703,6 @@ export default function CreateExamPage() {
                   </div>
                 ) : editingQuestion.qtype === "ESSAY" ? (
                   <div className="space-y-3">
-                    <ImageUpload
-                      label="Essay Image (Optional)"
-                      value={editingQuestion.image || ""}
-                      onChange={(url) => {
-                        setEditingQuestion({
-                          ...editingQuestion,
-                          image: url,
-                        });
-                      }}
-                    />
-
                     <textarea
                       value={editingQuestion.prompt?.text || ""}
                       onChange={(e) => {

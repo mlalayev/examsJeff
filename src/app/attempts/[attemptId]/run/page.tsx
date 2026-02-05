@@ -15,12 +15,16 @@ import { QOpenText } from "@/components/questions/QOpenText";
 import { QMcqSingle } from "@/components/questions/QMcqSingle";
 import { QMcqMulti } from "@/components/questions/QMcqMulti";
 import { QTF } from "@/components/questions/QTF";
+import { QTFNG } from "@/components/questions/QTFNG";
 import { QInlineSelect } from "@/components/questions/QInlineSelect";
 import { QDndGap } from "@/components/questions/QDndGap";
 import { QOrderSentence } from "@/components/questions/QOrderSentence";
 import { SectionTimer } from "@/components/attempts/SectionTimer";
 import { useAttemptPersistence, type PersistedAttemptState } from "@/hooks/useAttemptPersistence";
-import { X } from "lucide-react";
+import { SubmitModal } from "@/components/attempts/modals/SubmitModal";
+import { SuccessModal } from "@/components/attempts/modals/SuccessModal";
+import { SubmitModuleModal } from "@/components/attempts/modals/SubmitModuleModal";
+import { ResumeNotification } from "@/components/attempts/ResumeNotification";
 
 interface Question {
   id: string;
@@ -83,6 +87,8 @@ export default function AttemptRunnerPage() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showResumeNotification, setShowResumeNotification] = useState(false);
   const [listeningPart, setListeningPart] = useState(1); // For IELTS Listening part selection
+  const [readingPart, setReadingPart] = useState(1); // For IELTS Reading part selection
+  const [writingPart, setWritingPart] = useState(1); // For IELTS Writing part selection
 
   const autosaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const hasRestoredFromPersistence = useRef(false);
@@ -509,6 +515,16 @@ export default function AttemptRunnerPage() {
               const ieltsTimerKey = `ielts_listening_timer_${attemptId}_${section.id}`;
               localStorage.removeItem(ieltsTimerKey);
             }
+            // Clear IELTS Reading timers
+            if (section.type === "READING" && data.examCategory === "IELTS") {
+              const ieltsReadingTimerKey = `ielts_reading_timer_${attemptId}_${section.id}`;
+              localStorage.removeItem(ieltsReadingTimerKey);
+            }
+            // Clear IELTS Writing timers
+            if (section.type === "WRITING" && data.examCategory === "IELTS") {
+              const ieltsWritingTimerKey = `ielts_writing_timer_${attemptId}_${section.id}`;
+              localStorage.removeItem(ieltsWritingTimerKey);
+            }
           });
         }
 
@@ -557,6 +573,8 @@ export default function AttemptRunnerPage() {
           return <QMcqMulti {...props} />;
         case "TF":
           return <QTF {...props} />;
+        case "TF_NG":
+          return <QTFNG {...props} />;
         case "INLINE_SELECT":
           return <QInlineSelect {...props} />;
         case "ORDER_SENTENCE":
@@ -1045,187 +1063,39 @@ export default function AttemptRunnerPage() {
                 onListeningPartChange={setListeningPart}
                 onTimeExpired={() => handleTimeExpired(currentSection.id)}
                 attemptId={attemptId}
+                readingPart={readingPart}
+                onReadingPartChange={setReadingPart}
+                writingPart={writingPart}
+                onWritingPartChange={setWritingPart}
               />
             )}
           </div>
         </div>
       </div>
 
-      {/* Resume Notification */}
-      {showResumeNotification && (
-        <div className="fixed top-4 right-4 z-50 animate-fade-in">
-          <div className="bg-green-50 border border-green-200 rounded-lg shadow-lg p-4 flex items-start gap-3 max-w-sm">
-            <div className="flex-shrink-0">
-              <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium text-green-900">Resumed from last session</p>
-              <p className="text-xs text-green-700 mt-1">Your answers and progress have been restored</p>
-            </div>
-            <button
-              onClick={() => setShowResumeNotification(false)}
-              className="flex-shrink-0 text-green-600 hover:text-green-800"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Modals and Notifications */}
+      <ResumeNotification
+        isOpen={showResumeNotification}
+        onClose={() => setShowResumeNotification(false)}
+      />
 
-      {/* Submit Module Modal - SAT Only */}
-      {showSubmitModuleModal && isSAT && currentSection && (
-        <div
-          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowSubmitModuleModal(false);
-          }}
-        >
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden">
-            {/* Header */}
-            <div className="px-6 py-5 border-b border-gray-200">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-xl font-semibold text-gray-900">
-                    Submit Module
-                  </h3>
-                  <p className="text-sm text-gray-500 mt-0.5">
-                    {currentSection.title}
-                  </p>
-                </div>
-              </div>
-            </div>
+      <SubmitModuleModal
+        isOpen={showSubmitModuleModal && isSAT && !!currentSection}
+        onClose={() => setShowSubmitModuleModal(false)}
+        onConfirm={handleSubmitModuleConfirm}
+        sectionTitle={currentSection?.title || ""}
+      />
 
-            {/* Content */}
-            <div className="px-6 py-5">
-              <p className="text-sm text-gray-600 leading-relaxed mb-3">
-                Are you sure you want to submit <span className="font-semibold">{currentSection.title}</span>?
-              </p>
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                <p className="text-xs text-amber-800">
-                  ⚠️ You will not be able to return to this module or change your answers after submission.
-                </p>
-              </div>
-            </div>
+      <SubmitModal
+        isOpen={showSubmitModal}
+        onClose={() => setShowSubmitModal(false)}
+        onConfirm={handleSubmitConfirm}
+      />
 
-            {/* Footer */}
-            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex gap-3 justify-end">
-              <button
-                onClick={() => setShowSubmitModuleModal(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSubmitModuleConfirm}
-                className="px-4 py-2 text-sm font-medium text-white rounded-md hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors"
-                style={{ backgroundColor: "#059669" }}
-              >
-                Submit Module
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Submit Confirmation Modal */}
-      {showSubmitModal && (
-        <div
-          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowSubmitModal(false);
-          }}
-        >
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden">
-            {/* Header */}
-            <div className="px-6 py-5 border-b border-gray-200">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-xl font-semibold text-gray-900">
-                    Submit Exam
-                  </h3>
-                  <p className="text-sm text-gray-500 mt-0.5">
-                    Confirm your submission
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Content */}
-            <div className="px-6 py-5">
-              <p className="text-sm text-gray-600 leading-relaxed">
-                Are you sure you want to submit your exam? You cannot change your answers after submission.
-              </p>
-            </div>
-
-            {/* Footer */}
-            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex gap-3 justify-end">
-              <button
-                onClick={() => setShowSubmitModal(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSubmitConfirm}
-                className="px-4 py-2 text-sm font-medium text-white rounded-md hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors"
-                style={{ backgroundColor: "#303380" }}
-              >
-                Submit Exam
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Success Modal */}
-      {showSuccessModal && (
-        <div
-          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) handleSuccessModalClose();
-          }}
-        >
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden">
-            {/* Content */}
-            <div className="px-6 py-8 text-center">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                Exam Submitted Successfully!
-              </h3>
-              <p className="text-sm text-gray-600">
-                Your exam has been submitted. Click below to view your results.
-              </p>
-            </div>
-
-            {/* Footer */}
-            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
-              <button
-                onClick={handleSuccessModalClose}
-                className="w-full px-4 py-2 text-sm font-medium text-white rounded-md hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors"
-                style={{ backgroundColor: "#303380" }}
-              >
-                View Results
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <SuccessModal
+        isOpen={showSuccessModal}
+        onClose={handleSuccessModalClose}
+      />
     </>
   );
 }

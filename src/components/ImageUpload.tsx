@@ -8,9 +8,18 @@ interface ImageUploadProps {
   onChange: (url: string) => void;
   label?: string;
   className?: string;
+  showUrlInput?: boolean;
+  showHelperText?: boolean;
 }
 
-export default function ImageUpload({ value, onChange, label = "Image", className = "" }: ImageUploadProps) {
+export default function ImageUpload({
+  value,
+  onChange,
+  label = "Image",
+  className = "",
+  showUrlInput = true,
+  showHelperText = true,
+}: ImageUploadProps) {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -100,15 +109,17 @@ export default function ImageUpload({ value, onChange, label = "Image", classNam
         />
 
         {/* URL Input (alternative) */}
-        <div>
-          <input
-            type="text"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder="Or paste image URL"
-            className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
-          />
-        </div>
+        {showUrlInput && (
+          <div>
+            <input
+              type="text"
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              placeholder="Or paste image URL"
+              className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
+            />
+          </div>
+        )}
 
         {/* Preview */}
         {value && (
@@ -130,11 +141,15 @@ export default function ImageUpload({ value, onChange, label = "Image", classNam
           </div>
         )}
 
-        <p className="text-xs text-gray-500">
-          Upload from computer or paste URL • Max 5MB • JPG, PNG, GIF
-        </p>
+        {showHelperText && (
+          <p className="text-xs text-gray-500">
+            Upload from computer or paste URL • Max 5MB • JPG, PNG, GIF
+          </p>
+        )}
       </div>
     </div>
   );
 }
+
+
 

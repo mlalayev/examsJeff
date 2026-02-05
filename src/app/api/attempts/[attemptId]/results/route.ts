@@ -305,10 +305,21 @@ export async function GET(
             else if (q.qtype === "GAP") {
               displayCorrectAnswer = answerKey?.answers?.[0] || answerKey?.answers || [];
             }
-            // For TF: show boolean as text
-            else if (q.qtype === "TF") {
-              displayStudentAnswer = studentAnswer === true ? "True" : studentAnswer === false ? "False" : studentAnswer;
-              displayCorrectAnswer = answerKey?.value === true ? "True" : answerKey?.value === false ? "False" : answerKey?.value;
+            // For TF / TF_NG: show value as text
+            else if (q.qtype === "TF" || q.qtype === "TF_NG") {
+              const formatTF = (val: any) => {
+                if (val === true) return "True";
+                if (val === false) return "False";
+                if (typeof val === "string") {
+                  const upper = val.toUpperCase();
+                  if (upper === "TRUE") return "True";
+                  if (upper === "FALSE") return "False";
+                  if (upper === "NOT_GIVEN") return "Not Given";
+                }
+                return val;
+              };
+              displayStudentAnswer = formatTF(studentAnswer);
+              displayCorrectAnswer = formatTF(answerKey?.value);
             }
             
             return {
