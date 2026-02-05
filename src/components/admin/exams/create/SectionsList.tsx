@@ -15,10 +15,6 @@ interface SectionsListProps {
   onAddSection: (type: SectionType) => void;
   onSectionEdit: (section: Section) => void;
   onSectionDelete: (sectionId: string) => void;
-  onAddSubsection: (sectionId: string) => void;
-  onSectionEditModal: (section: Section) => void;
-  onSubsectionEdit: (subsection: Section) => void;
-  onSubsectionDelete: (subsection: Section, sections: Section[], setSections: (s: Section[]) => void, setCurrentSection: (s: Section | null) => void) => void;
   setSections: (sections: Section[]) => void;
   setCurrentSection: (section: Section | null) => void;
 }
@@ -33,10 +29,6 @@ export default function SectionsList({
   onAddSection,
   onSectionEdit,
   onSectionDelete,
-  onAddSubsection,
-  onSectionEditModal,
-  onSubsectionEdit,
-  onSubsectionDelete,
   setSections,
   setCurrentSection,
 }: SectionsListProps) {
@@ -117,7 +109,6 @@ export default function SectionsList({
         <div className="space-y-3 sm:space-y-4">
           {(selectedCategory === "IELTS" ? sortIELTSSections(sections) : sections).map((section, idx) => {
             const isActive = currentSection?.id === section.id && step === "questions";
-            const hasSubsections = section.subsections && section.subsections.length > 0;
             return (
               <SectionCard
                 key={section.id}
@@ -127,12 +118,18 @@ export default function SectionsList({
                 selectedCategory={selectedCategory}
                 onEdit={() => onSectionEdit(section)}
                 onDelete={() => onSectionDelete(section.id)}
-                onAddSubsection={section.type === "LISTENING" && selectedCategory === "IELTS" && hasSubsections ? () => onAddSubsection(section.id) : undefined}
-                onEditSection={section.type === "LISTENING" && selectedCategory === "IELTS" && hasSubsections ? () => onSectionEditModal(section) : undefined}
-                onSubsectionEdit={(subsection) => {
-                  onSubsectionEdit(subsection);
+                onSectionUpdate={(updatedSection) => {
+                  const updatedSections = sections.map((s: Section) =>
+                    s.id === section.id ? updatedSection : s
+                  );
+                  setSections(updatedSections);
+                  if (currentSection?.id === section.id) {
+                    setCurrentSection(updatedSection);
+                  }
                 }}
-                onSubsectionDelete={(subsection) => onSubsectionDelete(subsection, sections, setSections, setCurrentSection)}
+                sections={sections}
+                setSections={setSections}
+                setCurrentSection={setCurrentSection}
               />
             );
           })}

@@ -34,9 +34,7 @@ export default function CreateExamPage() {
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [selectedSectionType, setSelectedSectionType] = useState<SectionType | "">("");
   const [saving, setSaving] = useState(false);
-  const [showSectionEditModal, setShowSectionEditModal] = useState(false);
-  const [editingSection, setEditingSection] = useState<Section | null>(null);
-  const [uploadingAudio, setUploadingAudio] = useState(false);
+  // Section edit modal removed - now using inline edit in SectionCard
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingQuestionImage, setUploadingQuestionImage] = useState(false);
 
@@ -69,9 +67,12 @@ export default function CreateExamPage() {
     } else {
       // IELTS seçildikdə avtomatik 4 section yarat
       if (category === "IELTS" && currentSections.length === 0) {
+        const baseTime = Date.now();
+        const listeningSectionId = `section-${baseTime}-1`;
+        const readingSectionId = `section-${baseTime}-2`;
         const ieltsSections: Section[] = [
           {
-            id: `section-${Date.now()}-1`,
+            id: listeningSectionId,
             type: "LISTENING",
             title: "Listening Section",
             instruction: IELTS_SECTION_INSTRUCTIONS.LISTENING,
@@ -80,7 +81,7 @@ export default function CreateExamPage() {
             questions: [],
           },
           {
-            id: `section-${Date.now()}-2`,
+            id: readingSectionId,
             type: "READING",
             title: "Reading Section",
             instruction: IELTS_SECTION_INSTRUCTIONS.READING,
@@ -291,42 +292,6 @@ export default function CreateExamPage() {
     }
   };
 
-  const addSubsection = (parentSectionId: string) => {
-    const parentSection = sections.find((s: Section) => s.id === parentSectionId);
-    if (!parentSection) return;
-
-    const currentSubsections = parentSection.subsections || [];
-    const nextPartNumber = currentSubsections.length + 1;
-
-    const newSubsection: Section = {
-      id: `subsection-${parentSectionId}-part${nextPartNumber}`,
-      type: "LISTENING",
-      title: `Listening - Part ${nextPartNumber}`,
-      instruction: `Complete Part ${nextPartNumber} questions`,
-      durationMin: 0,
-      order: nextPartNumber - 1,
-      questions: [],
-      audio: parentSection.audio,
-      image: undefined,
-      introduction: undefined,
-      isSubsection: true,
-      parentId: parentSectionId,
-    };
-
-    const updatedSections = sections.map((s: Section) => {
-      if (s.id === parentSectionId) {
-        return {
-          ...s,
-          subsections: [...(s.subsections || []), newSubsection],
-        };
-      }
-      return s;
-    });
-
-    setSections(updatedSections);
-  };
-
-
   const saveExam = async () => {
     if (!selectedCategory || !examTitle.trim() || sections.length === 0) {
       alert("Please fill in all required fields and add at least one section");
@@ -530,30 +495,6 @@ export default function CreateExamPage() {
           setStep("questions");
         }}
         onSectionDelete={deleteSection}
-        onAddSubsection={addSubsection}
-        onSectionEditModal={(section) => {
-          setEditingSection(section);
-          setShowSectionEditModal(true);
-        }}
-        onSubsectionEdit={(subsection) => {
-          setCurrentSection(subsection);
-          setStep("questions");
-        }}
-        onSubsectionDelete={(subsection, sections, setSections, setCurrentSection) => {
-          const updatedSections = sections.map((s: Section) => {
-            if (s.id === subsection.parentId) {
-              return {
-                ...s,
-                subsections: s.subsections?.filter((sub: Section) => sub.id !== subsection.id) || [],
-              };
-            }
-            return s;
-          });
-          setSections(updatedSections);
-          if (currentSection?.id === subsection.id) {
-            setCurrentSection(null);
-          }
-        }}
         setSections={setSections}
         setCurrentSection={setCurrentSection}
       />
@@ -644,15 +585,7 @@ export default function CreateExamPage() {
                 <label className="text-sm font-medium text-gray-700">
                   {currentSection.type === "READING" ? "Reading Passage" : "Listening Audio"}
                 </label>
-                <button
-                  onClick={() => {
-                    setEditingSection(currentSection);
-                    setShowSectionEditModal(true);
-                  }}
-                  className="text-xs text-gray-600 hover:text-gray-900"
-                >
-                  Edit
-                </button>
+                {/* Edit button removed - inline edit is now in SectionCard */}
               </div>
               {currentSection.type === "READING" && currentSection.passage && (
                 <div className="text-sm text-gray-600 whitespace-pre-wrap max-h-32 overflow-y-auto">
@@ -772,308 +705,7 @@ export default function CreateExamPage() {
         onSelect={(type) => addQuestion(type)}
       />
 
-      {/* Section Edit Modal (for Reading Passage / Listening Audio) */}
-      {showSectionEditModal && editingSection && (
-        <div
-          className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 p-4"
-          onClick={() => {
-            setShowSectionEditModal(false);
-            setEditingSection(null);
-          }}
-        >
-          <div
-            className="bg-white border border-gray-200 rounded-md p-4 sm:p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base sm:text-lg font-medium text-gray-900">
-                {editingSection.type === "READING"
-                  ? "Edit Reading Passage"
-                  : editingSection.type === "WRITING"
-                    ? `Edit ${editingSection.title} - Task Image & Instruction`
-                    : editingSection.isSubsection
-                      ? `Edit ${editingSection.title} - Image & Introduction`
-                      : "Edit Listening Audio"
-                }
-              </h3>
-              <button
-                onClick={() => {
-                  setShowSectionEditModal(false);
-                  setEditingSection(null);
-                }}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="w-4 h-4 sm:w-5 sm:h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {editingSection.type === "READING" && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Reading Passage *
-                  </label>
-                  <textarea
-                    value={editingSection.passage || ""}
-                    onChange={(e) => {
-                      setEditingSection({
-                        ...editingSection,
-                        passage: e.target.value,
-                      });
-                    }}
-                    placeholder="Enter the reading passage text..."
-                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
-                    rows={10}
-                  />
-                </div>
-              )}
-
-              {editingSection.type === "LISTENING" && (
-                <div className="space-y-4">
-                  {/* Audio Upload - Only for main Listening section (not subsections) */}
-                  {!editingSection.isSubsection && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                        Listening Audio (All Parts) *
-                      </label>
-                      {selectedCategory === "IELTS" && (
-                        <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                          <p className="text-xs text-blue-800 font-medium mb-1">
-                            📝 IELTS Listening Requirements:
-                          </p>
-                          <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
-                            <li>Must have exactly <strong>40 questions</strong> (10 per part)</li>
-                            <li>4 parts: Conversation (1), Monologue (2), Discussion (3), Lecture (4)</li>
-                            <li>Audio will play automatically with restrictions (no pause/seek for students)</li>
-                            <li><strong>One audio file for all 4 parts</strong></li>
-                          </ul>
-                        </div>
-                      )}
-                      <div className="space-y-2">
-                        {editingSection.audio ? (
-                          <div className="p-2 bg-gray-50 rounded-md text-sm text-gray-600">
-                            Current: {editingSection.audio}
-                          </div>
-                        ) : (
-                          <div className="p-2 bg-blue-50 rounded-md text-sm text-blue-600">
-                            Audio will be shared across all 4 parts
-                          </div>
-                        )}
-                        <input
-                          type="file"
-                          accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac,.wma"
-                          onChange={async (e) => {
-                            const file = e.target.files?.[0];
-                            if (!file) return;
-
-                            const validAudioExtensions = ['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac', '.wma'];
-                            const hasValidExtension = validAudioExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
-
-                            if (!hasValidExtension) {
-                              alert("Please upload a valid audio file (mp3, wav, ogg, m4a, aac, flac, wma)");
-                              return;
-                            }
-
-                            setUploadingAudio(true);
-                            try {
-                              const formData = new FormData();
-                              formData.append("file", file);
-                              formData.append("type", "audio");
-
-                              const res = await fetch("/api/admin/upload", {
-                                method: "POST",
-                                body: formData,
-                              });
-
-                              if (res.ok) {
-                                const data = await res.json();
-                                // Update main section and all its subsections with same audio
-                                const updatedSections = sections.map((s: Section) => {
-                                  if (s.id === editingSection.id) {
-                                    return {
-                                      ...s,
-                                      audio: data.path,
-                                      subsections: s.subsections?.map((sub: Section) => ({ ...sub, audio: data.path })),
-                                    };
-                                  }
-                                  return s;
-                                });
-                                setSections(updatedSections);
-                                setEditingSection({
-                                  ...editingSection,
-                                  audio: data.path,
-                                });
-                              } else {
-                                alert("Failed to upload audio");
-                              }
-                            } catch (error) {
-                              console.error("Upload error:", error);
-                              alert("Failed to upload audio");
-                            } finally {
-                              setUploadingAudio(false);
-                            }
-                          }}
-                          disabled={uploadingAudio}
-                          className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 disabled:opacity-50"
-                        />
-                        {uploadingAudio && (
-                          <p className="text-xs text-gray-500">Uploading...</p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Image and Introduction - For subsections only */}
-                  {editingSection.isSubsection && selectedCategory === "IELTS" && (
-                    <>
-                      <ImageUpload
-                        label="Part Image (Optional)"
-                        value={editingSection.image || ""}
-                        onChange={(url) => {
-                          setEditingSection({
-                            ...editingSection,
-                            image: url,
-                          });
-                        }}
-                      />
-
-                      <ImageUpload
-                        label="Second Part Image (Optional)"
-                        value={editingSection.image2 || ""}
-                        onChange={(url) => {
-                          setEditingSection({
-                            ...editingSection,
-                            image2: url,
-                          });
-                        }}
-                      />
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                          Part Introduction <span className="text-gray-500 font-normal">(Optional)</span>
-                        </label>
-                        <textarea
-                          value={editingSection.introduction || ""}
-                          onChange={(e) => {
-                            setEditingSection({
-                              ...editingSection,
-                              introduction: e.target.value,
-                            });
-                          }}
-                          placeholder="Enter introduction text for this part (e.g., 'You will hear a conversation between two people...')"
-                          className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
-                          rows={4}
-                        />
-                        <p className="text-xs text-gray-500 mt-1">
-                          Introduction will appear on the left side with the image (if provided)
-                        </p>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-
-              {/* WRITING - Task Image & Instruction */}
-              {editingSection.type === "WRITING" && editingSection.isSubsection && (
-                <>
-                  <ImageUpload
-                    label="Task Image (Optional)"
-                    value={editingSection.image || ""}
-                    onChange={(url) => {
-                      setEditingSection({
-                        ...editingSection,
-                        image: url,
-                      });
-                    }}
-                  />
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      Task Instruction *
-                    </label>
-                    <textarea
-                      value={editingSection.instruction || ""}
-                      onChange={(e) => {
-                        setEditingSection({
-                          ...editingSection,
-                          instruction: e.target.value,
-                        });
-                      }}
-                      placeholder="Enter task instruction (e.g., 'Summarise the information by selecting and reporting the main features...')"
-                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
-                      rows={6}
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Task instruction will appear above the writing area
-                    </p>
-                  </div>
-                </>
-              )}
-            </div>
-
-            <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 mt-6 pt-4 border-t border-gray-200">
-              <button
-                onClick={() => {
-                  setShowSectionEditModal(false);
-                  setEditingSection(null);
-                }}
-                className="px-3 sm:px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  if (editingSection.type === "READING" && !editingSection.passage?.trim()) {
-                    alert("Please enter a reading passage");
-                    return;
-                  }
-                  if (editingSection.type === "LISTENING" && !editingSection.isSubsection && !editingSection.audio) {
-                    alert("Please upload an audio file");
-                    return;
-                  }
-
-                  // Update section in sections array
-                  const updatedSections = sections.map((s) => {
-                    // If editing a subsection, update it inside parent's subsections
-                    if (editingSection.isSubsection && s.subsections) {
-                      return {
-                        ...s,
-                        subsections: s.subsections.map(sub =>
-                          sub.id === editingSection.id ? editingSection : sub
-                        ),
-                      };
-                    }
-                    // If editing parent section
-                    if (s.id === editingSection.id) {
-                      return editingSection;
-                    }
-                    return s;
-                  });
-                  setSections(updatedSections);
-
-                  // Update currentSection if it's the same
-                  if (currentSection?.id === editingSection.id) {
-                    setCurrentSection(editingSection);
-                  }
-
-                  setShowSectionEditModal(false);
-                  setEditingSection(null);
-                }}
-                className="px-3 sm:px-4 py-2 text-sm font-medium text-white rounded-md"
-                style={{ backgroundColor: "#303380" }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = "#252a6b";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "#303380";
-                }}
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Section Edit Modal removed - now using inline edit in SectionCard */}
 
       {/* Question Edit Modal */}
       {editingQuestion && (
