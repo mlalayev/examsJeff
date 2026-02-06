@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Save, X, BookOpen, Plus, Edit, Info, Image, Volume2 } from "lucide-react";
+import { ArrowLeft, Save, X, BookOpen, Plus, Edit, Info, Image, Volume2, PenTool, Mic } from "lucide-react";
 import TextFormattingPreview from "@/components/TextFormattingPreview";
 import QuestionPreview from "@/components/QuestionPreview";
 import ImageUpload from "@/components/ImageUpload";
@@ -37,6 +37,10 @@ export default function CreateExamPage() {
   // Section edit modal removed - now using inline edit in SectionCard
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingQuestionImage, setUploadingQuestionImage] = useState(false);
+  const [selectedListeningPart, setSelectedListeningPart] = useState<number>(1); // Default to Part 1
+  const [selectedReadingPart, setSelectedReadingPart] = useState<number>(1); // Default to Part 1
+  const [selectedWritingPart, setSelectedWritingPart] = useState<number>(1); // Default to Task 1
+  const [selectedSpeakingPart, setSelectedSpeakingPart] = useState<number>(1); // Default to Part 1
 
   // Simulate page load
   useEffect(() => {
@@ -68,40 +72,38 @@ export default function CreateExamPage() {
       // IELTS seçildikdə avtomatik 4 section yarat
       if (category === "IELTS" && currentSections.length === 0) {
         const baseTime = Date.now();
-        const listeningSectionId = `section-${baseTime}-1`;
-        const readingSectionId = `section-${baseTime}-2`;
         const ieltsSections: Section[] = [
           {
-            id: listeningSectionId,
+            id: `section-${baseTime}-1`,
             type: "LISTENING",
-            title: "Listening Section",
+            title: "Listening",
             instruction: IELTS_SECTION_INSTRUCTIONS.LISTENING,
             durationMin: IELTS_SECTION_DURATIONS.LISTENING,
             order: 0,
             questions: [],
           },
           {
-            id: readingSectionId,
+            id: `section-${baseTime}-2`,
             type: "READING",
-            title: "Reading Section",
+            title: "Reading",
             instruction: IELTS_SECTION_INSTRUCTIONS.READING,
             durationMin: IELTS_SECTION_DURATIONS.READING,
             order: 1,
             questions: [],
           },
           {
-            id: `section-${Date.now()}-3`,
+            id: `section-${baseTime}-3`,
             type: "WRITING",
-            title: "Writing Section",
+            title: "Writing",
             instruction: IELTS_SECTION_INSTRUCTIONS.WRITING,
             durationMin: IELTS_SECTION_DURATIONS.WRITING,
             order: 2,
             questions: [],
           },
           {
-            id: `section-${Date.now()}-4`,
+            id: `section-${baseTime}-4`,
             type: "SPEAKING",
-            title: "Speaking Section",
+            title: "Speaking",
             instruction: IELTS_SECTION_INSTRUCTIONS.SPEAKING,
             durationMin: IELTS_SECTION_DURATIONS.SPEAKING,
             order: 3,
@@ -118,6 +120,12 @@ export default function CreateExamPage() {
     // Category seçilməyibsə və ya section type icazə verilməyibsə, əlavə etmə
     if (!selectedCategory) {
       alert("Please select an exam category first");
+      return;
+    }
+
+    // IELTS üçün section əlavə etməyə icazə vermə (auto-created sections only)
+    if (selectedCategory === "IELTS") {
+      alert("IELTS exam structure is pre-defined. All sections are automatically created.");
       return;
     }
 
@@ -159,8 +167,22 @@ export default function CreateExamPage() {
       defaultPrompt.rawText = defaultPrompt.tokens.join("\n");
     }
 
+    // For IELTS sections, include part number in question ID
+    let questionId = `q-${Date.now()}`;
+    if (selectedCategory === "IELTS") {
+      if (currentSection.type === "LISTENING") {
+        questionId = `q-part${selectedListeningPart}-${Date.now()}`;
+      } else if (currentSection.type === "READING") {
+        questionId = `q-part${selectedReadingPart}-${Date.now()}`;
+      } else if (currentSection.type === "WRITING") {
+        questionId = `q-task${selectedWritingPart}-${Date.now()}`;
+      } else if (currentSection.type === "SPEAKING") {
+        questionId = `q-part${selectedSpeakingPart}-${Date.now()}`;
+      }
+    }
+    
     const newQuestion: Question = {
-      id: `q-${Date.now()}`,
+      id: questionId,
       qtype,
       order: currentSection.questions.length,
       prompt: defaultPrompt,
@@ -282,6 +304,12 @@ export default function CreateExamPage() {
   };
 
   const deleteSection = (sectionId: string) => {
+    // IELTS sections cannot be deleted
+    if (selectedCategory === "IELTS") {
+      alert("IELTS sections cannot be deleted. The exam structure is pre-defined.");
+      return;
+    }
+    
     if (confirm("Are you sure you want to delete this section? All questions in this section will be deleted.")) {
       const updatedSections = sections.filter((s: Section) => s.id !== sectionId);
       setSections(updatedSections);
@@ -493,6 +521,13 @@ export default function CreateExamPage() {
         onSectionEdit={(section) => {
           setCurrentSection(section);
           setStep("questions");
+          // Auto-select Part 1 for IELTS sections
+          if (selectedCategory === "IELTS") {
+            setSelectedListeningPart(1);
+            setSelectedReadingPart(1);
+            setSelectedWritingPart(1);
+            setSelectedSpeakingPart(1);
+          }
         }}
         onSectionDelete={deleteSection}
         setSections={setSections}
@@ -578,30 +613,97 @@ export default function CreateExamPage() {
             </div>
           </div>
 
-          {/* Section Content (Reading Passage / Listening Audio) */}
-          {(currentSection.type === "READING" || (currentSection.type === "LISTENING" && !currentSection.isSubsection)) && (
+          {/* Section Content (Reading Passage) */}
+          {currentSection.type === "READING" && selectedCategory === "IELTS" && (
+            <div className="mb-4 p-4 bg-green-50 border-2 border-green-200 rounded-md">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium text-green-900 flex items-center gap-2">
+                  <BookOpen className="w-4 h-4" />
+                  Reading Passages (3 passages)
+                </label>
+              </div>
+              {typeof currentSection.passage === "object" && currentSection.passage ? (
+                <div className="space-y-2">
+                  {[1, 2, 3].map((partNum) => {
+                    const passage = (currentSection.passage as any)[`part${partNum}`];
+                    return (
+                      <div key={partNum} className={`p-2 rounded border ${
+                        passage ? "bg-white border-green-200" : "bg-yellow-50 border-yellow-200"
+                      }`}>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-medium text-gray-700">Passage {partNum}:</span>
+                          {passage ? (
+                            <span className="text-xs text-green-600 font-medium">✓ Added</span>
+                          ) : (
+                            <span className="text-xs text-yellow-600 font-medium">⚠️ Not added</span>
+                          )}
+                        </div>
+                        {passage && (
+                          <div className="text-xs text-gray-600 whitespace-pre-wrap max-h-20 overflow-y-auto">
+                            {passage.substring(0, 150)}...
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  <p className="text-xs text-green-700 mt-2">
+                    To edit passages, go back to sections and click "Edit Passage".
+                  </p>
+                </div>
+              ) : (
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded">
+                  <p className="text-xs text-yellow-800 font-medium">
+                    ⚠️ No passages added yet! Go back to sections and click "Edit Passage" to add all 3 passages.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* Reading Passage (Non-IELTS) */}
+          {currentSection.type === "READING" && selectedCategory !== "IELTS" && (
             <div className="mb-4 p-4 bg-gray-50 border border-gray-200 rounded-md">
               <div className="flex items-center justify-between mb-2">
                 <label className="text-sm font-medium text-gray-700">
-                  {currentSection.type === "READING" ? "Reading Passage" : "Listening Audio"}
+                  Reading Passage
                 </label>
-                {/* Edit button removed - inline edit is now in SectionCard */}
               </div>
-              {currentSection.type === "READING" && currentSection.passage && (
+              {currentSection.passage && typeof currentSection.passage === "string" ? (
                 <div className="text-sm text-gray-600 whitespace-pre-wrap max-h-32 overflow-y-auto">
                   {currentSection.passage.substring(0, 200)}...
                 </div>
+              ) : (
+                <p className="text-xs text-gray-500">No passage added yet. Go back to sections and click "Edit Passage".</p>
               )}
-              {currentSection.type === "LISTENING" && currentSection.audio && (
-                <div className="text-sm text-gray-600">
-                  Audio: {currentSection.audio}
+            </div>
+          )}
+
+          {/* Listening Audio Info and Upload */}
+          {currentSection.type === "LISTENING" && selectedCategory === "IELTS" && (
+            <div className="mb-4 p-4 bg-blue-50 border-2 border-blue-200 rounded-md">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium text-blue-900 flex items-center gap-2">
+                  <Volume2 className="w-4 h-4" />
+                  Listening Audio (Shared for all 4 parts)
+                </label>
+              </div>
+              {currentSection.audio ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 p-2 bg-white rounded border border-blue-200">
+                    <Volume2 className="w-4 h-4 text-blue-600" />
+                    <span className="text-sm text-gray-700 flex-1">{currentSection.audio}</span>
+                    <span className="text-xs text-green-600 font-medium">✓ Uploaded</span>
+                  </div>
+                  <p className="text-xs text-blue-700">
+                    Audio is shared across all 4 parts. To change, go back to sections and click the edit button.
+                  </p>
                 </div>
-              )}
-              {(!currentSection.passage && currentSection.type === "READING") && (
-                <p className="text-xs text-gray-500">No passage added yet. Click Edit to add.</p>
-              )}
-              {(!currentSection.audio && currentSection.type === "LISTENING") && (
-                <p className="text-xs text-gray-500">No audio uploaded yet. Click Edit to upload.</p>
+              ) : (
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded">
+                  <p className="text-xs text-yellow-800 font-medium">
+                    ⚠️ No audio uploaded yet! Go back to sections and click the "Edit Section" button to upload audio.
+                  </p>
+                </div>
               )}
             </div>
           )}
@@ -645,16 +747,276 @@ export default function CreateExamPage() {
             </div>
           </div>
 
+          {/* Part Selection Buttons for IELTS - Always Visible */}
+          {selectedCategory === "IELTS" && (
+            <>
+              {/* Listening Parts */}
+              {currentSection.type === "LISTENING" && (
+                <div className="mb-4 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-lg">
+                  <div className="mb-3">
+                    <h4 className="text-sm font-semibold text-gray-900 mb-1 flex items-center gap-2">
+                      <Volume2 className="w-4 h-4 text-blue-600" />
+                      Select Listening Part
+                    </h4>
+                    <p className="text-xs text-gray-600">Choose which part to add questions to (40 questions total, 10 per part)</p>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+                    {[
+                      { num: 1, label: "Conversation" },
+                      { num: 2, label: "Monologue" },
+                      { num: 3, label: "Discussion" },
+                      { num: 4, label: "Lecture" },
+                    ].map((part) => (
+                      <button
+                        key={part.num}
+                        onClick={() => setSelectedListeningPart(part.num)}
+                        className={`px-4 py-3 rounded-lg font-medium text-sm transition-all border-2 ${
+                          selectedListeningPart === part.num
+                            ? "bg-[#303380] text-white border-[#303380] shadow-lg transform scale-105"
+                            : "bg-white text-gray-700 hover:bg-gray-50 border-gray-200 hover:border-[#303380]"
+                        }`}
+                      >
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="font-bold">Part {part.num}</span>
+                          <span className="text-xs opacity-90">{part.label}</span>
+                          <span className="text-[10px] opacity-75">
+                            {currentSection.questions.filter((q: Question) => q.id.includes(`part${part.num}`)).length} Qs
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-3 p-2 bg-white rounded border border-blue-200">
+                    <p className="text-xs text-blue-800 font-medium">
+                      Currently editing: <span className="text-[#303380]">Part {selectedListeningPart}</span>
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Reading Parts */}
+              {currentSection.type === "READING" && (
+                <div className="mb-4 p-4 bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-lg">
+                  <div className="mb-3">
+                    <h4 className="text-sm font-semibold text-gray-900 mb-1 flex items-center gap-2">
+                      <BookOpen className="w-4 h-4 text-green-600" />
+                      Select Reading Passage
+                    </h4>
+                    <p className="text-xs text-gray-600">Choose which passage to add questions to (40 questions total, ~13 per passage)</p>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                    {[
+                      { num: 1, label: "Passage 1" },
+                      { num: 2, label: "Passage 2" },
+                      { num: 3, label: "Passage 3" },
+                    ].map((part) => (
+                      <button
+                        key={part.num}
+                        onClick={() => setSelectedReadingPart(part.num)}
+                        className={`px-4 py-3 rounded-lg font-medium text-sm transition-all border-2 ${
+                          selectedReadingPart === part.num
+                            ? "bg-[#303380] text-white border-[#303380] shadow-lg transform scale-105"
+                            : "bg-white text-gray-700 hover:bg-gray-50 border-gray-200 hover:border-[#303380]"
+                        }`}
+                      >
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="font-bold">{part.label}</span>
+                          <span className="text-[10px] opacity-75">
+                            {currentSection.questions.filter((q: Question) => q.id.includes(`part${part.num}`)).length} Qs
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-3 p-2 bg-white rounded border border-green-200">
+                    <p className="text-xs text-green-800 font-medium">
+                      Currently editing: <span className="text-[#303380]">Passage {selectedReadingPart}</span>
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Writing Tasks */}
+              {currentSection.type === "WRITING" && (
+                <div className="mb-4 p-4 bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-200 rounded-lg">
+                  <div className="mb-3">
+                    <h4 className="text-sm font-semibold text-gray-900 mb-1 flex items-center gap-2">
+                      <PenTool className="w-4 h-4 text-orange-600" />
+                      Select Writing Task
+                    </h4>
+                    <p className="text-xs text-gray-600">Choose which task to add questions to (Task 1: 150+ words, Task 2: 250+ words)</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                    {[
+                      { num: 1, label: "Task 1", desc: "20 min, 150+ words" },
+                      { num: 2, label: "Task 2", desc: "40 min, 250+ words" },
+                    ].map((task) => (
+                      <button
+                        key={task.num}
+                        onClick={() => setSelectedWritingPart(task.num)}
+                        className={`px-4 py-3 rounded-lg font-medium text-sm transition-all border-2 ${
+                          selectedWritingPart === task.num
+                            ? "bg-[#303380] text-white border-[#303380] shadow-lg transform scale-105"
+                            : "bg-white text-gray-700 hover:bg-gray-50 border-gray-200 hover:border-[#303380]"
+                        }`}
+                      >
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="font-bold">{task.label}</span>
+                          <span className="text-xs opacity-90">{task.desc}</span>
+                          <span className="text-[10px] opacity-75">
+                            {currentSection.questions.filter((q: Question) => q.id.includes(`task${task.num}`)).length} Qs
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-3 p-2 bg-white rounded border border-orange-200">
+                    <p className="text-xs text-orange-800 font-medium">
+                      Currently editing: <span className="text-[#303380]">Task {selectedWritingPart}</span>
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Speaking Parts */}
+              {currentSection.type === "SPEAKING" && (
+                <div className="mb-4 p-4 bg-gradient-to-br from-red-50 to-pink-50 border-2 border-red-200 rounded-lg">
+                  <div className="mb-3">
+                    <h4 className="text-sm font-semibold text-gray-900 mb-1 flex items-center gap-2">
+                      <Mic className="w-4 h-4 text-red-600" />
+                      Select Speaking Part
+                    </h4>
+                    <p className="text-xs text-gray-600">Choose which part to add questions to (Part 1: Interview, Part 2: Long turn, Part 3: Discussion)</p>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                    {[
+                      { num: 1, label: "Part 1", desc: "Interview" },
+                      { num: 2, label: "Part 2", desc: "Long Turn" },
+                      { num: 3, label: "Part 3", desc: "Discussion" },
+                    ].map((part) => (
+                      <button
+                        key={part.num}
+                        onClick={() => setSelectedSpeakingPart(part.num)}
+                        className={`px-4 py-3 rounded-lg font-medium text-sm transition-all border-2 ${
+                          selectedSpeakingPart === part.num
+                            ? "bg-[#303380] text-white border-[#303380] shadow-lg transform scale-105"
+                            : "bg-white text-gray-700 hover:bg-gray-50 border-gray-200 hover:border-[#303380]"
+                        }`}
+                      >
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="font-bold">{part.label}</span>
+                          <span className="text-xs opacity-90">{part.desc}</span>
+                          <span className="text-[10px] opacity-75">
+                            {currentSection.questions.filter((q: Question) => q.id.includes(`part${part.num}`)).length} Qs
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-3 p-2 bg-white rounded border border-red-200">
+                    <p className="text-xs text-red-800 font-medium">
+                      Currently editing: <span className="text-[#303380]">Part {selectedSpeakingPart}</span>
+                    </p>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
           {/* Questions List */}
           <div className="space-y-3 sm:space-y-4">
-            {currentSection.questions.map((q, idx) => (
-              <div key={q.id} className="border border-gray-200 rounded-md p-3 sm:p-4">
+            {(() => {
+              let filteredQuestions = currentSection.questions;
+              
+              if (selectedCategory === "IELTS") {
+                if (currentSection.type === "LISTENING") {
+                  filteredQuestions = currentSection.questions.filter((q: Question) => q.id.includes(`part${selectedListeningPart}`));
+                } else if (currentSection.type === "READING") {
+                  filteredQuestions = currentSection.questions.filter((q: Question) => q.id.includes(`part${selectedReadingPart}`));
+                } else if (currentSection.type === "WRITING") {
+                  filteredQuestions = currentSection.questions.filter((q: Question) => q.id.includes(`task${selectedWritingPart}`));
+                } else if (currentSection.type === "SPEAKING") {
+                  filteredQuestions = currentSection.questions.filter((q: Question) => q.id.includes(`part${selectedSpeakingPart}`));
+                }
+              }
+              
+              return filteredQuestions;
+            })().map((q, idx) => {
+              // Calculate global question number across all parts
+              let globalQuestionNumber = idx + 1;
+              
+              if (selectedCategory === "IELTS") {
+                if (currentSection.type === "LISTENING") {
+                  // Count questions in previous Listening parts
+                  let previousQuestionsCount = 0;
+                  for (let i = 1; i < selectedListeningPart; i++) {
+                    previousQuestionsCount += currentSection.questions.filter((question: Question) => 
+                      question.id.includes(`part${i}`)
+                    ).length;
+                  }
+                  globalQuestionNumber = previousQuestionsCount + idx + 1;
+                } else if (currentSection.type === "READING") {
+                  // Count questions in previous Reading parts
+                  let previousQuestionsCount = 0;
+                  for (let i = 1; i < selectedReadingPart; i++) {
+                    previousQuestionsCount += currentSection.questions.filter((question: Question) => 
+                      question.id.includes(`part${i}`)
+                    ).length;
+                  }
+                  globalQuestionNumber = previousQuestionsCount + idx + 1;
+                } else if (currentSection.type === "WRITING") {
+                  // Count questions in previous Writing tasks
+                  let previousQuestionsCount = 0;
+                  for (let i = 1; i < selectedWritingPart; i++) {
+                    previousQuestionsCount += currentSection.questions.filter((question: Question) => 
+                      question.id.includes(`task${i}`)
+                    ).length;
+                  }
+                  globalQuestionNumber = previousQuestionsCount + idx + 1;
+                } else if (currentSection.type === "SPEAKING") {
+                  // Count questions in previous Speaking parts
+                  let previousQuestionsCount = 0;
+                  for (let i = 1; i < selectedSpeakingPart; i++) {
+                    previousQuestionsCount += currentSection.questions.filter((question: Question) => 
+                      question.id.includes(`part${i}`)
+                    ).length;
+                  }
+                  globalQuestionNumber = previousQuestionsCount + idx + 1;
+                }
+              }
+              
+              return (
+              <div key={q.id} className="border border-gray-200 rounded-md p-3 sm:p-4 hover:border-gray-300 transition-colors">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 mb-2">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs sm:text-sm font-medium text-gray-700">Q{idx + 1}</span>
+                    <span className="text-xs sm:text-sm font-medium text-gray-700">Q{globalQuestionNumber}</span>
                     <span className="text-xs px-2 py-1 bg-gray-100 rounded text-gray-600">
                       {QUESTION_TYPE_LABELS[q.qtype]}
                     </span>
+                    {selectedCategory === "IELTS" && (
+                      <>
+                        {currentSection.type === "LISTENING" && (
+                          <span className="text-xs px-2 py-1 bg-blue-100 rounded text-blue-700 font-medium">
+                            Part {selectedListeningPart}
+                          </span>
+                        )}
+                        {currentSection.type === "READING" && (
+                          <span className="text-xs px-2 py-1 bg-green-100 rounded text-green-700 font-medium">
+                            Passage {selectedReadingPart}
+                          </span>
+                        )}
+                        {currentSection.type === "WRITING" && (
+                          <span className="text-xs px-2 py-1 bg-orange-100 rounded text-orange-700 font-medium">
+                            Task {selectedWritingPart}
+                          </span>
+                        )}
+                        {currentSection.type === "SPEAKING" && (
+                          <span className="text-xs px-2 py-1 bg-red-100 rounded text-red-700 font-medium">
+                            Part {selectedSpeakingPart}
+                          </span>
+                        )}
+                      </>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <button
@@ -686,15 +1048,50 @@ export default function CreateExamPage() {
                   </div>
                 )}
               </div>
-            ))}
-            {currentSection.questions.length === 0 && (
-              <div className="text-center py-8 sm:py-12 text-gray-500 border border-dashed border-gray-300 rounded-md bg-gray-50">
-                <BookOpen className="w-8 h-8 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-4" />
-                <p className="font-medium text-gray-700 mb-2 text-sm sm:text-base">No questions in this section yet</p>
-                <p className="text-xs sm:text-sm">Click "Add Question" above to add your first question</p>
-              </div>
-            )}
+            );
+            })}
           </div>
+          
+          {/* Empty State */}
+          {(() => {
+            let filteredQuestions = currentSection.questions;
+            
+            if (selectedCategory === "IELTS") {
+              if (currentSection.type === "LISTENING") {
+                filteredQuestions = currentSection.questions.filter((q: Question) => q.id.includes(`part${selectedListeningPart}`));
+              } else if (currentSection.type === "READING") {
+                filteredQuestions = currentSection.questions.filter((q: Question) => q.id.includes(`part${selectedReadingPart}`));
+              } else if (currentSection.type === "WRITING") {
+                filteredQuestions = currentSection.questions.filter((q: Question) => q.id.includes(`task${selectedWritingPart}`));
+              } else if (currentSection.type === "SPEAKING") {
+                filteredQuestions = currentSection.questions.filter((q: Question) => q.id.includes(`part${selectedSpeakingPart}`));
+              }
+            }
+            
+            if (filteredQuestions.length === 0) {
+              let partLabel = "";
+              if (selectedCategory === "IELTS") {
+                if (currentSection.type === "LISTENING") partLabel = `Part ${selectedListeningPart}`;
+                else if (currentSection.type === "READING") partLabel = `Passage ${selectedReadingPart}`;
+                else if (currentSection.type === "WRITING") partLabel = `Task ${selectedWritingPart}`;
+                else if (currentSection.type === "SPEAKING") partLabel = `Part ${selectedSpeakingPart}`;
+              }
+              
+              return (
+                <div className="text-center py-8 sm:py-12 text-gray-500 border border-dashed border-gray-300 rounded-md bg-gray-50 mt-4">
+                  <BookOpen className="w-8 h-8 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="font-medium text-gray-700 mb-2 text-sm sm:text-base">
+                    {partLabel ? `No questions in ${partLabel} yet` : "No questions in this section yet"}
+                  </p>
+                  <p className="text-xs sm:text-sm text-gray-600">
+                    Click "Add Question" above to add your first question
+                    {partLabel && ` to ${partLabel}`}
+                  </p>
+                </div>
+              );
+            }
+            return null;
+          })()}
         </div>
       )}
 

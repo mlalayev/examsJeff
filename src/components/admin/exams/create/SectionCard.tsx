@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Edit, Image, BookOpen, Save } from "lucide-react";
+import { X, Edit, Image, BookOpen, Save, Volume2 } from "lucide-react";
 import type { Section, ExamCategory } from "./types";
 import { IELTS_SECTION_COLORS, IELTS_SECTION_ICONS } from "./constants";
 import ImageUpload from "@/components/ImageUpload";
@@ -34,6 +34,7 @@ export default function SectionCard({
   const [isEditing, setIsEditing] = useState(false);
   const [editingSection, setEditingSection] = useState<Section>(section);
   const [uploadingAudio, setUploadingAudio] = useState(false);
+  const [selectedReadingPart, setSelectedReadingPart] = useState<number>(1);
   
   const isIELTS = selectedCategory === "IELTS";
   const sectionColors = isIELTS ? IELTS_SECTION_COLORS[section.type] : null;
@@ -102,9 +103,15 @@ export default function SectionCard({
                 </div>
               )}
               <h3 className="font-medium text-gray-900 text-sm sm:text-base">
-                Section {index + 1}: {section.title}
-                {selectedCategory === "IELTS" && (
-                  <span className="ml-2 text-xs text-gray-500">({section.durationMin} min)</span>
+                {selectedCategory === "IELTS" ? (
+                  <>
+                    {section.title}
+                    <span className="ml-2 text-xs text-gray-500">({section.durationMin} min)</span>
+                  </>
+                ) : (
+                  <>
+                    Section {index + 1}: {section.title}
+                  </>
                 )}
               </h3>
               <span className="text-xs px-2 py-1 bg-gray-100 rounded text-gray-600">
@@ -141,68 +148,117 @@ export default function SectionCard({
             {section.type === "READING" && (
               <button
                 onClick={() => setIsEditing(true)}
-                className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-blue-700 bg-blue-50 rounded-md hover:bg-blue-100 flex items-center gap-1.5"
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md flex items-center gap-1.5 ${
+                  selectedCategory === "IELTS"
+                    ? (typeof section.passage === "object" && section.passage && 
+                       (section.passage as any).part1 && 
+                       (section.passage as any).part2 && 
+                       (section.passage as any).part3
+                        ? "text-green-700 bg-green-50 hover:bg-green-100"
+                        : "text-orange-700 bg-orange-50 hover:bg-orange-100 animate-pulse")
+                    : (section.passage && typeof section.passage === "string"
+                        ? "text-green-700 bg-green-50 hover:bg-green-100"
+                        : "text-orange-700 bg-orange-50 hover:bg-orange-100 animate-pulse")
+                }`}
               >
                 <BookOpen className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">Edit Passage</span>
+                <span className="hidden sm:inline">
+                  {selectedCategory === "IELTS" 
+                    ? (typeof section.passage === "object" && section.passage && 
+                       (section.passage as any).part1 && 
+                       (section.passage as any).part2 && 
+                       (section.passage as any).part3
+                        ? "✓ All Passages Added"
+                        : "Add Passages (3)")
+                    : (section.passage && typeof section.passage === "string" 
+                        ? "✓ Passage Added" 
+                        : "Add Passage")
+                  }
+                </span>
                 <span className="sm:hidden">Passage</span>
               </button>
             )}
-            <button
-              onClick={onDelete}
-              disabled={isActive}
-              className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-red-700 bg-red-50 rounded-md hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 sm:gap-2"
-            >
-              <X className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">Delete</span>
-            </button>
+            {/* Listening section: Upload Audio button */}
+            {section.type === "LISTENING" && selectedCategory === "IELTS" && (
+              <button
+                onClick={() => setIsEditing(true)}
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md flex items-center gap-1.5 ${
+                  section.audio 
+                    ? "text-green-700 bg-green-50 hover:bg-green-100" 
+                    : "text-orange-700 bg-orange-50 hover:bg-orange-100 animate-pulse"
+                }`}
+              >
+                <Volume2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">{section.audio ? "✓ Audio Uploaded" : "Upload Audio"}</span>
+                <span className="sm:hidden">{section.audio ? "✓ Audio" : "Audio"}</span>
+              </button>
+            )}
+            {!(selectedCategory === "IELTS") && (
+              <button
+                onClick={onDelete}
+                disabled={isActive}
+                className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-red-700 bg-red-50 rounded-md hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 sm:gap-2"
+              >
+                <X className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Delete</span>
+              </button>
+            )}
           </div>
         </div>
 
         {/* Inline Edit Form - Inside the section card */}
         {isEditing && (
           <div className="mt-4 pt-4 border-t border-gray-200">
-          <div className="space-y-4">
-            {/* Section Title */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Section Title *
-              </label>
-              <input
-                type="text"
-                value={editingSection.title || ""}
-                onChange={(e) => {
-                  setEditingSection({
-                    ...editingSection,
-                    title: e.target.value,
-                  });
-                }}
-                placeholder="Enter section title..."
-                className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
-              />
-            </div>
+            <div className="space-y-4">
+              {/* Section Title */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Section Title *
+                </label>
+                <input
+                  type="text"
+                  value={editingSection.title || ""}
+                  onChange={(e) => {
+                    if (selectedCategory !== "IELTS") {
+                      setEditingSection({
+                        ...editingSection,
+                        title: e.target.value,
+                      });
+                    }
+                  }}
+                  disabled={selectedCategory === "IELTS"}
+                  placeholder="Enter section title..."
+                  className={`w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#303380] focus:border-transparent ${
+                    selectedCategory === "IELTS" ? "bg-gray-50 text-gray-500 cursor-not-allowed" : "bg-white"
+                  }`}
+                />
+              </div>
 
-            {/* Section Instruction */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Section Instruction *
-              </label>
-              <textarea
-                value={editingSection.instruction || ""}
-                onChange={(e) => {
-                  setEditingSection({
-                    ...editingSection,
-                    instruction: e.target.value,
-                  });
-                }}
-                placeholder="Enter section instruction..."
-                className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
-                rows={3}
-              />
-            </div>
+              {/* Section Instruction */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Section Instruction *
+                </label>
+                <textarea
+                  value={editingSection.instruction || ""}
+                  onChange={(e) => {
+                    if (selectedCategory !== "IELTS") {
+                      setEditingSection({
+                        ...editingSection,
+                        instruction: e.target.value,
+                      });
+                    }
+                  }}
+                  disabled={selectedCategory === "IELTS"}
+                  placeholder="Enter section instruction..."
+                  className={`w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#303380] focus:border-transparent resize-y ${
+                    selectedCategory === "IELTS" ? "bg-gray-50 text-gray-500 cursor-not-allowed" : "bg-white"
+                  }`}
+                  rows={3}
+                />
+              </div>
 
-            {/* Duration (for IELTS) */}
-            {selectedCategory === "IELTS" && (
+              {/* Duration */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   Duration (minutes) *
@@ -211,66 +267,112 @@ export default function SectionCard({
                   type="number"
                   value={editingSection.durationMin || ""}
                   onChange={(e) => {
-                    setEditingSection({
-                      ...editingSection,
-                      durationMin: parseInt(e.target.value) || 0,
-                    });
+                    if (selectedCategory !== "IELTS") {
+                      setEditingSection({
+                        ...editingSection,
+                        durationMin: parseInt(e.target.value) || 0,
+                      });
+                    }
                   }}
+                  disabled={selectedCategory === "IELTS"}
                   placeholder="Enter duration in minutes..."
-                  className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+                  className={`w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#303380] focus:border-transparent ${
+                    selectedCategory === "IELTS" ? "bg-gray-50 text-gray-500 cursor-not-allowed" : "bg-white"
+                  }`}
                   min="1"
                 />
               </div>
-            )}
 
-            {/* Reading Passage */}
-            {section.type === "READING" && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Reading Passage *
-                </label>
-                <textarea
-                  value={editingSection.passage || ""}
-                  onChange={(e) => {
-                    setEditingSection({
-                      ...editingSection,
-                      passage: e.target.value,
-                    });
-                  }}
-                  placeholder="Enter the reading passage text..."
-                  className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
-                  rows={10}
-                />
-              </div>
-            )}
-
-            {/* Listening Audio */}
-            {section.type === "LISTENING" && !editingSection.isSubsection && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Listening Audio (All Parts) *
-                </label>
-                {selectedCategory === "IELTS" && (
-                  <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                    <p className="text-xs text-blue-800 font-medium mb-1">
-                      📝 IELTS Listening Requirements:
-                    </p>
-                    <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
-                      <li>Must have exactly <strong>40 questions</strong> (10 per part)</li>
-                      <li>4 parts: Conversation (1), Monologue (2), Discussion (3), Lecture (4)</li>
-                      <li>Audio will play automatically with restrictions (no pause/seek for students)</li>
-                      <li><strong>One audio file for all 4 parts</strong></li>
-                    </ul>
+              {/* Reading Passages (IELTS - 3 parts) */}
+              {section.type === "READING" && selectedCategory === "IELTS" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Reading Passages (3 passages for IELTS) *
+                  </label>
+                  
+                  {/* Part Selector - Clean Tab Design */}
+                  <div className="flex gap-0 border-b-2 border-gray-200 mb-4">
+                    {[1, 2, 3].map((partNum) => (
+                      <button
+                        key={partNum}
+                        type="button"
+                        onClick={() => setSelectedReadingPart(partNum)}
+                        className={`px-6 py-2.5 text-sm font-medium transition-all border-b-2 -mb-0.5 ${
+                          selectedReadingPart === partNum
+                            ? "text-[#303380] border-[#303380] bg-white"
+                            : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
+                        }`}
+                      >
+                        Passage {partNum}
+                      </button>
+                    ))}
                   </div>
-                )}
-                <div className="space-y-2">
-                  {editingSection.audio ? (
-                    <div className="p-2 bg-gray-50 rounded-md text-sm text-gray-600">
-                      Current: {editingSection.audio}
+                  
+                  {/* Passage Text for Selected Part */}
+                  {[1, 2, 3].map((partNum) => (
+                    <div key={partNum} className={selectedReadingPart === partNum ? "block" : "hidden"}>
+                      <textarea
+                        value={
+                          typeof editingSection.passage === "object" && editingSection.passage !== null
+                            ? (editingSection.passage as any)[`part${partNum}`] || ""
+                            : partNum === 1 && typeof editingSection.passage === "string"
+                            ? editingSection.passage
+                            : ""
+                        }
+                        onChange={(e) => {
+                          const currentPassages = typeof editingSection.passage === "object" && editingSection.passage !== null
+                            ? editingSection.passage
+                            : {};
+                          setEditingSection({
+                            ...editingSection,
+                            passage: {
+                              ...currentPassages,
+                              [`part${partNum}`]: e.target.value,
+                            } as any,
+                          });
+                        }}
+                        placeholder={`Enter the reading passage text for Passage ${partNum}...`}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#303380] focus:border-transparent resize-y bg-white"
+                        rows={12}
+                      />
                     </div>
-                  ) : (
-                    <div className="p-2 bg-blue-50 rounded-md text-sm text-blue-600">
-                      Audio will be shared across all 4 parts
+                  ))}
+                </div>
+              )}
+              
+              {/* Reading Passage (Non-IELTS) */}
+              {section.type === "READING" && selectedCategory !== "IELTS" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Reading Passage *
+                  </label>
+                  <textarea
+                    value={typeof editingSection.passage === "string" ? editingSection.passage : ""}
+                    onChange={(e) => {
+                      setEditingSection({
+                        ...editingSection,
+                        passage: e.target.value,
+                      });
+                    }}
+                    placeholder="Enter the reading passage text..."
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#303380] focus:border-transparent resize-y bg-white"
+                    rows={10}
+                  />
+                </div>
+              )}
+
+              {/* Listening Audio */}
+              {section.type === "LISTENING" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Listening Audio *
+                  </label>
+                  {editingSection.audio && (
+                    <div className="mb-2 p-2.5 bg-green-50 border border-green-200 rounded-md">
+                      <div className="flex items-center gap-2 text-sm text-green-700">
+                        <span className="font-medium">✓</span>
+                        <span className="truncate">{editingSection.audio}</span>
+                      </div>
                     </div>
                   )}
                   <input
@@ -318,63 +420,69 @@ export default function SectionCard({
                       }
                     }}
                     disabled={uploadingAudio}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 disabled:opacity-50"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#303380] focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed bg-white"
                   />
                   {uploadingAudio && (
-                    <p className="text-xs text-gray-500">Uploading...</p>
+                    <p className="mt-1.5 text-xs text-gray-500">Uploading audio file...</p>
                   )}
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Save/Cancel Buttons */}
-            <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-4 border-t border-gray-200">
-              <button
-                onClick={handleCancel}
-                className="px-3 sm:px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  if (!editingSection.title?.trim()) {
-                    alert("Please enter a section title");
-                    return;
-                  }
-                  if (!editingSection.instruction?.trim()) {
-                    alert("Please enter a section instruction");
-                    return;
-                  }
-                  if (selectedCategory === "IELTS" && (!editingSection.durationMin || editingSection.durationMin <= 0)) {
-                    alert("Please enter a valid duration");
-                    return;
-                  }
-                  if (editingSection.type === "READING" && !editingSection.passage?.trim()) {
-                    alert("Please enter a reading passage");
-                    return;
-                  }
-                  if (editingSection.type === "LISTENING" && !editingSection.audio) {
-                    alert("Please upload an audio file");
-                    return;
-                  }
-                  handleSave();
-                }}
-                className="px-3 sm:px-4 py-2 text-sm font-medium text-white rounded-md"
-                style={{ backgroundColor: "#303380" }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = "#252a6b";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "#303380";
-                }}
-              >
-                <Save className="w-4 h-4 inline mr-2" />
-                Save
-              </button>
+              {/* Save/Cancel Buttons */}
+              <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-4 border-t border-gray-200">
+                <button
+                  onClick={handleCancel}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (selectedCategory !== "IELTS") {
+                      if (!editingSection.title?.trim()) {
+                        alert("Please enter a section title");
+                        return;
+                      }
+                      if (!editingSection.instruction?.trim()) {
+                        alert("Please enter a section instruction");
+                        return;
+                      }
+                    }
+                    if (editingSection.type === "READING" && selectedCategory === "IELTS") {
+                      const passages = editingSection.passage as any;
+                      if (!passages?.part1?.trim() || !passages?.part2?.trim() || !passages?.part3?.trim()) {
+                        alert("Please enter all 3 reading passages");
+                        return;
+                      }
+                    }
+                    if (editingSection.type === "READING" && selectedCategory !== "IELTS") {
+                      if (!editingSection.passage || typeof editingSection.passage !== "string" || !editingSection.passage.trim()) {
+                        alert("Please enter a reading passage");
+                        return;
+                      }
+                    }
+                    if (editingSection.type === "LISTENING" && !editingSection.audio) {
+                      alert("Please upload an audio file");
+                      return;
+                    }
+                    handleSave();
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-white rounded-md flex items-center gap-2 transition-colors"
+                  style={{ backgroundColor: "#303380" }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = "#252a6b";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = "#303380";
+                  }}
+                >
+                  <Save className="w-4 h-4" />
+                  Save
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
       </div>
     </div>
   );
