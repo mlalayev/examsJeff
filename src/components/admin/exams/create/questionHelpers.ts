@@ -19,6 +19,16 @@ export const getDefaultPrompt = (qtype: QuestionType): any => {
       return { text: "Enter the question here" };
     case "ESSAY":
       return { text: "Write an essay about..." };
+    case "FILL_IN_BLANK":
+      return { 
+        text: "Enter text with [input] placeholders. Example: My name is [input] and I am [input] years old.",
+        instructions: "Fill in the blanks with appropriate words"
+      };
+    case "SPEAKING_RECORDING":
+      return { 
+        text: "Enter the speaking question here",
+        part: 1 // Part 1, 2, or 3
+      };
     default:
       return { text: "" };
   }
@@ -57,6 +67,10 @@ export const getDefaultAnswerKey = (qtype: QuestionType): any => {
       return { answers: ["answer1"] };
     case "ESSAY":
       return null;
+    case "FILL_IN_BLANK":
+      return { blanks: ["answer1", "answer2"] }; // Array of correct answers for each blank
+    case "SPEAKING_RECORDING":
+      return null; // No answer key for speaking (manual grading)
     default:
       return {};
   }

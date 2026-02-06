@@ -10,7 +10,8 @@ export type QuestionType =
   | "SHORT_TEXT" 
   | "ESSAY"
   | "INLINE_SELECT"
-  | "FILL_IN_BLANK";
+  | "FILL_IN_BLANK"
+  | "SPEAKING_RECORDING";
 
 export interface Section {
   id: string;

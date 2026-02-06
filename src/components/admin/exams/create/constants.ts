@@ -12,12 +12,14 @@ export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   SHORT_TEXT: "Short Text Answer",
   ESSAY: "Essay",
   FILL_IN_BLANK: "Fill in the Blank",
+  SPEAKING_RECORDING: "Speaking Recording (IELTS)",
 };
 
 export const QUESTION_TYPE_GROUPS = {
   "Variantlı sual": ["MCQ_SINGLE", "MCQ_MULTI", "TF", "TF_NG", "INLINE_SELECT"],
-  "Açıq sual": ["SHORT_TEXT", "ESSAY"],
+  "Açıq sual": ["SHORT_TEXT", "ESSAY", "FILL_IN_BLANK"],
   "Drag and Drop": ["ORDER_SENTENCE", "DND_GAP"],
+  "IELTS Speaking": ["SPEAKING_RECORDING"],
 };
 
 export const ALLOWED_SECTIONS_BY_CATEGORY: Record<ExamCategory, SectionType[]> = {
@@ -112,7 +114,7 @@ export const validateIELTSListeningUniqueness = (
   type?: SectionType
 ): { valid: boolean; error?: string } => {
   const listeningSections = sections.filter(s => s.type === "LISTENING");
-  if (listeningSections.length > 0) {
+  if (listeningSections.length > 1) {
     return {
       valid: false,
       error: "LISTENING section can only be added once per IELTS exam",

@@ -19,6 +19,8 @@ import { QTFNG } from "@/components/questions/QTFNG";
 import { QInlineSelect } from "@/components/questions/QInlineSelect";
 import { QDndGap } from "@/components/questions/QDndGap";
 import { QOrderSentence } from "@/components/questions/QOrderSentence";
+import { QFillInBlank } from "@/components/questions/QFillInBlank";
+import { QSpeakingRecording } from "@/components/questions/QSpeakingRecording";
 import { SectionTimer } from "@/components/attempts/SectionTimer";
 import { useAttemptPersistence, type PersistedAttemptState } from "@/hooks/useAttemptPersistence";
 import { SubmitModal } from "@/components/attempts/modals/SubmitModal";
@@ -689,6 +691,10 @@ export default function AttemptRunnerPage() {
               placeholder="Write your essay here..."
            />
          );
+       case "FILL_IN_BLANK":
+         return <QFillInBlank {...props} />;
+       case "SPEAKING_RECORDING":
+         return <QSpeakingRecording {...props} attemptId={attemptId} />;
        default:
     return (
             <div className="text-sm text-gray-500">

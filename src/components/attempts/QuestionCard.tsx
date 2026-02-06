@@ -57,7 +57,7 @@ export const QuestionCard = React.memo(function QuestionCard({
     (question.prompt.text.includes("____") ||
       question.prompt.text.includes("___"));
 
-  // FILL_IN_BLANK has its own layout, no need to show prompt.text separately
+  // FILL_IN_BLANK shows prompt.text with inputs inline
   const isFillInBlank = question.qtype === "FILL_IN_BLANK";
 
   return (

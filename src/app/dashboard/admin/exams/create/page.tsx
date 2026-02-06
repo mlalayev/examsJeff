@@ -198,6 +198,101 @@ export default function CreateExamPage() {
   const saveQuestion = () => {
     if (!currentSection || !editingQuestion) return;
 
+    // For FILL_IN_BLANK: split into separate questions (one per line)
+    if (editingQuestion.qtype === "FILL_IN_BLANK") {
+      const text = editingQuestion.prompt?.text || "";
+      const lines = text.split('\n').filter((line: string) => line.trim());
+      
+      if (lines.length === 0) {
+        alert("Please add at least one line with [input] placeholder");
+        return;
+      }
+
+      // Create one question per line
+      const newQuestions: Question[] = [];
+      let globalBlankIndex = 0;
+
+      lines.forEach((line: string, lineIdx: number) => {
+        const inputCount = (line.match(/\[input\]/gi) || []).length;
+        
+        if (inputCount === 0) return; // Skip lines without inputs
+
+        // Get the answer(s) for this line
+        const lineAnswers: string[] = [];
+        for (let i = 0; i < inputCount; i++) {
+          const answer = Array.isArray(editingQuestion.answerKey?.blanks)
+            ? editingQuestion.answerKey.blanks[globalBlankIndex + i] || ""
+            : "";
+          lineAnswers.push(answer);
+        }
+
+        // Determine question ID based on section type
+        let questionId = `q-${Date.now()}-${lineIdx}`;
+        if (selectedCategory === "IELTS") {
+          if (currentSection.type === "LISTENING") {
+            questionId = `q-part${selectedListeningPart}-${Date.now()}-${lineIdx}`;
+          } else if (currentSection.type === "READING") {
+            questionId = `q-part${selectedReadingPart}-${Date.now()}-${lineIdx}`;
+          } else if (currentSection.type === "WRITING") {
+            questionId = `q-task${selectedWritingPart}-${Date.now()}-${lineIdx}`;
+          } else if (currentSection.type === "SPEAKING") {
+            questionId = `q-part${selectedSpeakingPart}-${Date.now()}-${lineIdx}`;
+          }
+        }
+
+        const newQuestion: Question = {
+          id: editingQuestion.id && lineIdx === 0 ? editingQuestion.id : questionId,
+          qtype: "FILL_IN_BLANK",
+          order: currentSection.questions.length + newQuestions.length,
+          prompt: {
+            text: line.trim(),
+            instructions: lineIdx === 0 ? editingQuestion.prompt?.instructions : undefined,
+          },
+          answerKey: { blanks: lineAnswers },
+          maxScore: inputCount, // Each input counts as 1 point
+          image: lineIdx === 0 ? editingQuestion.image : undefined, // Only first question gets the image
+        };
+
+        newQuestions.push(newQuestion);
+        globalBlankIndex += inputCount;
+      });
+
+      if (newQuestions.length === 0) {
+        alert("Please add at least one [input] placeholder");
+        return;
+      }
+
+      // Check if we're editing an existing question or adding new ones
+      const existingIndex = currentSection.questions.findIndex(
+        (q) => q.id === editingQuestion.id
+      );
+
+      let updatedQuestions = [...currentSection.questions];
+
+      if (existingIndex !== -1) {
+        // Replace the existing question with the new questions
+        updatedQuestions.splice(existingIndex, 1, ...newQuestions);
+      } else {
+        // Add all new questions
+        updatedQuestions = [...updatedQuestions, ...newQuestions];
+      }
+
+      // Update orders
+      updatedQuestions = updatedQuestions.map((q, idx) => ({ ...q, order: idx }));
+
+      const updatedSection = {
+        ...currentSection,
+        questions: updatedQuestions,
+      };
+
+      setSections((prev) =>
+        prev.map((s) => (s.id === currentSection.id ? updatedSection : s))
+      );
+      setCurrentSection(updatedSection);
+      setEditingQuestion(null);
+      return;
+    }
+
     // Remove rawText from prompt before saving (it's only for display)
     const questionToSave = {
       ...editingQuestion,
@@ -1300,6 +1395,95 @@ export default function CreateExamPage() {
                       </p>
                     </div>
                   </div>
+                ) : editingQuestion.qtype === "FILL_IN_BLANK" ? (
+                  <div className="space-y-3">
+                    {/* Instructions/What to do */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                        Instructions (What to do)
+                      </label>
+                      <textarea
+                        value={editingQuestion.prompt?.instructions || ""}
+                        onChange={(e) => {
+                          setEditingQuestion({
+                            ...editingQuestion,
+                            prompt: { ...editingQuestion.prompt, instructions: e.target.value },
+                          });
+                        }}
+                        placeholder="Fill in the blanks with appropriate words"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
+                        rows={2}
+                      />
+                    </div>
+
+                    {/* Text with [input] placeholders */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                        Text with blanks (use [input] for each blank)
+                      </label>
+                      <textarea
+                        value={editingQuestion.prompt?.text || ""}
+                        onChange={(e) => {
+                          const text = e.target.value;
+                          // Count [input] occurrences
+                          const inputCount = (text.match(/\[input\]/gi) || []).length;
+                          
+                          // Initialize answer key with existing values or empty strings
+                          const currentBlanks = Array.isArray(editingQuestion.answerKey?.blanks)
+                            ? editingQuestion.answerKey.blanks
+                            : [];
+                          const newBlanks = Array(inputCount).fill("").map((_, idx) => currentBlanks[idx] || "");
+                          
+                          setEditingQuestion({
+                            ...editingQuestion,
+                            prompt: { ...editingQuestion.prompt, text },
+                            answerKey: { blanks: newBlanks },
+                          });
+                        }}
+                        placeholder="Example:&#10;Hi, my name is [input] and I am [input] years old.&#10;Nice to [input] you!&#10;I am glad to [input] you here."
+                        className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white resize-y"
+                        rows={6}
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Use [input] where you want students to fill in answers. Each [input] will be a separate question.
+                      </p>
+                    </div>
+
+                    {/* Answer inputs for each blank */}
+                    {(editingQuestion.prompt?.text || "").match(/\[input\]/gi)?.length > 0 && (
+                      <div className="pt-3 border-t border-gray-200">
+                        <label className="block text-xs font-medium text-gray-600 mb-2">
+                          Correct Answers (one per blank)
+                        </label>
+                        <div className="space-y-2">
+                          {Array.from({ length: (editingQuestion.prompt?.text || "").match(/\[input\]/gi)?.length || 0 }).map((_, idx) => (
+                            <div key={idx} className="flex items-center gap-2">
+                              <span className="text-xs text-gray-500 w-20">Blank {idx + 1}:</span>
+                              <input
+                                type="text"
+                                value={Array.isArray(editingQuestion.answerKey?.blanks)
+                                  ? editingQuestion.answerKey.blanks[idx] || ""
+                                  : ""}
+                                onChange={(e) => {
+                                  const blanks = [...(editingQuestion.answerKey?.blanks || [])];
+                                  blanks[idx] = e.target.value;
+                                  setEditingQuestion({
+                                    ...editingQuestion,
+                                    answerKey: { blanks },
+                                  });
+                                }}
+                                placeholder={`Answer for blank ${idx + 1}`}
+                                className="flex-1 px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2">
+                          Total blanks: {(editingQuestion.prompt?.text || "").match(/\[input\]/gi)?.length || 0}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 ) : editingQuestion.qtype === "DND_GAP" ? (
                   <div className="space-y-3">
                     <div>
@@ -1434,6 +1618,55 @@ export default function CreateExamPage() {
                       • "I ___ to school every day." → dropdown appears inline
                       <br />
                       • "What is the capital of France?" → dropdown appears at the end
+                    </div>
+                  </div>
+                ) : editingQuestion.qtype === "SPEAKING_RECORDING" ? (
+                  <div className="space-y-3">
+                    {/* Speaking Part Selection */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                        Speaking Part *
+                      </label>
+                      <select
+                        value={editingQuestion.prompt?.part || 1}
+                        onChange={(e) => {
+                          setEditingQuestion({
+                            ...editingQuestion,
+                            prompt: { ...editingQuestion.prompt, part: parseInt(e.target.value) },
+                          });
+                        }}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
+                      >
+                        <option value={1}>Part 1 (30 seconds)</option>
+                        <option value={2}>Part 2 (1 min prep + 2 min recording)</option>
+                        <option value={3}>Part 3 (1 minute)</option>
+                      </select>
+                    </div>
+
+                    {/* Question Text */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                        Question Text *
+                      </label>
+                      <textarea
+                        value={editingQuestion.prompt?.text || ""}
+                        onChange={(e) => {
+                          setEditingQuestion({
+                            ...editingQuestion,
+                            prompt: { ...editingQuestion.prompt, text: e.target.value },
+                          });
+                        }}
+                        placeholder="Enter the speaking question (e.g., 'What is your name?', 'Describe a place you like to visit.', etc.)"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
+                        rows={4}
+                      />
+                    </div>
+
+                    <div className="pt-3 border-t border-gray-200 bg-blue-50 p-3 rounded-md">
+                      <p className="text-xs text-blue-800">
+                        <strong>Note:</strong> The student will be automatically recorded during the timer. 
+                        {editingQuestion.prompt?.part === 2 && " Part 2 includes 1 minute of preparation time before recording starts."}
+                      </p>
                     </div>
                   </div>
                 ) : (
