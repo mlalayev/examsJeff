@@ -10,6 +10,7 @@ interface SectionListItemProps {
   };
   isActive: boolean;
   isLocked: boolean;
+  isCompleted?: boolean;
   isDisabled?: boolean;
   answeredCount: number;
   totalCount: number;
@@ -21,6 +22,7 @@ export const SectionListItem = React.memo(function SectionListItem({
   section,
   isActive,
   isLocked,
+  isCompleted = false,
   isDisabled = false,
   answeredCount,
   totalCount,
@@ -35,7 +37,7 @@ export const SectionListItem = React.memo(function SectionListItem({
         isActive
           ? "border"
           : "border border-transparent"
-      } ${isDisabled ? "opacity-40 cursor-not-allowed" : ""}`}
+      } ${isDisabled || isCompleted ? "opacity-40 cursor-not-allowed" : ""}`}
       style={isActive ? { 
         backgroundColor: '#E0E1EC',
         borderColor: 'rgba(48, 51, 128, 0.2)',
@@ -62,6 +64,8 @@ export const SectionListItem = React.memo(function SectionListItem({
         <div className="flex items-center gap-2 min-w-0">
           {isLocked ? (
             <Lock className="w-4 h-4 text-green-600 flex-shrink-0" />
+          ) : isCompleted ? (
+            <CheckCircle className="w-4 h-4 text-blue-600 flex-shrink-0" />
           ) : (
             <BookOpen className="w-4 h-4 flex-shrink-0" />
           )}
@@ -69,8 +73,10 @@ export const SectionListItem = React.memo(function SectionListItem({
             {getShortSectionTitle(section.title)}
           </span>
         </div>
-        {isLocked && (
-          <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
+        {(isLocked || isCompleted) && (
+          <CheckCircle className={`w-4 h-4 flex-shrink-0 ${
+            isLocked ? "text-green-600" : "text-blue-600"
+          }`} />
         )}
       </div>
       <div className="mt-1 text-xs"

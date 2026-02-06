@@ -25,6 +25,7 @@ import { SubmitModal } from "@/components/attempts/modals/SubmitModal";
 import { SuccessModal } from "@/components/attempts/modals/SuccessModal";
 import { SubmitModuleModal } from "@/components/attempts/modals/SubmitModuleModal";
 import { ResumeNotification } from "@/components/attempts/ResumeNotification";
+import { IELTSSectionChangeModal } from "@/components/attempts/modals/IELTSSectionChangeModal";
 
 interface Question {
   id: string;
@@ -89,6 +90,11 @@ export default function AttemptRunnerPage() {
   const [listeningPart, setListeningPart] = useState(1); // For IELTS Listening part selection
   const [readingPart, setReadingPart] = useState(1); // For IELTS Reading part selection
   const [writingPart, setWritingPart] = useState(1); // For IELTS Writing part selection
+  
+  // IELTS section navigation
+  const [showIELTSSectionChangeModal, setShowIELTSSectionChangeModal] = useState(false);
+  const [pendingSectionChange, setPendingSectionChange] = useState<{ fromId: string; toId: string } | null>(null);
+  const [completedSections, setCompletedSections] = useState<Set<string>>(new Set()); // Track which sections user has left
 
   const autosaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const hasRestoredFromPersistence = useRef(false);
@@ -101,6 +107,7 @@ export default function AttemptRunnerPage() {
     activeSection,
     sectionStartTimes,
     lockedSections,
+    completedSections,
     isSubmitted: submitting || showSuccessModal,
     onRestore: (restored: PersistedAttemptState) => {
       // Only restore once
@@ -125,6 +132,11 @@ export default function AttemptRunnerPage() {
       // Restore locked sections
       if (restored.lockedSections) {
         setLockedSections(new Set(restored.lockedSections));
+      }
+
+      // Restore completed sections (IELTS)
+      if (restored.completedSections) {
+        setCompletedSections(new Set(restored.completedSections));
       }
 
       // Show notification
@@ -834,25 +846,42 @@ export default function AttemptRunnerPage() {
         }
       }
 
-      // IELTS üçün: Listening bölməsindən çıxdıqda lock et
+      // IELTS üçün: Strict section order və geriyə qayıtma qadağası
       if (data.examCategory === "IELTS") {
         const currentSection = data.sections.find(s => s.id === activeSection);
         const targetSection = data.sections.find(s => s.id === sectionId);
         
-        // Əgər cari section Listening-dirsə və target Reading/Writing-dirsə
-        if (currentSection?.type === "LISTENING" && 
-            (targetSection?.type === "READING" || targetSection?.type === "WRITING" || targetSection?.type === "SPEAKING")) {
-          // Lock all Listening sections
-          const listeningIds = data.sections
-            .filter(s => s.type === "LISTENING")
-            .map(s => s.id);
-          setLockedSections(prev => new Set([...prev, ...listeningIds]));
+        if (!currentSection || !targetSection) return;
+        
+        // IELTS section order: LISTENING -> READING -> WRITING -> SPEAKING
+        const sectionOrder = ["LISTENING", "READING", "WRITING", "SPEAKING"];
+        const currentOrder = sectionOrder.indexOf(currentSection.type);
+        const targetOrder = sectionOrder.indexOf(targetSection.type);
+        
+        // 1. Cannot go back to completed sections
+        if (completedSections.has(sectionId)) {
+          alert("You cannot return to a completed section. Your answers have been saved and locked.");
+          return;
         }
         
-        // Əgər istifadəçi lock edilmiş Listening-ə qayıtmaq istəyirsə
-        if (targetSection?.type === "LISTENING" && lockedSections.has(sectionId)) {
-          alert("You cannot return to Listening section after moving to Reading/Writing.");
+        // 2. Cannot skip sections - must go in order
+        if (targetOrder > currentOrder + 1) {
+          const nextSection = sectionOrder[currentOrder + 1];
+          alert(`You must complete sections in order. Please complete ${nextSection} section first.`);
           return;
+        }
+        
+        // 3. Cannot go back to previous sections
+        if (targetOrder < currentOrder && !completedSections.has(activeSection)) {
+          alert("You must follow the section order: Listening → Reading → Writing → Speaking");
+          return;
+        }
+        
+        // 4. If moving to next section, show modal
+        if (sectionId !== activeSection && currentSection.type !== targetSection.type) {
+          setPendingSectionChange({ fromId: activeSection, toId: sectionId });
+          setShowIELTSSectionChangeModal(true);
+          return; // Wait for modal confirmation
         }
       }
 
@@ -928,8 +957,28 @@ export default function AttemptRunnerPage() {
 
       setActiveSection(sectionId);
     },
-    [activeSection, answers, saveSection, data, accessedSections, sectionStartTimes, lockedSections, attemptId]
+    [activeSection, answers, saveSection, data, accessedSections, sectionStartTimes, lockedSections, attemptId, completedSections]
   );
+
+  // IELTS: Handle confirmed section change
+  const handleIELTSSectionChangeConfirm = useCallback(async () => {
+    if (!pendingSectionChange || !data) return;
+
+    const { fromId, toId } = pendingSectionChange;
+    const currentSection = data.sections.find(s => s.id === fromId);
+    
+    // Mark current section as completed
+    setCompletedSections(prev => new Set([...prev, fromId]));
+    
+    // Save current section answers
+    if (answers[fromId]) {
+      await saveSection(fromId, answers[fromId]);
+    }
+    
+    // Switch to target section
+    setActiveSection(toId);
+    setPendingSectionChange(null);
+  }, [pendingSectionChange, data, answers, saveSection]);
 
   const handleAnswerChange = useCallback(
     (questionId: string, value: any) => {
@@ -1031,6 +1080,7 @@ export default function AttemptRunnerPage() {
               sections={data.sections}
               activeSection={activeSection}
               lockedSections={lockedSections}
+              completedSections={completedSections}
               progressStats={progressStats}
               sectionStats={sectionStats}
               submitting={submitting}
@@ -1096,6 +1146,24 @@ export default function AttemptRunnerPage() {
         isOpen={showSuccessModal}
         onClose={handleSuccessModalClose}
       />
+
+      {/* IELTS Section Change Modal */}
+      {data?.examCategory === "IELTS" && pendingSectionChange && (
+        <IELTSSectionChangeModal
+          isOpen={showIELTSSectionChangeModal}
+          onClose={() => {
+            setShowIELTSSectionChangeModal(false);
+            setPendingSectionChange(null);
+          }}
+          onConfirm={handleIELTSSectionChangeConfirm}
+          fromSection={data.sections.find(s => s.id === pendingSectionChange.fromId)?.title || ""}
+          toSection={data.sections.find(s => s.id === pendingSectionChange.toId)?.title || ""}
+          currentSectionAnswers={answers[pendingSectionChange.fromId] || {}}
+          currentSectionQuestions={
+            data.sections.find(s => s.id === pendingSectionChange.fromId)?.questions || []
+          }
+        />
+      )}
                              </>
-  );
+    );
 }

@@ -29,6 +29,7 @@ export interface PersistedAttemptState {
   };
   sectionStartTimes?: Record<string, number>; // sectionId -> timestamp
   lockedSections?: string[]; // Array of locked section IDs
+  completedSections?: string[]; // Array of completed section IDs (IELTS)
   lastSaved: number; // timestamp
   version: string; // For version mismatch detection
 }
@@ -48,6 +49,7 @@ export interface UseAttemptPersistenceOptions {
   audioSectionId?: string;
   sectionStartTimes?: Record<string, number>;
   lockedSections?: Set<string>;
+  completedSections?: Set<string>;
   isSubmitted?: boolean;
   onRestore?: (state: PersistedAttemptState) => void;
   debounceMs?: number;
@@ -91,6 +93,7 @@ export function useAttemptPersistence(options: UseAttemptPersistenceOptions) {
     audioSectionId,
     sectionStartTimes,
     lockedSections,
+    completedSections,
     isSubmitted = false,
     onRestore,
     debounceMs = DEBOUNCE_MS,
@@ -123,6 +126,7 @@ export function useAttemptPersistence(options: UseAttemptPersistenceOptions) {
         } : undefined,
         sectionStartTimes,
         lockedSections: lockedSections ? Array.from(lockedSections) : undefined,
+        completedSections: completedSections ? Array.from(completedSections) : undefined,
         lastSaved: Date.now(),
         version: STORAGE_VERSION,
       };
@@ -143,6 +147,7 @@ export function useAttemptPersistence(options: UseAttemptPersistenceOptions) {
     audioSectionId,
     sectionStartTimes,
     lockedSections,
+    completedSections,
     isSubmitted,
     storageKey,
   ]);
@@ -240,6 +245,7 @@ export function useAttemptPersistence(options: UseAttemptPersistenceOptions) {
     audioCurrentTime,
     sectionStartTimes,
     lockedSections,
+    completedSections,
     saveDebounced,
   ]);
 

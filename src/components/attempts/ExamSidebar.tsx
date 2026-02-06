@@ -18,6 +18,7 @@ interface ExamSidebarProps {
   sections: Section[];
   activeSection: string; // Now stores section.id
   lockedSections: Set<string>; // Now stores section.id
+  completedSections?: Set<string>; // IELTS completed sections
   progressStats: { answered: number; total: number; percentage: number };
   sectionStats: Record<string, { answered: number; total: number }>; // Key is section.id now
   submitting: boolean;
@@ -35,6 +36,7 @@ export const ExamSidebar = React.memo(function ExamSidebar({
   sections,
   activeSection,
   lockedSections,
+  completedSections,
   progressStats,
   sectionStats,
   submitting,
@@ -120,13 +122,16 @@ export const ExamSidebar = React.memo(function ExamSidebar({
             {displayedSections.map((section, index) => {
               const isActive = activeSection === section.id;
               const isLocked = lockedSections.has(section.id);
+              const isCompleted = completedSections?.has(section.id) || false;
               const stats = sectionStats[section.id] || {
                 answered: 0,
                 total: 0,
               };
 
               // SAT üçün: yalnız cari, keçmiş və locked modullar aktiv
-              const isDisabled = isSAT && index > currentSectionIndex && !isLocked;
+              // IELTS üçün: completed sections disabled
+              const isDisabled = (isSAT && index > currentSectionIndex && !isLocked) || 
+                                (examCategory === "IELTS" && isCompleted);
 
               return (
                 <SectionListItem
@@ -135,6 +140,7 @@ export const ExamSidebar = React.memo(function ExamSidebar({
                   isActive={isActive}
                   isLocked={isLocked}
                   isDisabled={isDisabled}
+                  isCompleted={isCompleted}
                   answeredCount={stats.answered}
                   totalCount={stats.total}
                   onClick={() => onSectionClick(section.id)}
