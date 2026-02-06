@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, UserPlus, Mail, Award, Calendar, BookOpen, Search } from "lucide-react";
+import { ArrowLeft, UserPlus, Mail, Award, Calendar, BookOpen, Search, UserPlus as UserPlusIcon, X } from "lucide-react";
 import AssignExamModal from "@/components/teacher/AssignExamModal";
 
 interface Student {
@@ -423,58 +423,89 @@ export default function ClassRosterPage() {
       {/* Add Student Modal */}
       {showAddModal && (
         <div
-          className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               closeAddModal();
             }
           }}
         >
-          <div className="bg-white w-full max-w-md border border-gray-200 rounded-md shadow-lg">
+          <div className="bg-white w-full max-w-md rounded-xl shadow-2xl overflow-hidden">
             {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">Add Student</h3>
-              <p className="text-sm text-gray-500 mt-1">Add a student to this class by email</p>
+            <div className="px-6 pt-6 pb-4 text-center border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
+              <div className="flex justify-center mb-3">
+                <div className="w-16 h-16 rounded-full bg-[#303380] flex items-center justify-center shadow-lg">
+                  <UserPlusIcon className="w-8 h-8 text-white" />
+                </div>
               </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-1">Add Student</h3>
+              <p className="text-sm text-gray-600">Add a student to this class by email</p>
+            </div>
             
             {/* Modal Content */}
             <form onSubmit={handleAddStudent}>
-              <div className="px-6 py-4">
+              <div className="px-6 py-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Student Email
-                </label>
-                <input
-                  type="email"
-                  value={studentEmail}
-                  onChange={(e) => setStudentEmail(e.target.value)}
-                    onKeyPress={(e) => e.key === "Enter" && handleAddStudent(e)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
-                  placeholder="student@example.com"
-                    autoFocus
-                    required
-                />
-                <p className="text-xs text-gray-500 mt-2">
-                  The student must already have an account with the STUDENT role
-                </p>
+                    Student Email
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="email"
+                      value={studentEmail}
+                      onChange={(e) => {
+                        setStudentEmail(e.target.value);
+                        setEmailError(""); // Clear error when user types
+                      }}
+                      onKeyPress={(e) => e.key === "Enter" && handleAddStudent(e)}
+                      className={`w-full pl-10 pr-3 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#303380]/20 transition-colors ${
+                        emailError 
+                          ? "border-red-300 focus:border-red-400 bg-red-50/50" 
+                          : "border-gray-200 focus:border-[#303380] bg-gray-50"
+                      }`}
+                      placeholder="student@example.com"
+                      autoFocus
+                      required
+                    />
+                  </div>
+                  {emailError ? (
+                    <div className="mt-2 flex items-start gap-2">
+                      <X className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+                      <p className="text-xs text-red-600 leading-relaxed">
+                        {emailError}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+                      The student must already have an account with the <strong>STUDENT</strong> role
+                    </p>
+                  )}
                 </div>
               </div>
               
               {/* Modal Footer */}
-              <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+              <div className="px-6 pb-6 pt-4 border-t border-gray-100 flex justify-end gap-3">
                 <button
                   type="button"
                   onClick={closeAddModal}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                  className="px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500/20 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={adding || !studentEmail.trim()}
-                  className="px-4 py-2 text-sm font-medium text-white bg-gray-900 border border-transparent rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50"
+                  className="px-4 py-2.5 text-sm font-medium text-white bg-[#303380] border border-transparent rounded-lg hover:bg-[#252a6b] focus:outline-none focus:ring-2 focus:ring-[#303380]/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm hover:shadow-md"
                 >
-                  {adding ? "Adding..." : "Add Student"}
+                  {adding ? (
+                    <span className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Adding...
+                    </span>
+                  ) : (
+                    "Add Student"
+                  )}
                 </button>
               </div>
             </form>

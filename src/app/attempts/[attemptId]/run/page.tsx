@@ -193,6 +193,51 @@ export default function AttemptRunnerPage() {
     return `exam_answers_${attemptId}`;
   };
 
+  // Clear all localStorage data for this attempt
+  const clearAllAttemptLocalStorage = useCallback(() => {
+    if (typeof window === "undefined" || !data) return;
+    
+    // Clear answers
+    const answersKey = getLocalStorageKey(attemptId);
+    localStorage.removeItem(answersKey);
+    
+    // Clear completed sections (IELTS)
+    const completedSectionsKey = `ielts_completed_sections_${attemptId}`;
+    localStorage.removeItem(completedSectionsKey);
+    
+    // Clear all timers for this attempt (SAT and IELTS)
+    if (data.sections) {
+      data.sections.forEach((section) => {
+        // Clear SAT timers
+        const satTimerKey = `sat_timer_${attemptId}_${section.id}`;
+        localStorage.removeItem(satTimerKey);
+        
+        // Clear IELTS Listening timers
+        if (section.type === "LISTENING" && data.examCategory === "IELTS") {
+          const ieltsTimerKey = `ielts_listening_timer_${attemptId}_${section.id}`;
+          localStorage.removeItem(ieltsTimerKey);
+        }
+        // Clear IELTS Reading timers
+        if (section.type === "READING" && data.examCategory === "IELTS") {
+          const ieltsReadingTimerKey = `ielts_reading_timer_${attemptId}_${section.id}`;
+          localStorage.removeItem(ieltsReadingTimerKey);
+        }
+        // Clear IELTS Writing timers
+        if (section.type === "WRITING" && data.examCategory === "IELTS") {
+          const ieltsWritingTimerKey = `ielts_writing_timer_${attemptId}_${section.id}`;
+          localStorage.removeItem(ieltsWritingTimerKey);
+        }
+      });
+    }
+
+    // Clear persistence data (from useAttemptPersistence hook)
+    clearPersistence();
+    
+    // Clear any other attempt-related localStorage items
+    const persistenceKey = `ielts_attempt:${attemptId}${data.examCategory ? `:${data.examCategory}` : ""}`;
+    localStorage.removeItem(persistenceKey);
+  }, [attemptId, data, clearPersistence]);
+
   useEffect(() => {
     fetchAttempt();
   }, [attemptId]);
@@ -580,39 +625,7 @@ export default function AttemptRunnerPage() {
       }
 
       // Clear all localStorage data for this attempt
-      if (typeof window !== "undefined") {
-        // Clear answers
-        const answersKey = getLocalStorageKey(attemptId);
-        localStorage.removeItem(answersKey);
-        
-        // Clear all timers for this attempt (SAT and IELTS)
-        if (data?.sections) {
-          data.sections.forEach((section) => {
-            // Clear SAT timers
-            const satTimerKey = `sat_timer_${attemptId}_${section.id}`;
-            localStorage.removeItem(satTimerKey);
-            
-            // Clear IELTS Listening timers
-            if (section.type === "LISTENING" && data.examCategory === "IELTS") {
-              const ieltsTimerKey = `ielts_listening_timer_${attemptId}_${section.id}`;
-              localStorage.removeItem(ieltsTimerKey);
-            }
-            // Clear IELTS Reading timers
-            if (section.type === "READING" && data.examCategory === "IELTS") {
-              const ieltsReadingTimerKey = `ielts_reading_timer_${attemptId}_${section.id}`;
-              localStorage.removeItem(ieltsReadingTimerKey);
-            }
-            // Clear IELTS Writing timers
-            if (section.type === "WRITING" && data.examCategory === "IELTS") {
-              const ieltsWritingTimerKey = `ielts_writing_timer_${attemptId}_${section.id}`;
-              localStorage.removeItem(ieltsWritingTimerKey);
-            }
-          });
-        }
-
-        // Clear persistence data
-        clearPersistence();
-      }
+      clearAllAttemptLocalStorage();
 
       setShowSuccessModal(true);
     } catch (err: any) {
