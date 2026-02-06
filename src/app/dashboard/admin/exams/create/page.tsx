@@ -675,8 +675,8 @@ export default function CreateExamPage() {
               ) : (
                 <p className="text-xs text-gray-500">No passage added yet. Go back to sections and click "Edit Passage".</p>
               )}
-            </div>
-          )}
+                </div>
+              )}
 
           {/* Listening Audio Info and Upload */}
           {currentSection.type === "LISTENING" && selectedCategory === "IELTS" && (
@@ -810,7 +810,7 @@ export default function CreateExamPage() {
                       { num: 2, label: "Passage 2" },
                       { num: 3, label: "Passage 3" },
                     ].map((part) => (
-                      <button
+              <button
                         key={part.num}
                         onClick={() => setSelectedReadingPart(part.num)}
                         className={`px-4 py-3 rounded-lg font-medium text-sm transition-all border-2 ${
@@ -825,7 +825,7 @@ export default function CreateExamPage() {
                             {currentSection.questions.filter((q: Question) => q.id.includes(`part${part.num}`)).length} Qs
                           </span>
                         </div>
-                      </button>
+              </button>
                     ))}
                   </div>
                   <div className="mt-3 p-2 bg-white rounded border border-green-200">
@@ -833,7 +833,7 @@ export default function CreateExamPage() {
                       Currently editing: <span className="text-[#303380]">Passage {selectedReadingPart}</span>
                     </p>
                   </div>
-                </div>
+            </div>
               )}
 
               {/* Writing Tasks */}
@@ -1079,7 +1079,7 @@ export default function CreateExamPage() {
               
               return (
                 <div className="text-center py-8 sm:py-12 text-gray-500 border border-dashed border-gray-300 rounded-md bg-gray-50 mt-4">
-                  <BookOpen className="w-8 h-8 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-4" />
+                <BookOpen className="w-8 h-8 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-4" />
                   <p className="font-medium text-gray-700 mb-2 text-sm sm:text-base">
                     {partLabel ? `No questions in ${partLabel} yet` : "No questions in this section yet"}
                   </p>
@@ -1087,7 +1087,7 @@ export default function CreateExamPage() {
                     Click "Add Question" above to add your first question
                     {partLabel && ` to ${partLabel}`}
                   </p>
-                </div>
+                        </div>
               );
             }
             return null;

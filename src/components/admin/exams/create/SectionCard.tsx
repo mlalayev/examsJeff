@@ -110,7 +110,7 @@ export default function SectionCard({
                   </>
                 ) : (
                   <>
-                    Section {index + 1}: {section.title}
+                Section {index + 1}: {section.title}
                   </>
                 )}
               </h3>
@@ -194,14 +194,14 @@ export default function SectionCard({
               </button>
             )}
             {!(selectedCategory === "IELTS") && (
-              <button
-                onClick={onDelete}
-                disabled={isActive}
-                className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-red-700 bg-red-50 rounded-md hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 sm:gap-2"
-              >
-                <X className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">Delete</span>
-              </button>
+            <button
+              onClick={onDelete}
+              disabled={isActive}
+              className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-red-700 bg-red-50 rounded-md hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 sm:gap-2"
+            >
+              <X className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Delete</span>
+            </button>
             )}
           </div>
         </div>
@@ -209,54 +209,54 @@ export default function SectionCard({
         {/* Inline Edit Form - Inside the section card */}
         {isEditing && (
           <div className="mt-4 pt-4 border-t border-gray-200">
-            <div className="space-y-4">
-              {/* Section Title */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Section Title *
-                </label>
-                <input
-                  type="text"
-                  value={editingSection.title || ""}
-                  onChange={(e) => {
+          <div className="space-y-4">
+            {/* Section Title */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Section Title *
+              </label>
+              <input
+                type="text"
+                value={editingSection.title || ""}
+                onChange={(e) => {
                     if (selectedCategory !== "IELTS") {
-                      setEditingSection({
-                        ...editingSection,
-                        title: e.target.value,
-                      });
+                  setEditingSection({
+                    ...editingSection,
+                    title: e.target.value,
+                  });
                     }
-                  }}
+                }}
                   disabled={selectedCategory === "IELTS"}
-                  placeholder="Enter section title..."
+                placeholder="Enter section title..."
                   className={`w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#303380] focus:border-transparent ${
                     selectedCategory === "IELTS" ? "bg-gray-50 text-gray-500 cursor-not-allowed" : "bg-white"
                   }`}
-                />
-              </div>
+              />
+            </div>
 
-              {/* Section Instruction */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Section Instruction *
-                </label>
-                <textarea
-                  value={editingSection.instruction || ""}
-                  onChange={(e) => {
+            {/* Section Instruction */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Section Instruction *
+              </label>
+              <textarea
+                value={editingSection.instruction || ""}
+                onChange={(e) => {
                     if (selectedCategory !== "IELTS") {
-                      setEditingSection({
-                        ...editingSection,
-                        instruction: e.target.value,
-                      });
+                  setEditingSection({
+                    ...editingSection,
+                    instruction: e.target.value,
+                  });
                     }
-                  }}
+                }}
                   disabled={selectedCategory === "IELTS"}
-                  placeholder="Enter section instruction..."
+                placeholder="Enter section instruction..."
                   className={`w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#303380] focus:border-transparent resize-y ${
                     selectedCategory === "IELTS" ? "bg-gray-50 text-gray-500 cursor-not-allowed" : "bg-white"
                   }`}
-                  rows={3}
-                />
-              </div>
+                rows={3}
+              />
+            </div>
 
               {/* Duration */}
               <div>
@@ -268,10 +268,10 @@ export default function SectionCard({
                   value={editingSection.durationMin || ""}
                   onChange={(e) => {
                     if (selectedCategory !== "IELTS") {
-                      setEditingSection({
-                        ...editingSection,
-                        durationMin: parseInt(e.target.value) || 0,
-                      });
+                    setEditingSection({
+                      ...editingSection,
+                      durationMin: parseInt(e.target.value) || 0,
+                    });
                     }
                   }}
                   disabled={selectedCategory === "IELTS"}
@@ -337,42 +337,42 @@ export default function SectionCard({
                       />
                     </div>
                   ))}
-                </div>
-              )}
-              
+              </div>
+            )}
+
               {/* Reading Passage (Non-IELTS) */}
               {section.type === "READING" && selectedCategory !== "IELTS" && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Reading Passage *
-                  </label>
-                  <textarea
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Reading Passage *
+                </label>
+                <textarea
                     value={typeof editingSection.passage === "string" ? editingSection.passage : ""}
-                    onChange={(e) => {
-                      setEditingSection({
-                        ...editingSection,
-                        passage: e.target.value,
-                      });
-                    }}
-                    placeholder="Enter the reading passage text..."
+                  onChange={(e) => {
+                    setEditingSection({
+                      ...editingSection,
+                      passage: e.target.value,
+                    });
+                  }}
+                  placeholder="Enter the reading passage text..."
                     className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#303380] focus:border-transparent resize-y bg-white"
-                    rows={10}
-                  />
-                </div>
-              )}
+                  rows={10}
+                />
+              </div>
+            )}
 
-              {/* Listening Audio */}
-              {section.type === "LISTENING" && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            {/* Listening Audio */}
+            {section.type === "LISTENING" && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     Listening Audio *
-                  </label>
+                </label>
                   {editingSection.audio && (
                     <div className="mb-2 p-2.5 bg-green-50 border border-green-200 rounded-md">
                       <div className="flex items-center gap-2 text-sm text-green-700">
                         <span className="font-medium">✓</span>
                         <span className="truncate">{editingSection.audio}</span>
-                      </div>
+                    </div>
                     </div>
                   )}
                   <input
@@ -425,64 +425,64 @@ export default function SectionCard({
                   {uploadingAudio && (
                     <p className="mt-1.5 text-xs text-gray-500">Uploading audio file...</p>
                   )}
-                </div>
-              )}
+              </div>
+            )}
 
-              {/* Save/Cancel Buttons */}
-              <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-4 border-t border-gray-200">
-                <button
-                  onClick={handleCancel}
+            {/* Save/Cancel Buttons */}
+            <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-4 border-t border-gray-200">
+              <button
+                onClick={handleCancel}
                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => {
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
                     if (selectedCategory !== "IELTS") {
-                      if (!editingSection.title?.trim()) {
-                        alert("Please enter a section title");
-                        return;
-                      }
-                      if (!editingSection.instruction?.trim()) {
-                        alert("Please enter a section instruction");
-                        return;
-                      }
+                  if (!editingSection.title?.trim()) {
+                    alert("Please enter a section title");
+                    return;
+                  }
+                  if (!editingSection.instruction?.trim()) {
+                    alert("Please enter a section instruction");
+                    return;
+                  }
                     }
                     if (editingSection.type === "READING" && selectedCategory === "IELTS") {
                       const passages = editingSection.passage as any;
                       if (!passages?.part1?.trim() || !passages?.part2?.trim() || !passages?.part3?.trim()) {
                         alert("Please enter all 3 reading passages");
-                        return;
-                      }
+                    return;
+                  }
                     }
                     if (editingSection.type === "READING" && selectedCategory !== "IELTS") {
                       if (!editingSection.passage || typeof editingSection.passage !== "string" || !editingSection.passage.trim()) {
-                        alert("Please enter a reading passage");
-                        return;
+                    alert("Please enter a reading passage");
+                    return;
                       }
-                    }
-                    if (editingSection.type === "LISTENING" && !editingSection.audio) {
-                      alert("Please upload an audio file");
-                      return;
-                    }
-                    handleSave();
-                  }}
+                  }
+                  if (editingSection.type === "LISTENING" && !editingSection.audio) {
+                    alert("Please upload an audio file");
+                    return;
+                  }
+                  handleSave();
+                }}
                   className="px-4 py-2 text-sm font-medium text-white rounded-md flex items-center gap-2 transition-colors"
-                  style={{ backgroundColor: "#303380" }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "#252a6b";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "#303380";
-                  }}
-                >
+                style={{ backgroundColor: "#303380" }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "#252a6b";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "#303380";
+                }}
+              >
                   <Save className="w-4 h-4" />
-                  Save
-                </button>
-              </div>
+                Save
+              </button>
             </div>
           </div>
-        )}
+        </div>
+      )}
       </div>
     </div>
   );

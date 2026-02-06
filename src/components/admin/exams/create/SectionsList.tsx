@@ -51,63 +51,63 @@ export default function SectionsList({
           )}
         </h2>
         {!hasAllIELTSSections && (
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
-            <select
-              value={selectedSectionType}
-              onChange={(e) => onSectionTypeChange(e.target.value as SectionType | "")}
-              disabled={!selectedCategory || allowedSectionTypes.length === 0}
-              className="flex-1 sm:flex-none px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 min-w-[160px] disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <option value="">
-                {!selectedCategory 
-                  ? "Select exam category first" 
-                  : allowedSectionTypes.length === 0 
-                  ? "No sections available" 
-                  : "Select Section Type..."}
-              </option>
-              {allowedSectionTypes.map((type) => {
-                const isSectionDisabled = 
-                  selectedCategory === "IELTS" && 
-                  sections.some(s => s.type === type);
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+          <select
+            value={selectedSectionType}
+            onChange={(e) => onSectionTypeChange(e.target.value as SectionType | "")}
+            disabled={!selectedCategory || allowedSectionTypes.length === 0}
+            className="flex-1 sm:flex-none px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 min-w-[160px] disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <option value="">
+              {!selectedCategory 
+                ? "Select exam category first" 
+                : allowedSectionTypes.length === 0 
+                ? "No sections available" 
+                : "Select Section Type..."}
+            </option>
+            {allowedSectionTypes.map((type) => {
+              const isSectionDisabled = 
+                selectedCategory === "IELTS" && 
+                sections.some(s => s.type === type);
 
-                return (
-                  <option 
-                    key={type} 
-                    value={type}
-                    disabled={isSectionDisabled}
-                  >
-                    {getSectionLabel(type, selectedCategory)}
-                    {isSectionDisabled ? " (Already added)" : ""}
-                  </option>
-                );
-              })}
-            </select>
-            <button
-              onClick={() => {
-                if (selectedSectionType) {
-                  onAddSection(selectedSectionType);
-                  onSectionTypeChange("");
-                }
-              }}
-              disabled={!selectedSectionType}
-              className="px-3 sm:px-4 py-2 text-sm font-medium text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              style={{ backgroundColor: "#303380" }}
-              onMouseEnter={(e) => {
-                if (!e.currentTarget.disabled) {
-                  e.currentTarget.style.backgroundColor = "#252a6b";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!e.currentTarget.disabled) {
-                  e.currentTarget.style.backgroundColor = "#303380";
-                }
-              }}
-            >
-              <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">Add Section</span>
-              <span className="sm:hidden">Add</span>
-            </button>
-          </div>
+              return (
+                <option 
+                  key={type} 
+                  value={type}
+                  disabled={isSectionDisabled}
+                >
+                  {getSectionLabel(type, selectedCategory)}
+                  {isSectionDisabled ? " (Already added)" : ""}
+                </option>
+              );
+            })}
+          </select>
+          <button
+            onClick={() => {
+              if (selectedSectionType) {
+                onAddSection(selectedSectionType);
+                onSectionTypeChange("");
+              }
+            }}
+            disabled={!selectedSectionType}
+            className="px-3 sm:px-4 py-2 text-sm font-medium text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            style={{ backgroundColor: "#303380" }}
+            onMouseEnter={(e) => {
+              if (!e.currentTarget.disabled) {
+                e.currentTarget.style.backgroundColor = "#252a6b";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!e.currentTarget.disabled) {
+                e.currentTarget.style.backgroundColor = "#303380";
+              }
+            }}
+          >
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">Add Section</span>
+            <span className="sm:hidden">Add</span>
+          </button>
+        </div>
         )}
       </div>
 

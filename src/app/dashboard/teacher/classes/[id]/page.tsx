@@ -49,6 +49,7 @@ export default function ClassRosterPage() {
   const [studentEmail, setStudentEmail] = useState("");
   const [adding, setAdding] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState("");
   
   // Assign Exam state (simplified for new modal)
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -101,6 +102,7 @@ export default function ClassRosterPage() {
   const handleAddStudent = async (e: React.FormEvent) => {
     e.preventDefault();
     setAdding(true);
+    setEmailError(""); // Clear previous error
 
     try {
       const response = await fetch(`/api/classes/${classId}/add-student`, {
@@ -109,18 +111,43 @@ export default function ClassRosterPage() {
         body: JSON.stringify({ studentEmail }),
       });
 
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (parseError) {
+        console.error("Failed to parse response:", parseError);
+        throw new Error("Failed to parse server response");
+      }
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to add student");
+        const errorMessage = data?.error || "Failed to add student";
+        const errorLower = errorMessage.toLowerCase();
+        
+        // Check if user not found (404 status or error message contains "not found")
+        if (response.status === 404 || errorLower.includes("not found") || errorLower.includes("student not found")) {
+          setEmailError("There is no user with this email. Please double-check the email address.");
+          setAdding(false);
+          return;
+        }
+        throw new Error(errorMessage);
       }
 
       // Refresh roster
       await fetchRoster();
       setStudentEmail("");
+      setEmailError("");
       setShowAddModal(false);
     } catch (err) {
       console.error("Error adding student:", err);
+      const errorMessage = err instanceof Error ? err.message : "Failed to add student";
+      const errorLower = errorMessage.toLowerCase();
+      
+      // Check if it's a "not found" error
+      if (errorLower.includes("not found") || errorLower.includes("student not found")) {
+        setEmailError("There is no user with this email. Please double-check the email address.");
+      } else {
+        alert(errorMessage);
+      }
     } finally {
       setAdding(false);
     }
@@ -173,6 +200,7 @@ export default function ClassRosterPage() {
   const closeAddModal = () => {
     setShowAddModal(false);
     setStudentEmail("");
+    setEmailError("");
     document.body.style.overflow = 'unset';
   };
 
@@ -185,64 +213,6 @@ export default function ClassRosterPage() {
     }));
   };
 
-  const handleAssignExam = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAssigning(true);
-
-    try {
-      if (!selectedStudent) throw new Error("No student selected");
-      if (!assignData.examId) throw new Error("Please select an exam");
-      if (!assignData.startDate || !assignData.startTime) throw new Error("Please select date and time");
-
-      // Combine date and time in Asia/Baku timezone, then convert to UTC
-      const bakuDateTime = `${assignData.startDate}T${assignData.startTime}:00`;
-      const localDate = new Date(bakuDateTime);
-      
-      // Convert to UTC ISO string
-      const startAtUTC = localDate.toISOString();
-
-      // Detect if this is a JSON exam
-      const selectedExam = exams.find(e => e.id === assignData.examId);
-      const isJsonExam = (selectedExam as any)?.source === 'json';
-      const apiPath = isJsonExam ? "/api/bookings/json" : "/api/bookings";
-
-      const response = await fetch(apiPath, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          studentId: selectedStudent.id,
-          examId: assignData.examId,
-          sections: ["FULL_EXAM"], // All sections included automatically
-          startAt: startAtUTC,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        // Show detailed error with conflict info if available
-        let errorMsg = data.error || "Failed to assign exam";
-        if (data.conflict) {
-          const conflictTime = new Date(data.conflict.startAt).toLocaleString('en-US', {
-            timeZone: 'Asia/Baku',
-            dateStyle: 'short',
-            timeStyle: 'short'
-          });
-          errorMsg += `\n\nConflicting booking:\n- Time: ${conflictTime}\n- Status: ${data.conflict.status}\n\nPlease choose a time at least 30 minutes away from existing bookings.`;
-        }
-        alert(errorMsg);
-        return;
-      }
-
-      closeAssignModal();
-      alert(`Exam assigned successfully to ${selectedStudent.name || selectedStudent.email}`);
-    } catch (err) {
-      console.error("Error assigning exam:", err);
-      alert(err instanceof Error ? err.message : "Failed to assign exam");
-    } finally {
-      setAssigning(false);
-    }
-  };
 
   const filteredRoster = roster.filter((item) =>
     (item.student.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||

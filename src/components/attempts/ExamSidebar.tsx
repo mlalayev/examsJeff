@@ -48,6 +48,18 @@ export const ExamSidebar = React.memo(function ExamSidebar({
   getShortSectionTitle,
   examCategory,
 }: ExamSidebarProps) {
+  const sectionOrder = ["LISTENING", "READING", "WRITING", "SPEAKING"];
+
+  const activeSectionObj = sections.find((s) => s.id === activeSection);
+  const activeTypeIndex = activeSectionObj
+    ? sectionOrder.indexOf(activeSectionObj.type)
+    : -1;
+
+  const nextType =
+    activeTypeIndex >= 0 && activeTypeIndex < sectionOrder.length - 1
+      ? sectionOrder[activeTypeIndex + 1]
+      : null;
+
   // Filter sections
   const displayedSections = false 
     ? sections.filter((section, index, arr) => {
@@ -128,10 +140,28 @@ export const ExamSidebar = React.memo(function ExamSidebar({
                 total: 0,
               };
 
-              // SAT üçün: yalnız cari, keçmiş və locked modullar aktiv
-              // IELTS üçün: completed sections disabled
-              const isDisabled = (isSAT && index > currentSectionIndex && !isLocked) || 
-                                (examCategory === "IELTS" && isCompleted);
+              let isDisabled = false;
+
+              if (examCategory === "IELTS") {
+                // IELTS: yalnız cari section və ondan sonrakı ilk section type aktiv olsun.
+                const isCurrent = isActive;
+
+                let isNextTypeFirstSection = false;
+                if (nextType && section.type === nextType) {
+                  const firstIndexOfNextType = sections.findIndex(
+                    (s) => s.type === nextType
+                  );
+                  isNextTypeFirstSection = firstIndexOfNextType === index;
+                }
+
+                // Əvvəlki section-lar və daha sonrakı bütün section-lar disabled,
+                // yalnız cari və növbəti type-ın ilk section-u kliklənə bilir.
+                isDisabled = !isCurrent && !isNextTypeFirstSection;
+              } else {
+                // SAT üçün: yalnız cari, keçmiş və locked modullar aktiv
+                isDisabled =
+                  isSAT && index > currentSectionIndex && !isLocked;
+              }
 
               return (
                 <SectionListItem

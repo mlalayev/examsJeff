@@ -8,7 +8,9 @@ import {
   ArrowLeft,
   BarChart3,
   Lock,
-  X
+  X,
+  FileCheck,
+  Users
 } from "lucide-react";
 import Sidebar from "@/components/dashboard/Sidebar";
 
@@ -64,6 +66,7 @@ export default function AttemptResultsPage() {
   const [editingQuestion, setEditingQuestion] = useState<string | null>(null);
   const [editedAnswers, setEditedAnswers] = useState<Record<string, any>>({});
   const [saving, setSaving] = useState(false);
+  const [showReviewRestrictedModal, setShowReviewRestrictedModal] = useState(false);
 
   useEffect(() => {
     fetchResults();
@@ -101,6 +104,11 @@ export default function AttemptResultsPage() {
       });
       
       setData(json);
+      
+      // Show review restricted modal for students on page load
+      if (json.role === "STUDENT") {
+        setShowReviewRestrictedModal(true);
+      }
     } catch (err: any) {
       console.error(err);
       alert(err.message || "Failed to load results");
@@ -559,6 +567,58 @@ export default function AttemptResultsPage() {
           </div>
         )}
       </div>
+
+      {/* Review Restricted Modal for Students */}
+      {showReviewRestrictedModal && data?.role === "STUDENT" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md rounded-lg bg-white shadow-xl overflow-hidden">
+            {/* Header */}
+            <div className="px-6 pt-6 pb-4 text-center border-b border-gray-100">
+              <div className="flex justify-center mb-3">
+                <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center">
+                  <FileCheck className="w-8 h-8 text-amber-600" />
+                </div>
+              </div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-1">
+                Results Under Review
+              </h2>
+              <p className="text-xs text-gray-500">
+                Your exam has been submitted successfully
+              </p>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-5">
+              <div className="flex items-start gap-3 mb-4">
+                <Users className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm text-gray-700 leading-relaxed">
+                    Your exam results are currently being reviewed by your teachers. 
+                    They will carefully check your answers and provide detailed feedback.
+                  </p>
+                </div>
+              </div>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                <p className="text-xs text-amber-800 leading-relaxed">
+                  <strong>What happens next?</strong> Your teachers will review your exam and notify you once the review is complete. 
+                  You'll be able to see detailed feedback and explanations for each question.
+                </p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 pb-6 pt-4 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setShowReviewRestrictedModal(false)}
+                className="w-full rounded-md bg-[#303380] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#252a6b] transition-colors shadow-sm hover:shadow-md"
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal for Section Questions (Teacher only) */}
       {showModal && selectedSection && data.role === "TEACHER" && (

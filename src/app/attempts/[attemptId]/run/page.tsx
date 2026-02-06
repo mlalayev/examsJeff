@@ -99,6 +99,29 @@ export default function AttemptRunnerPage() {
   const autosaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const hasRestoredFromPersistence = useRef(false);
 
+  // Helper functions for localStorage (defined before hook so they can be used in onRestore)
+  const saveCompletedSectionsToStorageHelper = (completed: Set<string>) => {
+    if (typeof window !== "undefined") {
+      const storageKey = `ielts_completed_sections_${attemptId}`;
+      localStorage.setItem(storageKey, JSON.stringify(Array.from(completed)));
+    }
+  };
+
+  const loadCompletedSectionsFromStorageHelper = (): Set<string> => {
+    if (typeof window !== "undefined") {
+      const storageKey = `ielts_completed_sections_${attemptId}`;
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        try {
+          return new Set(JSON.parse(stored));
+        } catch (e) {
+          console.error("Failed to parse completed sections from localStorage:", e);
+        }
+      }
+    }
+    return new Set<string>();
+  };
+
   // Persistence hook - auto-saves state to localStorage
   const { clearStorage: clearPersistence } = useAttemptPersistence({
     attemptId,
@@ -119,11 +142,6 @@ export default function AttemptRunnerPage() {
         setAnswers(restored.answers);
       }
 
-      // Restore active section
-      if (restored.activeSection) {
-        setActiveSection(restored.activeSection);
-      }
-
       // Restore section start times
       if (restored.sectionStartTimes) {
         setSectionStartTimes(restored.sectionStartTimes);
@@ -134,9 +152,25 @@ export default function AttemptRunnerPage() {
         setLockedSections(new Set(restored.lockedSections));
       }
 
-      // Restore completed sections (IELTS)
+      // Restore completed sections (IELTS) - check both persistence and localStorage
+      const localStorageCompleted = loadCompletedSectionsFromStorageHelper();
       if (restored.completedSections) {
-        setCompletedSections(new Set(restored.completedSections));
+        const restoredSet = new Set(restored.completedSections);
+        // Merge with localStorage (localStorage takes priority)
+        const merged = new Set([...restoredSet, ...localStorageCompleted]);
+        setCompletedSections(merged);
+        // Save merged back to localStorage
+        if (merged.size > 0) {
+          saveCompletedSectionsToStorageHelper(merged);
+        }
+      } else if (localStorageCompleted.size > 0) {
+        // Only localStorage has data
+        setCompletedSections(localStorageCompleted);
+      }
+
+      // Restore active section (will be validated later when data is loaded)
+      if (restored.activeSection) {
+        setActiveSection(restored.activeSection);
       }
 
       // Show notification
@@ -153,6 +187,7 @@ export default function AttemptRunnerPage() {
       }
     };
   }, []);
+
 
   const getLocalStorageKey = (attemptId: string) => {
     return `exam_answers_${attemptId}`;
@@ -254,27 +289,62 @@ export default function AttemptRunnerPage() {
       setAccessedSections(restoredAccessedSections);
 
       if (json.sections && json.sections.length > 0) {
-        const firstSection = json.sections[0];
-        setActiveSection(firstSection.id);
-        setAccessedSections((prev) => new Set([...prev, firstSection.id]));
-        // Start timer for first section if SAT
-        if (json.examCategory === "SAT" && !finalStartTimes[firstSection.id]) {
-          const storageKey = `sat_timer_${attemptId}_${firstSection.id}`;
-          const hasTimer = typeof window !== "undefined" && localStorage.getItem(storageKey);
-          if (!hasTimer) {
-            const newStartTimes = {
-              ...finalStartTimes,
-              [firstSection.id]: Date.now(),
-            };
-            setSectionStartTimes(newStartTimes);
-            // Save start time
-            fetch(`/api/attempts/${attemptId}/save`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                sectionStartTimes: newStartTimes,
-              }),
-            });
+        // For IELTS: Load completed sections and find first non-completed section
+        if (json.examCategory === "IELTS") {
+          const loadedCompletedSections = loadCompletedSectionsFromStorageHelper();
+          if (loadedCompletedSections.size > 0) {
+            setCompletedSections(loadedCompletedSections);
+          }
+          const sectionOrder = ["LISTENING", "READING", "WRITING", "SPEAKING"];
+          
+          // Find first non-completed section
+          let firstNonCompletedSection = null;
+          for (const sectionType of sectionOrder) {
+            const sectionOfType = json.sections.find(
+              (s: Section) => s.type === sectionType && !loadedCompletedSections.has(s.id)
+            );
+            if (sectionOfType) {
+              firstNonCompletedSection = sectionOfType;
+              break;
+            }
+          }
+          
+          // If all sections completed, use last section
+          const targetSection = firstNonCompletedSection || json.sections[json.sections.length - 1];
+          
+          // Only set if not already restored from persistence
+          if (!hasRestoredFromPersistence.current || !activeSection) {
+            setActiveSection(targetSection.id);
+            setAccessedSections((prev) => new Set([...prev, targetSection.id]));
+          }
+        } else {
+          // Non-IELTS: Don't override activeSection if it was already restored from persistence
+          const shouldSetDefaultSection = !hasRestoredFromPersistence.current || !activeSection;
+          
+          if (shouldSetDefaultSection) {
+            const firstSection = json.sections[0];
+            setActiveSection(firstSection.id);
+            setAccessedSections((prev) => new Set([...prev, firstSection.id]));
+            // Start timer for first section if SAT
+            if (json.examCategory === "SAT" && !finalStartTimes[firstSection.id]) {
+              const storageKey = `sat_timer_${attemptId}_${firstSection.id}`;
+              const hasTimer = typeof window !== "undefined" && localStorage.getItem(storageKey);
+              if (!hasTimer) {
+                const newStartTimes = {
+                  ...finalStartTimes,
+                  [firstSection.id]: Date.now(),
+                };
+                setSectionStartTimes(newStartTimes);
+                // Save start time
+                fetch(`/api/attempts/${attemptId}/save`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    sectionStartTimes: newStartTimes,
+                  }),
+                });
+              }
+            }
           }
         }
       }
@@ -316,8 +386,8 @@ export default function AttemptRunnerPage() {
   );
 
   const setAnswer = (sectionId: string, questionId: string, value: any) => {
-    // SAT üçün locked section-larda dəyişiklik etmək olmaz
-    if (lockedSections.has(sectionId)) return;
+    // Locked və ya completed section-larda dəyişiklik etmək olmaz
+    if (lockedSections.has(sectionId) || completedSections.has(sectionId)) return;
 
     setAnswers((prev) => {
       const newAnswers = {
@@ -846,7 +916,7 @@ export default function AttemptRunnerPage() {
         }
       }
 
-      // IELTS üçün: Strict section order və geriyə qayıtma qadağası
+      // IELTS üçün: Strict section order və geriyə qayıtma qadağası (yalnız növbəti section-a keçid)
       if (data.examCategory === "IELTS") {
         const currentSection = data.sections.find(s => s.id === activeSection);
         const targetSection = data.sections.find(s => s.id === sectionId);
@@ -857,28 +927,21 @@ export default function AttemptRunnerPage() {
         const sectionOrder = ["LISTENING", "READING", "WRITING", "SPEAKING"];
         const currentOrder = sectionOrder.indexOf(currentSection.type);
         const targetOrder = sectionOrder.indexOf(targetSection.type);
-        
-        // 1. Cannot go back to completed sections
-        if (completedSections.has(sectionId)) {
-          alert("You cannot return to a completed section. Your answers have been saved and locked.");
+
+        const isSameSection = sectionId === activeSection;
+        const isNextSectionType =
+          currentOrder !== -1 &&
+          targetOrder === currentOrder + 1 &&
+          currentSection.type !== targetSection.type;
+
+        // Yalnız cari section və onun ardınca gələn növbəti section type kliklənə bilər.
+        // Digər hallarda heç nə etmədən çıxırıq (alert yoxdur).
+        if (!isSameSection && !isNextSectionType) {
           return;
         }
-        
-        // 2. Cannot skip sections - must go in order
-        if (targetOrder > currentOrder + 1) {
-          const nextSection = sectionOrder[currentOrder + 1];
-          alert(`You must complete sections in order. Please complete ${nextSection} section first.`);
-          return;
-        }
-        
-        // 3. Cannot go back to previous sections
-        if (targetOrder < currentOrder && !completedSections.has(activeSection)) {
-          alert("You must follow the section order: Listening → Reading → Writing → Speaking");
-          return;
-        }
-        
-        // 4. If moving to next section, show modal
-        if (sectionId !== activeSection && currentSection.type !== targetSection.type) {
+
+        // Növbəti əsas section-a keçid zamanı modal açılır
+        if (isNextSectionType) {
           setPendingSectionChange({ fromId: activeSection, toId: sectionId });
           setShowIELTSSectionChangeModal(true);
           return; // Wait for modal confirmation
@@ -916,8 +979,6 @@ export default function AttemptRunnerPage() {
                   timeSpentSeconds: timeSpent,
                 }),
               });
-              
-              console.log("✅ Writing submitted automatically");
             }
           } catch (error) {
             console.error("Failed to submit writing:", error);
@@ -965,10 +1026,13 @@ export default function AttemptRunnerPage() {
     if (!pendingSectionChange || !data) return;
 
     const { fromId, toId } = pendingSectionChange;
-    const currentSection = data.sections.find(s => s.id === fromId);
     
     // Mark current section as completed
-    setCompletedSections(prev => new Set([...prev, fromId]));
+    const newCompletedSections = new Set([...completedSections, fromId]);
+    setCompletedSections(newCompletedSections);
+    
+    // Save to localStorage immediately
+    saveCompletedSectionsToStorageHelper(newCompletedSections);
     
     // Save current section answers
     if (answers[fromId]) {
@@ -978,7 +1042,7 @@ export default function AttemptRunnerPage() {
     // Switch to target section
     setActiveSection(toId);
     setPendingSectionChange(null);
-  }, [pendingSectionChange, data, answers, saveSection]);
+  }, [pendingSectionChange, data, answers, saveSection, completedSections]);
 
   const handleAnswerChange = useCallback(
     (questionId: string, value: any) => {
@@ -1097,7 +1161,7 @@ export default function AttemptRunnerPage() {
               <QuestionsArea
                 section={currentSection}
                 answers={answers}
-                isLocked={lockedSections.has(currentSection.id)}
+                isLocked={lockedSections.has(currentSection.id) || completedSections.has(currentSection.id)}
                 wordBankPositions={wordBankPositions}
                 draggedOptions={draggedOptions}
                 onAnswerChange={handleAnswerChange}

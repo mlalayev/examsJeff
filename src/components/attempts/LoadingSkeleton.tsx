@@ -5,7 +5,7 @@ import React from "react";
 export const LoadingSkeleton = React.memo(function LoadingSkeleton() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-3 pb-3">
+      <div className="w-full px-4 sm:px-6 lg:px-12 xl:px-16 pt-3 pb-3">
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Sidebar Skeleton */}
           <div className="lg:w-64 flex-shrink-0">
