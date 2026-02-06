@@ -1637,9 +1637,9 @@ export default function CreateExamPage() {
                         }}
                         className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
                       >
-                        <option value={1}>Part 1 (30 seconds)</option>
-                        <option value={2}>Part 2 (1 min prep + 2 min recording)</option>
-                        <option value={3}>Part 3 (1 minute)</option>
+                        <option value={1}>Part 1 (3s reading + 30s recording)</option>
+                        <option value={2}>Part 2 (1min prep + 3s reading + 2min recording)</option>
+                        <option value={3}>Part 3 (3s reading + 1min recording)</option>
                       </select>
                     </div>
 
@@ -1663,9 +1663,16 @@ export default function CreateExamPage() {
                     </div>
 
                     <div className="pt-3 border-t border-gray-200 bg-blue-50 p-3 rounded-md">
-                      <p className="text-xs text-blue-800">
-                        <strong>Note:</strong> The student will be automatically recorded during the timer. 
-                        {editingQuestion.prompt?.part === 2 && " Part 2 includes 1 minute of preparation time before recording starts."}
+                      <p className="text-xs text-blue-800 space-y-1">
+                        <strong>Note:</strong>
+                        <br />
+                        • Students get 3 seconds to read the question
+                        <br />
+                        {editingQuestion.prompt?.part === 2 && "• Part 2: 1 minute preparation → 3 seconds reading → 2 minutes recording"}
+                        {editingQuestion.prompt?.part === 1 && "• Part 1: 3 seconds reading → 30 seconds recording"}
+                        {editingQuestion.prompt?.part === 3 && "• Part 3: 3 seconds reading → 1 minute recording"}
+                        <br />
+                        • Recording starts and stops automatically (students cannot control it)
                       </p>
                     </div>
                   </div>

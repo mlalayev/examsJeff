@@ -54,6 +54,7 @@ interface QuestionsAreaProps {
   allSections?: Section[]; // All sections for IELTS Listening multi-part view
   currentSectionIndex?: number; // Current section index in exam
   listeningPart?: number; // Current listening part (1-4)
+  readingPart?: number; // Current reading part (1-3) for IELTS
   onListeningPartChange?: (part: number) => void; // Callback for part change
   onTimeExpired?: () => void; // Callback for timer expiration
   attemptId?: string; // For localStorage timer
@@ -75,6 +76,7 @@ export const QuestionsArea = React.memo(function QuestionsArea({
   allSections = [],
   currentSectionIndex = 0,
   listeningPart = 1,
+  readingPart = 1,
   onListeningPartChange,
   onTimeExpired,
   attemptId,
@@ -189,7 +191,9 @@ export const QuestionsArea = React.memo(function QuestionsArea({
             </h3>
             <div className="prose prose-sm max-w-none">
               <p className="text-slate-700 leading-relaxed whitespace-pre-line">
-                {readingPassage}
+                {typeof readingPassage === 'object' && readingPassage !== null
+                  ? (readingPassage as any)[`part${readingPart}`] || ""
+                  : readingPassage}
               </p>
             </div>
           </div>

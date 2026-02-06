@@ -145,13 +145,13 @@ export default function QuestionPreview({ question }: QuestionPreviewProps) {
                   <path d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
                 </svg>
                 <p className="text-sm font-medium text-blue-900">
-                  {question.prompt?.part === 1 && "Part 1 - 30 seconds recording"}
-                  {question.prompt?.part === 2 && "Part 2 - 1 min preparation + 2 min recording"}
-                  {question.prompt?.part === 3 && "Part 3 - 1 minute recording"}
+                  {question.prompt?.part === 1 && "Part 1 - 3s reading + 30s recording"}
+                  {question.prompt?.part === 2 && "Part 2 - 1min prep + 3s reading + 2min recording"}
+                  {question.prompt?.part === 3 && "Part 3 - 3s reading + 1min recording"}
                 </p>
               </div>
               <p className="text-xs text-blue-700">
-                Recording will start automatically when the timer begins.
+                Recording starts and stops automatically. Students cannot pause or stop manually.
               </p>
             </div>
             <div className="rounded-lg border border-gray-200 bg-white px-5 py-4">
@@ -162,7 +162,7 @@ export default function QuestionPreview({ question }: QuestionPreviewProps) {
                 <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
                   <path d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
                 </svg>
-                Start Recording (Preview)
+                Start (Preview)
               </button>
             </div>
           </div>

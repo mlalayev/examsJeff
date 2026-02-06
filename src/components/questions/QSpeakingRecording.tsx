@@ -37,7 +37,7 @@ export function QSpeakingRecording({
   const recordingDuration = RECORDING_DURATIONS[part as keyof typeof RECORDING_DURATIONS] || 30;
   const hasPreparation = part === 2;
 
-  const [status, setStatus] = useState<"idle" | "preparing" | "recording" | "uploading" | "completed">("idle");
+  const [status, setStatus] = useState<"idle" | "preparing" | "reading" | "recording" | "uploading" | "completed">("idle");
   const [timeLeft, setTimeLeft] = useState(hasPreparation ? PREPARATION_DURATION : recordingDuration);
   const [error, setError] = useState<string | null>(null);
 
@@ -66,7 +66,26 @@ export function QSpeakingRecording({
       setTimeLeft(prev => {
         if (prev <= 1) {
           if (timerRef.current) clearInterval(timerRef.current);
-          // Auto-start recording after preparation
+          // After preparation, start reading phase
+          setTimeout(() => startReading(), 500);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const startReading = () => {
+    setStatus("reading");
+    setTimeLeft(3); // 3 seconds reading time
+    setError(null);
+
+    // Start countdown
+    timerRef.current = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          if (timerRef.current) clearInterval(timerRef.current);
+          // Auto-start recording after reading
           setTimeout(() => startRecording(), 500);
           return 0;
         }
@@ -184,7 +203,8 @@ export function QSpeakingRecording({
     if (hasPreparation) {
       startPreparation();
     } else {
-      startRecording();
+      // For Part 1 and 3, start with reading phase
+      startReading();
     }
   };
 
@@ -240,15 +260,33 @@ export function QSpeakingRecording({
       )}
 
       {/* Timer display */}
-      {(status === "preparing" || status === "recording") && (
-        <div className="rounded-lg border border-blue-200 bg-blue-50 px-5 py-4">
+      {(status === "preparing" || status === "reading" || status === "recording") && (
+        <div className={`rounded-lg border px-5 py-4 ${
+          status === "reading" ? "border-yellow-200 bg-yellow-50" : 
+          status === "recording" ? "border-red-200 bg-red-50" : 
+          "border-blue-200 bg-blue-50"
+        }`}>
           <div className="flex items-center justify-center gap-3">
-            <Clock className="w-6 h-6 text-blue-600" />
+            <Clock className={`w-6 h-6 ${
+              status === "reading" ? "text-yellow-600" :
+              status === "recording" ? "text-red-600" :
+              "text-blue-600"
+            }`} />
             <div className="text-center">
-              <p className="text-sm font-medium text-blue-900">
-                {status === "preparing" ? "Preparation Time" : "Recording Time"}
+              <p className={`text-sm font-medium ${
+                status === "reading" ? "text-yellow-900" :
+                status === "recording" ? "text-red-900" :
+                "text-blue-900"
+              }`}>
+                {status === "preparing" ? "Preparation Time" : 
+                 status === "reading" ? "Reading Time - Recording starts soon!" : 
+                 "Recording Time"}
               </p>
-              <p className="text-3xl font-bold text-blue-600 mt-1">
+              <p className={`text-3xl font-bold mt-1 ${
+                status === "reading" ? "text-yellow-600" :
+                status === "recording" ? "text-red-600" :
+                "text-blue-600"
+              }`}>
                 {formatTime(timeLeft)}
               </p>
             </div>
@@ -276,19 +314,24 @@ export function QSpeakingRecording({
       {status === "idle" && (
         <div className="rounded-lg border border-gray-200 bg-white px-5 py-4">
           <div className="text-center space-y-4">
-            <p className="text-sm text-gray-600">
-              {hasPreparation 
-                ? `You will have 1 minute to prepare and 2 minutes to record your answer.`
-                : `You will have ${recordingDuration} seconds to record your answer.`
-              }
-            </p>
+            <div className="space-y-2">
+              <p className="text-sm text-gray-600">
+                {hasPreparation 
+                  ? `You will have 1 minute to prepare, 3 seconds to read, and 2 minutes to record your answer.`
+                  : `You will have 3 seconds to read and ${recordingDuration} seconds to record your answer.`
+                }
+              </p>
+              <p className="text-xs text-yellow-600 font-medium">
+                ⚠️ Recording will start and stop automatically. You cannot pause or stop it manually.
+              </p>
+            </div>
             <button
               onClick={handleStart}
               disabled={readOnly}
               className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Mic className="w-5 h-5" />
-              {hasPreparation ? "Start Preparation" : "Start Recording"}
+              {hasPreparation ? "Start Preparation" : "Start"}
             </button>
           </div>
         </div>
