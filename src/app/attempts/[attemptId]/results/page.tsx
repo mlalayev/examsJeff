@@ -10,7 +10,12 @@ import {
   Lock,
   X,
   FileCheck,
-  Users
+  Users,
+  CheckCircle2,
+  Edit2,
+  Save,
+  FileText,
+  AlertCircle
 } from "lucide-react";
 import Sidebar from "@/components/dashboard/Sidebar";
 
@@ -628,248 +633,312 @@ export default function AttemptResultsPage() {
             if (e.target === e.currentTarget) closeModal();
           }}
         >
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">
-                {selectedSection.title} - Questions Review
-              </h3>
+          <div className="bg-white rounded-xl max-w-5xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+              <div>
+                <h3 className="text-xl font-semibold text-gray-900">
+                  {selectedSection.title}
+                </h3>
+                <p className="text-sm text-gray-500 mt-0.5">Questions Review</p>
+              </div>
               <button
                 onClick={closeModal}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <X className="w-5 h-5 text-gray-600" />
               </button>
             </div>
             
-            <div className="p-4 overflow-y-auto max-h-[calc(90vh-80px)]">
-              {/* Section Summary */}
-              <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium text-gray-900">Section Performance</span>
-                  <span className="text-lg font-semibold text-gray-900">
-                    {selectedSection.percentage}%
-                  </span>
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-100px)]">
+              {/* Section Summary Card */}
+              <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-sm">
+                      <BarChart3 className="w-6 h-6 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Section Performance</p>
+                      <p className="text-2xl font-bold text-gray-900 mt-0.5">
+                        {selectedSection.percentage}%
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-gray-600">Score</p>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {selectedSection.correct} / {selectedSection.total}
+                    </p>
+                  </div>
                 </div>
-                <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div className="w-full h-3 bg-white/60 rounded-full overflow-hidden shadow-inner">
                   <div
-                    className="h-full rounded-full transition-all duration-500"
+                    className="h-full rounded-full transition-all duration-500 shadow-sm"
                     style={{
                       backgroundColor: selectedSection.percentage >= 75 ? '#22c55e' : '#303380',
                       width: `${selectedSection.percentage}%`
                     }}
                   ></div>
                 </div>
-                <p className="text-sm text-gray-600 mt-2">
-                  {selectedSection.correct} out of {selectedSection.total} questions correct
-                </p>
               </div>
 
               {/* Questions */}
-              <div className="space-y-4">
+              <div className="space-y-5">
                 {data.sections && data.sections.find(s => s.type === selectedSection.type)?.questions.map((q, idx) => (
-                  <div
-                    key={q.id}
-                    className={`p-4 border rounded-lg ${
-                      q.isCorrect 
-                        ? "bg-green-50 border-green-200" 
-                        : "bg-red-50 border-red-200"
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      {!q.isCorrect && (
-                        <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                      )}
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="font-semibold text-gray-900">
-                            Q{idx + 1}
-                          </span>
-                          <span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 border border-gray-200">
-                            {q.qtype}
-                          </span>
-                        </div>
-
-                        {/* Question Prompt */}
-                        {q.prompt?.passage && (
-                          <div className="mb-3 p-3 bg-white border border-gray-200 rounded-lg">
-                            <p className="text-sm italic text-gray-700">
-                              {q.prompt.passage}
-                            </p>
-                          </div>
-                        )}
-                        {q.prompt?.transcript && (
-                          <div className="mb-3 p-3 bg-white border border-gray-200 rounded-lg">
-                            <p className="text-xs font-medium mb-1 text-gray-600">🎧 Transcript:</p>
-                            <p className="text-sm text-gray-700">
-                              {q.prompt.transcript}
-                            </p>
-                          </div>
-                        )}
-                        <p className="font-medium mb-3 text-gray-900">
-                          {q.prompt?.text || "Question"}
-                        </p>
-
-                        {/* Answers */}
-                        <div className="space-y-2">
-                          <div>
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-xs font-medium uppercase text-gray-600">
-                                Student Answer:
-                              </span>
-                              {editingQuestion !== q.id && (
-                                <button
-                                  onClick={() => handleEditAnswer(q.id, q.studentAnswer)}
-                                  className="text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-                                >
-                                  Edit
-                                </button>
-                              )}
-                            </div>
-                            
-                            {editingQuestion === q.id ? (
-                              <div className="space-y-2">
-                                {q.qtype === "FILL_IN_BLANK" ? (
-                                  <div className="space-y-2">
-                                    {(() => {
-                                      const currentAnswer = editedAnswers[q.id] || q.studentAnswer || {};
-                                      const blankCount = Array.isArray(q.correctAnswer) ? q.correctAnswer.length : Object.keys(currentAnswer).length;
-                                      const maxBlanks = Math.max(blankCount, Object.keys(currentAnswer).length);
-                                      
-                                      return Array.from({ length: maxBlanks }, (_, i) => (
-                                        <div key={i} className="flex items-center gap-2">
-                                          <span className="text-xs font-medium text-gray-600">Blank {i + 1}:</span>
-                                          <input
-                                            type="text"
-                                            value={currentAnswer[String(i)] || ""}
-                                            onChange={(e) => {
-                                              setEditedAnswers({
-                                                ...editedAnswers,
-                                                [q.id]: {
-                                                  ...currentAnswer,
-                                                  [String(i)]: e.target.value,
-                                                },
-                                              });
-                                            }}
-                                            className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
-                                            placeholder={`Answer for blank ${i + 1}`}
-                                          />
-                                        </div>
-                                      ));
-                                    })()}
-                                  </div>
-                                ) : q.qtype === "MCQ_SINGLE" || q.qtype === "SELECT" || q.qtype === "INLINE_SELECT" ? (
-                                  <select
-                                    value={
-                                      editedAnswers[q.id] !== undefined 
-                                        ? String(editedAnswers[q.id]) 
-                                        : (typeof q.studentAnswer === "number" 
-                                            ? String(q.studentAnswer) 
-                                            : (typeof q.studentAnswer === "string"
-                                                ? String(q.options?.choices?.findIndex((c: string) => c === q.studentAnswer) ?? "")
-                                                : ""))
-                                    }
-                                    onChange={(e) => {
-                                      const val = e.target.value;
-                                      const numValue = val === "" ? undefined : parseInt(val);
-                                      console.log('📝 SELECT CHANGED:', { questionId: q.id, val, numValue });
-                                      setEditedAnswers({ ...editedAnswers, [q.id]: numValue });
-                                    }}
-                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                                  >
-                                    <option value="">-- Select answer --</option>
-                                    {q.options?.choices?.map((choice: string, idx: number) => (
-                                      <option key={idx} value={idx}>{choice}</option>
-                                    ))}
-                                  </select>
-                                ) : q.qtype === "TF" ? (
-                                  <select
-                                    value={editedAnswers[q.id] ?? ""}
-                                    onChange={(e) => setEditedAnswers({ ...editedAnswers, [q.id]: parseInt(e.target.value) })}
-                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                                  >
-                                    <option value="">Select answer</option>
-                                    <option value="0">True</option>
-                                    <option value="1">False</option>
-                                  </select>
-                                ) : q.qtype === "TF_NG" ? (
-                                  <select
-                                    value={editedAnswers[q.id] ?? ""}
-                                    onChange={(e) => setEditedAnswers({ ...editedAnswers, [q.id]: e.target.value })}
-                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                                  >
-                                    <option value="">Select answer</option>
-                                    <option value="TRUE">True</option>
-                                    <option value="FALSE">False</option>
-                                    <option value="NOT_GIVEN">Not Given</option>
-                                  </select>
-                                ) : (
-                                  <input
-                                    type="text"
-                                    value={typeof editedAnswers[q.id] === 'string' ? editedAnswers[q.id] : JSON.stringify(editedAnswers[q.id] || "")}
-                                    onChange={(e) => setEditedAnswers({ ...editedAnswers, [q.id]: e.target.value })}
-                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                                  />
-                                )}
-                                
-                                <div className="flex gap-2 mt-2">
-                                  <button
-                                    onClick={() => handleSaveAnswer(q.id, q.qtype)}
-                                    disabled={saving}
-                                    className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600 disabled:opacity-50"
-                                  >
-                                    {saving ? 'Saving...' : 'Save'}
-                                  </button>
-                                  <button
-                                    onClick={handleCancelEdit}
-                                    disabled={saving}
-                                    className="px-3 py-1 bg-gray-500 text-white rounded text-sm hover:bg-gray-600 disabled:opacity-50"
-                                  >
-                                    Cancel
-                                  </button>
-                                </div>
-                              </div>
+                  <div key={q.id}>
+                    {idx > 0 && (
+                      <div className="h-0.5 bg-gray-300 my-5"></div>
+                    )}
+                    <div
+                      className={`border-2 rounded-xl overflow-hidden transition-all ${
+                        q.isCorrect 
+                          ? "bg-white border-green-200 shadow-sm" 
+                          : "bg-white border-red-200 shadow-sm"
+                      }`}
+                    >
+                    {/* Question Header */}
+                    <div className={`px-5 py-3 border-b ${
+                      q.isCorrect ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"
+                    }`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                            q.isCorrect ? "bg-green-100" : "bg-red-100"
+                          }`}>
+                            {q.isCorrect ? (
+                              <CheckCircle2 className={`w-5 h-5 ${q.isCorrect ? "text-green-600" : "text-red-600"}`} />
                             ) : (
-                              <p className="text-sm mt-1 text-gray-800">
-                                {formatAnswer(q.qtype, q.studentAnswer, q.options)}
-                              </p>
+                              <XCircle className="w-5 h-5 text-red-600" />
                             )}
                           </div>
                           <div>
-                            <span className="text-xs font-medium uppercase text-gray-600">
-                              Correct Answer:
-                            </span>
-                            <p className="text-sm font-medium mt-1 text-gray-900">
-                              {(() => {
-                                // For FILL_IN_BLANK, use the full correctAnswer array
-                                if (q.qtype === "FILL_IN_BLANK") {
-                                  return formatAnswer(q.qtype, q.correctAnswer, q.options);
-                                }
-                                // For other types, extract the appropriate field
-                                const correctValue = q.correctAnswer?.value ?? 
-                                  q.correctAnswer?.index ?? 
-                                  q.correctAnswer?.indices ?? 
-                                  q.correctAnswer?.answers?.[0] ?? 
-                                  q.correctAnswer?.order ?? 
-                                  q.correctAnswer?.blanks ??
-                                  q.correctAnswer;
-                                return formatAnswer(q.qtype, correctValue, q.options);
-                              })()}
-                            </p>
-                          </div>
-                          {q.explanation && (
-                            <div className="mt-3 p-3 bg-white border border-gray-200 rounded-lg">
-                              <span className="text-xs font-medium uppercase text-gray-600">
-                                Explanation:
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-gray-900 text-lg">
+                                Question {idx + 1}
                               </span>
-                              <p className="text-sm mt-1 text-gray-700">
-                                {q.explanation.text || JSON.stringify(q.explanation)}
-                              </p>
+                              <span className="text-xs px-2.5 py-1 rounded-md bg-gray-100 text-gray-700 font-medium border border-gray-200">
+                                {q.qtype}
+                              </span>
                             </div>
-                          )}
+                          </div>
                         </div>
+                        {!q.isCorrect && editingQuestion !== q.id && (
+                          <button
+                            onClick={() => handleEditAnswer(q.id, q.studentAnswer)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                            Edit Answer
+                          </button>
+                        )}
                       </div>
                     </div>
+
+                    {/* Question Content */}
+                    <div className="p-5 space-y-4">
+                      {/* Question Prompt */}
+                      {q.prompt?.passage && (
+                        <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                          <div className="flex items-center gap-2 mb-2">
+                            <FileText className="w-4 h-4 text-gray-500" />
+                            <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Reading Passage</span>
+                          </div>
+                          <p className="text-sm text-gray-700 leading-relaxed italic">
+                            {q.prompt.passage}
+                          </p>
+                        </div>
+                      )}
+                      {q.prompt?.transcript && (
+                        <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                          <div className="flex items-center gap-2 mb-2">
+                            <AlertCircle className="w-4 h-4 text-gray-500" />
+                            <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Transcript</span>
+                          </div>
+                          <p className="text-sm text-gray-700 leading-relaxed">
+                            {q.prompt.transcript}
+                          </p>
+                        </div>
+                      )}
+                      <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p className="text-sm font-medium text-gray-600 mb-1">Question:</p>
+                        <p className="text-base font-semibold text-gray-900 leading-relaxed">
+                          {q.prompt?.text || "Question"}
+                        </p>
+                      </div>
+
+                      {/* Answers Section */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Student Answer */}
+                        <div className={`p-4 rounded-lg border-2 ${
+                          q.isCorrect 
+                            ? "bg-green-50 border-green-300" 
+                            : "bg-red-50 border-red-300"
+                        }`}>
+                          <div className="flex items-center gap-2 mb-3">
+                            {q.isCorrect ? (
+                              <CheckCircle2 className="w-4 h-4 text-green-600" />
+                            ) : (
+                              <XCircle className="w-4 h-4 text-red-600" />
+                            )}
+                            <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">
+                              Student Answer
+                            </span>
+                          </div>
+                          
+                          {editingQuestion === q.id ? (
+                            <div className="space-y-3">
+                              {q.qtype === "FILL_IN_BLANK" ? (
+                                <div className="space-y-2">
+                                  {(() => {
+                                    const currentAnswer = editedAnswers[q.id] || q.studentAnswer || {};
+                                    const blankCount = Array.isArray(q.correctAnswer) ? q.correctAnswer.length : Object.keys(currentAnswer).length;
+                                    const maxBlanks = Math.max(blankCount, Object.keys(currentAnswer).length);
+                                    
+                                    return Array.from({ length: maxBlanks }, (_, i) => (
+                                      <div key={i} className="flex items-center gap-2">
+                                        <span className="text-xs font-medium text-gray-600 w-16">Blank {i + 1}:</span>
+                                        <input
+                                          type="text"
+                                          value={currentAnswer[String(i)] || ""}
+                                          onChange={(e) => {
+                                            setEditedAnswers({
+                                              ...editedAnswers,
+                                              [q.id]: {
+                                                ...currentAnswer,
+                                                [String(i)]: e.target.value,
+                                              },
+                                            });
+                                          }}
+                                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                          placeholder={`Answer for blank ${i + 1}`}
+                                        />
+                                      </div>
+                                    ));
+                                  })()}
+                                </div>
+                              ) : q.qtype === "MCQ_SINGLE" || q.qtype === "SELECT" || q.qtype === "INLINE_SELECT" ? (
+                                <select
+                                  value={
+                                    editedAnswers[q.id] !== undefined 
+                                      ? String(editedAnswers[q.id]) 
+                                      : (typeof q.studentAnswer === "number" 
+                                          ? String(q.studentAnswer) 
+                                          : (typeof q.studentAnswer === "string"
+                                              ? String(q.options?.choices?.findIndex((c: string) => c === q.studentAnswer) ?? "")
+                                              : ""))
+                                  }
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    const numValue = val === "" ? undefined : parseInt(val);
+                                    setEditedAnswers({ ...editedAnswers, [q.id]: numValue });
+                                  }}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                  <option value="">-- Select answer --</option>
+                                  {q.options?.choices?.map((choice: string, idx: number) => (
+                                    <option key={idx} value={idx}>{choice}</option>
+                                  ))}
+                                </select>
+                              ) : q.qtype === "TF" ? (
+                                <select
+                                  value={editedAnswers[q.id] ?? ""}
+                                  onChange={(e) => setEditedAnswers({ ...editedAnswers, [q.id]: parseInt(e.target.value) })}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                  <option value="">Select answer</option>
+                                  <option value="0">True</option>
+                                  <option value="1">False</option>
+                                </select>
+                              ) : q.qtype === "TF_NG" ? (
+                                <select
+                                  value={editedAnswers[q.id] ?? ""}
+                                  onChange={(e) => setEditedAnswers({ ...editedAnswers, [q.id]: e.target.value })}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                  <option value="">Select answer</option>
+                                  <option value="TRUE">True</option>
+                                  <option value="FALSE">False</option>
+                                  <option value="NOT_GIVEN">Not Given</option>
+                                </select>
+                              ) : (
+                                <input
+                                  type="text"
+                                  value={typeof editedAnswers[q.id] === 'string' ? editedAnswers[q.id] : JSON.stringify(editedAnswers[q.id] || "")}
+                                  onChange={(e) => setEditedAnswers({ ...editedAnswers, [q.id]: e.target.value })}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                              )}
+                              
+                              <div className="flex gap-2 pt-2">
+                                <button
+                                  onClick={() => handleSaveAnswer(q.id, q.qtype)}
+                                  disabled={saving}
+                                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition-colors"
+                                >
+                                  <Save className="w-4 h-4" />
+                                  {saving ? 'Saving...' : 'Save'}
+                                </button>
+                                <button
+                                  onClick={handleCancelEdit}
+                                  disabled={saving}
+                                  className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-500 text-white rounded-lg text-sm font-medium hover:bg-gray-600 disabled:opacity-50 transition-colors"
+                                >
+                                  <XIcon className="w-4 h-4" />
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className={`text-sm font-medium ${
+                              q.isCorrect ? "text-green-800" : "text-red-800"
+                            }`}>
+                              {formatAnswer(q.qtype, q.studentAnswer, q.options)}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Correct Answer */}
+                        <div className="p-4 bg-gray-50 border-2 border-gray-300 rounded-lg">
+                          <div className="flex items-center gap-2 mb-3">
+                            <CheckCircle2 className="w-4 h-4 text-gray-600" />
+                            <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">
+                              Correct Answer
+                            </span>
+                          </div>
+                          <p className="text-sm font-semibold text-gray-900">
+                            {(() => {
+                              if (q.qtype === "FILL_IN_BLANK") {
+                                return formatAnswer(q.qtype, q.correctAnswer, q.options);
+                              }
+                              const correctValue = q.correctAnswer?.value ?? 
+                                q.correctAnswer?.index ?? 
+                                q.correctAnswer?.indices ?? 
+                                q.correctAnswer?.answers?.[0] ?? 
+                                q.correctAnswer?.order ?? 
+                                q.correctAnswer?.blanks ??
+                                q.correctAnswer;
+                              return formatAnswer(q.qtype, correctValue, q.options);
+                            })()}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Explanation */}
+                      {q.explanation && (
+                        <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                          <div className="flex items-center gap-2 mb-2">
+                            <AlertCircle className="w-4 h-4 text-amber-600" />
+                            <span className="text-xs font-bold text-amber-800 uppercase tracking-wide">Explanation</span>
+                          </div>
+                          <p className="text-sm text-amber-900 leading-relaxed">
+                            {q.explanation.text || JSON.stringify(q.explanation)}
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
+                    </div>
                 ))}
               </div>
             </div>
