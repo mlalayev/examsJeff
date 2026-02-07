@@ -85,10 +85,10 @@ export function IELTSListeningView({
   const parts = useMemo(() => {
     const questions = section.questions || [];
     return [
-      questions.filter((q) => q.order >= 1 && q.order <= 10), // Part 1: Q1-10
-      questions.filter((q) => q.order >= 11 && q.order <= 20), // Part 2: Q11-20
-      questions.filter((q) => q.order >= 21 && q.order <= 30), // Part 3: Q21-30
-      questions.filter((q) => q.order >= 31 && q.order <= 40), // Part 4: Q31-40
+      questions.filter((q) => q.order >= 0 && q.order <= 9), // Part 1: Q1-10 (order 0-9)
+      questions.filter((q) => q.order >= 10 && q.order <= 19), // Part 2: Q11-20 (order 10-19)
+      questions.filter((q) => q.order >= 20 && q.order <= 29), // Part 3: Q21-30 (order 20-29)
+      questions.filter((q) => q.order >= 30 && q.order <= 39), // Part 4: Q31-40 (order 30-39)
     ];
   }, [section.questions]);
 

@@ -236,9 +236,9 @@ export const QuestionsArea = React.memo(function QuestionsArea({
               // For IELTS Listening, use the actual question order number
               let baseQuestionNum = 0;
               if (section.type === "LISTENING" && examCategory === "IELTS") {
-                // Use actual order number directly (Q1 = 1, Q2 = 2, Q11 = 11, etc.)
-                // For display, we show the actual order number
-                baseQuestionNum = q.order;
+                // Use actual order number + 1 (order is 0-based, but questions are 1-based)
+                // Q1 has order 0, Q2 has order 1, etc.
+                baseQuestionNum = q.order + 1;
               } else {
                 baseQuestionNum = baseQuestionNumbers[idx] || 0;
               }
