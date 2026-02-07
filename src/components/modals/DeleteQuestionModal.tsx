@@ -23,7 +23,7 @@ export const DeleteQuestionModal: React.FC<DeleteQuestionModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4">
       <div className="bg-white w-full max-w-md rounded-xl shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="px-6 pt-6 pb-4 text-center border-b border-gray-100 bg-gradient-to-r from-red-50 to-pink-50">

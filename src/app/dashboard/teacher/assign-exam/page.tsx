@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Users, Calendar, Clock } from "lucide-react";
 import UnifiedLoading from "@/components/loading/UnifiedLoading";
+import { AlertModal } from "@/components/modals/AlertModal";
 
 interface Class {
   id: string;
@@ -38,6 +39,12 @@ function AssignExamPageContent() {
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [scheduledAt, setScheduledAt] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; title: string; message: string; type?: "success" | "error" | "warning" | "info" }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info",
+  });
 
   useEffect(() => {
     if (!examId) {
@@ -93,7 +100,7 @@ function AssignExamPageContent() {
 
   const handleSubmit = async () => {
     if (!selectedClass || selectedStudents.length === 0 || !scheduledAt) {
-      alert("Please select a class, students, and schedule time");
+      setAlertModal({ isOpen: true, title: "Validation Error", message: "Please select a class, students, and schedule time", type: "error" });
       return;
     }
     
@@ -113,12 +120,20 @@ function AssignExamPageContent() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to assign exam");
       
-      alert(`Exam assigned to ${selectedStudents.length} student(s) successfully!`);
-      router.push("/dashboard/teacher");
+      setAlertModal({
+        isOpen: true,
+        title: "Success",
+        message: `Exam assigned to ${selectedStudents.length} student(s) successfully!`,
+        type: "success",
+      });
+      
+      setTimeout(() => {
+        router.push("/dashboard/teacher");
+      }, 1500);
       
     } catch (e) {
       console.error(e);
-      alert(e instanceof Error ? e.message : "Failed to assign exam");
+      setAlertModal({ isOpen: true, title: "Error", message: e instanceof Error ? e.message : "Failed to assign exam", type: "error" });
     } finally {
       setSubmitting(false);
     }
@@ -292,6 +307,15 @@ function AssignExamPageContent() {
           </button>
         </div>
       </div>
+
+      {/* Alert Modal */}
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ isOpen: false, title: "", message: "", type: "info" })}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+      />
     </div>
   );
 }

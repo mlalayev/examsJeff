@@ -9,6 +9,7 @@ interface QFillInBlankProps {
     prompt: {
       text: string; // Text with [input] placeholders
       instructions?: string; // What to do text
+      title?: string; // Optional question title/name
     };
     image?: string | null;
     answerKey?: string[]; // Array of correct answers for each blank
@@ -76,6 +77,15 @@ export function QFillInBlank({
 
   return (
     <div className="space-y-3">
+      {/* Question Title */}
+      {question.prompt.title && (
+        <div className="mb-2">
+          <h3 className="text-base font-semibold text-gray-900">
+            {question.prompt.title}
+          </h3>
+        </div>
+      )}
+
       {/* Instructions */}
       {question.prompt.instructions && (
         <div className="mb-3 rounded-lg bg-blue-50 border border-blue-200 px-4 py-3">

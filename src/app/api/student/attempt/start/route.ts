@@ -49,6 +49,9 @@ export async function POST(request: Request) {
     }
 
     // Create new attempt with sections
+    // Use exam sections, not booking sections, to ensure we have all the actual sections
+    const examSections = booking.exam.sections || [];
+    
     attempt = await prisma.attempt.create({
       data: {
         bookingId,
@@ -58,8 +61,8 @@ export async function POST(request: Request) {
         status: "IN_PROGRESS",
         startedAt: new Date(),
         sections: {
-          create: booking.sections.map((sectionType) => ({
-            type: sectionType,
+          create: examSections.map((section) => ({
+            type: section.type,
             status: "IN_PROGRESS",
           })),
         },

@@ -326,10 +326,15 @@ export async function GET(
               displayCorrectAnswer = formatTF(answerKey?.value);
             }
             
+            const prompt = q.prompt || {};
             return {
               id: q.id,
               qtype: q.qtype,
-              prompt: q.prompt,
+              prompt: {
+                ...prompt,
+                // Map top-level image to prompt.imageUrl for question components
+                imageUrl: q.image || prompt.imageUrl || null,
+              },
               options: q.options,
               order: q.order,
               maxScore: q.maxScore,

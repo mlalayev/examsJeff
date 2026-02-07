@@ -11,7 +11,9 @@ import ExamInfoForm from "@/components/admin/exams/create/ExamInfoForm";
 import SectionsList from "@/components/admin/exams/create/SectionsList";
 import QuestionTypeModal from "@/components/admin/exams/create/QuestionTypeModal";
 import { DeleteQuestionModal } from "@/components/modals/DeleteQuestionModal";
+import { DeleteSectionModal } from "@/components/modals/DeleteSectionModal";
 import { AlertModal } from "@/components/modals/AlertModal";
+import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import type { ExamCategory, SectionType, QuestionType, Section, Question } from "@/components/admin/exams/create/types";
 import { 
   ALLOWED_SECTIONS_BY_CATEGORY, 
@@ -41,7 +43,8 @@ export default function CreateExamPage() {
   const [uploadingQuestionImage, setUploadingQuestionImage] = useState(false);
   const [selectedListeningPart, setSelectedListeningPart] = useState<number>(1); // Default to Part 1
   const [selectedReadingPart, setSelectedReadingPart] = useState<number>(1); // Default to Part 1
-  // Removed selectedWritingPart and selectedSpeakingPart - now separate sections
+  const [selectedWritingPart, setSelectedWritingPart] = useState<number>(1); // Default to Task 1
+  const [selectedSpeakingPart, setSelectedSpeakingPart] = useState<number>(1); // Default to Part 1
   const [deleteQuestionModal, setDeleteQuestionModal] = useState<{ isOpen: boolean; questionId: string | null; questionText?: string; questionNumber?: number }>({
     isOpen: false,
     questionId: null,
@@ -51,6 +54,10 @@ export default function CreateExamPage() {
     title: "",
     message: "",
     type: "info",
+  });
+  const [categoryChangeModal, setCategoryChangeModal] = useState<{ isOpen: boolean; newCategory: ExamCategory | null }>({
+    isOpen: false,
+    newCategory: null,
   });
 
   // Simulate page load
@@ -72,13 +79,11 @@ export default function CreateExamPage() {
     const hasInvalidSections = currentSections.some((section: Section) => !allowedTypes.includes(section.type));
 
     if (hasInvalidSections) {
-      if (confirm("Changing category will remove sections that are not allowed for this exam type. Continue?")) {
-        setSections([]);
-        setCurrentSection(null);
-        setStep("sections");
-      } else {
-        return; // İstifadəçi ləğv etdi
-      }
+      setCategoryChangeModal({
+        isOpen: true,
+        newCategory: category,
+      });
+      return;
     } else {
       // IELTS seçildikdə avtomatik 4 section yarat
       if (category === "IELTS" && currentSections.length === 0) {
@@ -105,46 +110,19 @@ export default function CreateExamPage() {
           {
             id: `section-${baseTime}-3`,
             type: "WRITING",
-            title: "Writing Task 1",
+            title: "Writing",
             instruction: IELTS_SECTION_INSTRUCTIONS.WRITING,
-            durationMin: 20,
+            durationMin: IELTS_SECTION_DURATIONS.WRITING,
             order: 2,
             questions: [],
           },
           {
             id: `section-${baseTime}-4`,
-            type: "WRITING",
-            title: "Writing Task 2",
-            instruction: IELTS_SECTION_INSTRUCTIONS.WRITING,
-            durationMin: 40,
+            type: "SPEAKING",
+            title: "Speaking",
+            instruction: IELTS_SECTION_INSTRUCTIONS.SPEAKING,
+            durationMin: IELTS_SECTION_DURATIONS.SPEAKING,
             order: 3,
-            questions: [],
-          },
-          {
-            id: `section-${baseTime}-5`,
-            type: "SPEAKING",
-            title: "Speaking Part 1",
-            instruction: IELTS_SECTION_INSTRUCTIONS.SPEAKING,
-            durationMin: 5,
-            order: 4,
-            questions: [],
-          },
-          {
-            id: `section-${baseTime}-6`,
-            type: "SPEAKING",
-            title: "Speaking Part 2",
-            instruction: IELTS_SECTION_INSTRUCTIONS.SPEAKING,
-            durationMin: 4,
-            order: 5,
-            questions: [],
-          },
-          {
-            id: `section-${baseTime}-7`,
-            type: "SPEAKING",
-            title: "Speaking Part 3",
-            instruction: IELTS_SECTION_INSTRUCTIONS.SPEAKING,
-            durationMin: 5,
-            order: 6,
             questions: [],
           },
         ];
@@ -212,8 +190,11 @@ export default function CreateExamPage() {
         questionId = `q-part${selectedListeningPart}-${Date.now()}`;
       } else if (currentSection.type === "READING") {
         questionId = `q-part${selectedReadingPart}-${Date.now()}`;
+      } else if (currentSection.type === "WRITING") {
+        questionId = `q-task${selectedWritingPart}-${Date.now()}`;
+      } else if (currentSection.type === "SPEAKING") {
+        questionId = `q-part${selectedSpeakingPart}-${Date.now()}`;
       }
-      // Writing and Speaking no longer need part selectors - they're separate sections
     }
     
     const newQuestion: Question = {
@@ -268,8 +249,11 @@ export default function CreateExamPage() {
             questionId = `q-part${selectedListeningPart}-${Date.now()}-${lineIdx}`;
           } else if (currentSection.type === "READING") {
             questionId = `q-part${selectedReadingPart}-${Date.now()}-${lineIdx}`;
+          } else if (currentSection.type === "WRITING") {
+            questionId = `q-task${selectedWritingPart}-${Date.now()}-${lineIdx}`;
+          } else if (currentSection.type === "SPEAKING") {
+            questionId = `q-part${selectedSpeakingPart}-${Date.now()}-${lineIdx}`;
           }
-          // Writing and Speaking no longer need part selectors - they're separate sections
         }
 
         const newQuestion: Question = {
@@ -279,6 +263,7 @@ export default function CreateExamPage() {
           prompt: {
             text: line.trim(),
             instructions: lineIdx === 0 ? editingQuestion.prompt?.instructions : undefined,
+            title: lineIdx === 0 ? editingQuestion.prompt?.title : undefined,
           },
           answerKey: { blanks: lineAnswers },
           maxScore: inputCount, // Each input counts as 1 point
@@ -395,7 +380,10 @@ export default function CreateExamPage() {
   };
 
   const deleteQuestion = (questionId: string) => {
-    if (!currentSection) return;
+    if (!currentSection) {
+      console.error("No current section selected");
+      return;
+    }
     
     // Find the question to get its text and number
     let questionToDelete: Question | null = null;
@@ -419,6 +407,8 @@ export default function CreateExamPage() {
             ? questionToDelete.prompt 
             : "Question")
       : undefined;
+    
+    console.log("Opening delete modal for question:", { questionId, questionNumber, questionText });
     
     setDeleteQuestionModal({
       isOpen: true,
@@ -471,6 +461,23 @@ export default function CreateExamPage() {
     setAlertModal({ isOpen: true, title, message, type });
   };
 
+  const confirmCategoryChange = () => {
+    if (categoryChangeModal.newCategory) {
+      setSections([]);
+      setCurrentSection(null);
+      setStep("sections");
+      setSelectedCategory(categoryChangeModal.newCategory);
+    }
+    setCategoryChangeModal({ isOpen: false, newCategory: null });
+  };
+
+  const [deleteSectionModal, setDeleteSectionModal] = useState<{ isOpen: boolean; sectionId: string | null; sectionTitle: string; questionsCount: number }>({
+    isOpen: false,
+    sectionId: null,
+    sectionTitle: "",
+    questionsCount: 0,
+  });
+
   const deleteSection = (sectionId: string) => {
     // IELTS sections cannot be deleted
     if (selectedCategory === "IELTS") {
@@ -478,14 +485,30 @@ export default function CreateExamPage() {
       return;
     }
     
-    if (confirm("Are you sure you want to delete this section? All questions in this section will be deleted.")) {
-      const updatedSections = sections.filter((s: Section) => s.id !== sectionId);
-      setSections(updatedSections);
-      if (currentSection?.id === sectionId) {
-        setCurrentSection(null);
-        setStep("sections");
-      }
+    const sectionToDelete = sections.find(s => s.id === sectionId);
+    if (!sectionToDelete) return;
+
+    const questionsCount = sectionToDelete.questions?.length || 0;
+    
+    setDeleteSectionModal({
+      isOpen: true,
+      sectionId,
+      sectionTitle: sectionToDelete.title,
+      questionsCount,
+    });
+  };
+
+  const confirmDeleteSection = () => {
+    if (!deleteSectionModal.sectionId) return;
+    
+    const sectionId = deleteSectionModal.sectionId;
+    const updatedSections = sections.filter((s: Section) => s.id !== sectionId);
+    setSections(updatedSections);
+    if (currentSection?.id === sectionId) {
+      setCurrentSection(null);
+      setStep("sections");
     }
+    setDeleteSectionModal({ isOpen: false, sectionId: null, sectionTitle: "", questionsCount: 0 });
   };
 
   const saveExam = async () => {
@@ -691,10 +714,8 @@ export default function CreateExamPage() {
           setStep("questions");
           // Auto-select Part 1 for IELTS sections
           if (selectedCategory === "IELTS") {
-            setSelectedListeningPart(1);
-            setSelectedReadingPart(1);
-            setSelectedWritingPart(1);
-            setSelectedSpeakingPart(1);
+      setSelectedListeningPart(1);
+      setSelectedReadingPart(1);
           }
         }}
         onSectionDelete={deleteSection}
@@ -1004,6 +1025,91 @@ export default function CreateExamPage() {
             </div>
               )}
 
+              {/* Writing Tasks */}
+              {currentSection.type === "WRITING" && (
+                <div className="mb-4 p-4 bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-200 rounded-lg">
+                  <div className="mb-3">
+                    <h4 className="text-sm font-semibold text-gray-900 mb-1 flex items-center gap-2">
+                      <PenTool className="w-4 h-4 text-orange-600" />
+                      Select Writing Task
+                    </h4>
+                    <p className="text-xs text-gray-600">Choose which task to add questions to (Task 1: 150+ words, Task 2: 250+ words)</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                    {[
+                      { num: 1, label: "Task 1", desc: "20 min, 150+ words" },
+                      { num: 2, label: "Task 2", desc: "40 min, 250+ words" },
+                    ].map((task) => (
+                      <button
+                        key={task.num}
+                        onClick={() => setSelectedWritingPart(task.num)}
+                        className={`px-4 py-3 rounded-lg font-medium text-sm transition-all border-2 ${
+                          selectedWritingPart === task.num
+                            ? "bg-[#303380] text-white border-[#303380] shadow-lg transform scale-105"
+                            : "bg-white text-gray-700 hover:bg-gray-50 border-gray-200 hover:border-[#303380]"
+                        }`}
+                      >
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="font-bold">{task.label}</span>
+                          <span className="text-xs opacity-90">{task.desc}</span>
+                          <span className="text-[10px] opacity-75">
+                            {currentSection.questions.filter((q: Question) => q.id.includes(`task${task.num}`)).length} Qs
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-3 p-2 bg-white rounded border border-orange-200">
+                    <p className="text-xs text-orange-800 font-medium">
+                      Currently editing: <span className="text-[#303380]">Task {selectedWritingPart}</span>
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Speaking Parts */}
+              {currentSection.type === "SPEAKING" && (
+                <div className="mb-4 p-4 bg-gradient-to-br from-red-50 to-pink-50 border-2 border-red-200 rounded-lg">
+                  <div className="mb-3">
+                    <h4 className="text-sm font-semibold text-gray-900 mb-1 flex items-center gap-2">
+                      <Mic className="w-4 h-4 text-red-600" />
+                      Select Speaking Part
+                    </h4>
+                    <p className="text-xs text-gray-600">Choose which part to add questions to (Part 1: Interview, Part 2: Long turn, Part 3: Discussion)</p>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                    {[
+                      { num: 1, label: "Part 1", desc: "Interview" },
+                      { num: 2, label: "Part 2", desc: "Long Turn" },
+                      { num: 3, label: "Part 3", desc: "Discussion" },
+                    ].map((part) => (
+                      <button
+                        key={part.num}
+                        onClick={() => setSelectedSpeakingPart(part.num)}
+                        className={`px-4 py-3 rounded-lg font-medium text-sm transition-all border-2 ${
+                          selectedSpeakingPart === part.num
+                            ? "bg-[#303380] text-white border-[#303380] shadow-lg transform scale-105"
+                            : "bg-white text-gray-700 hover:bg-gray-50 border-gray-200 hover:border-[#303380]"
+                        }`}
+                      >
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="font-bold">{part.label}</span>
+                          <span className="text-xs opacity-90">{part.desc}</span>
+                          <span className="text-[10px] opacity-75">
+                            {currentSection.questions.filter((q: Question) => q.id.includes(`part${part.num}`)).length} Qs
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-3 p-2 bg-white rounded border border-red-200">
+                    <p className="text-xs text-red-800 font-medium">
+                      Currently editing: <span className="text-[#303380]">Part {selectedSpeakingPart}</span>
+                    </p>
+                  </div>
+                </div>
+              )}
+
             </>
           )}
 
@@ -1017,13 +1123,16 @@ export default function CreateExamPage() {
                   filteredQuestions = currentSection.questions.filter((q: Question) => q.id.includes(`part${selectedListeningPart}`));
                 } else if (currentSection.type === "READING") {
                   filteredQuestions = currentSection.questions.filter((q: Question) => q.id.includes(`part${selectedReadingPart}`));
+                } else if (currentSection.type === "WRITING") {
+                  filteredQuestions = currentSection.questions.filter((q: Question) => q.id.includes(`task${selectedWritingPart}`));
+                } else if (currentSection.type === "SPEAKING") {
+                  filteredQuestions = currentSection.questions.filter((q: Question) => q.id.includes(`part${selectedSpeakingPart}`));
                 }
-                // Writing and Speaking are separate sections now - no filtering needed
               }
               
               return filteredQuestions;
             })().map((q, idx) => {
-              // Calculate global question number - for Listening/Reading only (Writing/Speaking are separate sections now)
+              // Calculate global question number across all parts
               let globalQuestionNumber = idx + 1;
               
               if (selectedCategory === "IELTS") {
@@ -1045,8 +1154,25 @@ export default function CreateExamPage() {
                     ).length;
                   }
                   globalQuestionNumber = previousQuestionsCount + idx + 1;
+                } else if (currentSection.type === "WRITING") {
+                  // Count questions in previous Writing tasks
+                  let previousQuestionsCount = 0;
+                  for (let i = 1; i < selectedWritingPart; i++) {
+                    previousQuestionsCount += currentSection.questions.filter((question: Question) => 
+                      question.id.includes(`task${i}`)
+                    ).length;
+                  }
+                  globalQuestionNumber = previousQuestionsCount + idx + 1;
+                } else if (currentSection.type === "SPEAKING") {
+                  // Count questions in previous Speaking parts
+                  let previousQuestionsCount = 0;
+                  for (let i = 1; i < selectedSpeakingPart; i++) {
+                    previousQuestionsCount += currentSection.questions.filter((question: Question) => 
+                      question.id.includes(`part${i}`)
+                    ).length;
+                  }
+                  globalQuestionNumber = previousQuestionsCount + idx + 1;
                 }
-                // Writing and Speaking are now separate sections - no need for part calculation
               }
               
               return (
@@ -1067,6 +1193,16 @@ export default function CreateExamPage() {
                         {currentSection.type === "READING" && (
                           <span className="text-xs px-2 py-1 bg-green-100 rounded text-green-700 font-medium">
                             Passage {selectedReadingPart}
+                          </span>
+                        )}
+                        {currentSection.type === "WRITING" && (
+                          <span className="text-xs px-2 py-1 bg-orange-100 rounded text-orange-700 font-medium">
+                            Task {selectedWritingPart}
+                          </span>
+                        )}
+                        {currentSection.type === "SPEAKING" && (
+                          <span className="text-xs px-2 py-1 bg-red-100 rounded text-red-700 font-medium">
+                            Part {selectedSpeakingPart}
                           </span>
                         )}
                       </>
@@ -1115,8 +1251,11 @@ export default function CreateExamPage() {
                   filteredQuestions = currentSection.questions.filter((q: Question) => q.id.includes(`part${selectedListeningPart}`));
                 } else if (currentSection.type === "READING") {
                   filteredQuestions = currentSection.questions.filter((q: Question) => q.id.includes(`part${selectedReadingPart}`));
+                } else if (currentSection.type === "WRITING") {
+                  filteredQuestions = currentSection.questions.filter((q: Question) => q.id.includes(`task${selectedWritingPart}`));
+                } else if (currentSection.type === "SPEAKING") {
+                  filteredQuestions = currentSection.questions.filter((q: Question) => q.id.includes(`part${selectedSpeakingPart}`));
                 }
-                // Writing and Speaking are separate sections - no filtering needed
               }
             
             if (filteredQuestions.length === 0) {
@@ -1124,7 +1263,8 @@ export default function CreateExamPage() {
               if (selectedCategory === "IELTS") {
                 if (currentSection.type === "LISTENING") partLabel = `Part ${selectedListeningPart}`;
                 else if (currentSection.type === "READING") partLabel = `Passage ${selectedReadingPart}`;
-                // Writing and Speaking are separate sections - no part label needed
+                else if (currentSection.type === "WRITING") partLabel = `Task ${selectedWritingPart}`;
+                else if (currentSection.type === "SPEAKING") partLabel = `Part ${selectedSpeakingPart}`;
               }
               
               return (
@@ -1242,11 +1382,11 @@ export default function CreateExamPage() {
                             image: data.path,
                           });
                         } else {
-                          alert("Failed to upload image");
+                          showAlert("Failed to Upload Image", "Failed to upload image", "error");
                         }
                       } catch (error) {
                         console.error("Upload error:", error);
-                        alert("Failed to upload image");
+                        showAlert("Failed to Upload Image", "Failed to upload image", "error");
                       } finally {
                         setUploadingImage(false);
                       }
@@ -1352,6 +1492,40 @@ export default function CreateExamPage() {
                   </div>
                 ) : editingQuestion.qtype === "FILL_IN_BLANK" ? (
                   <div className="space-y-3">
+                    {/* Question Title/Name */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                        Question Name (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={editingQuestion.prompt?.title || ""}
+                        onChange={(e) => {
+                          setEditingQuestion({
+                            ...editingQuestion,
+                            prompt: { 
+                              ...editingQuestion.prompt, 
+                              title: e.target.value 
+                            },
+                          });
+                        }}
+                        placeholder="e.g., Complete the form below"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
+                      />
+                    </div>
+
+                    {/* Image Upload */}
+                    <ImageUpload
+                      label="Image (Optional)"
+                      value={editingQuestion.image || ""}
+                      onChange={(url) => {
+                        setEditingQuestion({
+                          ...editingQuestion,
+                          image: url,
+                        });
+                      }}
+                    />
+
                     {/* Instructions/What to do */}
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1.5">
@@ -1716,7 +1890,7 @@ export default function CreateExamPage() {
                                     }
                                   } catch (error) {
                                     console.error("Upload error:", error);
-                                    alert("Failed to upload image");
+                                    showAlert("Failed to Upload Image", "Failed to upload image", "error");
                                   }
                                 }}
                               />
@@ -1976,6 +2150,27 @@ export default function CreateExamPage() {
         title={alertModal.title}
         message={alertModal.message}
         type={alertModal.type}
+      />
+
+      {/* Delete Section Modal */}
+      <DeleteSectionModal
+        isOpen={deleteSectionModal.isOpen}
+        onClose={() => setDeleteSectionModal({ isOpen: false, sectionId: null, sectionTitle: "", questionsCount: 0 })}
+        onConfirm={confirmDeleteSection}
+        sectionTitle={deleteSectionModal.sectionTitle}
+        questionsCount={deleteSectionModal.questionsCount}
+      />
+
+      {/* Category Change Confirmation Modal */}
+      <ConfirmModal
+        isOpen={categoryChangeModal.isOpen}
+        onClose={() => setCategoryChangeModal({ isOpen: false, newCategory: null })}
+        onConfirm={confirmCategoryChange}
+        title="Change Category?"
+        message="Changing category will remove sections that are not allowed for this exam type. Continue?"
+        confirmText="Continue"
+        cancelText="Cancel"
+        type="warning"
       />
     </div>
   );

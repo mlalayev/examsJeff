@@ -6,8 +6,6 @@ import QDndGroup from "@/components/questions/QDndGroup";
 import { QuestionCard } from "./QuestionCard";
 import { DndGapQuestion } from "./DndGapQuestion";
 import { IELTSListeningView } from "./IELTSListeningView";
-import { IELTSSpeakingView } from "./IELTSSpeakingView";
-import { IELTSWritingView } from "./IELTSWritingView";
 
 interface Question {
   id: string;
@@ -17,6 +15,7 @@ interface Question {
   answerKey: any;
   order: number;
   maxScore: number;
+  image?: string | null; // Question-level image (for FILL_IN_BLANK)
 }
 
 interface Section {
@@ -223,11 +222,11 @@ export const QuestionsArea = React.memo(function QuestionsArea({
             {(section.type === "LISTENING" && examCategory === "IELTS"
               ? section.questions
                   .filter((q) => {
-                    // Filter questions by selected part
-                    if (listeningPart === 1) return q.order >= 1 && q.order <= 10;
-                    if (listeningPart === 2) return q.order >= 11 && q.order <= 20;
-                    if (listeningPart === 3) return q.order >= 21 && q.order <= 30;
-                    if (listeningPart === 4) return q.order >= 31 && q.order <= 40;
+                    // Filter questions by selected part (order is 0-based, so adjust ranges)
+                    if (listeningPart === 1) return q.order >= 0 && q.order <= 9;
+                    if (listeningPart === 2) return q.order >= 10 && q.order <= 19;
+                    if (listeningPart === 3) return q.order >= 20 && q.order <= 29;
+                    if (listeningPart === 4) return q.order >= 30 && q.order <= 39;
                     return true;
                   })
                   .sort((a, b) => a.order - b.order) // Sort by order

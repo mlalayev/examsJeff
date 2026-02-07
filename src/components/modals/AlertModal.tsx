@@ -57,7 +57,7 @@ export const AlertModal: React.FC<AlertModalProps> = ({
   const Icon = config.icon;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4">
       <div className="bg-white w-full max-w-md rounded-xl shadow-2xl overflow-hidden">
         {/* Header */}
         <div className={`px-6 pt-6 pb-4 text-center border-b border-gray-100 bg-gradient-to-r ${config.headerBg}`}>

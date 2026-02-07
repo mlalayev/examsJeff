@@ -5,6 +5,7 @@ import { X, Edit, Image, BookOpen, Save, Volume2 } from "lucide-react";
 import type { Section, ExamCategory } from "./types";
 import { IELTS_SECTION_COLORS, IELTS_SECTION_ICONS } from "./constants";
 import ImageUpload from "@/components/ImageUpload";
+import { AlertModal } from "@/components/modals/AlertModal";
 
 interface SectionCardProps {
   section: Section;
@@ -35,10 +36,20 @@ export default function SectionCard({
   const [editingSection, setEditingSection] = useState<Section>(section);
   const [uploadingAudio, setUploadingAudio] = useState(false);
   const [selectedReadingPart, setSelectedReadingPart] = useState<number>(1);
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; title: string; message: string; type?: "success" | "error" | "warning" | "info" }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info",
+  });
   
   const isIELTS = selectedCategory === "IELTS";
   const sectionColors = isIELTS ? IELTS_SECTION_COLORS[section.type] : null;
   const SectionIcon = isIELTS ? IELTS_SECTION_ICONS[section.type] : BookOpen;
+
+  const showAlert = (title: string, message: string, type: "success" | "error" | "warning" | "info" = "info") => {
+    setAlertModal({ isOpen: true, title, message, type });
+  };
 
   const handleSave = () => {
     // Update main section
@@ -386,7 +397,7 @@ export default function SectionCard({
                       const hasValidExtension = validAudioExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
 
                       if (!hasValidExtension) {
-                        alert("Please upload a valid audio file (mp3, wav, ogg, m4a, aac, flac, wma)");
+                        showAlert("Invalid Audio File", "Please upload a valid audio file (mp3, wav, ogg, m4a, aac, flac, wma)", "error");
                         return;
                       }
 
@@ -410,11 +421,11 @@ export default function SectionCard({
                           };
                           setEditingSection(updatedSection);
                         } else {
-                          alert("Failed to upload audio");
+                          showAlert("Failed to Upload Audio", "Failed to upload audio", "error");
                         }
                       } catch (error) {
                         console.error("Upload error:", error);
-                        alert("Failed to upload audio");
+                        showAlert("Failed to Upload Audio", "Failed to upload audio", "error");
                       } finally {
                         setUploadingAudio(false);
                       }
@@ -440,29 +451,29 @@ export default function SectionCard({
                 onClick={() => {
                     if (selectedCategory !== "IELTS") {
                   if (!editingSection.title?.trim()) {
-                    alert("Please enter a section title");
+                    showAlert("Validation Error", "Please enter a section title", "error");
                     return;
                   }
                   if (!editingSection.instruction?.trim()) {
-                    alert("Please enter a section instruction");
+                    showAlert("Validation Error", "Please enter a section instruction", "error");
                     return;
                   }
                     }
                     if (editingSection.type === "READING" && selectedCategory === "IELTS") {
                       const passages = editingSection.passage as any;
                       if (!passages?.part1?.trim() || !passages?.part2?.trim() || !passages?.part3?.trim()) {
-                        alert("Please enter all 3 reading passages");
+                        showAlert("Validation Error", "Please enter all 3 reading passages", "error");
                     return;
                   }
                     }
                     if (editingSection.type === "READING" && selectedCategory !== "IELTS") {
                       if (!editingSection.passage || typeof editingSection.passage !== "string" || !editingSection.passage.trim()) {
-                    alert("Please enter a reading passage");
+                    showAlert("Validation Error", "Please enter a reading passage", "error");
                     return;
                       }
                   }
                   if (editingSection.type === "LISTENING" && !editingSection.audio) {
-                    alert("Please upload an audio file");
+                    showAlert("Validation Error", "Please upload an audio file", "error");
                     return;
                   }
                   handleSave();
@@ -483,6 +494,15 @@ export default function SectionCard({
           </div>
         </div>
       )}
+
+      {/* Alert Modal */}
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ isOpen: false, title: "", message: "", type: "info" })}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+      />
       </div>
     </div>
   );

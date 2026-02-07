@@ -11,6 +11,7 @@ interface Question {
   answerKey: any;
   order: number;
   maxScore: number;
+  image?: string | null; // Question-level image (for FILL_IN_BLANK)
 }
 
 interface QuestionCardProps {

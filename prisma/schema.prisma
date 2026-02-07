@@ -299,6 +299,7 @@ model Question {
   explanation Json?
   sectionId   String
   qtype       QuestionType
+  image       String?       // For FILL_IN_BLANK and other question types
   tags        QuestionTag[]
   Exam        Exam?         @relation(fields: [examId], references: [id])
   section     ExamSection   @relation(fields: [sectionId], references: [id], onDelete: Cascade)

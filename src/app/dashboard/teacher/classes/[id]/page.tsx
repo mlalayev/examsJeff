@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, UserPlus, Mail, Award, Calendar, BookOpen, Search, UserPlus as UserPlusIcon, X } from "lucide-react";
 import AssignExamModal from "@/components/teacher/AssignExamModal";
+import { AlertModal } from "@/components/modals/AlertModal";
 
 interface Student {
   id: string;
@@ -50,6 +51,11 @@ export default function ClassRosterPage() {
   const [adding, setAdding] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [emailError, setEmailError] = useState("");
+  const [successModal, setSuccessModal] = useState<{ isOpen: boolean; title: string; message: string }>({
+    isOpen: false,
+    title: "",
+    message: "",
+  });
   
   // Assign Exam state (simplified for new modal)
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -521,8 +527,21 @@ export default function ClassRosterPage() {
         classId={classId}
         onSuccess={() => {
           fetchRoster();
-          alert("Exam assigned successfully!");
+          setSuccessModal({
+            isOpen: true,
+            title: "Success",
+            message: "Exam assigned successfully!",
+          });
         }}
+      />
+
+      {/* Success Modal */}
+      <AlertModal
+        isOpen={successModal.isOpen}
+        onClose={() => setSuccessModal({ isOpen: false, title: "", message: "" })}
+        title={successModal.title}
+        message={successModal.message}
+        type="success"
       />
     </div>
   );

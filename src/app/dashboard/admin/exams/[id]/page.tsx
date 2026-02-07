@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, BookOpen, Clock, FileText, Edit, Trash2, CheckCircle, XCircle } from "lucide-react";
 import AudioPlayer from "@/components/audio/AudioPlayer";
+import { DeleteExamModal } from "@/components/modals/DeleteExamModal";
+import { AlertModal } from "@/components/modals/AlertModal";
 
 interface ExamSection {
   id: string;
@@ -24,6 +26,7 @@ interface Question {
   answerKey: any;
   maxScore: number;
   explanation: any;
+  image?: string | null; // Question-level image (for FILL_IN_BLANK)
 }
 
 interface Exam {
@@ -53,6 +56,13 @@ export default function AdminExamDetailPage() {
   const [loading, setLoading] = useState(true);
   const [exam, setExam] = useState<Exam | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [deleteExamModal, setDeleteExamModal] = useState(false);
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; title: string; message: string; type?: "success" | "error" | "warning" | "info" }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info",
+  });
 
   useEffect(() => {
     fetchExam();
@@ -67,23 +77,23 @@ export default function AdminExamDetailPage() {
         setExam(data.exam);
       } else {
         const error = await res.json();
-        alert(error.error || "Failed to load exam");
+        showAlert("Failed to Load Exam", error.error || "Failed to load exam", "error");
         router.push("/dashboard/admin/exams");
       }
     } catch (error) {
       console.error("Error fetching exam:", error);
-      alert("Failed to load exam");
+      showAlert("Failed to Load Exam", "Failed to load exam", "error");
       router.push("/dashboard/admin/exams");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async () => {
-    if (!confirm(`Are you sure you want to delete "${exam?.title}"? This action cannot be undone.`)) {
-      return;
-    }
+  const handleDelete = () => {
+    setDeleteExamModal(true);
+  };
 
+  const confirmDeleteExam = async () => {
     setDeleting(true);
     try {
       const res = await fetch(`/api/admin/exams/${examId}`, {
@@ -91,18 +101,25 @@ export default function AdminExamDetailPage() {
       });
 
       if (res.ok) {
-        alert("Exam deleted successfully");
-        router.push("/dashboard/admin/exams");
+        showAlert("Success", "Exam deleted successfully", "success");
+        setTimeout(() => {
+          router.push("/dashboard/admin/exams");
+        }, 1000);
       } else {
         const data = await res.json();
-        alert(data.error || "Failed to delete exam");
+        showAlert("Failed to Delete Exam", data.error || "Failed to delete exam", "error");
       }
     } catch (error) {
       console.error("Error deleting exam:", error);
-      alert("Failed to delete exam");
+      showAlert("Failed to Delete Exam", "Failed to delete exam", "error");
     } finally {
       setDeleting(false);
+      setDeleteExamModal(false);
     }
+  };
+
+  const showAlert = (title: string, message: string, type: "success" | "error" | "warning" | "info" = "info") => {
+    setAlertModal({ isOpen: true, title, message, type });
   };
 
   const handleToggleActive = async () => {
@@ -119,11 +136,11 @@ export default function AdminExamDetailPage() {
         await fetchExam();
       } else {
         const data = await res.json();
-        alert(data.error || "Failed to update exam status");
+        showAlert("Failed to Update Status", data.error || "Failed to update exam status", "error");
       }
     } catch (error) {
       console.error("Error updating exam:", error);
-      alert("Failed to update exam status");
+      showAlert("Failed to Update Status", "Failed to update exam status", "error");
     }
   };
 
@@ -525,6 +542,24 @@ export default function AdminExamDetailPage() {
           })
         )}
       </div>
+
+      {/* Delete Exam Modal */}
+      <DeleteExamModal
+        isOpen={deleteExamModal}
+        onClose={() => setDeleteExamModal(false)}
+        onConfirm={confirmDeleteExam}
+        examTitle={exam?.title || ""}
+        isDeleting={deleting}
+      />
+
+      {/* Alert Modal */}
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ isOpen: false, title: "", message: "", type: "info" })}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+      />
     </div>
   );
 }

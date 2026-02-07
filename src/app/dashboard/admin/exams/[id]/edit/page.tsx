@@ -184,7 +184,7 @@ export default function EditExamPage() {
       }
     } catch (error) {
       console.error("Error fetching exam:", error);
-      alert("Failed to load exam");
+      showAlert("Failed to Load Exam", "Failed to load exam", "error");
       router.push("/dashboard/admin/exams");
     } finally {
       setLoading(false);
@@ -1738,7 +1738,7 @@ export default function EditExamPage() {
                                   }
                                 } catch (error) {
                                   console.error("Upload error:", error);
-                                  alert("Failed to upload image");
+                                  showAlert("Failed to Upload Image", "Failed to upload image", "error");
                                 }
                               }}
                             />
@@ -2046,7 +2046,7 @@ export default function EditExamPage() {
                             const hasValidExtension = validAudioExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
                             
                             if (!hasValidExtension) {
-                              alert("Please upload a valid audio file (mp3, wav, ogg, m4a, aac, flac, wma)");
+                              showAlert("Invalid Audio File", "Please upload a valid audio file (mp3, wav, ogg, m4a, aac, flac, wma)", "error");
                               return;
                             }
                             
@@ -2080,11 +2080,11 @@ export default function EditExamPage() {
                                   audio: data.path,
                                 });
                               } else {
-                                alert("Failed to upload audio");
+                                showAlert("Failed to Upload Audio", "Failed to upload audio", "error");
                               }
                             } catch (error) {
                               console.error("Upload error:", error);
-                              alert("Failed to upload audio");
+                              showAlert("Failed to Upload Audio", "Failed to upload audio", "error");
                             } finally {
                               setUploadingAudio(false);
                             }

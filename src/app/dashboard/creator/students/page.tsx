@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Users, Search, BookOpen, X, Calendar, ChevronRight, ChevronLeft, Target, FileText, CheckCircle } from "lucide-react";
+import { AlertModal } from "@/components/modals/AlertModal";
 
 interface Student {
   id: string;
@@ -41,6 +42,12 @@ export default function CreatorStudentsPage() {
   });
   const [assigning, setAssigning] = useState(false);
   const [jsonExams, setJsonExams] = useState<any[]>([]);
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; title: string; message: string; type?: "success" | "error" | "warning" | "info" }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info",
+  });
 
   useEffect(() => {
     // Optimize: fetch both in parallel
@@ -90,15 +97,15 @@ export default function CreatorStudentsPage() {
       if (res.ok) {
         await fetchStudents();
         if (approve) {
-          alert("Student approved! They should logout and login again to access their dashboard.");
+          setAlertModal({ isOpen: true, title: "Success", message: "Student approved! They should logout and login again to access their dashboard.", type: "success" });
         }
       } else {
         const data = await res.json();
-        alert(data.error || "Failed to update approval status");
+        setAlertModal({ isOpen: true, title: "Error", message: data.error || "Failed to update approval status", type: "error" });
       }
     } catch (error) {
       console.error("Error updating approval:", error);
-      alert("Failed to update approval status");
+      setAlertModal({ isOpen: true, title: "Error", message: "Failed to update approval status", type: "error" });
     } finally {
       setUpdating(null);
     }
@@ -185,7 +192,7 @@ export default function CreatorStudentsPage() {
   const handleAssignExam = async () => {
     if (!selectedStudent) return;
     if (!assignData.examId) {
-      alert("Please select an exam");
+      setAlertModal({ isOpen: true, title: "Validation Error", message: "Please select an exam", type: "error" });
       return;
     }
 
@@ -208,15 +215,20 @@ export default function CreatorStudentsPage() {
 
       if (!response.ok) {
         let errorMsg = data.error || "Failed to assign exam";
-        alert(errorMsg);
+        setAlertModal({ isOpen: true, title: "Error", message: errorMsg, type: "error" });
         return;
       }
 
-      alert(`Exam assigned successfully to ${selectedStudent.name || selectedStudent.email}`);
+      setAlertModal({
+        isOpen: true,
+        title: "Success",
+        message: `Exam assigned successfully to ${selectedStudent.name || selectedStudent.email}`,
+        type: "success",
+      });
       closeAssignModal();
     } catch (error) {
       console.error("Error assigning exam:", error);
-      alert("Failed to assign exam");
+      setAlertModal({ isOpen: true, title: "Error", message: "Failed to assign exam", type: "error" });
     } finally {
       setAssigning(false);
     }
@@ -491,6 +503,15 @@ export default function CreatorStudentsPage() {
           </div>
         </div>
       )}
+
+      {/* Alert Modal */}
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ isOpen: false, title: "", message: "", type: "info" })}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+      />
     </div>
   );
 }

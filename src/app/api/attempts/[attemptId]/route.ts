@@ -71,7 +71,21 @@ export async function GET(request: Request, { params }: { params: Promise<{ atte
       return instruction as Record<string, any>;
     };
 
-    return NextResponse.json({
+    // Debug log to check if images are in the data
+    console.log('📸 Exam questions with images:', JSON.stringify(exam.sections.map(s => ({
+      section: s.type,
+      questions: s.questions.map((q: any) => ({
+        id: q.id,
+        qtype: q.qtype,
+        order: q.order,
+        hasImage: !!q.image,
+        image: q.image,
+        promptKeys: Object.keys(q.prompt || {}),
+        hasPrompt: !!q.prompt,
+      }))
+    })), null, 2));
+
+    const responseData = {
       id: attempt.id,
       examTitle: exam.title,
       examCategory: exam.category,
@@ -92,14 +106,38 @@ export async function GET(request: Request, { params }: { params: Promise<{ atte
           };
         })(),
         image: s.image || null, // Section image (for IELTS Listening parts)
-        questions: (s.questions || []).map((q: any) => ({
-          ...q,
-          prompt: q.prompt || {},
-        })),
+        questions: (s.questions || []).map((q: any) => {
+          const prompt = q.prompt || {};
+          return {
+            ...q,
+            prompt: {
+              ...prompt,
+              // Map top-level image to prompt.imageUrl for question components
+              imageUrl: q.image || prompt.imageUrl || null,
+            },
+          };
+        }),
       })),
       savedAnswers: (attempt.answers as any) || {},
       sectionStartTimes: (attempt.answers as any)?.sectionStartTimes || {},
-    });
+    };
+
+    // Log the mapped questions to verify structure
+    console.log('🔍 Mapped questions:', JSON.stringify({
+      totalSections: responseData.sections.length,
+      sectionsWithQuestions: responseData.sections.filter(s => s.questions.length > 0).map(s => ({
+        type: s.type,
+        questionCount: s.questions.length,
+        firstQuestion: s.questions[0] ? {
+          id: s.questions[0].id,
+          qtype: s.questions[0].qtype,
+          hasPrompt: !!s.questions[0].prompt,
+          promptKeys: Object.keys(s.questions[0].prompt || {}),
+        } : null
+      }))
+    }, null, 2));
+
+    return NextResponse.json(responseData);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     const isForbidden = message.toLowerCase().includes("forbidden") || message.toLowerCase().includes("unauthorized");
@@ -107,6 +145,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ atte
       return NextResponse.json({ error: message }, { status: 403 });
     }
     console.error("Load attempt error:", error);
-    return NextResponse.json({ error: "Failed to load attempt" }, { status: 500 });
+    console.error("Error details:", {
+      message,
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    return NextResponse.json({ 
+      error: "Failed to load attempt", 
+      details: message 
+    }, { status: 500 });
   }
 }

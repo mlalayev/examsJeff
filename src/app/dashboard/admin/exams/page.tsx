@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { BookOpen, Plus, Search, Edit, Upload, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { DeleteExamModal } from "@/components/modals/DeleteExamModal";
+import { AlertModal } from "@/components/modals/AlertModal";
+import { ConfirmModal } from "@/components/modals/ConfirmModal";
 
 interface Exam {
   id: string;
@@ -25,6 +28,18 @@ export default function AdminExamsPage() {
   const [filterActive, setFilterActive] = useState<boolean | null>(null);
   const [togglingExamId, setTogglingExamId] = useState<string | null>(null);
   const [creatingSample, setCreatingSample] = useState(false);
+  const [deleteExamModal, setDeleteExamModal] = useState<{ isOpen: boolean; examId: string | null; examTitle: string }>({
+    isOpen: false,
+    examId: null,
+    examTitle: "",
+  });
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; title: string; message: string; type?: "success" | "error" | "warning" | "info" }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info",
+  });
+  const [createSampleModal, setCreateSampleModal] = useState(false);
 
   useEffect(() => {
     fetchExams();
@@ -75,43 +90,55 @@ export default function AdminExamsPage() {
         await fetchExams();
       } else {
         const data = await res.json();
-        alert(data.error || "Failed to update exam status");
+        showAlert("Failed to Update Status", data.error || "Failed to update exam status", "error");
       }
     } catch (error) {
       console.error("Error updating exam:", error);
-      alert("Failed to update exam status");
+      showAlert("Failed to Update Status", "Failed to update exam status", "error");
     } finally {
       setTogglingExamId(null);
     }
   };
 
-  const handleDelete = async (examId: string, examTitle: string) => {
-    if (!confirm(`Are you sure you want to delete "${examTitle}"? This action cannot be undone.`)) {
-      return;
-    }
+  const handleDelete = (examId: string, examTitle: string) => {
+    setDeleteExamModal({
+      isOpen: true,
+      examId,
+      examTitle,
+    });
+  };
+
+  const confirmDeleteExam = async () => {
+    if (!deleteExamModal.examId) return;
 
     try {
-      const res = await fetch(`/api/admin/exams/${examId}`, {
+      const res = await fetch(`/api/admin/exams/${deleteExamModal.examId}`, {
         method: "DELETE",
       });
 
       if (res.ok) {
         await fetchExams();
+        setDeleteExamModal({ isOpen: false, examId: null, examTitle: "" });
+        showAlert("Success", "Exam deleted successfully", "success");
       } else {
         const data = await res.json();
-        alert(data.error || "Failed to delete exam");
+        showAlert("Failed to Delete Exam", data.error || "Failed to delete exam", "error");
       }
     } catch (error) {
       console.error("Error deleting exam:", error);
-      alert("Failed to delete exam");
+      showAlert("Failed to Delete Exam", "Failed to delete exam", "error");
     }
   };
 
-  const handleCreateSample = async () => {
-    if (!confirm("Create IELTS Mock Test Sample 1? This will create a sample exam with Listening, Reading, Writing, and Speaking sections.")) {
-      return;
-    }
+  const showAlert = (title: string, message: string, type: "success" | "error" | "warning" | "info" = "info") => {
+    setAlertModal({ isOpen: true, title, message, type });
+  };
 
+  const handleCreateSample = () => {
+    setCreateSampleModal(true);
+  };
+
+  const confirmCreateSample = async () => {
     setCreatingSample(true);
     try {
       const res = await fetch("/api/admin/seed/ielts-mock-sample-1", {
@@ -120,12 +147,12 @@ export default function AdminExamsPage() {
 
       if (res.ok) {
         const data = await res.json();
-        alert(`Success! IELTS Mock Test Sample 1 created with ${data.exam.sectionsCount} sections and ${data.exam.totalQuestions} questions.`);
+        showAlert("Success", `IELTS Mock Test Sample 1 created with ${data.exam.sectionsCount} sections and ${data.exam.totalQuestions} questions.`, "success");
         await fetchExams();
       } else {
         const error = await res.json();
         const errorMsg = error.error || "Failed to create sample exam";
-        alert(errorMsg);
+        showAlert("Failed to Create Sample", errorMsg, "error");
         console.error("Failed to create sample:", error);
         // If exam already exists, refresh the list anyway
         if (errorMsg.includes("already exists")) {
@@ -134,9 +161,10 @@ export default function AdminExamsPage() {
       }
     } catch (error) {
       console.error("Error creating sample:", error);
-      alert("Failed to create sample exam");
+      showAlert("Failed to Create Sample", "Failed to create sample exam", "error");
     } finally {
       setCreatingSample(false);
+      setCreateSampleModal(false);
     }
   };
 
@@ -395,6 +423,35 @@ export default function AdminExamsPage() {
           </div>
         )}
       </div>
+
+      {/* Delete Exam Modal */}
+      <DeleteExamModal
+        isOpen={deleteExamModal.isOpen}
+        onClose={() => setDeleteExamModal({ isOpen: false, examId: null, examTitle: "" })}
+        onConfirm={confirmDeleteExam}
+        examTitle={deleteExamModal.examTitle}
+      />
+
+      {/* Alert Modal */}
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ isOpen: false, title: "", message: "", type: "info" })}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+      />
+
+      {/* Create Sample Confirmation Modal */}
+      <ConfirmModal
+        isOpen={createSampleModal}
+        onClose={() => setCreateSampleModal(false)}
+        onConfirm={confirmCreateSample}
+        title="Create IELTS Mock Test Sample 1?"
+        message="This will create a sample exam with Listening, Reading, Writing, and Speaking sections."
+        confirmText="Create"
+        cancelText="Cancel"
+        type="info"
+      />
     </div>
   );
 }
