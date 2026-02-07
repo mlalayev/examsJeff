@@ -20,11 +20,11 @@ interface QSpeakingRecordingProps {
   autoStart?: boolean; // Auto-start the recording process
 }
 
-// Timer durations based on part
+// Timer durations based on part (IELTS standard)
 const RECORDING_DURATIONS = {
-  1: 30,  // Part 1: 30 seconds
-  2: 120, // Part 2: 2 minutes
-  3: 60,  // Part 3: 1 minute
+  1: 30,   // Part 1: 30 seconds per question
+  2: 120,  // Part 2: 2 minutes (with 1 minute preparation)
+  3: 60,   // Part 3: 60 seconds per question
 };
 
 const PREPARATION_DURATION = 60; // Part 2 only: 1 minute prep time

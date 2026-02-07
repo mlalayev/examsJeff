@@ -358,6 +358,12 @@ export default function AttemptResultsPage() {
       case "SHORT_TEXT":
       case "ESSAY":
         return answer || "No answer";
+      case "SPEAKING_RECORDING":
+        // For speaking recording, show the audio player
+        if (answer && typeof answer === "object" && answer.audioUrl) {
+          return ""; // We'll handle audio player separately in the UI
+        }
+        return "No recording";
       default:
         return JSON.stringify(answer);
     }
@@ -916,11 +922,22 @@ export default function AttemptResultsPage() {
                               </div>
                             </div>
                           ) : (
-                            <p className={`text-sm font-medium ${
-                              q.isCorrect ? "text-green-800" : "text-red-800"
-                            }`}>
-                              {formatAnswer(q.qtype, q.studentAnswer, q.options)}
-                            </p>
+                            <>
+                              {q.qtype === "SPEAKING_RECORDING" && q.studentAnswer?.audioUrl ? (
+                                <div className="space-y-2">
+                                  <p className="text-xs text-gray-600">Recorded Answer:</p>
+                                  <audio controls src={q.studentAnswer.audioUrl} className="w-full">
+                                    Your browser does not support the audio element.
+                                  </audio>
+                                </div>
+                              ) : (
+                                <p className={`text-sm font-medium ${
+                                  q.isCorrect ? "text-green-800" : "text-red-800"
+                                }`}>
+                                  {formatAnswer(q.qtype, q.studentAnswer, q.options)}
+                                </p>
+                              )}
+                            </>
                           )}
                         </div>
 
@@ -932,21 +949,27 @@ export default function AttemptResultsPage() {
                               Correct Answer
                             </span>
                           </div>
-                          <p className="text-sm font-semibold text-gray-900">
-                            {(() => {
-                              if (q.qtype === "FILL_IN_BLANK") {
-                                return formatAnswer(q.qtype, q.correctAnswer, q.options);
-                              }
-                              const correctValue = q.correctAnswer?.value ?? 
-                                q.correctAnswer?.index ?? 
-                                q.correctAnswer?.indices ?? 
-                                q.correctAnswer?.answers?.[0] ?? 
-                                q.correctAnswer?.order ?? 
-                                q.correctAnswer?.blanks ??
-                                q.correctAnswer;
-                              return formatAnswer(q.qtype, correctValue, q.options);
-                            })()}
-                          </p>
+                          {q.qtype === "SPEAKING_RECORDING" ? (
+                            <p className="text-sm font-medium text-gray-600 italic">
+                              Manual grading required by teacher
+                            </p>
+                          ) : (
+                            <p className="text-sm font-semibold text-gray-900">
+                              {(() => {
+                                if (q.qtype === "FILL_IN_BLANK") {
+                                  return formatAnswer(q.qtype, q.correctAnswer, q.options);
+                                }
+                                const correctValue = q.correctAnswer?.value ?? 
+                                  q.correctAnswer?.index ?? 
+                                  q.correctAnswer?.indices ?? 
+                                  q.correctAnswer?.answers?.[0] ?? 
+                                  q.correctAnswer?.order ?? 
+                                  q.correctAnswer?.blanks ??
+                                  q.correctAnswer;
+                                return formatAnswer(q.qtype, correctValue, q.options);
+                              })()}
+                            </p>
+                          )}
                         </div>
                       </div>
 
