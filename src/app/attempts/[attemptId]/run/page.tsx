@@ -683,13 +683,26 @@ export default function AttemptRunnerPage() {
          return <QOpenText {...props} />;
        case "ESSAY":
          return (
-           <textarea
-             value={value || ""}
-             onChange={(e) => onChange(e.target.value)}
-             disabled={readOnly}
-              className="mt-2 w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-400 min-h-[200px] disabled:bg-gray-50 resize-y"
-              placeholder="Write your essay here..."
-           />
+           <div className="space-y-3">
+             {/* Question Image */}
+             {q.prompt?.imageUrl && (
+               <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                 <img
+                   src={q.prompt.imageUrl}
+                   alt="Question diagram"
+                   className="max-w-full h-auto max-h-96 mx-auto rounded border border-gray-300"
+                   loading="lazy"
+                 />
+               </div>
+             )}
+             <textarea
+               value={value || ""}
+               onChange={(e) => onChange(e.target.value)}
+               disabled={readOnly}
+               className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-400 min-h-[200px] disabled:bg-gray-50 resize-y"
+               placeholder="Write your essay here..."
+             />
+           </div>
          );
        case "FILL_IN_BLANK":
          return <QFillInBlank {...props} />;

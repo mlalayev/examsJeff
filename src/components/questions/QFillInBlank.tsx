@@ -10,6 +10,7 @@ interface QFillInBlankProps {
       text: string; // Text with [input] placeholders
       instructions?: string; // What to do text
       title?: string; // Optional question title/name
+      imageUrl?: string | null; // Image URL (mapped from question.image)
     };
     image?: string | null;
     answerKey?: string[]; // Array of correct answers for each blank
@@ -96,11 +97,11 @@ export function QFillInBlank({
       )}
 
       {/* Image */}
-      {question.image && (
+      {(question.image || question.prompt.imageUrl) && (
         <div className="mb-4 rounded-lg overflow-hidden border border-gray-200">
           <div className="relative w-full" style={{ minHeight: "200px" }}>
             <Image
-              src={question.image}
+              src={question.image || question.prompt.imageUrl || ""}
               alt="Question image"
               width={800}
               height={400}

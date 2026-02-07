@@ -29,44 +29,48 @@ export function QOpenText({ question, value, onChange, readOnly }: BaseQuestionP
     const parts = promptText.split(/____+|___+/);
     
     return (
-      <div className="text-base leading-relaxed" style={{ lineHeight: '1.7' }}>
-        {parts.map((part, index) => (
-          <span key={index}>
-            {part}
-            {index < parts.length - 1 && (
-              <span className="inline-block relative mx-1 align-middle">
-                <input
-                  type="text"
-                  value={currentValue}
-                  onChange={handleChange}
-                  disabled={readOnly}
-                  className="inline-block min-w-[120px] px-3 py-1.5 border rounded-md text-base font-medium focus:outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed bg-white shadow-sm"
-                  style={{
-                    borderColor: currentValue ? '#303380' : 'rgba(48, 51, 128, 0.2)',
-                    backgroundColor: currentValue ? 'rgba(48, 51, 128, 0.04)' : 'white',
-                    color: '#303380',
-                    verticalAlign: 'baseline'
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = '#303380';
-                    e.target.style.boxShadow = '0 0 0 2px rgba(48, 51, 128, 0.1)';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.boxShadow = 'none';
-                  }}
-                  placeholder="Type here..."
-                />
-              </span>
-            )}
-          </span>
-        ))}
+      <div className="space-y-3">
+        <QuestionImage imageUrl={imageUrl} />
+        <div className="text-base leading-relaxed" style={{ lineHeight: '1.7' }}>
+          {parts.map((part, index) => (
+            <span key={index}>
+              {part}
+              {index < parts.length - 1 && (
+                <span className="inline-block relative mx-1 align-middle">
+                  <input
+                    type="text"
+                    value={currentValue}
+                    onChange={handleChange}
+                    disabled={readOnly}
+                    className="inline-block min-w-[120px] px-3 py-1.5 border rounded-md text-base font-medium focus:outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed bg-white shadow-sm"
+                    style={{
+                      borderColor: currentValue ? '#303380' : 'rgba(48, 51, 128, 0.2)',
+                      backgroundColor: currentValue ? 'rgba(48, 51, 128, 0.04)' : 'white',
+                      color: '#303380',
+                      verticalAlign: 'baseline'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#303380';
+                      e.target.style.boxShadow = '0 0 0 2px rgba(48, 51, 128, 0.1)';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.boxShadow = 'none';
+                    }}
+                    placeholder="Type here..."
+                  />
+                </span>
+              )}
+            </span>
+          ))}
+        </div>
       </div>
     );
   }
 
   // Default: full-width input field
   return (
-    <div>
+    <div className="space-y-3">
+      <QuestionImage imageUrl={imageUrl} />
       <input
         type="text"
         value={currentValue}

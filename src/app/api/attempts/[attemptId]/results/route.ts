@@ -9,7 +9,24 @@ import { requireAuth } from "@/lib/auth-utils";
 function checkAnswerCorrectness(q: any, studentAnswer: any, answerKey: any): boolean {
   if (q.qtype === "TF") {
     const correctBool = answerKey?.value;
-    return studentAnswer === (correctBool === true ? 0 : 1);
+    // Normalize student answer to boolean
+    let studentBool: boolean | null = null;
+    if (typeof studentAnswer === 'boolean') {
+      studentBool = studentAnswer;
+    } else if (typeof studentAnswer === 'number') {
+      studentBool = studentAnswer === 0; // 0 = true, 1 = false
+    } else if (typeof studentAnswer === 'string') {
+      const upper = studentAnswer.toUpperCase();
+      if (upper === 'TRUE') studentBool = true;
+      else if (upper === 'FALSE') studentBool = false;
+    }
+    return studentBool === correctBool;
+  } else if (q.qtype === "TF_NG") {
+    // TF_NG: compare as strings (case-insensitive)
+    const correctValue = answerKey?.value;
+    const studentValue = typeof studentAnswer === 'string' ? studentAnswer.toUpperCase() : String(studentAnswer).toUpperCase();
+    const correctValueUpper = typeof correctValue === 'string' ? correctValue.toUpperCase() : String(correctValue).toUpperCase();
+    return studentValue === correctValueUpper;
   } else if (q.qtype === "MCQ_SINGLE" || q.qtype === "SELECT" || q.qtype === "INLINE_SELECT") {
     return studentAnswer === answerKey?.index;
   } else if (q.qtype === "MCQ_MULTI") {
@@ -56,6 +73,25 @@ function checkAnswerCorrectness(q: any, studentAnswer: any, answerKey: any): boo
       }
     }
     return false;
+  } else if (q.qtype === "FILL_IN_BLANK") {
+    // FILL_IN_BLANK: studentAnswer is { "0": "answer1", "1": "answer2", ... }
+    // answerKey.blanks is ["answer1", "answer2", ...]
+    const correctBlanks = answerKey?.blanks || [];
+    if (!studentAnswer || typeof studentAnswer !== "object") return false;
+    
+    // Convert student answer object to array
+    const studentAnswersArray: string[] = [];
+    for (let i = 0; i < correctBlanks.length; i++) {
+      const answer = studentAnswer[i.toString()] || "";
+      studentAnswersArray.push(answer);
+    }
+    
+    // Compare each blank (case-insensitive, trimmed)
+    if (studentAnswersArray.length !== correctBlanks.length) return false;
+    return studentAnswersArray.every((studentAns, idx) => {
+      const correctAns = correctBlanks[idx] || "";
+      return studentAns.trim().toLowerCase() === correctAns.trim().toLowerCase();
+    });
   }
   return false;
 }
