@@ -744,8 +744,10 @@ export default function AttemptResultsPage() {
                             <FileText className="w-4 h-4 text-gray-500" />
                             <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Reading Passage</span>
                           </div>
-                          <p className="text-sm text-gray-700 leading-relaxed italic">
-                            {q.prompt.passage}
+                          <p className="text-sm text-gray-700 leading-relaxed italic whitespace-pre-line">
+                            {typeof q.prompt.passage === 'object' && q.prompt.passage !== null
+                              ? Object.values(q.prompt.passage).join('\n\n')
+                              : q.prompt.passage}
                           </p>
                         </div>
                       )}

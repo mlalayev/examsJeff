@@ -384,7 +384,11 @@ export default function AdminExamDetailPage() {
                       <div className="mt-3 p-3 bg-gray-50 rounded-md">
                         <p className="text-xs font-medium text-gray-700 mb-2">Reading Passage:</p>
                         <p className="text-sm text-gray-600 whitespace-pre-wrap max-h-48 overflow-y-auto">
-                          {instructionData.passage}
+                          {typeof instructionData.passage === 'object' && instructionData.passage !== null
+                            ? Object.entries(instructionData.passage)
+                                .map(([key, value]) => `${key.toUpperCase()}: ${value}`)
+                                .join('\n\n')
+                            : instructionData.passage}
                         </p>
                       </div>
                     )}
