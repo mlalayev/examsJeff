@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Image from "next/image";
 import { 
   XCircle, 
   Award, 
@@ -737,6 +738,29 @@ export default function AttemptResultsPage() {
 
                     {/* Question Content */}
                     <div className="p-5 space-y-4">
+                      {/* Question Image (for FILL_IN_BLANK) */}
+                      {q.image && q.qtype === "FILL_IN_BLANK" && (
+                        <div className="mb-4 rounded-lg overflow-hidden border border-gray-200">
+                          <div className="relative w-full" style={{ minHeight: "200px" }}>
+                            <Image
+                              src={q.image}
+                              alt="Question image"
+                              width={800}
+                              height={400}
+                              className="w-full h-auto object-contain"
+                              style={{ maxHeight: "400px" }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                      {/* Question Instructions (for FILL_IN_BLANK) */}
+                      {q.prompt?.instructions && q.qtype === "FILL_IN_BLANK" && (
+                        <div className="mb-3 rounded-lg bg-blue-50 border border-blue-200 px-4 py-3">
+                          <p className="text-sm font-medium text-blue-900">
+                            {q.prompt.instructions}
+                          </p>
+                        </div>
+                      )}
                       {/* Question Prompt */}
                       {q.prompt?.passage && (
                         <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">

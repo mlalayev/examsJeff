@@ -6,6 +6,8 @@ import { ArrowLeft, Plus, X, BookOpen, Save, Edit, Info, Image, Volume2 } from "
 import TextFormattingPreview from "@/components/TextFormattingPreview";
 import QuestionPreview from "@/components/QuestionPreview";
 import ImageUpload from "@/components/ImageUpload";
+import { DeleteQuestionModal } from "@/components/modals/DeleteQuestionModal";
+import { AlertModal } from "@/components/modals/AlertModal";
 import type { ExamCategory, SectionType, QuestionType, Section, Question } from "@/components/admin/exams/create/types";
 import { 
   ALLOWED_SECTIONS_BY_CATEGORY, 
@@ -63,6 +65,16 @@ export default function EditExamPage() {
   const [editingSection, setEditingSection] = useState<Section | null>(null);
   const [uploadingAudio, setUploadingAudio] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [deleteQuestionModal, setDeleteQuestionModal] = useState<{ isOpen: boolean; questionId: string | null; questionText?: string; questionNumber?: number }>({
+    isOpen: false,
+    questionId: null,
+  });
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; title: string; message: string; type?: "success" | "error" | "warning" | "info" }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info",
+  });
 
   useEffect(() => {
     fetchExam();
@@ -167,7 +179,7 @@ export default function EditExamPage() {
           setStep("sections");
         }
       } else {
-        alert("Failed to load exam");
+        showAlert("Failed to Load Exam", "Failed to load exam", "error");
         router.push("/dashboard/admin/exams");
       }
     } catch (error) {
@@ -203,14 +215,14 @@ export default function EditExamPage() {
         // Math sections - maksimum 2
         const mathCount = currentSections.filter(s => s.type === "WRITING").length;
         if (mathCount >= 2) {
-          alert("SAT imtahanında maksimum 2 Math section ola bilər");
+          showAlert("Validation Error", "SAT imtahanında maksimum 2 Math section ola bilər", "error");
           return;
         }
       } else if (type === "READING") {
         // Verbal sections - maksimum 2
         const verbalCount = currentSections.filter(s => s.type === "READING").length;
         if (verbalCount >= 2) {
-          alert("SAT imtahanında maksimum 2 Verbal section ola bilər");
+          showAlert("Validation Error", "SAT imtahanında maksimum 2 Verbal section ola bilər", "error");
           return;
         }
       }
@@ -220,7 +232,7 @@ export default function EditExamPage() {
     if (selectedCategory === "IELTS" && type === "LISTENING") {
       const validation = validateIELTSListeningUniqueness(currentSections, type);
       if (!validation.valid) {
-        alert(validation.error);
+        showAlert("Validation Error", validation.error, "error");
         return;
       }
     }
@@ -229,7 +241,7 @@ export default function EditExamPage() {
     if (selectedCategory === "IELTS" && type === "READING") {
       const hasReading = currentSections.some(s => s.type === "READING");
       if (hasReading) {
-        alert("READING section can only be added once per IELTS exam");
+        showAlert("Validation Error", "READING section can only be added once per IELTS exam", "error");
         return;
       }
     }
@@ -238,7 +250,7 @@ export default function EditExamPage() {
     if (selectedCategory === "IELTS" && type === "WRITING") {
       const hasWriting = currentSections.some(s => s.type === "WRITING");
       if (hasWriting) {
-        alert("WRITING section can only be added once per IELTS exam");
+        showAlert("Validation Error", "WRITING section can only be added once per IELTS exam", "error");
         return;
       }
     }
@@ -495,6 +507,41 @@ export default function EditExamPage() {
   const deleteQuestion = (questionId: string) => {
     if (!currentSection) return;
     
+    // Find the question to get its text and number
+    let questionToDelete: Question | null = null;
+    let questionNumber = 0;
+    
+    if (currentSection.isSubsection) {
+      const subsection = sections.find(s => s.subsections?.some(sub => sub.id === currentSection.id))?.subsections?.find(sub => sub.id === currentSection.id);
+      if (subsection) {
+        questionToDelete = subsection.questions.find(q => q.id === questionId) || null;
+        questionNumber = subsection.questions.findIndex(q => q.id === questionId) + 1;
+      }
+    } else {
+      questionToDelete = currentSection.questions.find(q => q.id === questionId) || null;
+      questionNumber = currentSection.questions.findIndex(q => q.id === questionId) + 1;
+    }
+    
+    const questionText = questionToDelete 
+      ? (typeof questionToDelete.prompt === "object" && questionToDelete.prompt?.text 
+          ? questionToDelete.prompt.text 
+          : typeof questionToDelete.prompt === "string" 
+            ? questionToDelete.prompt 
+            : "Question")
+      : undefined;
+    
+    setDeleteQuestionModal({
+      isOpen: true,
+      questionId,
+      questionText,
+      questionNumber,
+    });
+  };
+
+  const confirmDeleteQuestion = () => {
+    if (!deleteQuestionModal.questionId || !currentSection) return;
+    
+    const questionId = deleteQuestionModal.questionId;
     const updatedSections = sections.map((s) => {
       // If current section is a subsection
       if (currentSection.isSubsection && s.subsections) {
@@ -527,6 +574,11 @@ export default function EditExamPage() {
       return null;
     };
     setCurrentSection(findCurrentSection(updatedSections));
+    setDeleteQuestionModal({ isOpen: false, questionId: null });
+  };
+
+  const showAlert = (title: string, message: string, type: "success" | "error" | "warning" | "info" = "info") => {
+    setAlertModal({ isOpen: true, title, message, type });
   };
 
   const getDefaultPrompt = (qtype: QuestionType): any => {
@@ -603,7 +655,7 @@ export default function EditExamPage() {
 
   const saveExam = async () => {
     if (!selectedCategory || !examTitle.trim() || sections.length === 0) {
-      alert("Please fill in all required fields and add at least one section");
+      showAlert("Validation Error", "Please fill in all required fields and add at least one section", "error");
       return;
     }
 
@@ -686,11 +738,11 @@ export default function EditExamPage() {
         router.push(`/dashboard/admin/exams/${data.exam.id}`);
       } else {
         const error = await res.json();
-        alert(error.error || "Failed to update exam");
+        showAlert("Failed to Update Exam", error.error || "Failed to update exam", "error");
       }
     } catch (error) {
       console.error("Failed to update exam:", error);
-      alert("Failed to update exam");
+      showAlert("Failed to Update Exam", "Failed to update exam", "error");
     } finally {
       setSaving(false);
     }
@@ -2148,11 +2200,11 @@ export default function EditExamPage() {
               <button
                 onClick={() => {
                   if (editingSection.type === "READING" && !editingSection.passage?.trim()) {
-                    alert("Please enter a reading passage");
+                    showAlert("Validation Error", "Please enter a reading passage", "error");
                     return;
                   }
                   if (editingSection.type === "LISTENING" && !editingSection.isSubsection && !editingSection.audio) {
-                    alert("Please upload an audio file");
+                    showAlert("Validation Error", "Please upload an audio file", "error");
                     return;
                   }
                   
@@ -2199,6 +2251,24 @@ export default function EditExamPage() {
           </div>
         </div>
       )}
+
+      {/* Delete Question Modal */}
+      <DeleteQuestionModal
+        isOpen={deleteQuestionModal.isOpen}
+        onClose={() => setDeleteQuestionModal({ isOpen: false, questionId: null })}
+        onConfirm={confirmDeleteQuestion}
+        questionText={deleteQuestionModal.questionText}
+        questionNumber={deleteQuestionModal.questionNumber}
+      />
+
+      {/* Alert Modal */}
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ isOpen: false, title: "", message: "", type: "info" })}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+      />
     </div>
   );
 }

@@ -38,6 +38,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ atte
                 options: true,
                 maxScore: true,
                 order: true,
+                image: true, // Include image for FILL_IN_BLANK questions
               },
             },
           },

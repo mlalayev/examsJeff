@@ -8,13 +8,16 @@ interface QSpeakingRecordingProps {
     id: string;
     prompt: {
       text: string;
-      part: number; // 1, 2, or 3
+      part?: number; // 1, 2, or 3 (optional, can be overridden by speakingPart prop)
     };
   };
   value?: { audioUrl?: string; isRecording?: boolean };
   onChange?: (value: { audioUrl?: string; isRecording?: boolean }) => void;
   readOnly?: boolean;
   attemptId?: string;
+  speakingPart?: number; // Override part number (for new separate sections)
+  onRecordingComplete?: () => void; // Callback when recording is uploaded
+  autoStart?: boolean; // Auto-start the recording process
 }
 
 // Timer durations based on part
@@ -32,8 +35,11 @@ export function QSpeakingRecording({
   onChange,
   readOnly = false,
   attemptId,
+  speakingPart,
+  onRecordingComplete,
+  autoStart = false,
 }: QSpeakingRecordingProps) {
-  const part = question.prompt.part || 1;
+  const part = speakingPart || question.prompt.part || 1;
   const recordingDuration = RECORDING_DURATIONS[part as keyof typeof RECORDING_DURATIONS] || 30;
   const hasPreparation = part === 2;
 
@@ -192,6 +198,11 @@ export function QSpeakingRecording({
       }
 
       setStatus("completed");
+      
+      // Call callback if provided
+      if (onRecordingComplete) {
+        onRecordingComplete();
+      }
     } catch (err) {
       console.error("Upload error:", err);
       setError(`Upload failed: ${err instanceof Error ? err.message : "Unknown error"}`);
@@ -207,6 +218,17 @@ export function QSpeakingRecording({
       startReading();
     }
   };
+
+  // Auto-start when autoStart is true and status is idle
+  useEffect(() => {
+    if (autoStart && status === "idle" && !value.audioUrl && !readOnly) {
+      // Small delay to ensure component is mounted
+      const timer = setTimeout(() => {
+        handleStart();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [autoStart]); // Only run once on mount
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);

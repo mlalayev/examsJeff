@@ -305,6 +305,10 @@ export async function GET(
             else if (q.qtype === "GAP") {
               displayCorrectAnswer = answerKey?.answers?.[0] || answerKey?.answers || [];
             }
+            // For FILL_IN_BLANK: show the blanks array
+            else if (q.qtype === "FILL_IN_BLANK") {
+              displayCorrectAnswer = answerKey?.blanks || [];
+            }
             // For TF / TF_NG: show value as text
             else if (q.qtype === "TF" || q.qtype === "TF_NG") {
               const formatTF = (val: any) => {
@@ -329,6 +333,7 @@ export async function GET(
               options: q.options,
               order: q.order,
               maxScore: q.maxScore,
+              image: q.image, // Include image for FILL_IN_BLANK
               studentAnswer: displayStudentAnswer,
               correctAnswer: displayCorrectAnswer,
               isCorrect,

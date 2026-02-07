@@ -6,6 +6,8 @@ import QDndGroup from "@/components/questions/QDndGroup";
 import { QuestionCard } from "./QuestionCard";
 import { DndGapQuestion } from "./DndGapQuestion";
 import { IELTSListeningView } from "./IELTSListeningView";
+import { IELTSSpeakingView } from "./IELTSSpeakingView";
+import { IELTSWritingView } from "./IELTSWritingView";
 
 interface Question {
   id: string;
