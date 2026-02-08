@@ -244,6 +244,30 @@ export default function AttemptRunnerPage() {
     fetchAttempt();
   }, [attemptId]);
 
+  // Handle Writing part changes - switch between Task 1 and Task 2 sections
+  useEffect(() => {
+    if (!data || data.examCategory !== "IELTS") return;
+    
+    const writingSections = data.sections.filter(s => s.type === "WRITING");
+    if (writingSections.length < 2) return; // Only switch if there are separate Task 1 and Task 2 sections
+    
+    const task1Section = writingSections.find(s => s.title.includes("Task 1") || s.title.includes("task 1"));
+    const task2Section = writingSections.find(s => s.title.includes("Task 2") || s.title.includes("task 2"));
+    
+    // Only switch if we're currently in a Writing section and need to switch to a different task
+    const currentSection = data.sections.find(s => s.id === activeSection);
+    if (currentSection?.type !== "WRITING") return;
+    
+    if (writingPart === 1 && task1Section && activeSection !== task1Section.id) {
+      // Switch to Task 1 section
+      handleSectionClick(task1Section.id);
+    } else if (writingPart === 2 && task2Section && activeSection !== task2Section.id) {
+      // Switch to Task 2 section
+      handleSectionClick(task2Section.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [writingPart]);
+
   const fetchAttempt = async () => {
     try {
       const res = await fetch(`/api/attempts/${attemptId}`);
@@ -690,7 +714,8 @@ export default function AttemptRunnerPage() {
                  <img
                    src={q.prompt.imageUrl}
                    alt="Question diagram"
-                   className="max-w-full h-auto max-h-96 mx-auto rounded border border-gray-300"
+                   className="h-auto max-h-96 mx-auto rounded border border-gray-300"
+                   style={{ width: "90%", minWidth: "90%" }}
                  />
                </div>
              )}

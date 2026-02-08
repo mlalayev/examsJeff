@@ -70,11 +70,12 @@ export function QMcqMulti({ question, value, onChange, readOnly }: BaseQuestionP
                 <FormattedText text={choice} />
               </div>
               {choiceImage && (
-                <div className="mt-2">
+                <div className="mt-2 flex justify-center">
                   <img
                     src={choiceImage}
                     alt={`Option ${idx + 1}`}
-                    className="max-h-32 w-auto rounded border border-gray-300"
+                    className="rounded border border-gray-300"
+                    style={{ width: "90%", minWidth: "90%", maxHeight: "200px", objectFit: "contain" }}
                   />
                 </div>
               )}

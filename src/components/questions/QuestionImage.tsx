@@ -13,7 +13,8 @@ export function QuestionImage({ imageUrl, alt = "Question diagram" }: QuestionIm
       <img
         src={imageUrl}
         alt={alt}
-        className="max-w-full h-auto max-h-96 mx-auto rounded border border-gray-300"
+        className="h-auto max-h-96 mx-auto rounded border border-gray-300"
+        style={{ width: "90%", minWidth: "90%" }}
         loading="lazy"
       />
     </div>

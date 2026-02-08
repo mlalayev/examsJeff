@@ -98,12 +98,12 @@ export function QFillInBlank({
       {/* Image */}
       {(question.image || question.prompt.imageUrl) && (
         <div className="mb-4 rounded-lg overflow-hidden border border-gray-200">
-          <div className="relative w-full" style={{ minHeight: "200px" }}>
+          <div className="relative w-full flex justify-center" style={{ minHeight: "200px" }}>
             <img
               src={question.image || question.prompt.imageUrl || ""}
               alt="Question image"
-              className="w-full h-auto object-contain"
-              style={{ maxHeight: "400px" }}
+              className="h-auto object-contain"
+              style={{ width: "90%", minWidth: "90%", maxHeight: "400px" }}
             />
           </div>
         </div>

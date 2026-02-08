@@ -6,6 +6,8 @@ import QDndGroup from "@/components/questions/QDndGroup";
 import { QuestionCard } from "./QuestionCard";
 import { DndGapQuestion } from "./DndGapQuestion";
 import { IELTSListeningView } from "./IELTSListeningView";
+import { IELTSReadingView } from "./IELTSReadingView";
+import { IELTSWritingView } from "./IELTSWritingView";
 
 interface Question {
   id: string;
@@ -56,7 +58,10 @@ interface QuestionsAreaProps {
   currentSectionIndex?: number; // Current section index in exam
   listeningPart?: number; // Current listening part (1-4)
   readingPart?: number; // Current reading part (1-3) for IELTS
+  writingPart?: number; // Current writing part (1-2) for IELTS
   onListeningPartChange?: (part: number) => void; // Callback for part change
+  onReadingPartChange?: (part: number) => void; // Callback for reading part change
+  onWritingPartChange?: (part: number) => void; // Callback for writing part change
   onTimeExpired?: () => void; // Callback for timer expiration
   attemptId?: string; // For localStorage timer
 }
@@ -78,7 +83,10 @@ export const QuestionsArea = React.memo(function QuestionsArea({
   currentSectionIndex = 0,
   listeningPart = 1,
   readingPart = 1,
+  writingPart = 1,
   onListeningPartChange,
+  onReadingPartChange,
+  onWritingPartChange,
   onTimeExpired,
   attemptId,
 }: QuestionsAreaProps) {
@@ -153,6 +161,35 @@ export const QuestionsArea = React.memo(function QuestionsArea({
           </div>
         )}
 
+        {/* IELTS Reading View */}
+        {section.type === "READING" && examCategory === "IELTS" && (
+          <div className="mb-8">
+            <IELTSReadingView
+              section={section}
+              answers={answers[section.id] || {}}
+              currentPart={readingPart}
+              onPartChange={onReadingPartChange}
+              onTimeExpired={onTimeExpired}
+              attemptId={attemptId}
+            />
+          </div>
+        )}
+
+        {/* IELTS Writing View */}
+        {section.type === "WRITING" && examCategory === "IELTS" && (
+          <div className="mb-8">
+            <IELTSWritingView
+              section={section}
+              answers={answers}
+              currentPart={writingPart}
+              onPartChange={onWritingPartChange}
+              onTimeExpired={onTimeExpired}
+              attemptId={attemptId}
+              allSections={allSections}
+            />
+          </div>
+        )}
+
         {/* Regular Audio Player for non-IELTS */}
         {audioSource && !(section.type === "LISTENING" && examCategory === "IELTS") && (
           <div className="mb-8">
@@ -219,23 +256,50 @@ export const QuestionsArea = React.memo(function QuestionsArea({
           </div>
         ) : (
           <div className="space-y-5">
-            {(section.type === "LISTENING" && examCategory === "IELTS"
-              ? section.questions
-                  .filter((q) => {
-                    // Filter questions by selected part (order is 0-based, so adjust ranges)
-                    if (listeningPart === 1) return q.order >= 0 && q.order <= 9;
-                    if (listeningPart === 2) return q.order >= 10 && q.order <= 19;
-                    if (listeningPart === 3) return q.order >= 20 && q.order <= 29;
-                    if (listeningPart === 4) return q.order >= 30 && q.order <= 39;
-                    return true;
-                  })
-                  .sort((a, b) => a.order - b.order) // Sort by order
-              : section.questions
-            ).map((q, idx) => {
-              const value = sectionAnswers[q.id];
-              // For IELTS Listening, use the actual question order number
-              let baseQuestionNum = 0;
+            {(() => {
+              // Filter questions based on section type and part
+              let filteredQuestions = section.questions;
+              
               if (section.type === "LISTENING" && examCategory === "IELTS") {
+                // Filter questions by selected part (order is 0-based)
+                filteredQuestions = section.questions.filter((q) => {
+                  if (listeningPart === 1) return q.order >= 0 && q.order <= 9;
+                  if (listeningPart === 2) return q.order >= 10 && q.order <= 19;
+                  if (listeningPart === 3) return q.order >= 20 && q.order <= 29;
+                  if (listeningPart === 4) return q.order >= 30 && q.order <= 39;
+                  return true;
+                }).sort((a, b) => a.order - b.order);
+              } else if (section.type === "READING" && examCategory === "IELTS") {
+                // Filter questions by selected reading part
+                const totalQuestions = section.questions.length;
+                const questionsPerPart = Math.ceil(totalQuestions / 3);
+                filteredQuestions = section.questions.filter((q) => {
+                  if (readingPart === 1) return q.order >= 0 && q.order < questionsPerPart;
+                  if (readingPart === 2) return q.order >= questionsPerPart && q.order < questionsPerPart * 2;
+                  if (readingPart === 3) return q.order >= questionsPerPart * 2;
+                  return true;
+                }).sort((a, b) => a.order - b.order);
+              } else if (section.type === "WRITING" && examCategory === "IELTS") {
+                // For Writing, if section has multiple questions, filter by order
+                // Task 1 is typically order 0, Task 2 is order 1
+                if (section.questions.length > 1) {
+                  filteredQuestions = section.questions.filter((q) => {
+                    if (writingPart === 1) return q.order === 0;
+                    if (writingPart === 2) return q.order === 1;
+                    return true;
+                  });
+                } else {
+                  // Single question section - show all (panel will show progress)
+                  filteredQuestions = section.questions;
+                }
+              }
+              
+              return filteredQuestions;
+            })().map((q, idx) => {
+              const value = sectionAnswers[q.id];
+              // For IELTS Listening and Reading, use the actual question order number
+              let baseQuestionNum = 0;
+              if ((section.type === "LISTENING" || section.type === "READING") && examCategory === "IELTS") {
                 // Use actual order number + 1 (order is 0-based, but questions are 1-based)
                 // Q1 has order 0, Q2 has order 1, etc.
                 baseQuestionNum = q.order + 1;
@@ -290,7 +354,7 @@ export const QuestionsArea = React.memo(function QuestionsArea({
                   value={value}
                   onChange={(v) => onAnswerChange(q.id, v)}
                   isLocked={isLocked}
-                  questionNumber={section.type === "LISTENING" && examCategory === "IELTS" ? baseQuestionNum : baseQuestionNum + 1}
+                  questionNumber={(section.type === "LISTENING" || section.type === "READING") && examCategory === "IELTS" ? baseQuestionNum : baseQuestionNum + 1}
                   renderQuestionComponent={renderQuestionComponent}
                 />
               );
