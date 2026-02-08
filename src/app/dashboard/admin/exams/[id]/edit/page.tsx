@@ -8,6 +8,7 @@ import QuestionPreview from "@/components/QuestionPreview";
 import ImageUpload from "@/components/ImageUpload";
 import { DeleteQuestionModal } from "@/components/modals/DeleteQuestionModal";
 import { AlertModal } from "@/components/modals/AlertModal";
+import ExamEditModal from "@/components/modals/ExamEditModal";
 import type { ExamCategory, SectionType, QuestionType, Section, Question } from "@/components/admin/exams/create/types";
 import { 
   ALLOWED_SECTIONS_BY_CATEGORY, 
@@ -764,13 +765,22 @@ export default function EditExamPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
-      <button
-        onClick={() => router.push(`/dashboard/admin/exams/${examId}`)}
-        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 text-sm"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Back to Exam
-      </button>
+      <div className="flex items-center justify-between mb-6">
+        <button
+          onClick={() => router.push(`/dashboard/admin/exams/${examId}`)}
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 text-sm"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Exam
+        </button>
+        <button
+          onClick={() => setShowEditModal(true)}
+          className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg flex items-center gap-2 font-medium"
+        >
+          <Edit className="w-5 h-5" />
+          Quick Edit Questions
+        </button>
+      </div>
 
       <h1 className="text-xl sm:text-2xl font-medium text-gray-900 mb-6">Edit Exam</h1>
 
@@ -2268,6 +2278,36 @@ export default function EditExamPage() {
         title={alertModal.title}
         message={alertModal.message}
         type={alertModal.type}
+      />
+
+      {/* Quick Edit Modal */}
+      <ExamEditModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        examId={examId}
+        examCategory={selectedCategory || ""}
+        sections={sections}
+        onSave={(updatedQuestions, sectionId) => {
+          // Update the questions in the section
+          const updatedSections = sections.map(s => {
+            if (s.id === sectionId) {
+              return { ...s, questions: updatedQuestions };
+            }
+            // Also check subsections
+            if (s.subsections) {
+              return {
+                ...s,
+                subsections: s.subsections.map(sub =>
+                  sub.id === sectionId ? { ...sub, questions: updatedQuestions } : sub
+                ),
+              };
+            }
+            return s;
+          });
+          setSections(updatedSections);
+          setShowEditModal(false);
+          showAlert("Success", "Question updated successfully", "success");
+        }}
       />
     </div>
   );
