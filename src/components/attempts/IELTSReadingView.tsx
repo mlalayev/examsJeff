@@ -79,16 +79,14 @@ export function IELTSReadingView({
   });
   const [isExpired, setIsExpired] = useState(timeRemaining === 0);
 
-  // Split questions into 3 parts (13-14 questions each for Reading)
+  // Split questions into 3 parts: Part 1 (14), Part 2 (13), Part 3 (13)
   const parts = useMemo(() => {
     const questions = section.questions || [];
-    const totalQuestions = questions.length;
-    const questionsPerPart = Math.ceil(totalQuestions / 3);
     
     return [
-      questions.filter((q) => q.order >= 0 && q.order < questionsPerPart), // Part 1
-      questions.filter((q) => q.order >= questionsPerPart && q.order < questionsPerPart * 2), // Part 2
-      questions.filter((q) => q.order >= questionsPerPart * 2), // Part 3
+      questions.filter((q) => q.order >= 0 && q.order < 14), // Part 1: Q1-14 (order 0-13)
+      questions.filter((q) => q.order >= 14 && q.order < 27), // Part 2: Q15-27 (order 14-26)
+      questions.filter((q) => q.order >= 27), // Part 3: Q28-40 (order 27-39)
     ];
   }, [section.questions]);
 
