@@ -1260,7 +1260,7 @@ export default function AttemptRunnerPage() {
       {viewingImage && (
         <div 
           className="fixed top-0 right-0 h-full bg-white shadow-2xl z-50 flex flex-col"
-          style={{ width: "400px" }}
+          style={{ width: "500px" }}
         >
           <div className="flex items-center justify-between p-4 border-b border-gray-200">
             <h3 className="font-medium text-gray-900">Image Viewer</h3>
