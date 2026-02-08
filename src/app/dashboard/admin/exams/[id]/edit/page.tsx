@@ -76,6 +76,7 @@ export default function EditExamPage() {
     message: "",
     type: "info",
   });
+  const [showEditModal, setShowEditModal] = useState(false);
 
   useEffect(() => {
     fetchExam();
