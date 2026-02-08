@@ -92,6 +92,7 @@ export default function AttemptRunnerPage() {
   const [listeningPart, setListeningPart] = useState(1); // For IELTS Listening part selection
   const [readingPart, setReadingPart] = useState(1); // For IELTS Reading part selection
   const [writingPart, setWritingPart] = useState(1); // For IELTS Writing part selection
+  const [speakingPart, setSpeakingPart] = useState(1); // For IELTS Speaking part selection
   
   // IELTS section navigation
   const [showIELTSSectionChangeModal, setShowIELTSSectionChangeModal] = useState(false);
@@ -228,6 +229,11 @@ export default function AttemptRunnerPage() {
         if (section.type === "WRITING" && data.examCategory === "IELTS") {
           const ieltsWritingTimerKey = `ielts_writing_timer_${attemptId}_${section.id}`;
           localStorage.removeItem(ieltsWritingTimerKey);
+        }
+        // Clear IELTS Speaking timers
+        if (section.type === "SPEAKING" && data.examCategory === "IELTS") {
+          const ieltsSpeakingTimerKey = `ielts_speaking_timer_${attemptId}_${section.id}`;
+          localStorage.removeItem(ieltsSpeakingTimerKey);
         }
       });
     }
@@ -675,7 +681,8 @@ export default function AttemptRunnerPage() {
       readOnly: boolean,
       showWordBank?: boolean,
       externalDraggedOption?: string | null,
-      onDropComplete?: () => void
+      onDropComplete?: () => void,
+      sectionType?: string
     ) => {
       const props = {
         question: q,
@@ -731,7 +738,7 @@ export default function AttemptRunnerPage() {
        case "FILL_IN_BLANK":
          return <QFillInBlank {...props} />;
        case "SPEAKING_RECORDING":
-         return <QSpeakingRecording {...props} attemptId={attemptId} />;
+         return <QSpeakingRecording {...props} attemptId={attemptId} speakingPart={sectionType === "SPEAKING" ? speakingPart : undefined} />;
        default:
     return (
             <div className="text-sm text-gray-500">
@@ -822,7 +829,7 @@ export default function AttemptRunnerPage() {
         return 1;
       }
     },
-    []
+    [attemptId, speakingPart]
   );
 
   // Helper function to count total questions
@@ -1237,6 +1244,8 @@ export default function AttemptRunnerPage() {
                 onReadingPartChange={setReadingPart}
                 writingPart={writingPart}
                 onWritingPartChange={setWritingPart}
+                speakingPart={speakingPart}
+                onSpeakingPartChange={setSpeakingPart}
               />
             )}
                    </div>

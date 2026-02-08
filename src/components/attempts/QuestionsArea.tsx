@@ -8,6 +8,7 @@ import { DndGapQuestion } from "./DndGapQuestion";
 import { IELTSListeningView } from "./IELTSListeningView";
 import { IELTSReadingView } from "./IELTSReadingView";
 import { IELTSWritingView } from "./IELTSWritingView";
+import { IELTSSpeakingView } from "./IELTSSpeakingView";
 
 interface Question {
   id: string;
@@ -59,9 +60,11 @@ interface QuestionsAreaProps {
   listeningPart?: number; // Current listening part (1-4)
   readingPart?: number; // Current reading part (1-3) for IELTS
   writingPart?: number; // Current writing part (1-2) for IELTS
+  speakingPart?: number; // Current speaking part (1-3) for IELTS
   onListeningPartChange?: (part: number) => void; // Callback for part change
   onReadingPartChange?: (part: number) => void; // Callback for reading part change
   onWritingPartChange?: (part: number) => void; // Callback for writing part change
+  onSpeakingPartChange?: (part: number) => void; // Callback for speaking part change
   onTimeExpired?: () => void; // Callback for timer expiration
   attemptId?: string; // For localStorage timer
 }
@@ -84,9 +87,11 @@ export const QuestionsArea = React.memo(function QuestionsArea({
   listeningPart = 1,
   readingPart = 1,
   writingPart = 1,
+  speakingPart = 1,
   onListeningPartChange,
   onReadingPartChange,
   onWritingPartChange,
+  onSpeakingPartChange,
   onTimeExpired,
   attemptId,
 }: QuestionsAreaProps) {
@@ -186,6 +191,20 @@ export const QuestionsArea = React.memo(function QuestionsArea({
               onTimeExpired={onTimeExpired}
               attemptId={attemptId}
               allSections={allSections}
+            />
+          </div>
+        )}
+
+        {/* IELTS Speaking View */}
+        {section.type === "SPEAKING" && examCategory === "IELTS" && (
+          <div className="mb-8">
+            <IELTSSpeakingView
+              section={section}
+              answers={answers[section.id] || {}}
+              currentPart={speakingPart}
+              onPartChange={onSpeakingPartChange}
+              onTimeExpired={onTimeExpired}
+              attemptId={attemptId}
             />
           </div>
         )}
@@ -290,6 +309,28 @@ export const QuestionsArea = React.memo(function QuestionsArea({
                   // Single question section - show all (panel will show progress)
                   filteredQuestions = section.questions;
                 }
+              } else if (section.type === "SPEAKING" && examCategory === "IELTS") {
+                // For Speaking, filter by prompt.part or prompt text containing "Part X"
+                filteredQuestions = section.questions.filter((q) => {
+                  const part = q.prompt?.part;
+                  if (part === speakingPart) return true;
+                  
+                  // Fall back to checking prompt text
+                  const promptText = q.prompt?.text?.toLowerCase() || "";
+                  if (speakingPart === 1 && (promptText.includes("part 1") || promptText.includes("part1"))) return true;
+                  if (speakingPart === 2 && (promptText.includes("part 2") || promptText.includes("part2"))) return true;
+                  if (speakingPart === 3 && (promptText.includes("part 3") || promptText.includes("part3"))) return true;
+                  
+                  // If no part specified, distribute by order
+                  if (!part && !promptText.includes("part")) {
+                    const totalQuestions = section.questions.length;
+                    if (speakingPart === 1 && q.order < totalQuestions / 3) return true;
+                    if (speakingPart === 2 && q.order >= totalQuestions / 3 && q.order < (totalQuestions * 2) / 3) return true;
+                    if (speakingPart === 3 && q.order >= (totalQuestions * 2) / 3) return true;
+                  }
+                  
+                  return false;
+                }).sort((a, b) => a.order - b.order);
               }
               
               return filteredQuestions;
@@ -339,7 +380,9 @@ export const QuestionsArea = React.memo(function QuestionsArea({
                     onDragStart={(label, e) => onDragStart(q.id, label, e)}
                     onDragEnd={() => onDragEnd(q.id)}
                     onDropComplete={() => onDragEnd(q.id)}
-                    renderQuestionComponent={renderQuestionComponent}
+                    renderQuestionComponent={(q, v, onChange, readOnly, showWordBank, externalDraggedOption, onDropComplete) => 
+                      renderQuestionComponent(q, v, onChange, readOnly, showWordBank, externalDraggedOption, onDropComplete, section.type)
+                    }
                   />
                 );
               }
@@ -353,7 +396,9 @@ export const QuestionsArea = React.memo(function QuestionsArea({
                   onChange={(v) => onAnswerChange(q.id, v)}
                   isLocked={isLocked}
                   questionNumber={(section.type === "LISTENING" || section.type === "READING") && examCategory === "IELTS" ? baseQuestionNum : baseQuestionNum + 1}
-                  renderQuestionComponent={renderQuestionComponent}
+                  renderQuestionComponent={(q, v, onChange, readOnly, showWordBank, externalDraggedOption, onDropComplete) => 
+                    renderQuestionComponent(q, v, onChange, readOnly, showWordBank, externalDraggedOption, onDropComplete, section.type)
+                  }
                 />
               );
             })}
