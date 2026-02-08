@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import Image from "next/image";
 
 interface QFillInBlankProps {
   question: {
@@ -100,11 +99,9 @@ export function QFillInBlank({
       {(question.image || question.prompt.imageUrl) && (
         <div className="mb-4 rounded-lg overflow-hidden border border-gray-200">
           <div className="relative w-full" style={{ minHeight: "200px" }}>
-            <Image
+            <img
               src={question.image || question.prompt.imageUrl || ""}
               alt="Question image"
-              width={800}
-              height={400}
               className="w-full h-auto object-contain"
               style={{ maxHeight: "400px" }}
             />

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Image from "next/image";
 import { 
   XCircle, 
   Award, 
@@ -37,6 +36,12 @@ interface ResultsData {
       correct: number;
       total: number;
       percentage: number;
+      listeningParts?: {
+        s1: number;
+        s2: number;
+        s3: number;
+        s4: number;
+      };
     }>;
   };
   sections?: Array<{
@@ -45,6 +50,12 @@ interface ResultsData {
     correct: number;
     total: number;
     percentage: number;
+    listeningParts?: {
+      s1: number;
+      s2: number;
+      s3: number;
+      s4: number;
+    };
     questions: Array<{
       id: string;
       qtype: string;
@@ -52,6 +63,7 @@ interface ResultsData {
       options: any;
       order: number;
       maxScore: number;
+      image?: string | null;
       studentAnswer: any;
       correctAnswer: any;
       isCorrect: boolean;
@@ -748,11 +760,9 @@ export default function AttemptResultsPage() {
                       {q.image && q.qtype === "FILL_IN_BLANK" && (
                         <div className="mb-4 rounded-lg overflow-hidden border border-gray-200">
                           <div className="relative w-full" style={{ minHeight: "200px" }}>
-                            <Image
+                            <img
                               src={q.image}
                               alt="Question image"
-                              width={800}
-                              height={400}
                               className="w-full h-auto object-contain"
                               style={{ maxHeight: "400px" }}
                             />
@@ -916,7 +926,7 @@ export default function AttemptResultsPage() {
                                   disabled={saving}
                                   className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-500 text-white rounded-lg text-sm font-medium hover:bg-gray-600 disabled:opacity-50 transition-colors"
                                 >
-                                  <XIcon className="w-4 h-4" />
+                                  <X className="w-4 h-4" />
                                   Cancel
                                 </button>
                               </div>

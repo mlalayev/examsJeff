@@ -691,7 +691,6 @@ export default function AttemptRunnerPage() {
                    src={q.prompt.imageUrl}
                    alt="Question diagram"
                    className="max-w-full h-auto max-h-96 mx-auto rounded border border-gray-300"
-                   loading="lazy"
                  />
                </div>
              )}
