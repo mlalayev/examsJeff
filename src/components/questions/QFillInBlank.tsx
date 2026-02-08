@@ -17,6 +17,7 @@ interface QFillInBlankProps {
   value?: Record<string, string>; // { "0": "answer1", "1": "answer2", ... }
   onChange?: (value: Record<string, string>) => void;
   readOnly?: boolean;
+  onImageClick?: (imageUrl: string) => void;
 }
 
 export function QFillInBlank({
@@ -24,6 +25,7 @@ export function QFillInBlank({
   value = {},
   onChange,
   readOnly = false,
+  onImageClick,
 }: QFillInBlankProps) {
   // Parse text to find [input] placeholders
   const parseText = (text: string) => {
@@ -102,7 +104,11 @@ export function QFillInBlank({
             <img
               src={question.image || question.prompt.imageUrl || ""}
               alt="Question image"
-              className="h-auto object-contain"
+              onClick={() => {
+                const imageUrl = question.image || question.prompt.imageUrl;
+                if (imageUrl) onImageClick?.(imageUrl);
+              }}
+              className="h-auto object-contain cursor-pointer hover:opacity-90 transition-opacity"
               style={{ width: "90%", minWidth: "90%", maxHeight: "400px" }}
             />
           </div>

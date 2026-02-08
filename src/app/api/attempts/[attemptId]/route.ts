@@ -109,7 +109,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ atte
         questions: (s.questions || []).map((q: any) => {
           const prompt = q.prompt || {};
           return {
-            ...q,
+          ...q,
             prompt: {
               ...prompt,
               // Map top-level image to prompt.imageUrl for question components

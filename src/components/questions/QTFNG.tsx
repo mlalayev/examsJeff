@@ -5,7 +5,7 @@ import { QuestionImage } from "./QuestionImage";
 
 type TFNGValue = "TRUE" | "FALSE" | "NOT_GIVEN" | null;
 
-export function QTFNG({ question, value, onChange, readOnly }: BaseQuestionProps<TFNGValue>) {
+export function QTFNG({ question, value, onChange, readOnly, onImageClick }: BaseQuestionProps<TFNGValue>) {
   const imageUrl = question.prompt?.imageUrl;
 
   const handleChange = (next: TFNGValue) => {
@@ -43,7 +43,7 @@ export function QTFNG({ question, value, onChange, readOnly }: BaseQuestionProps
 
   return (
     <div className="space-y-3">
-      <QuestionImage imageUrl={imageUrl} />
+      <QuestionImage imageUrl={imageUrl} onClick={() => imageUrl && onImageClick?.(imageUrl)} />
       <div className="flex flex-col sm:flex-row gap-3">
         {/* TRUE */}
         {(() => {

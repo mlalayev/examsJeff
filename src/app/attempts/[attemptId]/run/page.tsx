@@ -28,6 +28,7 @@ import { SuccessModal } from "@/components/attempts/modals/SuccessModal";
 import { SubmitModuleModal } from "@/components/attempts/modals/SubmitModuleModal";
 import { ResumeNotification } from "@/components/attempts/ResumeNotification";
 import { IELTSSectionChangeModal } from "@/components/attempts/modals/IELTSSectionChangeModal";
+import { Clock, Save, CheckCircle, Send, ChevronRight, X } from "lucide-react";
 
 interface Question {
   id: string;
@@ -93,6 +94,7 @@ export default function AttemptRunnerPage() {
   const [readingPart, setReadingPart] = useState(1); // For IELTS Reading part selection
   const [writingPart, setWritingPart] = useState(1); // For IELTS Writing part selection
   const [speakingPart, setSpeakingPart] = useState(1); // For IELTS Speaking part selection
+  const [viewingImage, setViewingImage] = useState<string | null>(null); // Image viewer
   
   // IELTS section navigation
   const [showIELTSSectionChangeModal, setShowIELTSSectionChangeModal] = useState(false);
@@ -692,6 +694,7 @@ export default function AttemptRunnerPage() {
         showWordBank,
         externalDraggedOption,
         onDropComplete,
+        onImageClick: (imageUrl: string) => setViewingImage(imageUrl),
       };
 
     switch (q.qtype) {
@@ -721,7 +724,8 @@ export default function AttemptRunnerPage() {
                  <img
                    src={q.prompt.imageUrl}
                    alt="Question diagram"
-                   className="h-auto max-h-96 mx-auto rounded border border-gray-300"
+                   onClick={() => onImageClick(q.prompt.imageUrl)}
+                   className="h-auto max-h-96 mx-auto rounded border border-gray-300 cursor-pointer hover:opacity-90 transition-opacity"
                    style={{ width: "90%", minWidth: "90%" }}
                  />
                </div>
@@ -1251,6 +1255,31 @@ export default function AttemptRunnerPage() {
                    </div>
                 </div>
               </div>
+
+      {/* Image Viewer Sidebar */}
+      {viewingImage && (
+        <div 
+          className="fixed top-0 right-0 h-full bg-white shadow-2xl z-50 flex flex-col"
+          style={{ width: "400px" }}
+        >
+          <div className="flex items-center justify-between p-4 border-b border-gray-200">
+            <h3 className="font-medium text-gray-900">Image Viewer</h3>
+            <button
+              onClick={() => setViewingImage(null)}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <X className="w-5 h-5 text-gray-600" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-gray-50">
+            <img
+              src={viewingImage}
+              alt="Viewing"
+              className="max-w-full h-auto"
+            />
+          </div>
+        </div>
+      )}
 
       {/* Modals and Notifications */}
       <ResumeNotification

@@ -4,7 +4,7 @@ import { BaseQuestionProps } from "./types";
 import { QuestionImage } from "./QuestionImage";
 import FormattedText from "../FormattedText";
 
-export function QMcqMulti({ question, value, onChange, readOnly }: BaseQuestionProps<number[]>) {
+export function QMcqMulti({ question, value, onChange, readOnly, onImageClick }: BaseQuestionProps<number[]>) {
   const choices = question.options?.choices || [];
   const choiceImages = question.options?.choiceImages || [];
   const selectedIndices = Array.isArray(value) ? value : [];
@@ -20,7 +20,7 @@ export function QMcqMulti({ question, value, onChange, readOnly }: BaseQuestionP
 
   return (
     <div className="space-y-3">
-      <QuestionImage imageUrl={imageUrl} />
+      <QuestionImage imageUrl={imageUrl} onClick={() => imageUrl && onImageClick?.(imageUrl)} />
       {choices.map((choice: string, idx: number) => {
         const isSelected = selectedIndices.includes(idx);
         const choiceImage = choiceImages[idx];

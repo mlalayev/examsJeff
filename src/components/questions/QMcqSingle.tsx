@@ -4,7 +4,7 @@ import { BaseQuestionProps } from "./types";
 import { QuestionImage } from "./QuestionImage";
 import FormattedText from "../FormattedText";
 
-export function QMcqSingle({ question, value, onChange, readOnly }: BaseQuestionProps<number | null>) {
+export function QMcqSingle({ question, value, onChange, readOnly, onImageClick }: BaseQuestionProps<number | null>) {
   const choices = question.options?.choices || [];
   const choiceImages = question.options?.choiceImages || [];
   const imageUrl = question.prompt?.imageUrl;
@@ -16,7 +16,7 @@ export function QMcqSingle({ question, value, onChange, readOnly }: BaseQuestion
 
   return (
     <div className="space-y-3">
-      <QuestionImage imageUrl={imageUrl} />
+      <QuestionImage imageUrl={imageUrl} onClick={() => imageUrl && onImageClick?.(imageUrl)} />
       {choices.map((choice: string, idx: number) => {
         const choiceImage = choiceImages[idx];
         return (

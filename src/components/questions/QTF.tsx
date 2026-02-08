@@ -3,7 +3,7 @@
 import { BaseQuestionProps } from "./types";
 import { QuestionImage } from "./QuestionImage";
 
-export function QTF({ question, value, onChange, readOnly }: BaseQuestionProps<boolean | null>) {
+export function QTF({ question, value, onChange, readOnly, onImageClick }: BaseQuestionProps<boolean | null>) {
   const imageUrl = question.prompt?.imageUrl;
   
   const handleChange = (boolValue: boolean) => {
@@ -13,7 +13,7 @@ export function QTF({ question, value, onChange, readOnly }: BaseQuestionProps<b
 
   return (
     <div className="space-y-3">
-      <QuestionImage imageUrl={imageUrl} />
+      <QuestionImage imageUrl={imageUrl} onClick={() => imageUrl && onImageClick?.(imageUrl)} />
       <div className="flex items-center gap-4">
       <button
         onClick={() => handleChange(true)}

@@ -3,9 +3,10 @@
 interface QuestionImageProps {
   imageUrl?: string;
   alt?: string;
+  onClick?: () => void;
 }
 
-export function QuestionImage({ imageUrl, alt = "Question diagram" }: QuestionImageProps) {
+export function QuestionImage({ imageUrl, alt = "Question diagram", onClick }: QuestionImageProps) {
   if (!imageUrl) return null;
 
   return (
@@ -13,7 +14,8 @@ export function QuestionImage({ imageUrl, alt = "Question diagram" }: QuestionIm
       <img
         src={imageUrl}
         alt={alt}
-        className="h-auto max-h-96 mx-auto rounded border border-gray-300"
+        onClick={onClick}
+        className="h-auto max-h-96 mx-auto rounded border border-gray-300 cursor-pointer hover:opacity-90 transition-opacity"
         style={{ width: "90%", minWidth: "90%" }}
         loading="lazy"
       />

@@ -11,6 +11,10 @@ export interface BaseQuestionProps<T = any> {
   value: T;
   onChange: (value: T) => void;
   readOnly?: boolean;
+  showWordBank?: boolean;
+  externalDraggedOption?: string | null;
+  onDropComplete?: () => void;
+  onImageClick?: (imageUrl: string) => void;
 }
 
 // Answer value shapes
