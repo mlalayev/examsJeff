@@ -47,6 +47,13 @@ export function QSpeakingRecording({
   const [timeLeft, setTimeLeft] = useState(hasPreparation ? PREPARATION_DURATION : recordingDuration);
   const [error, setError] = useState<string | null>(null);
 
+  // Check if page is secure (HTTPS or localhost)
+  const isSecureContext = typeof window !== "undefined" && (
+    window.location.protocol === "https:" || 
+    window.location.hostname === "localhost" || 
+    window.location.hostname === "127.0.0.1"
+  );
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -149,9 +156,27 @@ export function QSpeakingRecording({
         });
       }, 1000);
 
-    } catch (err) {
+    } catch (err: any) {
       console.error("Microphone access error:", err);
-      setError("Microphone access denied. Please allow microphone access to record your answer.");
+      
+      // Provide specific error messages based on error type
+      let errorMessage = "Microphone access denied. ";
+      
+      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+        errorMessage += "Please allow microphone access in your browser settings and try again.";
+      } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+        errorMessage += "No microphone found. Please connect a microphone and try again.";
+      } else if (err.name === "NotReadableError" || err.name === "TrackStartError") {
+        errorMessage += "Microphone is being used by another application. Please close other applications and try again.";
+      } else if (err.name === "NotSupportedError" || err.message?.includes("secure context")) {
+        errorMessage += "Microphone access requires a secure connection (HTTPS). Please access this page via HTTPS or localhost.";
+      } else if (err.message?.includes("getUserMedia is not defined")) {
+        errorMessage += "Your browser does not support microphone access. Please use a modern browser (Chrome, Firefox, Edge, Safari).";
+      } else {
+        errorMessage += "Please check your browser settings and try again.";
+      }
+      
+      setError(errorMessage);
       setStatus("idle");
     }
   };
@@ -273,6 +298,23 @@ export function QSpeakingRecording({
 
   return (
     <div className="space-y-4">
+      {/* Security Warning for Non-HTTPS */}
+      {!isSecureContext && (
+        <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-yellow-900 mb-1">
+                Secure Connection Required
+              </p>
+              <p className="text-sm text-yellow-800">
+                Microphone access requires HTTPS. Please access this page via HTTPS or use localhost for development.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Error message */}
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 flex items-start gap-2">
