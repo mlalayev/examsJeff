@@ -1,33 +1,61 @@
 'use client';
 
-import styles from './HowItWorks.module.css';
+import { Search, Play, CheckCircle2, BarChart3 } from 'lucide-react';
 
 export default function HowItWorks() {
   const steps = [
-    { num: 1, title: 'Choose your exam', desc: 'IELTS, TOEFL, SAT, Duolingo, General English, Math' },
-    { num: 2, title: 'Start practice', desc: 'Take assigned exams or browse available tests' },
-    { num: 3, title: 'Complete the test', desc: 'Real exam environment with timer & autosave' },
-    { num: 4, title: 'Review results', desc: 'Instant scoring + detailed feedback and explanations' },
+    { 
+      num: 1, 
+      icon: Search,
+      title: 'Choose your exam', 
+      desc: 'IELTS, TOEFL, SAT, Duolingo, General English, Math' 
+    },
+    { 
+      num: 2, 
+      icon: Play,
+      title: 'Start practice', 
+      desc: 'Take assigned exams or browse available tests' 
+    },
+    { 
+      num: 3, 
+      icon: CheckCircle2,
+      title: 'Complete the test', 
+      desc: 'Real exam environment with timer & autosave' 
+    },
+    { 
+      num: 4, 
+      icon: BarChart3,
+      title: 'Review results', 
+      desc: 'Instant scoring + detailed feedback and explanations' 
+    },
   ];
 
   return (
-    <section>
-      <div className={styles.container}>
-        <h2 className="text-xl sm:text-2xl font-medium text-gray-900 text-center mb-8 sm:mb-12">How It Works</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-          {steps.map((item, i) => (
-            <div key={i} className="bg-white border border-gray-200 rounded-md p-4 sm:p-6">
-              <div className="w-8 h-8 flex items-center justify-center text-white rounded-md text-sm font-medium mb-3" style={{ backgroundColor: "#303380" }}>
-                {item.num}
+    <section className="py-16 md:py-20">
+      <div className="max-w-[1200px] mx-auto px-6">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">How It Works</h2>
+          <p className="text-gray-600 text-lg">Get started in 4 simple steps</p>
+        </div>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {steps.map((item, i) => {
+            const Icon = item.icon;
+            return (
+              <div key={i} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-all duration-200 hover:border-[#303380]/30">
+                {/* Icon */}
+                <div className="w-12 h-12 bg-gradient-to-br from-[#303380]/10 to-[#252a6b]/5 rounded-xl flex items-center justify-center mb-4">
+                  <Icon className="w-6 h-6 text-[#303380]" />
+                </div>
+                
+                {/* Content */}
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">{item.title}</h3>
+                <p className="text-sm text-gray-600 leading-relaxed">{item.desc}</p>
               </div>
-              <div className="text-sm sm:text-base font-medium text-gray-900 mb-2">{item.title}</div>
-              <div className="text-xs sm:text-sm text-gray-600 leading-relaxed">{item.desc}</div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>
   );
 }
-
-

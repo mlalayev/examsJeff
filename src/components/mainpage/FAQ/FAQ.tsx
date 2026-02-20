@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
-import styles from './FAQ.module.css';
 
 export default function FAQ() {
   const faqs = [
@@ -18,21 +17,26 @@ export default function FAQ() {
   };
 
   return (
-    <section>
-      <div className={styles.container}>
-        <h2 className="text-xl sm:text-2xl font-medium text-gray-900 text-center mb-8 sm:mb-12">FAQ</h2>
-        <div className="w-full space-y-3">
+    <section className="py-16 md:py-20">
+      <div className="max-w-[1200px] mx-auto px-6">
+        <h2 className="text-3xl md:text-4xl font-bold text-gray-900 text-center mb-4">Frequently Asked Questions</h2>
+        <p className="text-center text-gray-600 mb-12">Everything you need to know</p>
+        
+        <div className="space-y-4">
           {faqs.map((item, i) => {
             const isOpen = openIndex === i;
             return (
-              <div key={i} className="bg-white border border-gray-200 rounded-md overflow-hidden">
+              <div 
+                key={i} 
+                className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden"
+              >
                 <button
                   onClick={() => toggleAccordion(i)}
-                  className="w-full cursor-pointer list-none bg-white px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                  className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
                 >
-                  <span className="text-sm sm:text-base font-medium text-gray-900 pr-4 text-left">{item.q}</span>
+                  <span className="text-base font-semibold text-gray-900 pr-4">{item.q}</span>
                   <ChevronDown
-                    className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-300 ${
+                    className={`w-5 h-5 text-gray-500 flex-shrink-0 transition-transform duration-300 ${
                       isOpen ? 'rotate-180' : ''
                     }`}
                   />
@@ -42,8 +46,8 @@ export default function FAQ() {
                     isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
                   }`}
                 >
-                  <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
-                    <p className="text-sm text-gray-600 leading-relaxed">{item.a}</p>
+                  <div className="px-6 py-4 bg-gray-50 border-t border-gray-100">
+                    <p className="text-sm text-gray-700 leading-relaxed">{item.a}</p>
                   </div>
                 </div>
               </div>
@@ -54,5 +58,3 @@ export default function FAQ() {
     </section>
   );
 }
-
-

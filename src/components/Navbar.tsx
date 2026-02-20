@@ -9,7 +9,8 @@ import {
   Settings, 
   LayoutDashboard,
   ChevronDown,
-  LogOut
+  LogOut,
+  GraduationCap
 } from "lucide-react";
 import UnifiedLoading from "@/components/loading/UnifiedLoading";
 
@@ -32,9 +33,6 @@ export default function Navbar() {
   const notificationsRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
 
-  // OPTIMIZED: Remove auto-fetch on mount (was causing 3-5 sec delay)
-  // Notifications will only be fetched when user clicks the bell icon
-
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
@@ -50,7 +48,7 @@ export default function Navbar() {
   }, []);
 
   const fetchNotifications = async () => {
-    if (notificationsFetched) return; // Already fetched
+    if (notificationsFetched) return;
     
     try {
       setLoading(true);
@@ -68,7 +66,6 @@ export default function Navbar() {
   
   const handleNotificationsClick = async () => {
     if (!showNotifications && !notificationsFetched) {
-      // Fetch notifications only when opening dropdown for the first time
       await fetchNotifications();
     }
     setShowNotifications(!showNotifications);
@@ -108,14 +105,13 @@ export default function Navbar() {
       return name;
     }
     
-    // Extract name from email if no name is provided
     const emailName = email.split('@')[0];
     return emailName.charAt(0).toUpperCase() + emailName.slice(1);
   };
 
   if (status === "loading") {
     return (
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <UnifiedLoading type="skeleton" variant="navbar" />
         </div>
@@ -124,39 +120,37 @@ export default function Navbar() {
   }
 
   return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
-      <div className="max-w-7xl mx-auto px-6 py-4">
-        <div className="flex items-center justify-between">
+    <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm group-hover:scale-105 transition-transform duration-200" style={{ backgroundColor: "#303380" }}>
-              J
+          <Link href="/" className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-lg bg-[#303380] flex items-center justify-center">
+              <GraduationCap className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-gray-900">JEFF Exams</span>
+            <span className="text-lg font-bold text-gray-900">JEFF Exams</span>
           </Link>
 
-          {/* Right Side - Notifications and Profile */}
-          <div className="flex items-center gap-4">
+          {/* Right Side */}
+          <div className="flex items-center gap-2">
             {session ? (
               <>
                 {/* Notifications */}
                 <div className="relative" ref={notificationsRef}>
                   <button
                     onClick={handleNotificationsClick}
-                    className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-all duration-200"
+                    className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors relative"
                     title="Notifications"
                   >
                     <Bell className="w-5 h-5" />
                     {notifications.length > 0 && (
-                      <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full flex items-center justify-center">
-                        <span className="w-1.5 h-1.5 bg-white rounded-full"></span>
-                      </span>
+                      <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
                     )}
                   </button>
 
                   {/* Notifications Dropdown */}
                   {showNotifications && (
-                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50 max-h-96 overflow-y-auto">
+                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-96 overflow-hidden">
                       <div className="p-4 border-b border-gray-200">
                         <h3 className="font-semibold text-gray-900">Notifications</h3>
                       </div>
@@ -165,13 +159,13 @@ export default function Navbar() {
                           <UnifiedLoading type="spinner" variant="spinner" size="sm" />
                         </div>
                       ) : notifications.length === 0 ? (
-                        <div className="p-4 text-center text-sm text-gray-500">
-                          No notifications yet
+                        <div className="p-6 text-center text-sm text-gray-500">
+                          No notifications
                         </div>
                       ) : (
-                        <div className="divide-y divide-gray-200">
+                        <div className="divide-y divide-gray-100 max-h-80 overflow-y-auto">
                           {notifications.map((notification) => (
-                            <div key={notification.id} className="p-4 hover:bg-gray-50 transition-colors duration-150">
+                            <div key={notification.id} className="p-4 hover:bg-gray-50 transition-colors">
                               <p className="font-medium text-sm text-gray-900 mb-1">
                                 {notification.title}
                               </p>
@@ -195,57 +189,46 @@ export default function Navbar() {
                   )}
                 </div>
 
-                {/* Profile Dropdown */}
+                {/* Profile */}
                 <div className="relative" ref={profileRef}>
                   <button
                     onClick={() => setShowProfileDropdown(!showProfileDropdown)}
-                    className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg transition-all duration-200"
+                    className="flex items-center gap-2 px-2 py-1.5 hover:bg-gray-100 rounded-lg transition-colors"
                   >
-                    <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-700 font-medium text-sm">
+                    <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-gray-700 font-medium text-sm">
                       {getUserDisplayName().charAt(0).toUpperCase()}
                     </div>
-                    <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${showProfileDropdown ? 'rotate-180' : ''}`} />
+                    <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${showProfileDropdown ? 'rotate-180' : ''}`} />
                   </button>
 
-                  {/* Profile Dropdown Menu */}
+                  {/* Profile Dropdown */}
                   {showProfileDropdown && (
-                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-200 z-50">
-                      {/* User Info */}
-                      <div className="p-4 border-b border-gray-200">
-                        <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-gray-700 font-medium text-lg">
-                            {getUserDisplayName().charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                            <p className="font-semibold text-gray-900">{getUserDisplayName()}</p>
-                            <p className="text-xs text-gray-500">{getRoleDisplayName((session.user as any).role)}</p>
-                          </div>
-                        </div>
+                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                      <div className="p-3 border-b border-gray-200">
+                        <p className="font-semibold text-sm text-gray-900">{getUserDisplayName()}</p>
+                        <p className="text-xs text-gray-500">{getRoleDisplayName((session.user as any).role)}</p>
                       </div>
-
-                      {/* Menu Items */}
-                      <div className="py-2">
+                      
+                      <div className="py-1">
                         <Link
                           href={getDashboardLink() || "/"}
-                          className="flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors duration-150"
+                          className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                           onClick={() => setShowProfileDropdown(false)}
                         >
                           <LayoutDashboard className="w-4 h-4" />
                           Dashboard
                         </Link>
-                        
                         <Link
                           href="/profile"
-                          className="flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors duration-150"
+                          className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                           onClick={() => setShowProfileDropdown(false)}
                         >
                           <User className="w-4 h-4" />
                           Profile
                         </Link>
-                        
                         <Link
                           href="/settings"
-                          className="flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors duration-150"
+                          className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                           onClick={() => setShowProfileDropdown(false)}
                         >
                           <Settings className="w-4 h-4" />
@@ -253,11 +236,10 @@ export default function Navbar() {
                         </Link>
                       </div>
 
-                      {/* Sign Out */}
-                      <div className="border-t border-gray-200 py-2">
+                      <div className="border-t border-gray-200 py-1">
                         <button
                           onClick={() => signOut({ callbackUrl: "/" })}
-                          className="flex items-center gap-3 px-4 py-2 text-red-600 hover:bg-red-50 transition-colors duration-150 w-full text-left"
+                          className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors w-full text-left"
                         >
                           <LogOut className="w-4 h-4" />
                           Sign Out
@@ -270,14 +252,7 @@ export default function Navbar() {
             ) : (
               <Link
                 href="/auth/login"
-                className="px-4 py-2 text-white rounded-lg font-medium transition-colors duration-200"
-                style={{ backgroundColor: "#303380" }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = "#252a6b";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "#303380";
-                }}
+                className="px-4 py-2 bg-[#303380] text-white rounded-lg font-medium hover:bg-[#252a6b] transition-colors"
               >
                 Sign In
               </Link>
@@ -288,4 +263,3 @@ export default function Navbar() {
     </header>
   );
 }
-

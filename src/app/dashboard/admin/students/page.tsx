@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Users, Search, BookOpen, X, Calendar, ChevronRight, ChevronLeft, Target, FileText, CheckCircle } from "lucide-react";
+import { Users, Search, BookOpen, X, Calendar, ChevronRight, ChevronLeft, Target, FileText, CheckCircle, UserPlus } from "lucide-react";
 import { AlertModal } from "@/components/modals/AlertModal";
 
 interface Student {
@@ -48,10 +48,32 @@ export default function AdminStudentsPage() {
     message: "",
     type: "info",
   });
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [branches, setBranches] = useState<any[]>([]);
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    password: "",
+    role: "STUDENT" as string,
+    branchId: "",
+    approved: true,
+    phoneNumber: "",
+    dateOfBirth: "",
+    program: "",
+    paymentDate: "",
+    paymentAmount: "",
+  });
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState("");
 
   useEffect(() => {
     // Optimize: fetch both in parallel
     Promise.all([fetchStudents(), fetchExams()]);
+    // Fetch branches for create user modal
+    fetch("/api/branches")
+      .then((res) => res.json())
+      .then((data) => setBranches(data.branches || []))
+      .catch(console.error);
   }, [filterApproved]);
 
   const fetchStudents = async () => {
@@ -253,6 +275,107 @@ export default function AdminStudentsPage() {
   const pendingCount = students.filter(s => !s.approved).length;
   const approvedCount = students.filter(s => s.approved).length;
 
+  const openCreateModal = () => {
+    setFormData({
+      name: "",
+      email: "",
+      password: "",
+      role: "STUDENT",
+      branchId: "",
+      approved: true,
+      phoneNumber: "",
+      dateOfBirth: "",
+      program: "",
+      paymentDate: "",
+      paymentAmount: "",
+    });
+    setCreateError("");
+    setShowCreateModal(true);
+    document.body.style.overflow = 'hidden';
+  };
+
+  const closeCreateModal = () => {
+    setShowCreateModal(false);
+    setCreateError("");
+    document.body.style.overflow = 'unset';
+  };
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreateError("");
+
+    if (!formData.name || !formData.email || !formData.password) {
+      setCreateError("Please fill in all required fields");
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      setCreateError("Password must be at least 6 characters");
+      return;
+    }
+
+    // Validate student-specific fields
+    if (formData.role === "STUDENT") {
+      if (!formData.phoneNumber || !formData.dateOfBirth || !formData.program) {
+        setCreateError("Phone number, date of birth, and program are required for students");
+        return;
+      }
+      if (!formData.branchId) {
+        setCreateError("Branch is required for students");
+        return;
+      }
+    }
+
+    setCreating(true);
+
+    try {
+      const payload: any = {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        role: formData.role,
+        branchId: formData.branchId || null,
+        approved: formData.approved,
+      };
+
+      // Add student-specific fields if role is STUDENT
+      if (formData.role === "STUDENT") {
+        payload.studentProfile = {
+          phoneNumber: formData.phoneNumber,
+          dateOfBirth: formData.dateOfBirth,
+          program: formData.program,
+          paymentDate: formData.paymentDate || null,
+          paymentAmount: formData.paymentAmount || null,
+        };
+      }
+
+      const res = await fetch("/api/admin/users/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setAlertModal({
+          isOpen: true,
+          title: "Success",
+          message: `User created successfully!\n\nEmail: ${formData.email}\nPassword: ${formData.password}\n\nPlease save these credentials.`,
+          type: "success",
+        });
+        closeCreateModal();
+        await fetchStudents();
+      } else {
+        setCreateError(data.error || "Failed to create user");
+      }
+    } catch (error) {
+      setCreateError("An error occurred while creating user");
+    } finally {
+      setCreating(false);
+    }
+  };
+
   return (
     <div className="p-4 sm:p-6 lg:p-8">
       {/* Minimal Header */}
@@ -358,6 +481,22 @@ export default function AdminStudentsPage() {
             }}
           >
             Approved
+          </button>
+          <button
+            onClick={openCreateModal}
+            className="px-3 py-2 text-sm font-medium text-white rounded-md border transition flex items-center gap-2"
+            style={{ backgroundColor: "#303380", borderColor: "#303380" }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "#252a6b";
+              e.currentTarget.style.borderColor = "#252a6b";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "#303380";
+              e.currentTarget.style.borderColor = "#303380";
+            }}
+          >
+            <UserPlus className="w-4 h-4" />
+            Create User
           </button>
         </div>
       </div>
@@ -864,6 +1003,265 @@ export default function AdminStudentsPage() {
                     )}
                   </button>
                 )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create User Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-md shadow-lg w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden border border-gray-200 flex flex-col">
+            {/* Header */}
+            <div className="px-4 sm:px-6 py-4 flex items-center justify-between border-b border-gray-200">
+              <div>
+                <h2 className="text-lg sm:text-xl font-medium text-gray-900">Create New User</h2>
+                <p className="text-gray-500 text-sm mt-0.5">Manually create a user account</p>
+              </div>
+              <button
+                onClick={closeCreateModal}
+                className="text-gray-400 hover:text-gray-600 rounded-md p-1.5 hover:bg-gray-50 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="px-4 sm:px-6 py-6 overflow-y-auto flex-1">
+              {createError && (
+                <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-red-700 text-sm">{createError}</p>
+                </div>
+              )}
+
+              <form onSubmit={handleCreateUser} className="space-y-4">
+                {/* Name */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Full Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent"
+                    placeholder="John Doe"
+                  />
+                </div>
+
+                {/* Email */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Email Address *
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent"
+                    placeholder="john@example.com"
+                  />
+                </div>
+
+                {/* Password */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Password *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent"
+                    placeholder="Minimum 6 characters"
+                    minLength={6}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Make sure to save this password! You can reset it later if needed.
+                  </p>
+                </div>
+
+                {/* Role */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Role *
+                  </label>
+                  <select
+                    value={formData.role}
+                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent"
+                  >
+                    <option value="STUDENT">Student</option>
+                    <option value="TEACHER">Teacher</option>
+                    <option value="ADMIN">Admin</option>
+                  </select>
+                </div>
+
+                {/* Branch */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Branch {formData.role === "STUDENT" && <span className="text-red-500">*</span>}
+                  </label>
+                  <select
+                    value={formData.branchId}
+                    onChange={(e) => setFormData({ ...formData, branchId: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent"
+                    required={formData.role === "STUDENT"}
+                  >
+                    <option value="">No Branch</option>
+                    {branches.map((branch) => (
+                      <option key={branch.id} value={branch.id}>
+                        {branch.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {formData.role === "STUDENT" ? "Required for students" : "Optional - assign user to a branch"}
+                  </p>
+                </div>
+
+                {/* Student-specific fields */}
+                {formData.role === "STUDENT" && (
+                  <>
+                    <div className="border-t pt-4">
+                      <h3 className="text-base font-semibold text-gray-900 mb-4">Student Information</h3>
+
+                      {/* Phone Number */}
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Phone Number *
+                        </label>
+                        <input
+                          type="tel"
+                          required
+                          value={formData.phoneNumber}
+                          onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent"
+                          placeholder="+994 XX XXX XX XX"
+                        />
+                      </div>
+
+                      {/* Date of Birth */}
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Date of Birth *
+                        </label>
+                        <input
+                          type="date"
+                          required
+                          value={formData.dateOfBirth}
+                          onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent"
+                        />
+                      </div>
+
+                      {/* Program */}
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Program *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={formData.program}
+                          onChange={(e) => setFormData({ ...formData, program: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent"
+                          placeholder="e.g., General English A2, IELTS Preparation"
+                        />
+                      </div>
+
+                      {/* Payment Date */}
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Payment Date (Optional)
+                        </label>
+                        <input
+                          type="date"
+                          value={formData.paymentDate}
+                          onChange={(e) => setFormData({ ...formData, paymentDate: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent"
+                        />
+                      </div>
+
+                      {/* Payment Amount */}
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Payment Amount (Optional)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={formData.paymentAmount}
+                          onChange={(e) => setFormData({ ...formData, paymentAmount: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent"
+                          placeholder="0.00"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Payment amount in AZN</p>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Approved */}
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="approved"
+                    checked={formData.approved}
+                    onChange={(e) => setFormData({ ...formData, approved: e.target.checked })}
+                    className="w-4 h-4 text-gray-600 border-gray-300 rounded focus:ring-gray-500"
+                  />
+                  <label htmlFor="approved" className="text-sm font-medium text-gray-700">
+                    Approve user immediately (recommended for manually created accounts)
+                  </label>
+                </div>
+              </form>
+            </div>
+
+            {/* Footer */}
+            <div className="px-4 sm:px-6 py-4 border-t border-gray-200 bg-gray-50">
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={closeCreateModal}
+                  className="px-4 py-2 text-gray-700 hover:text-gray-900 font-medium transition hover:bg-gray-100 rounded-md text-sm"
+                  disabled={creating}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCreateUser}
+                  disabled={creating}
+                  className="px-4 py-2 text-white font-medium rounded-md transition disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  style={{ backgroundColor: "#303380" }}
+                  onMouseEnter={(e) => {
+                    if (!e.currentTarget.disabled) {
+                      e.currentTarget.style.backgroundColor = "#252a6b";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!e.currentTarget.disabled) {
+                      e.currentTarget.style.backgroundColor = "#303380";
+                    }
+                  }}
+                >
+                  {creating ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent inline-block mr-2"></div>
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="w-4 h-4 inline-block mr-2" />
+                      Create User
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           </div>
