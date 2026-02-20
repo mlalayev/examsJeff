@@ -268,27 +268,19 @@ export default function Navbar() {
                 </div>
               </>
             ) : (
-              <>
-                <Link
-                  href="/auth/login"
-                  className="px-4 py-2 text-gray-700 font-medium hover:text-gray-900 transition-colors duration-200"
-                >
-                  Sign In
-                </Link>
-                <Link
-                  href="/auth/register"
-                  className="px-4 py-2 text-white rounded-lg font-medium transition-colors duration-200"
-                  style={{ backgroundColor: "#303380" }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "#252a6b";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "#303380";
-                  }}
-                >
-                  Get Started
-                </Link>
-              </>
+              <Link
+                href="/auth/login"
+                className="px-4 py-2 text-white rounded-lg font-medium transition-colors duration-200"
+                style={{ backgroundColor: "#303380" }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "#252a6b";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "#303380";
+                }}
+              >
+                Sign In
+              </Link>
             )}
           </div>
         </div>
