@@ -5,8 +5,8 @@ import { BookOpen, ArrowRight, ExternalLink } from 'lucide-react';
 
 export default function ExamSelector() {
   const exams = [
-    { name: 'IELTS', badge: '4 sections', desc: 'IELTS — 4 bölmə, avtomatik qiymətləndirmə', tryLink: '/reading', learnLink: '/reading' },
-    { name: 'TOEFL', badge: '4 sections', desc: 'TOEFL — 4 bölmə, avtomatik qiymətləndirmə', tryLink: '/toefl', learnLink: '/toefl' },
+    { name: 'IELTS', badge: '4 sections', desc: 'IELTS — 4 sections, automatic evaluation', tryLink: '/reading', learnLink: '/reading' },
+    { name: 'TOEFL', badge: '4 sections', desc: 'TOEFL — 4 sections, automatic evaluation', tryLink: '/toefl', learnLink: '/toefl' },
     { name: 'SAT', badge: 'Math + Reading', desc: 'SAT — Math and Reading sections with real-time timer', tryLink: '/sat', learnLink: '/sat' },
     { name: 'Duolingo', badge: 'Adaptive', desc: 'Duolingo English Test — adaptive format with all question types', tryLink: '/duolingo', learnLink: '/duolingo' },
     { name: 'General English', badge: 'A1-C2', desc: 'General English — Unit-based exams from A1 to C2 levels', tryLink: '/dashboard/catalog', learnLink: '/dashboard/catalog', tryText: 'Browse Units' },
@@ -25,7 +25,7 @@ export default function ExamSelector() {
           {exams.map((exam, i) => (
             <div 
               key={i} 
-              className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md hover:border-[#303380]/30 transition-all duration-200 group"
+              className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md hover:border-[#303380]/30 transition-all duration-200 group flex flex-col min-h-[200px]"
             >
               {/* Header */}
               <div className="flex items-start justify-between mb-4">
@@ -43,12 +43,12 @@ export default function ExamSelector() {
               </div>
               
               {/* Description */}
-              <p className="text-sm text-gray-600 mb-6 leading-relaxed">
+              <p className="text-sm text-gray-600 mb-6 leading-relaxed flex-1">
                 {exam.desc}
               </p>
               
-              {/* Buttons */}
-              <div className="flex flex-wrap gap-2">
+              {/* Buttons - aligned at bottom, same width */}
+              <div className="flex gap-2 mt-auto">
                 <Link 
                   href={exam.tryLink} 
                   className="flex-1 px-4 py-2.5 bg-gradient-to-r from-[#303380] to-[#252a6b] text-white rounded-lg text-sm font-semibold hover:from-[#252a6b] hover:to-[#1a1f4a] transition-all duration-200 shadow-sm hover:shadow-md flex items-center justify-center gap-2 group/btn"
@@ -58,7 +58,7 @@ export default function ExamSelector() {
                 </Link>
                 <Link 
                   href={exam.learnLink} 
-                  className="px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 flex items-center gap-2"
+                  className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 flex items-center justify-center gap-2"
                 >
                   Learn More
                   <ExternalLink className="w-3.5 h-3.5" />
