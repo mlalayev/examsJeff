@@ -25,7 +25,6 @@ import {
   Home,
   Library,
   Shield,
-  UserPlus,
   Key,
 } from "lucide-react";
 
@@ -84,12 +83,6 @@ export default function Sidebar() {
         href: "/dashboard/creator/finance",
         icon: DollarSign,
         color: "from-emerald-500 to-emerald-600",
-      },
-      {
-        label: "Create User",
-        href: "/dashboard/creator/create-user",
-        icon: UserPlus,
-        color: "from-green-500 to-green-600",
       }
     );
   }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Users, Search, BookOpen, X, Calendar, ChevronRight, ChevronLeft, Target, FileText, CheckCircle } from "lucide-react";
+import { Users, Search, BookOpen, X, ChevronRight, ChevronLeft, Target, FileText, CheckCircle } from "lucide-react";
 import { AlertModal } from "@/components/modals/AlertModal";
 
 interface Student {
@@ -171,21 +171,24 @@ export default function CreatorStudentsPage() {
   };
 
   const handleBack = () => {
-    if (assignStep > 1) {
-      setAssignStep(assignStep - 1);
-      if (assignStep === 2) {
+    if (assignStep <= 1) return;
+    if (assignStep === 2) {
+      setSelectedCategory("");
+      setSelectedTrack("");
+      setAssignStep(1);
+    } else if (assignStep === 3) {
+      const category = categories.find(c => c.id === selectedCategory);
+      setSelectedTrack("");
+      setSelectedExamId("");
+      if (category?.tracks && category.tracks.length > 0) {
+        setAssignStep(2);
+      } else {
         setSelectedCategory("");
-        setSelectedTrack("");
-      } else if (assignStep === 3) {
-        const category = categories.find(c => c.id === selectedCategory);
-        if (!category?.tracks) {
-          setSelectedCategory("");
-        }
-        setSelectedTrack("");
-        setSelectedExamId("");
-      } else if (assignStep === 4) {
-        setSelectedExamId("");
+        setAssignStep(1);
       }
+    } else if (assignStep === 4) {
+      setSelectedExamId("");
+      setAssignStep(3);
     }
   };
 
@@ -493,13 +496,257 @@ export default function CreatorStudentsPage() {
         )}
       </div>
 
-      {/* Assign Exam Modal - keeping same modal code from admin students page */}
+      {/* Assign Exam Modal */}
       {showAssignModal && selectedStudent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          {/* ... same modal code as in admin students ... */}
-          <div className="bg-white rounded-md p-6">
-            <p>Assign Exam Modal (same as admin)</p>
-            <button onClick={closeAssignModal} className="mt-4 px-4 py-2 bg-gray-200 rounded">Close</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="px-6 py-4 flex items-center justify-between border-b border-gray-100">
+              <div className="flex items-center gap-4">
+                <div className="w-11 h-11 rounded-xl bg-[#303380]/10 flex items-center justify-center flex-shrink-0">
+                  <BookOpen className="w-5 h-5 text-[#303380]" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">Assign Exam</h2>
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    {selectedStudent.name || selectedStudent.email}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={closeAssignModal}
+                className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Progress - stepper line */}
+            <div className="px-6 pt-3 pb-2 border-b border-gray-100">
+              <div className="flex items-center justify-between gap-3 text-[11px] font-medium text-gray-500">
+                {/* Step 1: Category */}
+                <div className="flex flex-col items-center flex-1 min-w-0">
+                  <div
+                    className={`flex h-7 w-7 items-center justify-center rounded-full border text-[11px] ${
+                      assignStep >= 1 ? 'bg-[#303380] border-[#303380] text-white' : 'border-gray-300 text-gray-500'
+                    }`}
+                  >
+                    {assignStep > 1 ? '✓' : '1'}
+                  </div>
+                  <span className="mt-1">Category</span>
+                </div>
+
+                {/* Connector 1 */}
+                <div
+                  className={`h-px flex-1 ${
+                    assignStep >= (selectedCategoryData?.tracks ? 2 : 3) ? 'bg-[#303380]' : 'bg-gray-200'
+                  }`}
+                />
+
+                {/* Step 2: Level (only if tracks exist) */}
+                {selectedCategoryData?.tracks && (
+                  <>
+                    <div className="flex flex-col items-center flex-1 min-w-0">
+                      <div
+                        className={`flex h-7 w-7 items-center justify-center rounded-full border text-[11px] ${
+                          assignStep >= 2 ? 'bg-[#303380] border-[#303380] text-white' : 'border-gray-300 text-gray-500'
+                        }`}
+                      >
+                        {assignStep > 2 ? '✓' : '2'}
+                      </div>
+                      <span className="mt-1">Level</span>
+                    </div>
+                    <div
+                      className={`h-px flex-1 ${assignStep >= 3 ? 'bg-[#303380]' : 'bg-gray-200'}`}
+                    />
+                  </>
+                )}
+
+                {/* Step 3: Exam */}
+                <div className="flex flex-col items-center flex-1 min-w-0">
+                  <div
+                    className={`flex h-7 w-7 items-center justify-center rounded-full border text-[11px] ${
+                      assignStep >= 3 ? 'bg-[#303380] border-[#303380] text-white' : 'border-gray-300 text-gray-500'
+                    }`}
+                  >
+                    {assignStep > 3 ? '✓' : selectedCategoryData?.tracks ? '3' : '2'}
+                  </div>
+                  <span className="mt-1">Exam</span>
+                </div>
+
+                {/* Connector 3 */}
+                <div
+                  className={`h-px flex-1 ${assignStep >= 4 ? 'bg-[#303380]' : 'bg-gray-200'}`}
+                />
+
+                {/* Step 4: Confirm */}
+                <div className="flex flex-col items-center flex-1 min-w-0">
+                  <div
+                    className={`flex h-7 w-7 items-center justify-center rounded-full border text-[11px] ${
+                      assignStep >= 4 ? 'bg-[#303380] border-[#303380] text-white' : 'border-gray-300 text-gray-500'
+                    }`}
+                  >
+                    {selectedCategoryData?.tracks ? '4' : '3'}
+                  </div>
+                  <span className="mt-1">Confirm</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="px-6 py-6 min-h-[320px] overflow-y-auto flex-1">
+              {assignStep === 1 && (
+                <div>
+                  <h3 className="text-base font-medium text-gray-900 mb-1">Select exam category</h3>
+                  <p className="text-sm text-gray-500 mb-5">Choose the type of exam you want to assign</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {categories.map((category) => (
+                      <button
+                        key={category.id}
+                        onClick={() => handleCategorySelect(category.id)}
+                        className="p-4 rounded-xl border border-gray-200 bg-white hover:border-[#303380]/40 hover:bg-[#303380]/5 transition text-left group"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-gray-100 group-hover:bg-[#303380]/10 flex items-center justify-center flex-shrink-0 transition">
+                            <BookOpen className="w-5 h-5 text-gray-600 group-hover:text-[#303380]" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-medium text-sm text-gray-900">{category.name}</h4>
+                            {category.tracks && (
+                              <p className="text-xs text-gray-500 mt-0.5">{category.tracks.length} levels</p>
+                            )}
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[#303380] flex-shrink-0" />
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {assignStep === 2 && selectedCategoryData?.tracks && (
+                <div>
+                  <h3 className="text-base font-medium text-gray-900 mb-1">Select difficulty level</h3>
+                  <p className="text-sm text-gray-500 mb-5">{selectedCategoryData.name} — choose the level</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+                    {selectedCategoryData.tracks.map((track, index) => (
+                      <button
+                        key={track}
+                        onClick={() => handleTrackSelect(track)}
+                        className="p-3 rounded-xl border border-gray-200 bg-white hover:border-[#303380]/40 hover:bg-[#303380]/5 transition text-center font-medium text-sm text-gray-900"
+                      >
+                        {track}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {assignStep === 3 && (
+                <div>
+                  <h3 className="text-base font-medium text-gray-900 mb-1">Select exam</h3>
+                  <p className="text-sm text-gray-500 mb-5">
+                    {selectedCategoryData?.name}
+                    {selectedTrack && ` • ${selectedTrack}`}
+                  </p>
+                  {filteredExams.length === 0 ? (
+                    <div className="text-center py-16 rounded-xl bg-gray-50">
+                      <FileText className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                      <p className="text-gray-500 text-sm">No exams available for this category</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {filteredExams.map((exam) => (
+                        <button
+                          key={exam.id}
+                          onClick={() => handleExamSelect(exam.id)}
+                          className="w-full text-left p-4 rounded-xl border border-gray-200 bg-white hover:border-[#303380]/40 hover:bg-[#303380]/5 transition group"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              <div className="w-9 h-9 rounded-lg bg-gray-100 group-hover:bg-[#303380]/10 flex items-center justify-center flex-shrink-0 transition">
+                                <FileText className="w-4 h-4 text-gray-600 group-hover:text-[#303380]" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-medium text-sm text-gray-900 truncate">{exam.title}</h4>
+                                {exam.track && <p className="text-xs text-gray-500 mt-0.5">Level: {exam.track}</p>}
+                              </div>
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[#303380] flex-shrink-0" />
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {assignStep === 4 && (
+                <div>
+                  <h3 className="text-base font-medium text-gray-900 mb-1">Confirm assignment</h3>
+                  <p className="text-sm text-gray-500 mb-5">Review before assigning</p>
+                  <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-5 space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-lg bg-white border border-gray-200 flex items-center justify-center flex-shrink-0">
+                        <Users className="w-4 h-4 text-gray-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Student</p>
+                        <p className="text-sm font-medium text-gray-900">{selectedStudent.name || selectedStudent.email}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-lg bg-white border border-gray-200 flex items-center justify-center flex-shrink-0">
+                        <FileText className="w-4 h-4 text-gray-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Exam</p>
+                        <p className="text-sm font-medium text-gray-900 truncate">{selectedExamData?.title}</p>
+                        {selectedExamData?.track && (
+                          <p className="text-xs text-gray-500 mt-0.5">{selectedCategoryData?.name} • {selectedExamData.track}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between gap-3">
+              <button
+                onClick={assignStep === 1 ? closeAssignModal : handleBack}
+                className="px-4 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition flex items-center gap-2"
+                disabled={assigning}
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Back
+              </button>
+              <button
+                onClick={handleAssignExam}
+                disabled={assignStep !== 4 || assigning || !selectedExamId}
+                className="px-5 py-2.5 text-sm font-medium text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                style={{ backgroundColor: "#303380" }}
+                onMouseEnter={(e) => {
+                  if (!e.currentTarget.disabled) e.currentTarget.style.backgroundColor = "#252a6b";
+                }}
+                onMouseLeave={(e) => {
+                  if (!e.currentTarget.disabled) e.currentTarget.style.backgroundColor = "#303380";
+                }}
+              >
+                {assigning ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                    Assigning...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="w-4 h-4" />
+                    Assign Exam
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -146,19 +146,28 @@ export default function ExamEditModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="bg-white rounded-lg w-full max-w-7xl max-h-[90vh] flex flex-col shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white rounded-xl w-full max-w-6xl h-[80vh] flex flex-col shadow-2xl border border-gray-200">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Edit Exam Questions</h2>
-            <p className="text-sm text-gray-600 mt-1">Select section and part to view/edit questions</p>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+              <Edit className="w-5 h-5 text-[#303380]" />
+            </div>
+            <div>
+              <h2 className="text-lg md:text-xl font-semibold text-gray-900">
+                Edit Exam Questions
+              </h2>
+              <p className="text-xs md:text-sm text-gray-500 mt-0.5">
+                Choose a section and, for IELTS, the part you want to modify.
+              </p>
+            </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg hover:bg-white/50 transition-colors"
+            className="p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
           >
-            <X className="w-6 h-6 text-gray-600" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 

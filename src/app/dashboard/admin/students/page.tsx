@@ -193,21 +193,24 @@ export default function AdminStudentsPage() {
   };
 
   const handleBack = () => {
-    if (assignStep > 1) {
-      setAssignStep(assignStep - 1);
-      if (assignStep === 2) {
+    if (assignStep <= 1) return;
+    if (assignStep === 2) {
+      setSelectedCategory("");
+      setSelectedTrack("");
+      setAssignStep(1);
+    } else if (assignStep === 3) {
+      const category = categories.find(c => c.id === selectedCategory);
+      setSelectedTrack("");
+      setSelectedExamId("");
+      if (category?.tracks && category.tracks.length > 0) {
+        setAssignStep(2);
+      } else {
         setSelectedCategory("");
-        setSelectedTrack("");
-      } else if (assignStep === 3) {
-        const category = categories.find(c => c.id === selectedCategory);
-        if (!category?.tracks) {
-          setSelectedCategory("");
-        }
-        setSelectedTrack("");
-        setSelectedExamId("");
-      } else if (assignStep === 4) {
-        setSelectedExamId("");
+        setAssignStep(1);
       }
+    } else if (assignStep === 4) {
+      setSelectedExamId("");
+      setAssignStep(3);
     }
   };
 
@@ -634,141 +637,111 @@ export default function AdminStudentsPage() {
 
       {/* Assign Exam Modal */}
       {showAssignModal && selectedStudent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-md shadow-lg w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden border border-gray-200 flex flex-col">
-            {/* Header */}
-            <div className="px-4 sm:px-6 py-4 flex items-center justify-between border-b border-gray-200">
-              <div>
-                <h2 className="text-lg sm:text-xl font-medium text-gray-900">Assign Exam</h2>
-                <p className="text-gray-500 text-sm mt-0.5">
-                  {selectedStudent.name || selectedStudent.email}
-                </p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="px-6 py-4 flex items-center justify-between border-b border-gray-100">
+              <div className="flex items-center gap-4">
+                <div className="w-11 h-11 rounded-xl bg-[#303380]/10 flex items-center justify-center flex-shrink-0">
+                  <BookOpen className="w-5 h-5 text-[#303380]" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">Assign Exam</h2>
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    {selectedStudent.name || selectedStudent.email}
+                  </p>
+                </div>
               </div>
               <button
                 onClick={closeAssignModal}
-                className="text-gray-400 hover:text-gray-600 rounded-md p-1.5 hover:bg-gray-50 transition"
+                className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Progress Steps */}
-            <div className="px-4 sm:px-6 py-4 bg-gray-50 border-b border-gray-200">
-              <div className="flex items-center justify-between overflow-x-auto">
-                {/* Step 1: Category */}
-                <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-shrink-0">
-                  <div className={`flex items-center justify-center w-8 h-8 rounded-full text-xs sm:text-sm font-medium transition ${
-                    assignStep >= 1 
-                      ? 'bg-gray-900 text-white' 
-                      : 'bg-gray-200 text-gray-500'
-                  }`}>
+            <div className="px-6 pt-3 pb-2 border-b border-gray-100">
+              <div className="flex items-center justify-between gap-3 text-[11px] font-medium text-gray-500">
+                <div className="flex flex-col items-center flex-1 min-w-0">
+                  <div
+                    className={`flex h-7 w-7 items-center justify-center rounded-full border text-[11px] ${
+                      assignStep >= 1 ? 'bg-[#303380] border-[#303380] text-white' : 'border-gray-300 text-gray-500'
+                    }`}
+                  >
                     {assignStep > 1 ? '✓' : '1'}
                   </div>
-                  <div className="hidden sm:block">
-                    <p className={`text-xs font-medium ${assignStep >= 1 ? 'text-gray-900' : 'text-gray-500'}`}>
-                      Category
-                    </p>
-                  </div>
+                  <span className="mt-1">Category</span>
                 </div>
-
-                <div className={`flex-1 h-0.5 mx-2 sm:mx-4 transition ${
-                  (selectedCategoryData?.tracks && assignStep >= 2) || (!selectedCategoryData?.tracks && assignStep >= 3) ? 'bg-gray-900' : 'bg-gray-200'
-                }`}></div>
-
-                {/* Step 2: Track (only if tracks exist) */}
+                <div
+                  className={`h-px flex-1 ${
+                    assignStep >= (selectedCategoryData?.tracks ? 2 : 3) ? 'bg-[#303380]' : 'bg-gray-200'
+                  }`}
+                />
                 {selectedCategoryData?.tracks && (
                   <>
-                    <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-shrink-0">
-                      <div className={`flex items-center justify-center w-8 h-8 rounded-full text-xs sm:text-sm font-medium transition ${
-                        assignStep >= 2 
-                          ? 'bg-gray-900 text-white' 
-                          : 'bg-gray-200 text-gray-500'
-                      }`}>
+                    <div className="flex flex-col items-center flex-1 min-w-0">
+                      <div
+                        className={`flex h-7 w-7 items-center justify-center rounded-full border text-[11px] ${
+                          assignStep >= 2 ? 'bg-[#303380] border-[#303380] text-white' : 'border-gray-300 text-gray-500'
+                        }`}
+                      >
                         {assignStep > 2 ? '✓' : '2'}
                       </div>
-                      <div className="hidden sm:block">
-                        <p className={`text-xs font-medium ${assignStep >= 2 ? 'text-gray-900' : 'text-gray-500'}`}>
-                          Level
-                        </p>
-                      </div>
+                      <span className="mt-1">Level</span>
                     </div>
-                    <div className={`flex-1 h-0.5 mx-2 sm:mx-4 transition ${
-                      assignStep >= 3 ? 'bg-gray-900' : 'bg-gray-200'
-                    }`}></div>
+                    <div
+                      className={`h-px flex-1 ${assignStep >= 3 ? 'bg-[#303380]' : 'bg-gray-200'}`}
+                    />
                   </>
                 )}
-
-                {/* Step 3: Exam (shown as step 2 if no tracks, step 3 if tracks exist) */}
-                <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-shrink-0">
-                  <div className={`flex items-center justify-center w-8 h-8 rounded-full text-xs sm:text-sm font-medium transition ${
-                    assignStep >= 3 
-                      ? 'bg-gray-900 text-white' 
-                      : 'bg-gray-200 text-gray-500'
-                  }`}>
+                <div className="flex flex-col items-center flex-1 min-w-0">
+                  <div
+                    className={`flex h-7 w-7 items-center justify-center rounded-full border text-[11px] ${
+                      assignStep >= 3 ? 'bg-[#303380] border-[#303380] text-white' : 'border-gray-300 text-gray-500'
+                    }`}
+                  >
                     {assignStep > 3 ? '✓' : selectedCategoryData?.tracks ? '3' : '2'}
                   </div>
-                  <div className="hidden sm:block">
-                    <p className={`text-xs font-medium ${assignStep >= 3 ? 'text-gray-900' : 'text-gray-500'}`}>
-                      Exam
-                    </p>
-                  </div>
+                  <span className="mt-1">Exam</span>
                 </div>
-
-                <div className={`flex-1 h-0.5 mx-2 sm:mx-4 transition ${
-                  assignStep >= 4 ? 'bg-gray-900' : 'bg-gray-200'
-                }`}></div>
-
-                {/* Step 4: Confirm (shown as step 3 if no tracks, step 4 if tracks exist) */}
-                <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-shrink-0">
-                  <div className={`flex items-center justify-center w-8 h-8 rounded-full text-xs sm:text-sm font-medium transition ${
-                    assignStep >= 4 
-                      ? 'bg-gray-900 text-white' 
-                      : 'bg-gray-200 text-gray-500'
-                  }`}>
+                <div
+                  className={`h-px flex-1 ${assignStep >= 4 ? 'bg-[#303380]' : 'bg-gray-200'}`}
+                />
+                <div className="flex flex-col items-center flex-1 min-w-0">
+                  <div
+                    className={`flex h-7 w-7 items-center justify-center rounded-full border text-[11px] ${
+                      assignStep >= 4 ? 'bg-[#303380] border-[#303380] text-white' : 'border-gray-300 text-gray-500'
+                    }`}
+                  >
                     {selectedCategoryData?.tracks ? '4' : '3'}
                   </div>
-                  <div className="hidden sm:block">
-                    <p className={`text-xs font-medium ${assignStep >= 4 ? 'text-gray-900' : 'text-gray-500'}`}>
-                      Confirm
-                    </p>
-                  </div>
+                  <span className="mt-1">Confirm</span>
                 </div>
               </div>
             </div>
 
-            {/* Content */}
-            <div className="px-4 sm:px-6 py-6 min-h-[300px] overflow-y-auto flex-1">
-              {/* Step 1: Select Category */}
+            <div className="px-6 py-6 min-h-[320px] overflow-y-auto flex-1">
               {assignStep === 1 && (
-                <div className="space-y-4">
-                  <div className="text-center mb-6">
-                    <h3 className="text-lg sm:text-xl font-medium text-gray-900 mb-1">
-                      Select Exam Category
-                    </h3>
-                    <p className="text-sm text-gray-500">Choose the type of exam you want to assign</p>
-                  </div>
-                  
+                <div>
+                  <h3 className="text-base font-medium text-gray-900 mb-1">Select exam category</h3>
+                  <p className="text-sm text-gray-500 mb-5">Choose the type of exam you want to assign</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {categories.map((category) => (
                       <button
                         key={category.id}
                         onClick={() => handleCategorySelect(category.id)}
-                        className="p-4 rounded-md border border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50 transition text-left"
+                        className="p-4 rounded-xl border border-gray-200 bg-white hover:border-[#303380]/40 hover:bg-[#303380]/5 transition text-left group"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-md bg-gray-100 flex items-center justify-center flex-shrink-0">
-                            <BookOpen className="w-5 h-5 text-gray-700" />
+                          <div className="w-10 h-10 rounded-lg bg-gray-100 group-hover:bg-[#303380]/10 flex items-center justify-center flex-shrink-0 transition">
+                            <BookOpen className="w-5 h-5 text-gray-600 group-hover:text-[#303380]" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-medium text-sm text-gray-900">
-                              {category.name}
-                            </h4>
+                            <h4 className="font-medium text-sm text-gray-900">{category.name}</h4>
                             {category.tracks && (
-                              <p className="text-xs text-gray-500 mt-0.5">
-                                {category.tracks.length} levels available
-                              </p>
+                              <p className="text-xs text-gray-500 mt-0.5">{category.tracks.length} levels</p>
                             )}
                           </div>
+                          <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[#303380] flex-shrink-0" />
                         </div>
                       </button>
                     ))}
@@ -776,53 +749,35 @@ export default function AdminStudentsPage() {
                 </div>
               )}
 
-              {/* Step 2: Select Track (only for General English) */}
               {assignStep === 2 && selectedCategoryData?.tracks && (
-                <div className="space-y-4">
-                  <div className="text-center mb-6">
-                    <h3 className="text-lg sm:text-xl font-medium text-gray-900 mb-1">
-                      Select Difficulty Level
-                    </h3>
-                    <p className="text-sm text-gray-500">Choose the appropriate level for {selectedCategoryData.name}</p>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
-                    {selectedCategoryData.tracks.map((track, index) => (
+                <div>
+                  <h3 className="text-base font-medium text-gray-900 mb-1">Select difficulty level</h3>
+                  <p className="text-sm text-gray-500 mb-5">{selectedCategoryData.name} — choose the level</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+                    {selectedCategoryData.tracks.map((track) => (
                       <button
                         key={track}
                         onClick={() => handleTrackSelect(track)}
-                        className="p-4 rounded-md border border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50 transition text-center"
+                        className="p-3 rounded-xl border border-gray-200 bg-white hover:border-[#303380]/40 hover:bg-[#303380]/5 transition text-center font-medium text-sm text-gray-900"
                       >
-                        <div className="w-10 h-10 rounded-md bg-gray-100 flex items-center justify-center mx-auto mb-2">
-                          <span className="text-sm font-medium text-gray-700">{index + 1}</span>
-                        </div>
-                        <h4 className="font-medium text-sm text-gray-900">
-                          {track}
-                        </h4>
+                        {track}
                       </button>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Step 3: Select Exam */}
               {assignStep === 3 && (
-                <div className="space-y-4">
-                  <div className="text-center mb-6">
-                    <h3 className="text-lg sm:text-xl font-medium text-gray-900 mb-1">
-                      Select Specific Exam
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      {selectedCategoryData?.name}
-                      {selectedTrack && ` • ${selectedTrack} Level`}
-                    </p>
-                  </div>
-                  
+                <div>
+                  <h3 className="text-base font-medium text-gray-900 mb-1">Select exam</h3>
+                  <p className="text-sm text-gray-500 mb-5">
+                    {selectedCategoryData?.name}
+                    {selectedTrack && ` • ${selectedTrack}`}
+                  </p>
                   {filteredExams.length === 0 ? (
-                    <div className="text-center py-12">
+                    <div className="text-center py-16 rounded-xl bg-gray-50">
                       <FileText className="w-12 h-12 mx-auto mb-3 text-gray-300" />
                       <p className="text-gray-500 text-sm">No exams available for this category</p>
-                      <p className="text-gray-400 text-xs mt-1">Try selecting a different category or level</p>
                     </div>
                   ) : (
                     <div className="space-y-2">
@@ -830,23 +785,19 @@ export default function AdminStudentsPage() {
                         <button
                           key={exam.id}
                           onClick={() => handleExamSelect(exam.id)}
-                          className="w-full text-left p-3 rounded-md border border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50 transition"
+                          className="w-full text-left p-4 rounded-xl border border-gray-200 bg-white hover:border-[#303380]/40 hover:bg-[#303380]/5 transition group"
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3 flex-1 min-w-0">
-                              <div className="w-8 h-8 rounded-md bg-gray-100 flex items-center justify-center flex-shrink-0">
-                                <FileText className="w-4 h-4 text-gray-700" />
+                              <div className="w-9 h-9 rounded-lg bg-gray-100 group-hover:bg-[#303380]/10 flex items-center justify-center flex-shrink-0 transition">
+                                <FileText className="w-4 h-4 text-gray-600 group-hover:text-[#303380]" />
                               </div>
                               <div className="flex-1 min-w-0">
-                                <h4 className="font-medium text-sm text-gray-900 truncate">
-                                  {exam.title}
-                                </h4>
-                                {exam.track && (
-                                  <p className="text-xs text-gray-500 mt-0.5">Level: {exam.track}</p>
-                                )}
+                                <h4 className="font-medium text-sm text-gray-900 truncate">{exam.title}</h4>
+                                {exam.track && <p className="text-xs text-gray-500 mt-0.5">Level: {exam.track}</p>}
                               </div>
                             </div>
-                            <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0 ml-2" />
+                            <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[#303380] flex-shrink-0" />
                           </div>
                         </button>
                       ))}
@@ -855,70 +806,30 @@ export default function AdminStudentsPage() {
                 </div>
               )}
 
-              {/* Step 4: Confirm */}
               {assignStep === 4 && (
-                <div className="space-y-4">
-                  <div className="text-center mb-6">
-                    <h3 className="text-lg sm:text-xl font-medium text-gray-900 mb-1">
-                      Confirm Assignment
-                    </h3>
-                    <p className="text-sm text-gray-500">Review the details before assigning the exam</p>
-                  </div>
-                  
-                  <div className="bg-gray-50 rounded-md p-4 sm:p-6 border border-gray-200">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-md bg-gray-100 flex items-center justify-center flex-shrink-0">
-                            <Users className="w-4 h-4 text-gray-700" />
-                          </div>
-                          <div>
-                            <p className="text-xs font-medium text-gray-500">Student</p>
-                            <p className="text-sm font-medium text-gray-900">
-                              {selectedStudent.name || selectedStudent.email}
-                            </p>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-md bg-gray-100 flex items-center justify-center flex-shrink-0">
-                            <BookOpen className="w-4 h-4 text-gray-700" />
-                          </div>
-                          <div>
-                            <p className="text-xs font-medium text-gray-500">Category</p>
-                            <p className="text-sm font-medium text-gray-900">{selectedCategoryData?.name}</p>
-                          </div>
-                        </div>
-                        
-                        {selectedTrack && (
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-md bg-gray-100 flex items-center justify-center flex-shrink-0">
-                              <Target className="w-4 h-4 text-gray-700" />
-                            </div>
-                            <div>
-                              <p className="text-xs font-medium text-gray-500">Level</p>
-                              <p className="text-sm font-medium text-gray-900">{selectedTrack}</p>
-                            </div>
-                          </div>
-                        )}
+                <div>
+                  <h3 className="text-base font-medium text-gray-900 mb-1">Confirm assignment</h3>
+                  <p className="text-sm text-gray-500 mb-5">Review before assigning</p>
+                  <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-5 space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-lg bg-white border border-gray-200 flex items-center justify-center flex-shrink-0">
+                        <Users className="w-4 h-4 text-gray-600" />
                       </div>
-                      
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-md bg-gray-100 flex items-center justify-center flex-shrink-0">
-                            <FileText className="w-4 h-4 text-gray-700" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium text-gray-500">Exam</p>
-                            <p className="text-sm font-medium text-gray-900 truncate">
-                              {selectedExamData?.title}
-                            </p>
-                            {selectedExamData?.track && (
-                              <p className="text-xs text-gray-500 mt-0.5">Level: {selectedExamData.track}</p>
-                            )}
-                          </div>
-                        </div>
-                        
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Student</p>
+                        <p className="text-sm font-medium text-gray-900">{selectedStudent.name || selectedStudent.email}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-lg bg-white border border-gray-200 flex items-center justify-center flex-shrink-0">
+                        <FileText className="w-4 h-4 text-gray-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Exam</p>
+                        <p className="text-sm font-medium text-gray-900 truncate">{selectedExamData?.title}</p>
+                        {selectedExamData?.track && (
+                          <p className="text-xs text-gray-500 mt-0.5">{selectedCategoryData?.name} • {selectedExamData.track}</p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -926,84 +837,39 @@ export default function AdminStudentsPage() {
               )}
             </div>
 
-            {/* Footer */}
-            <div className="px-4 sm:px-6 py-4 border-t border-gray-200 bg-gray-50">
-              <div className="flex items-center justify-between gap-3">
-                <button
-                  onClick={assignStep === 1 ? closeAssignModal : handleBack}
-                  className="px-4 py-2 text-gray-700 hover:text-gray-900 font-medium flex items-center gap-2 transition hover:bg-gray-100 rounded-md text-sm"
-                  disabled={assigning}
-                >
-                  {assignStep === 1 ? (
-                    <>
-                      <X className="w-4 h-4" />
-                      Cancel
-                    </>
-                  ) : (
-                    <>
-                      <ChevronLeft className="w-4 h-4" />
-                      Back
-                    </>
-                  )}
-                </button>
-
-                {assignStep < 4 && (
-                  <button
-                    onClick={() => {
-                      if (assignStep === 3 && selectedExamId) {
-                        setAssignStep(4);
-                      }
-                    }}
-                    disabled={assignStep === 3 && !selectedExamId}
-                    className="px-4 py-2 text-white font-medium rounded-md transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
-                    style={{ backgroundColor: "#303380" }}
-                    onMouseEnter={(e) => {
-                      if (!e.currentTarget.disabled) {
-                        e.currentTarget.style.backgroundColor = "#252a6b";
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!e.currentTarget.disabled) {
-                        e.currentTarget.style.backgroundColor = "#303380";
-                      }
-                    }}
-                  >
-                    Next
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
+            <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between gap-3">
+              <button
+                onClick={assignStep === 1 ? closeAssignModal : handleBack}
+                className="px-4 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition flex items-center gap-2"
+                disabled={assigning}
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Back
+              </button>
+              <button
+                onClick={handleAssignExam}
+                disabled={assignStep !== 4 || assigning || !selectedExamId}
+                className="px-5 py-2.5 text-sm font-medium text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                style={{ backgroundColor: "#303380" }}
+                onMouseEnter={(e) => {
+                  if (!e.currentTarget.disabled) e.currentTarget.style.backgroundColor = "#252a6b";
+                }}
+                onMouseLeave={(e) => {
+                  if (!e.currentTarget.disabled) e.currentTarget.style.backgroundColor = "#303380";
+                }}
+              >
+                {assigning ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                    Assigning...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="w-4 h-4" />
+                    Assign Exam
+                  </>
                 )}
-
-                {assignStep === 4 && (
-                  <button
-                    onClick={handleAssignExam}
-                    disabled={assigning}
-                    className="px-4 py-2 text-white font-medium rounded-md transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
-                    style={{ backgroundColor: "#303380" }}
-                    onMouseEnter={(e) => {
-                      if (!e.currentTarget.disabled) {
-                        e.currentTarget.style.backgroundColor = "#252a6b";
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!e.currentTarget.disabled) {
-                        e.currentTarget.style.backgroundColor = "#303380";
-                      }
-                    }}
-                  >
-                    {assigning ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                        Assigning...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle className="w-4 h-4" />
-                        Assign Exam
-                      </>
-                    )}
-                  </button>
-                )}
-              </div>
+              </button>
             </div>
           </div>
         </div>

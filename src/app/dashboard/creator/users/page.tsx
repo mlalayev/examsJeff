@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { 
   Users, Key, Search, Filter, CheckCircle, XCircle, Plus,
-  Eye, X, Check, Edit, Info
+  Eye, X, Check, Edit, UserPlus
 } from "lucide-react";
 import UnifiedLoading from "@/components/loading/UnifiedLoading";
+import { AlertModal } from "@/components/modals/AlertModal";
+import { UserDetailsModal } from "@/components/modals/UserDetailsModal";
 
 export default function CreatorUsersPage() {
   const { data: session, status } = useSession();
@@ -29,6 +31,28 @@ export default function CreatorUsersPage() {
   const [branches, setBranches] = useState<any[]>([]);
   const [updating, setUpdating] = useState(false);
   const [usersLoading, setUsersLoading] = useState(true);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createFormData, setCreateFormData] = useState({
+    name: "",
+    email: "",
+    password: "",
+    role: "STUDENT" as string,
+    branchId: "",
+    approved: false,
+    phoneNumber: "",
+    dateOfBirth: "",
+    program: "",
+    paymentDate: "",
+    paymentAmount: "",
+  });
+  const [createCreating, setCreateCreating] = useState(false);
+  const [createError, setCreateError] = useState("");
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; title: string; message: string; type: "success" | "error" | "info" }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info",
+  });
 
   useEffect(() => {
     if (status === "loading") return;
@@ -82,16 +106,21 @@ export default function CreatorUsersPage() {
       });
 
       if (res.ok) {
-        alert(`Password reset successfully: ${selectedUser.email}\nNew password: ${newPassword}`);
+        setAlertModal({
+          isOpen: true,
+          title: "Password reset successfully",
+          message: `User: ${selectedUser.email}\nNew password: ${newPassword}`,
+          type: "success",
+        });
         setSelectedUser(null);
         setNewPassword("");
-        fetchUsers(); // Refresh list
+        fetchUsers();
       } else {
         const data = await res.json();
-        alert(`Error: ${data.error}`);
+        setAlertModal({ isOpen: true, title: "Error", message: data.error || "Failed to reset", type: "error" });
       }
     } catch (error) {
-      alert("Failed to reset password");
+      setAlertModal({ isOpen: true, title: "Error", message: "Failed to reset password", type: "error" });
     }
     setResetting(false);
   };
@@ -106,13 +135,13 @@ export default function CreatorUsersPage() {
       });
 
       if (res.ok) {
-        fetchUsers(); // Refresh list
+        fetchUsers();
       } else {
         const data = await res.json();
-        alert(`Error: ${data.error}`);
+        setAlertModal({ isOpen: true, title: "Error", message: data.error || "Failed to update", type: "error" });
       }
     } catch (error) {
-      alert("Failed to update approval status");
+      setAlertModal({ isOpen: true, title: "Error", message: "Failed to update approval status", type: "error" });
     }
     setApproving(null);
   };
@@ -130,18 +159,21 @@ export default function CreatorUsersPage() {
         setNewRole(data.user.role);
         setNewBranchId(data.user.branchId || "");
       } else {
-        alert(`Error: ${data.error}`);
+        setAlertModal({ isOpen: true, title: "Error", message: data.error || "Failed to load", type: "error" });
         setShowDetailsModal(false);
       }
     } catch (error) {
-      alert("Failed to fetch user details");
+      setAlertModal({ isOpen: true, title: "Error", message: "Failed to fetch user details", type: "error" });
       setShowDetailsModal(false);
     }
     setLoadingDetails(false);
   };
 
-  const handleUpdateUser = async () => {
+  const handleUpdateUser = async (overrideRole?: string, overrideBranchId?: string) => {
     if (!userDetails) return;
+
+    const roleToSend = overrideRole ?? newRole;
+    const branchToSend = overrideBranchId ?? newBranchId;
 
     setUpdating(true);
     try {
@@ -150,26 +182,103 @@ export default function CreatorUsersPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           approved: userDetails.approved,
-          role: newRole !== userDetails.role ? newRole : undefined,
-          branchId: newBranchId !== userDetails.branchId ? (newBranchId || null) : undefined,
+          role: roleToSend !== userDetails.role ? roleToSend : undefined,
+          branchId: branchToSend !== userDetails.branchId ? (branchToSend || null) : undefined,
         }),
       });
 
       if (res.ok) {
         const data = await res.json();
-        setUserDetails({ ...userDetails, ...data.user });
+        setUserDetails((prev: any) => ({ ...prev, ...data.user }));
         setEditingRole(false);
         setEditingBranch(false);
-        fetchUsers(); // Refresh list
-        alert("User updated successfully");
+        fetchUsers();
+        setAlertModal({ isOpen: true, title: "Success", message: "User updated successfully", type: "success" });
       } else {
         const data = await res.json();
-        alert(`Error: ${data.error}`);
+        setAlertModal({ isOpen: true, title: "Error", message: data.error || "Failed to update", type: "error" });
       }
     } catch (error) {
-      alert("Failed to update user");
+      setAlertModal({ isOpen: true, title: "Error", message: "Failed to update user", type: "error" });
     }
     setUpdating(false);
+  };
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreateError("");
+    if (!createFormData.name || !createFormData.email || !createFormData.password) {
+      setCreateError("Please fill in all required fields");
+      return;
+    }
+    if (createFormData.password.length < 6) {
+      setCreateError("Password must be at least 6 characters");
+      return;
+    }
+    if (createFormData.role === "STUDENT") {
+      if (!createFormData.phoneNumber || !createFormData.dateOfBirth || !createFormData.program) {
+        setCreateError("Phone number, date of birth, and program are required for students");
+        return;
+      }
+      if (!createFormData.branchId) {
+        setCreateError("Branch is required for students");
+        return;
+      }
+    }
+    setCreateCreating(true);
+    try {
+      const payload: any = {
+        name: createFormData.name,
+        email: createFormData.email,
+        password: createFormData.password,
+        role: createFormData.role,
+        branchId: createFormData.branchId || null,
+        approved: createFormData.approved,
+      };
+      if (createFormData.role === "STUDENT") {
+        payload.studentProfile = {
+          phoneNumber: createFormData.phoneNumber,
+          dateOfBirth: createFormData.dateOfBirth,
+          program: createFormData.program,
+          paymentDate: createFormData.paymentDate || null,
+          paymentAmount: createFormData.paymentAmount || null,
+        };
+      }
+      const res = await fetch("/api/creator/users/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setShowCreateModal(false);
+        setCreateFormData({
+          name: "",
+          email: "",
+          password: "",
+          role: "STUDENT",
+          branchId: "",
+          approved: false,
+          phoneNumber: "",
+          dateOfBirth: "",
+          program: "",
+          paymentDate: "",
+          paymentAmount: "",
+        });
+        fetchUsers();
+        setAlertModal({
+          isOpen: true,
+          title: "User created successfully",
+          message: `Email: ${createFormData.email}\nPassword: ${createFormData.password}\n\nPlease save these credentials.`,
+          type: "success",
+        });
+      } else {
+        setCreateError(data.error || "Failed to create user");
+      }
+    } catch (error) {
+      setCreateError("An error occurred while creating user");
+    }
+    setCreateCreating(false);
   };
 
   if (status === "loading") {
@@ -213,7 +322,23 @@ export default function CreatorUsersPage() {
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-6">
         <div></div>
         <button
-          onClick={() => router.push("/dashboard/creator/create-user")}
+          onClick={() => {
+            setCreateError("");
+            setCreateFormData({
+              name: "",
+              email: "",
+              password: "",
+              role: "STUDENT",
+              branchId: "",
+              approved: false,
+              phoneNumber: "",
+              dateOfBirth: "",
+              program: "",
+              paymentDate: "",
+              paymentAmount: "",
+            });
+            setShowCreateModal(true);
+          }}
           className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-md transition"
           style={{ backgroundColor: "#303380" }}
           onMouseEnter={(e) => {
@@ -468,381 +593,235 @@ export default function CreatorUsersPage() {
 
       {/* User Details Modal */}
       {showDetailsModal && (
+        loadingDetails ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="bg-white rounded-2xl p-10 flex flex-col items-center gap-4 shadow-xl">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#303380]"></div>
+              <p className="text-sm text-gray-600">Loading user details…</p>
+            </div>
+          </div>
+        ) : userDetails ? (
+          <UserDetailsModal
+            userDetails={userDetails}
+            branches={branches}
+            approving={approving}
+            updating={updating}
+            onClose={() => { setShowDetailsModal(false); setUserDetails(null); }}
+            onApprove={handleApprove}
+            onUpdateUser={(role, branchId) => {
+              setNewRole(role);
+              setNewBranchId(branchId);
+              handleUpdateUser(role, branchId);
+            }}
+            onResetPassword={() => setSelectedUser(userDetails)}
+          />
+        ) : null
+      )}
+
+      {/* Create User Modal */}
+      {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-lg shadow-lg max-w-4xl w-full p-6 my-8 max-h-[90vh] overflow-y-auto">
-            {loadingDetails ? (
-              <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-                <p className="mt-4 text-gray-600">Loading user details...</p>
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col my-8">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-[#303380]/10 flex items-center justify-center">
+                  <UserPlus className="w-5 h-5 text-[#303380]" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Create New User</h3>
+                  <p className="text-sm text-gray-500">Manually create a user account</p>
+                </div>
               </div>
-            ) : userDetails ? (
-              <>
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h3 className="text-2xl font-bold text-gray-900">{userDetails.name}</h3>
-                    <p className="text-gray-600">{userDetails.email}</p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setShowDetailsModal(false);
-                      setUserDetails(null);
-                    }}
-                    className="p-2 text-gray-400 hover:text-gray-600 transition"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleCreateUser} className="flex-1 overflow-y-auto p-6 space-y-4">
+              {createError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                  {createError}
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Basic Info */}
-                  <div className="space-y-4">
-                    <h4 className="font-semibold text-gray-900 border-b pb-2">Basic Information</h4>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">ID:</span>
-                        <span className="font-mono text-gray-900">{userDetails.id}</span>
+              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={createFormData.name}
+                  onChange={(e) => setCreateFormData({ ...createFormData, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+                  placeholder="John Doe"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email Address *</label>
+                <input
+                  type="email"
+                  required
+                  value={createFormData.email}
+                  onChange={(e) => setCreateFormData({ ...createFormData, email: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+                  placeholder="john@example.com"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
+                <input
+                  type="text"
+                  required
+                  minLength={6}
+                  value={createFormData.password}
+                  onChange={(e) => setCreateFormData({ ...createFormData, password: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+                  placeholder="Minimum 6 characters"
+                />
+                <p className="text-xs text-gray-500 mt-0.5">Save this password — you can reset it later from Users.</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Role *</label>
+                <select
+                  value={createFormData.role}
+                  onChange={(e) => setCreateFormData({ ...createFormData, role: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+                >
+                  <option value="STUDENT">Student</option>
+                  <option value="TEACHER">Teacher</option>
+                  <option value="ADMIN">Admin</option>
+                  <option value="BRANCH_ADMIN">Branch Admin</option>
+                  <option value="BRANCH_BOSS">Branch Boss</option>
+                  <option value="BOSS">Boss</option>
+                  <option value="CREATOR">Creator (Super Admin)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Branch {createFormData.role === "STUDENT" && <span className="text-red-500">*</span>}
+                </label>
+                <select
+                  value={createFormData.branchId}
+                  onChange={(e) => setCreateFormData({ ...createFormData, branchId: e.target.value })}
+                  required={createFormData.role === "STUDENT"}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+                >
+                  <option value="">No Branch</option>
+                  {branches.map((branch) => (
+                    <option key={branch.id} value={branch.id}>{branch.name}</option>
+                  ))}
+                </select>
+              </div>
+              {createFormData.role === "STUDENT" && (
+                <>
+                  <div className="border-t pt-4 mt-4">
+                    <h4 className="text-sm font-semibold text-gray-900 mb-3">Student Information</h4>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label>
+                        <input
+                          type="tel"
+                          required
+                          value={createFormData.phoneNumber}
+                          onChange={(e) => setCreateFormData({ ...createFormData, phoneNumber: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+                          placeholder="+994 XX XXX XX XX"
+                        />
                       </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-600">Role:</span>
-                        {editingRole ? (
-                          <select
-                            value={newRole}
-                            onChange={(e) => setNewRole(e.target.value)}
-                            className="px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:border-gray-400"
-                          >
-                            <option value="STUDENT">STUDENT</option>
-                            <option value="TEACHER">TEACHER</option>
-                            <option value="ADMIN">ADMIN</option>
-                            <option value="BOSS">BOSS</option>
-                            <option value="BRANCH_ADMIN">BRANCH_ADMIN</option>
-                            <option value="BRANCH_BOSS">BRANCH_BOSS</option>
-                            <option value="CREATOR">CREATOR</option>
-                          </select>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${roleColors[userDetails.role]}`}>
-                              {userDetails.role}
-                            </span>
-                            <button
-                              onClick={() => setEditingRole(true)}
-                              className="p-1 text-gray-400 hover:text-gray-600"
-                              title="Edit role"
-                            >
-                              <Edit className="w-3 h-3" />
-                            </button>
-                          </div>
-                        )}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth *</label>
+                        <input
+                          type="date"
+                          required
+                          value={createFormData.dateOfBirth}
+                          onChange={(e) => setCreateFormData({ ...createFormData, dateOfBirth: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+                        />
                       </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-600">Status:</span>
-                        <span className={userDetails.approved ? "text-green-600" : "text-gray-500"}>
-                          {userDetails.approved ? "Approved" : "Pending"}
-                        </span>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Program *</label>
+                        <input
+                          type="text"
+                          required
+                          value={createFormData.program}
+                          onChange={(e) => setCreateFormData({ ...createFormData, program: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+                          placeholder="e.g., General English A2"
+                        />
                       </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-600">Branch:</span>
-                        {editingBranch ? (
-                          <select
-                            value={newBranchId}
-                            onChange={(e) => setNewBranchId(e.target.value)}
-                            className="px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:border-gray-400"
-                          >
-                            <option value="">No Branch</option>
-                            {branches.map((branch) => (
-                              <option key={branch.id} value={branch.id}>
-                                {branch.name}
-                              </option>
-                            ))}
-                          </select>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <span className="text-gray-900">{userDetails.branch?.name || "—"}</span>
-                            <button
-                              onClick={() => setEditingBranch(true)}
-                              className="p-1 text-gray-400 hover:text-gray-600"
-                              title="Edit branch"
-                            >
-                              <Edit className="w-3 h-3" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Created:</span>
-                        <span className="text-gray-900">{new Date(userDetails.createdAt).toLocaleDateString()}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Last Updated:</span>
-                        <span className="text-gray-900">{new Date(userDetails.updatedAt).toLocaleDateString()}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Statistics */}
-                  <div className="space-y-4">
-                    <h4 className="font-semibold text-gray-900 border-b pb-2">Statistics</h4>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Classes Enrolled:</span>
-                        <span className="font-medium">{userDetails._count?.classEnrollments || 0}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Bookings:</span>
-                        <span className="font-medium">{userDetails._count?.bookingsAsStudent || 0}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Attempts:</span>
-                        <span className="font-medium">{userDetails._count?.attempts || 0}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Enrollments:</span>
-                        <span className="font-medium">{userDetails._count?.enrollments || 0}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Payments:</span>
-                        <span className="font-medium">{userDetails._count?.payments || 0}</span>
-                      </div>
-                      {userDetails.role === "TEACHER" && (
-                        <>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Classes Teaching:</span>
-                            <span className="font-medium">{userDetails._count?.classesTeaching || 0}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Exams Created:</span>
-                            <span className="font-medium">{userDetails._count?.examsCreated || 0}</span>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Student Profile */}
-                  {userDetails.studentProfile && (
-                    <div className="space-y-4">
-                      <h4 className="font-semibold text-gray-900 border-b pb-2">Student Profile</h4>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">First Enrolled:</span>
-                          <span className="text-gray-900">
-                            {userDetails.studentProfile.firstEnrollAt 
-                              ? new Date(userDetails.studentProfile.firstEnrollAt).toLocaleDateString()
-                              : "—"}
-                          </span>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Payment Date</label>
+                          <input
+                            type="date"
+                            value={createFormData.paymentDate}
+                            onChange={(e) => setCreateFormData({ ...createFormData, paymentDate: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+                          />
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Monthly Fee:</span>
-                          <span className="text-gray-900">
-                            {userDetails.studentProfile.monthlyFee 
-                              ? `$${userDetails.studentProfile.monthlyFee}` 
-                              : "—"}
-                          </span>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Payment Amount (AZN)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={createFormData.paymentAmount}
+                            onChange={(e) => setCreateFormData({ ...createFormData, paymentAmount: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+                            placeholder="0.00"
+                          />
                         </div>
-                        {userDetails.studentProfile.teacher && (
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Teacher:</span>
-                            <span className="text-gray-900">{userDetails.studentProfile.teacher.name}</span>
-                          </div>
-                        )}
                       </div>
                     </div>
-                  )}
-
-                  {/* Enrollments */}
-                  {userDetails.enrollments && userDetails.enrollments.length > 0 && (
-                    <div className="space-y-4">
-                      <h4 className="font-semibold text-gray-900 border-b pb-2">Enrollments</h4>
-                      <div className="space-y-2 text-sm">
-                        {userDetails.enrollments.map((enrollment: any) => (
-                          <div key={enrollment.id} className="p-2 bg-gray-50 rounded">
-                            <div className="font-medium">{enrollment.courseName}</div>
-                            <div className="text-xs text-gray-600">
-                              {enrollment.courseType} {enrollment.level && `- ${enrollment.level}`} - {enrollment.status}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Classes */}
-                  {userDetails.classEnrollments && userDetails.classEnrollments.length > 0 && (
-                    <div className="space-y-4">
-                      <h4 className="font-semibold text-gray-900 border-b pb-2">Classes</h4>
-                      <div className="space-y-2 text-sm">
-                        {userDetails.classEnrollments.map((enrollment: any) => (
-                          <div key={enrollment.id} className="p-2 bg-gray-50 rounded">
-                            <div className="font-medium">{enrollment.class.name}</div>
-                            <div className="text-xs text-gray-600">
-                              Enrolled: {new Date(enrollment.createdAt).toLocaleDateString()}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Teacher Classes */}
-                  {userDetails.classesTeaching && userDetails.classesTeaching.length > 0 && (
-                    <div className="space-y-4">
-                      <h4 className="font-semibold text-gray-900 border-b pb-2">Teaching Classes</h4>
-                      <div className="space-y-2 text-sm">
-                        {userDetails.classesTeaching.map((classItem: any) => (
-                          <div key={classItem.id} className="p-2 bg-gray-50 rounded">
-                            <div className="font-medium">{classItem.name}</div>
-                            <div className="text-xs text-gray-600">
-                              {classItem._count.classStudents} students
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Recent Attempts */}
-                  {userDetails.attempts && userDetails.attempts.length > 0 && (
-                    <div className="space-y-4">
-                      <h4 className="font-semibold text-gray-900 border-b pb-2">Recent Attempts</h4>
-                      <div className="space-y-2 text-sm max-h-40 overflow-y-auto">
-                        {userDetails.attempts.map((attempt: any) => (
-                          <div key={attempt.id} className="p-2 bg-gray-50 rounded">
-                            <div className="font-medium">{attempt.exam.title}</div>
-                            <div className="text-xs text-gray-600">
-                              {attempt.status} {attempt.bandOverall && `- Band: ${attempt.bandOverall}`}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {attempt.submittedAt 
-                                ? `Submitted: ${new Date(attempt.submittedAt).toLocaleDateString()}`
-                                : attempt.startedAt 
-                                ? `Started: ${new Date(attempt.startedAt).toLocaleDateString()}`
-                                : `Created: ${new Date(attempt.createdAt).toLocaleDateString()}`}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Recent Payments */}
-                  {userDetails.payments && userDetails.payments.length > 0 && (
-                    <div className="space-y-4">
-                      <h4 className="font-semibold text-gray-900 border-b pb-2">Recent Payments</h4>
-                      <div className="space-y-2 text-sm max-h-40 overflow-y-auto">
-                        {userDetails.payments.map((payment: any) => (
-                          <div key={payment.id} className="p-2 bg-gray-50 rounded">
-                            <div className="flex justify-between">
-                              <span className="font-medium">${payment.amount}</span>
-                              <span className={`text-xs ${payment.status === "PAID" ? "text-green-600" : "text-red-600"}`}>
-                                {payment.status}
-                              </span>
-                            </div>
-                            <div className="text-xs text-gray-600">
-                              Due: {new Date(payment.dueDate).toLocaleDateString()}
-                              {payment.paidDate && ` | Paid: ${new Date(payment.paidDate).toLocaleDateString()}`}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Tuition Payments */}
-                  {userDetails.tuitionPayments && userDetails.tuitionPayments.length > 0 && (
-                    <div className="space-y-4">
-                      <h4 className="font-semibold text-gray-900 border-b pb-2">Tuition Payments</h4>
-                      <div className="space-y-2 text-sm max-h-40 overflow-y-auto">
-                        {userDetails.tuitionPayments.map((payment: any) => (
-                          <div key={payment.id} className="p-2 bg-gray-50 rounded">
-                            <div className="flex justify-between">
-                              <span className="font-medium">
-                                {new Date(payment.year, payment.month - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-                              </span>
-                              <span className={`text-xs ${payment.status === "PAID" ? "text-green-600" : "text-red-600"}`}>
-                                {payment.status} - ${payment.amount}
-                              </span>
-                            </div>
-                            {payment.paidAt && (
-                              <div className="text-xs text-gray-600">
-                                Paid: {new Date(payment.paidAt).toLocaleDateString()}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Actions */}
-                <div className="mt-6 pt-6 border-t flex flex-wrap gap-3">
-                  {(editingRole || editingBranch) && (
-                    <>
-                      <button
-                        onClick={handleUpdateUser}
-                        disabled={updating}
-                        className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white rounded-md transition disabled:opacity-50 disabled:cursor-not-allowed"
-                        style={{ backgroundColor: "#303380" }}
-                        onMouseEnter={(e) => {
-                          if (!e.currentTarget.disabled) {
-                            e.currentTarget.style.backgroundColor = "#252a6b";
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!e.currentTarget.disabled) {
-                            e.currentTarget.style.backgroundColor = "#303380";
-                          }
-                        }}
-                      >
-                        {updating ? "Saving..." : "Save Changes"}
-                      </button>
-                      <button
-                        onClick={() => {
-                          setEditingRole(false);
-                          setEditingBranch(false);
-                          setNewRole(userDetails.role);
-                          setNewBranchId(userDetails.branchId || "");
-                        }}
-                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition"
-                      >
-                        Cancel
-                      </button>
-                    </>
-                  )}
-                  {!editingRole && !editingBranch && (
-                    <>
-                      <button
-                        onClick={() => handleApprove(userDetails.id, !userDetails.approved)}
-                        disabled={approving === userDetails.id}
-                        className={`inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md transition disabled:opacity-50 disabled:cursor-not-allowed ${
-                          userDetails.approved
-                            ? "border border-red-200 text-red-600 hover:bg-red-50"
-                            : "border border-green-200 text-green-600 hover:bg-green-50"
-                        }`}
-                      >
-                        {approving === userDetails.id ? "Updating..." : userDetails.approved ? "Disapprove" : "Approve"}
-                      </button>
-                      <button
-                        onClick={() => setSelectedUser(userDetails)}
-                        className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white rounded-md transition"
-                        style={{ backgroundColor: "#303380" }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = "#252a6b";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = "#303380";
-                        }}
-                      >
-                        <Key className="w-4 h-4 mr-2" />
-                        Reset Password
-                      </button>
-                    </>
-                  )}
-                </div>
-              </>
-            ) : null}
+                  </div>
+                </>
+              )}
+              <div className="flex items-center gap-2 pt-2">
+                <input
+                  type="checkbox"
+                  id="create-approved"
+                  checked={createFormData.approved}
+                  onChange={(e) => setCreateFormData({ ...createFormData, approved: e.target.checked })}
+                  className="w-4 h-4 text-[#303380] border-gray-300 rounded focus:ring-[#303380]"
+                />
+                <label htmlFor="create-approved" className="text-sm text-gray-700">
+                  Approve user immediately
+                </label>
+              </div>
+              <div className="flex gap-3 pt-4 border-t">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={createCreating}
+                  className="flex-1 px-4 py-2.5 text-sm font-medium text-white rounded-md transition disabled:opacity-50"
+                  style={{ backgroundColor: "#303380" }}
+                  onMouseEnter={(e) => {
+                    if (!e.currentTarget.disabled) e.currentTarget.style.backgroundColor = "#252a6b";
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!e.currentTarget.disabled) e.currentTarget.style.backgroundColor = "#303380";
+                  }}
+                >
+                  {createCreating ? "Creating..." : "Create User"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
+
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal((a) => ({ ...a, isOpen: false }))}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+      />
     </div>
   );
 }

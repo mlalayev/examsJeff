@@ -5,9 +5,11 @@ import Navbar from "./Navbar";
 
 export default function ConditionalNavbar() {
   const pathname = usePathname();
-  
-  // Show navbar only on the home page (/)
-  if (pathname === "/") {
+
+  // Show navbar on main marketing and legal pages
+  const showNavbarOnPaths = ["/", "/privacy", "/terms"];
+
+  if (showNavbarOnPaths.includes(pathname)) {
     return <Navbar />;
   }
   
