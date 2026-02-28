@@ -255,8 +255,8 @@ export const QuestionsArea = React.memo(function QuestionsArea({
           </div>
         )}
 
-        {/* Reading Passage */}
-        {readingPassage && (
+        {/* Reading Passage — hidden for IELTS Reading (shown in the right split panel instead) */}
+        {readingPassage && !(section.type === "READING" && examCategory === "IELTS") && (
           <div
             className="mb-6 p-6 rounded-lg"
             style={{

@@ -1290,10 +1290,10 @@ export default function AttemptRunnerPage() {
                 <div
                   ref={splitContainerRef}
                   className="flex flex-1 min-w-0 gap-0"
-                  style={{ userSelect: isDraggingSplit.current ? "none" : "auto" }}
+                  style={{ userSelect: isDraggingSplit.current ? "none" : "auto", height: "calc(100vh - 72px)" }}
                 >
                   {/* Questions side */}
-                  <div style={{ width: `${splitPercent}%`, minWidth: "25%" }} className="min-w-0 overflow-y-auto">
+                  <div style={{ width: `${splitPercent}%`, minWidth: "25%" }} className="min-w-0 overflow-y-auto h-full">
                     {questionsAreaEl}
                   </div>
 
@@ -1306,7 +1306,7 @@ export default function AttemptRunnerPage() {
                   </div>
 
                   {/* Passage side */}
-                  <div style={{ flex: 1, minWidth: "25%" }} className="min-w-0 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
+                  <div style={{ flex: 1, minWidth: "25%" }} className="min-w-0 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden h-full">
                     {/* Header */}
                     <div className="flex items-center justify-between px-5 py-4 flex-shrink-0" style={{ backgroundColor: "#303380" }}>
                       <div className="flex items-center gap-2">

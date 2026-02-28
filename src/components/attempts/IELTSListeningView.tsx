@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { IELTSAudioPlayer } from "@/components/audio/IELTSAudioPlayer";
-import { Clock, CheckCircle2 } from "lucide-react";
+import { IELTSPartsTimerBar } from "@/components/attempts/IELTSPartsTimerBar";
 
 interface Question {
   id: string;
@@ -208,7 +208,7 @@ export function IELTSListeningView({
     return "text-gray-700";
   };
 
-  const audioSource = section.audio || section.questions?.[0]?.prompt?.audio;
+  const audioSource = section.audio || (section.questions?.[0] as any)?.prompt?.audio;
 
   return (
     <div className="space-y-6">
@@ -244,128 +244,18 @@ export function IELTSListeningView({
       )}
 
       {/* Timer and Part Selection - Fixed Top Right */}
-      <div 
-        className="fixed top-4 right-4 z-50 flex items-center gap-3 rounded-lg shadow-lg p-2"
-        style={{
-          backgroundColor: "#D8D8E0",
-          borderColor: "rgba(48, 51, 128, 0.1)",
-          border: "1px solid",
-        }}
-      >
-        {/* Part Selection - Small Squares */}
-        <div className="flex items-center gap-2">
-          {[1, 2, 3, 4].map((partNum) => {
-            const progress = partProgress[partNum - 1];
-            const isActive = currentPart === partNum;
-            return (
-              <button
-                key={partNum}
-                onClick={() => onPartChange?.(partNum)}
-                className="relative w-16 h-16 rounded-lg border-2 transition-all duration-200 flex flex-col items-center justify-center"
-                style={isActive ? {
-                  backgroundColor: "#303380",
-                  borderColor: "#303380",
-                  color: "white",
-                  boxShadow: "0 4px 6px rgba(48, 51, 128, 0.3)",
-                } : {
-                  backgroundColor: "white",
-                  borderColor: "rgba(48, 51, 128, 0.15)",
-                  color: "rgba(48, 51, 128, 0.9)",
-                }}
-                onMouseEnter={(e) => {
-                  if (!isActive) {
-                    e.currentTarget.style.borderColor = "rgba(48, 51, 128, 0.3)";
-                    e.currentTarget.style.backgroundColor = "rgba(48, 51, 128, 0.02)";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isActive) {
-                    e.currentTarget.style.borderColor = "rgba(48, 51, 128, 0.15)";
-                    e.currentTarget.style.backgroundColor = "white";
-                  }
-                }}
-                title={`Part ${partNum}: ${progress.answered}/${progress.total}`}
-              >
-                <div 
-                  className="text-xs font-bold mb-1"
-                  style={{ color: isActive ? "white" : "rgba(48, 51, 128, 0.9)" }}
-                >
-                  P{partNum}
-                </div>
-                {/* Mini Progress Bar */}
-                <div 
-                  className="w-10 rounded-full h-1 overflow-hidden"
-                  style={{ 
-                    backgroundColor: isActive 
-                      ? "rgba(255, 255, 255, 0.3)" 
-                      : "rgba(48, 51, 128, 0.1)" 
-                  }}
-                >
-                  <div
-                    className="h-full rounded-full transition-all duration-300 ease-out"
-                    style={{ 
-                      width: `${progress.percentage}%`,
-                      backgroundColor: isActive 
-                        ? "white" 
-                        : progress.percentage === 100 
-                          ? "#10b981" 
-                          : "#303380"
-                    }}
-                  />
-                  </div>
-                <div 
-                  className="text-[10px] font-semibold mt-0.5"
-                  style={{ 
-                    color: isActive 
-                      ? "white" 
-                      : "rgba(48, 51, 128, 0.7)" 
-                  }}
-                >
-                  {progress.answered}/{progress.total}
-                  </div>
-                {progress.percentage === 100 && (
-                  <div className="absolute -top-1 -right-1">
-                    <CheckCircle2 
-                      className="w-3 h-3" 
-                      style={{ 
-                        color: isActive 
-                          ? "rgba(255, 255, 255, 0.8)" 
-                          : "#10b981" 
-                      }}
-                    />
-                </div>
-                )}
-              </button>
-            );
-          })}
-      </div>
-
-        {/* Timer */}
-        <div 
-          className="flex items-center gap-2 px-4 py-2 rounded-lg border-2"
-          style={isExpired ? {
-            backgroundColor: "rgba(239, 68, 68, 0.1)",
-            borderColor: "rgba(239, 68, 68, 0.3)",
-          } : {
-            backgroundColor: "white",
-            borderColor: "rgba(48, 51, 128, 0.15)",
-          }}
-        >
-          <Clock 
-            className="w-4 h-4" 
-            style={{ color: getTimeColor() === "text-red-600" ? "#dc2626" : getTimeColor() === "text-orange-600" ? "#ea580c" : "rgba(48, 51, 128, 0.7)" }}
-          />
-          <span 
-            className="text-lg font-bold tabular-nums"
-                        style={{
-              color: getTimeColor() === "text-red-600" ? "#dc2626" : getTimeColor() === "text-orange-600" ? "#ea580c" : "rgba(48, 51, 128, 0.9)" 
-            }}
-          >
-            {formatTime(timeRemaining)}
-          </span>
-                    </div>
-                  </div>
-                </div>
-              );
+      <IELTSPartsTimerBar
+        partCount={4}
+        partLabel="P"
+        partProgress={partProgress}
+        currentPart={currentPart}
+        onPartChange={onPartChange}
+        timeRemaining={timeRemaining}
+        isExpired={isExpired}
+        formatTime={formatTime}
+        getTimeColor={getTimeColor}
+      />
+    </div>
+  );
 }
 
