@@ -152,13 +152,13 @@ export const QuestionsArea = React.memo(function QuestionsArea({
   return (
     <div className="flex-1">
       <div className="bg-white rounded-xl mt-1 shadow-sm border border-slate-200 p-6">
-        <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-slate-900">{section.title}</h2>
-          {/* IELTS Reading Passage Toggle */}
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-slate-900 mb-3">{section.title}</h2>
+          {/* IELTS Reading Passage Toggle — placed below title so it never overlaps the fixed part selector */}
           {section.type === "READING" && examCategory === "IELTS" && onPassageToggle && (
             <button
               onClick={onPassageToggle}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200"
               style={isPassageOpen ? {
                 backgroundColor: "#303380",
                 color: "white",
