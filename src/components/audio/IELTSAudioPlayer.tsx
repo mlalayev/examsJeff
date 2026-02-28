@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Play, Headphones } from "lucide-react";
+import { Play } from "lucide-react";
 
 interface IELTSAudioPlayerProps {
   src?: string | null;
@@ -45,16 +45,14 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({ src, classNa
 
   const handlePlay = () => {
     const audio = audioRef.current;
-    if (!audio) return;
+    if (!audio || hasStarted) return;
 
-    if (!hasStarted) {
-      setHasStarted(true);
-      audio.controls = false;
-      audio.addEventListener("seeking", (e) => {
-        e.preventDefault();
-        audio.currentTime = currentTime;
-      });
-    }
+    setHasStarted(true);
+    audio.controls = false;
+    audio.addEventListener("seeking", (e) => {
+      e.preventDefault();
+      audio.currentTime = currentTime;
+    });
 
     audio.play().catch((err) => console.error("Error playing audio:", err));
     setIsPlaying(true);
@@ -71,14 +69,21 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({ src, classNa
 
   if (!src) {
     return (
-      <div className={`rounded-lg border border-gray-200 bg-gray-50 px-4 py-6 text-center ${className}`}>
-        <p className="text-sm text-gray-500">No audio available</p>
+      <div className={`flex items-center gap-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-4 ${className}`}>
+        <div className="h-12 w-12 shrink-0 rounded-full bg-gray-200 flex items-center justify-center">
+          <Play className="h-5 w-5 text-gray-400 ml-0.5" fill="currentColor" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm text-gray-500">No audio available</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className={`rounded-lg border border-gray-200 bg-white p-5 ${className}`}>
+    <div
+      className={`flex items-center gap-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm ${className}`}
+    >
       <audio
         ref={audioRef}
         src={src}
@@ -92,42 +97,46 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({ src, classNa
         }}
       />
 
-      {/* Progress */}
-      <div className="mb-4">
-        <div className="h-1 w-full rounded-full bg-gray-200 overflow-hidden">
-          <div
-            className="h-full rounded-full bg-gray-800 transition-all duration-150"
-            style={{ width: `${progressPercentage}%` }}
-          />
-        </div>
-        <div className="mt-1.5 flex justify-between text-xs tabular-nums text-gray-500">
-          <span>{formatTime(currentTime)}</span>
-          <span>{formatTime(duration)}</span>
-        </div>
-      </div>
+      {/* Play button – disabled after first click */}
+      <button
+        type="button"
+        onClick={handlePlay}
+        disabled={hasStarted}
+        className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 transition-all ${
+          hasStarted
+            ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
+            : "border-[#303380] bg-[#303380] text-white hover:bg-[#252a6b] hover:border-[#252a6b] active:scale-95"
+        }`}
+      >
+        {hasStarted && isPlaying ? (
+          <span className="h-5 w-5 rounded-full border-2 border-gray-400 border-t-transparent animate-spin" />
+        ) : hasStarted && !isPlaying ? (
+          <span className="text-[10px] font-medium text-gray-400">Ended</span>
+        ) : (
+          <Play className="h-6 w-6 ml-0.5" fill="currentColor" />
+        )}
+      </button>
 
-      {/* Play control */}
-      <div className="flex flex-col items-center gap-2">
-        <button
-          type="button"
-          onClick={handlePlay}
-          disabled={isPlaying}
-          className="flex h-11 min-w-[140px] items-center justify-center gap-2 rounded-lg bg-gray-900 px-5 text-sm font-medium text-white transition-colors hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-70"
-        >
-          {isPlaying ? (
-            <>
-              <span className="h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
-              <span>Playing</span>
-            </>
-          ) : (
-            <>
-              <Play className="h-4 w-4" fill="currentColor" />
-              <span>{hasStarted ? "Resume" : "Start"}</span>
-            </>
-          )}
-        </button>
-        {isPlaying && (
-          <p className="text-xs text-gray-400">Playback cannot be paused or skipped</p>
+      {/* Progress bar + time (classic player layout) */}
+      <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+        <div className="flex items-center gap-3">
+          <span className="text-sm tabular-nums text-gray-600 w-9 shrink-0">
+            {formatTime(currentTime)}
+          </span>
+          <div className="flex-1 min-w-0 h-2 rounded-full bg-gray-200 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-[#303380] transition-all duration-150 ease-out"
+              style={{ width: `${progressPercentage}%` }}
+            />
+          </div>
+          <span className="text-sm tabular-nums text-gray-500 w-9 shrink-0 text-right">
+            {formatTime(duration)}
+          </span>
+        </div>
+        {hasStarted && (
+          <p className="text-xs text-gray-400">
+            {isPlaying ? "Playing — you cannot pause or skip" : "Playback finished"}
+          </p>
         )}
       </div>
     </div>
