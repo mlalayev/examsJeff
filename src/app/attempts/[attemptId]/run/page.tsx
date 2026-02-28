@@ -1212,7 +1212,7 @@ export default function AttemptRunnerPage() {
 
   return (
     <>
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <div className="min-h-screen h-screen flex flex-col bg-gradient-to-br from-slate-50 to-slate-100">
         {/* SAT Timer */}
         {isSAT && currentSection && !lockedSections.has(currentSection.id) && (
           <SectionTimer
@@ -1225,8 +1225,8 @@ export default function AttemptRunnerPage() {
           />
         )}
 
-        <div className="w-full px-4 sm:px-6 lg:px-12 xl:px-16 pt-3 pb-3">
-        <div className="flex flex-col lg:flex-row gap-6">
+        <div className="w-full flex-1 flex flex-col min-h-0 px-4 sm:px-6 lg:px-12 xl:px-16 pt-3 pb-3">
+        <div className="flex flex-1 flex-col lg:flex-row gap-6 min-h-0">
             <ExamSidebar
               examTitle={data.examTitle}
               sections={data.sections}
@@ -1284,17 +1284,27 @@ export default function AttemptRunnerPage() {
                 />
               );
 
-              if (!isReadingSplit) return questionsAreaEl;
+              if (!isReadingSplit) {
+                return (
+                  <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+                    <div className="flex-1 min-h-0 overflow-y-auto">
+                      {questionsAreaEl}
+                    </div>
+                  </div>
+                );
+              }
 
               return (
                 <div
                   ref={splitContainerRef}
-                  className="flex flex-1 min-w-0 gap-0"
-                  style={{ userSelect: isDraggingSplit.current ? "none" : "auto", height: "calc(100vh - 72px)" }}
+                  className="flex flex-1 min-w-0 min-h-0 gap-0"
+                  style={{ userSelect: isDraggingSplit.current ? "none" : "auto" }}
                 >
                   {/* Questions side */}
-                  <div style={{ width: `${splitPercent}%`, minWidth: "25%" }} className="min-w-0 overflow-y-auto h-full">
-                    {questionsAreaEl}
+                  <div style={{ width: `${splitPercent}%`, minWidth: "25%" }} className="min-w-0 flex flex-col h-full overflow-hidden">
+                    <div className="flex-1 min-h-0 overflow-y-auto">
+                      {questionsAreaEl}
+                    </div>
                   </div>
 
                   {/* Drag handle */}
@@ -1344,7 +1354,7 @@ export default function AttemptRunnerPage() {
                     )}
 
                     {/* Passage text */}
-                    <div className="flex-1 overflow-y-auto p-6">
+                    <div className="flex-1 min-h-0 overflow-y-auto p-6">
                       <p className="text-slate-700 leading-relaxed whitespace-pre-line text-sm">{passageText}</p>
                     </div>
                   </div>
