@@ -95,6 +95,7 @@ export default function AttemptRunnerPage() {
   const [writingPart, setWritingPart] = useState(1); // For IELTS Writing part selection
   const [speakingPart, setSpeakingPart] = useState(1); // For IELTS Speaking part selection
   const [viewingImage, setViewingImage] = useState<string | null>(null); // Image viewer
+  const [viewingPassage, setViewingPassage] = useState(false); // Reading passage panel
   
   // IELTS section navigation
   const [showIELTSSectionChangeModal, setShowIELTSSectionChangeModal] = useState(false);
@@ -1246,6 +1247,8 @@ export default function AttemptRunnerPage() {
                 attemptId={attemptId}
                 readingPart={readingPart}
                 onReadingPartChange={setReadingPart}
+                isPassageOpen={viewingPassage}
+                onPassageToggle={() => setViewingPassage((v) => !v)}
                 writingPart={writingPart}
                 onWritingPartChange={setWritingPart}
                 speakingPart={speakingPart}
@@ -1255,6 +1258,58 @@ export default function AttemptRunnerPage() {
                    </div>
                 </div>
               </div>
+
+      {/* Reading Passage Sidebar */}
+      {viewingPassage && currentSection?.type === "READING" && data?.examCategory === "IELTS" && (() => {
+        const rawPassage = currentSection.passage || currentSection.questions?.[0]?.prompt?.passage;
+        const passageText = typeof rawPassage === "object" && rawPassage !== null
+          ? (rawPassage as any)[`part${readingPart}`] || Object.values(rawPassage as any).join("\n\n")
+          : rawPassage;
+        const partTitles = ["Passage 1", "Passage 2", "Passage 3"];
+        return (
+          <div
+            className="fixed top-0 right-0 h-full bg-white shadow-2xl z-50 flex flex-col"
+            style={{ width: "520px" }}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200" style={{ backgroundColor: "#303380" }}>
+              <div className="flex items-center gap-3">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+                <span className="font-semibold text-white">Reading Passage</span>
+              </div>
+              <button
+                onClick={() => setViewingPassage(false)}
+                className="p-1.5 rounded-lg transition-colors hover:bg-white/20"
+              >
+                <X className="w-5 h-5 text-white" />
+              </button>
+            </div>
+            {/* Part Tabs */}
+            {typeof rawPassage === "object" && rawPassage !== null && (
+              <div className="flex border-b border-gray-200 bg-gray-50">
+                {[1, 2, 3].map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setReadingPart(p)}
+                    className="flex-1 py-2.5 text-sm font-medium transition-colors"
+                    style={{
+                      color: readingPart === p ? "#303380" : "#6b7280",
+                      borderBottom: readingPart === p ? "2px solid #303380" : "2px solid transparent",
+                      backgroundColor: readingPart === p ? "white" : "transparent",
+                    }}
+                  >
+                    {partTitles[p - 1]}
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="flex-1 overflow-y-auto p-6">
+              <p className="text-slate-700 leading-relaxed whitespace-pre-line text-sm">{passageText}</p>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Image Viewer Sidebar */}
       {viewingImage && (

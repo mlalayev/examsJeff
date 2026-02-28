@@ -147,9 +147,9 @@ export function QFillInBlank({
         </div>
         
         {/* Summary */}
-        <div className="mt-4 pt-3 border-t border-gray-100 text-xs text-gray-500">
+        {/* <div className="mt-4 pt-3 border-t border-gray-100 text-xs text-gray-500">
           Total blanks: {totalInputs} {totalInputs === 1 ? "blank" : "blanks"}
-        </div>
+        </div> */}
       </div>
     </div>
   );
