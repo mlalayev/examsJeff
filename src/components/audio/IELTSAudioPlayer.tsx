@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Play } from 'lucide-react';
+import React, { useState, useRef, useEffect } from "react";
+import { Play, Headphones } from "lucide-react";
 
 interface IELTSAudioPlayerProps {
   src?: string | null;
@@ -19,7 +19,6 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({ src, classNa
     const audio = audioRef.current;
     if (!audio || !src) return;
 
-    // Reset player when src changes
     setIsPlaying(false);
     setCurrentTime(0);
     setDuration(0);
@@ -33,14 +32,14 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({ src, classNa
       setCurrentTime(0);
     };
 
-    audio.addEventListener('timeupdate', updateTime);
-    audio.addEventListener('loadedmetadata', updateDuration);
-    audio.addEventListener('ended', handleEnded);
+    audio.addEventListener("timeupdate", updateTime);
+    audio.addEventListener("loadedmetadata", updateDuration);
+    audio.addEventListener("ended", handleEnded);
 
     return () => {
-      audio.removeEventListener('timeupdate', updateTime);
-      audio.removeEventListener('loadedmetadata', updateDuration);
-      audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener("timeupdate", updateTime);
+      audio.removeEventListener("loadedmetadata", updateDuration);
+      audio.removeEventListener("ended", handleEnded);
     };
   }, [src]);
 
@@ -50,47 +49,39 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({ src, classNa
 
     if (!hasStarted) {
       setHasStarted(true);
-      // Disable pause and seek controls
       audio.controls = false;
-      // Prevent seeking
-      audio.addEventListener('seeking', (e) => {
+      audio.addEventListener("seeking", (e) => {
         e.preventDefault();
         audio.currentTime = currentTime;
       });
     }
-    
-    audio.play().catch((err) => {
-      console.error("Error playing audio:", err);
-    });
+
+    audio.play().catch((err) => console.error("Error playing audio:", err));
     setIsPlaying(true);
   };
 
   const formatTime = (time: number) => {
-    if (isNaN(time)) return '0:00';
+    if (isNaN(time)) return "0:00";
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   };
 
   const progressPercentage = duration ? (currentTime / duration) * 100 : 0;
 
   if (!src) {
     return (
-      <div className={`bg-white rounded-lg border p-4 w-full ${className}`}>
-        <p className="text-gray-500 text-center">No audio available</p>
+      <div className={`rounded-lg border border-gray-200 bg-gray-50 px-4 py-6 text-center ${className}`}>
+        <p className="text-sm text-gray-500">No audio available</p>
       </div>
     );
   }
 
   return (
-    <div className={`bg-white rounded-lg border p-4 w-full ${className}`}
-         style={{
-           backgroundColor: 'rgba(48, 51, 128, 0.02)',
-           borderColor: 'rgba(48, 51, 128, 0.1)'
-         }}>
-      <audio 
-        ref={audioRef} 
-        src={src} 
+    <div className={`rounded-lg border border-gray-200 bg-white p-5 ${className}`}>
+      <audio
+        ref={audioRef}
+        src={src}
         preload="metadata"
         controls={false}
         onPlay={() => setIsPlaying(true)}
@@ -100,63 +91,45 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({ src, classNa
           setCurrentTime(0);
         }}
       />
-      
-      {/* Progress Bar - Read only, no interaction */}
+
+      {/* Progress */}
       <div className="mb-4">
-        <div
-          className="w-full h-2 rounded-lg pointer-events-none"
-          style={{
-            background: `linear-gradient(to right, #303380 0%, #303380 ${progressPercentage}%, rgba(48, 51, 128, 0.2) ${progressPercentage}%, rgba(48, 51, 128, 0.2) 100%)`,
-          }}
-        />
-        <div className="flex justify-between text-xs mt-1"
-             style={{ color: 'rgba(48, 51, 128, 0.7)' }}>
+        <div className="h-1 w-full rounded-full bg-gray-200 overflow-hidden">
+          <div
+            className="h-full rounded-full bg-gray-800 transition-all duration-150"
+            style={{ width: `${progressPercentage}%` }}
+          />
+        </div>
+        <div className="mt-1.5 flex justify-between text-xs tabular-nums text-gray-500">
           <span>{formatTime(currentTime)}</span>
           <span>{formatTime(duration)}</span>
         </div>
       </div>
 
-      {/* Play Button Only */}
-      <div className="flex items-center justify-center">
+      {/* Play control */}
+      <div className="flex flex-col items-center gap-2">
         <button
+          type="button"
           onClick={handlePlay}
           disabled={isPlaying}
-          className="p-4 rounded-full transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-          style={{ 
-            backgroundColor: isPlaying ? '#10b981' : '#303380',
-            color: 'white'
-          }}
-          onMouseEnter={(e) => {
-            if (!isPlaying) {
-              e.currentTarget.style.backgroundColor = '#252a6b';
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (!isPlaying) {
-              e.currentTarget.style.backgroundColor = '#303380';
-            }
-          }}
+          className="flex h-11 min-w-[140px] items-center justify-center gap-2 rounded-lg bg-gray-900 px-5 text-sm font-medium text-white transition-colors hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-70"
         >
           {isPlaying ? (
-            <div className="flex items-center gap-2">
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              <span className="ml-1">Playing...</span>
-            </div>
+            <>
+              <span className="h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+              <span>Playing</span>
+            </>
           ) : (
-            <div className="flex items-center gap-2">
-              <Play className="w-5 h-5" />
-              <span className="ml-1">{hasStarted ? 'Resume' : 'Start Listening'}</span>
-            </div>
+            <>
+              <Play className="h-4 w-4" fill="currentColor" />
+              <span>{hasStarted ? "Resume" : "Start"}</span>
+            </>
           )}
         </button>
+        {isPlaying && (
+          <p className="text-xs text-gray-400">Playback cannot be paused or skipped</p>
+        )}
       </div>
-
-      {isPlaying && (
-        <p className="text-center text-xs text-gray-500 mt-2">
-          Audio is playing. You cannot pause or skip.
-        </p>
-      )}
     </div>
   );
-};
-
+}

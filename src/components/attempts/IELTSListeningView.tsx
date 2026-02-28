@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { IELTSAudioPlayer } from "@/components/audio/IELTSAudioPlayer";
 import { IELTSPartsTimerBar } from "@/components/attempts/IELTSPartsTimerBar";
+import { Headphones } from "lucide-react";
 
 interface Question {
   id: string;
@@ -212,33 +213,33 @@ export function IELTSListeningView({
 
   return (
     <div className="space-y-6">
-      {/* Audio Player */}
+      {/* Audio Player - simple card */}
       {audioSource ? (
-        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200 shadow-sm">
-          <div className="text-center mb-4">
-            <h3 className="text-xl font-bold text-gray-900 mb-1">
-              🎧 Listening Audio
-            </h3>
-            <p className="text-sm text-gray-600">
-              Listen to the audio and answer the questions below
-            </p>
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100">
+              <Headphones className="h-5 w-5 text-gray-600" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-gray-900">Listening</h3>
+              <p className="text-sm text-gray-500">Listen to the audio, then answer the questions below.</p>
+            </div>
           </div>
           <IELTSAudioPlayer src={audioSource} className="w-full" />
         </div>
       ) : (
-        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200 shadow-sm">
-          <div className="text-center mb-4">
-            <h3 className="text-xl font-bold text-gray-900 mb-1">
-              🎧 Listening Audio
-            </h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Audio file will be available during the actual exam
-            </p>
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100">
+              <Headphones className="h-5 w-5 text-gray-600" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-gray-900">Listening</h3>
+              <p className="text-sm text-gray-500">Audio will be available during the exam.</p>
+            </div>
           </div>
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <p className="text-sm text-yellow-800 text-center">
-              ⚠️ Audio file not available. Please contact your teacher.
-            </p>
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+            <p className="text-sm text-amber-800">Audio file not available. Please contact your teacher.</p>
           </div>
         </div>
       )}
