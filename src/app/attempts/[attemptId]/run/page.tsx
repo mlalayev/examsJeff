@@ -1190,6 +1190,38 @@ export default function AttemptRunnerPage() {
     }));
   }, []);
 
+  // Hooks must run before any conditional return (same count every render — React #310)
+  const currentSection = data?.sections?.find((s: { id: string }) => s.id === activeSection) ?? null;
+  const isSAT = data?.examCategory === "SAT";
+
+  const readingPartProgress = useMemo(() => {
+    if (!currentSection || currentSection.type !== "READING" || data?.examCategory !== "IELTS") return [];
+    const questions = currentSection.questions || [];
+    const parts = [
+      questions.filter((q: { order: number }) => q.order >= 0 && q.order < 14),
+      questions.filter((q: { order: number }) => q.order >= 14 && q.order < 27),
+      questions.filter((q: { order: number }) => q.order >= 27),
+    ];
+    return parts.map((partQuestions: { id: string; order: number }[]) => {
+      const sectionAnswers = answers[currentSection.id] || {};
+      const answered = partQuestions.filter((q) => {
+        const v = sectionAnswers[q.id];
+        return v !== undefined && v !== null && v !== "";
+      }).length;
+      return {
+        answered,
+        total: partQuestions.length,
+        percentage: partQuestions.length > 0 ? (answered / partQuestions.length) * 100 : 0,
+      };
+    });
+  }, [currentSection, activeSection, answers, data?.examCategory]);
+
+  useEffect(() => {
+    if (!currentSection || currentSection.type !== "READING" || data?.examCategory !== "IELTS") {
+      setReadingTimerState(null);
+    }
+  }, [activeSection, currentSection?.type, data?.examCategory]);
+
   if (loading) {
     return <LoadingSkeleton />;
   }
@@ -1212,39 +1244,6 @@ export default function AttemptRunnerPage() {
       </div>
     );
   }
-
-  const currentSection = data.sections.find((s) => s.id === activeSection);
-  const isSAT = data.examCategory === "SAT";
-
-  // IELTS Reading: part progress for sidebar (answered/total per passage)
-  const readingPartProgress = useMemo(() => {
-    if (!currentSection || currentSection.type !== "READING" || data.examCategory !== "IELTS") return [];
-    const questions = currentSection.questions || [];
-    const parts = [
-      questions.filter((q: { order: number }) => q.order >= 0 && q.order < 14),
-      questions.filter((q: { order: number }) => q.order >= 14 && q.order < 27),
-      questions.filter((q: { order: number }) => q.order >= 27),
-    ];
-    return parts.map((partQuestions: { id: string; order: number }[]) => {
-      const sectionAnswers = answers[currentSection.id] || {};
-      const answered = partQuestions.filter((q) => {
-        const v = sectionAnswers[q.id];
-        return v !== undefined && v !== null && v !== "";
-      }).length;
-      return {
-        answered,
-        total: partQuestions.length,
-        percentage: partQuestions.length > 0 ? (answered / partQuestions.length) * 100 : 0,
-      };
-    });
-  }, [currentSection, activeSection, answers, data?.examCategory]);
-
-  // Clear reading timer state when leaving Reading section
-  useEffect(() => {
-    if (currentSection?.type !== "READING" || data?.examCategory !== "IELTS") {
-      setReadingTimerState(null);
-    }
-  }, [activeSection, currentSection?.type, data?.examCategory]);
 
   return (
     <>
