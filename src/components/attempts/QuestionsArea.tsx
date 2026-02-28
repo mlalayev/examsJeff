@@ -255,8 +255,8 @@ export const QuestionsArea = React.memo(function QuestionsArea({
           </div>
         )}
 
-        {/* Reading Passage — only for non-IELTS; IELTS uses the right-side panel */}
-        {readingPassage && !(section.type === "READING" && examCategory === "IELTS") && (
+        {/* Reading Passage */}
+        {readingPassage && (
           <div
             className="mb-6 p-6 rounded-lg"
             style={{
