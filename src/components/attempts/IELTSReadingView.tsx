@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
-import { IELTSPartsTimerBar } from "@/components/attempts/IELTSPartsTimerBar";
+import React, { useState, useEffect } from "react";
 
 interface Question {
   id: string;
@@ -16,6 +15,13 @@ interface Section {
   durationMin: number;
 }
 
+export interface ReadingTimerState {
+  timeRemaining: number;
+  isExpired: boolean;
+  formatTime: (seconds: number) => string;
+  getTimeColor: () => string;
+}
+
 interface IELTSReadingViewProps {
   section: Section;
   answers: Record<string, any>;
@@ -23,6 +29,7 @@ interface IELTSReadingViewProps {
   currentPart?: number;
   onTimeExpired?: () => void;
   attemptId?: string; // For localStorage
+  onTimerStateChange?: (state: ReadingTimerState | null) => void; // For sidebar display
 }
 
 export function IELTSReadingView({
@@ -32,6 +39,7 @@ export function IELTSReadingView({
   currentPart = 1,
   onTimeExpired,
   attemptId,
+  onTimerStateChange,
 }: IELTSReadingViewProps) {
   // Get localStorage key for timer
   const getTimerStorageKey = () => {
@@ -78,32 +86,6 @@ export function IELTSReadingView({
     return initializeTimer();
   });
   const [isExpired, setIsExpired] = useState(timeRemaining === 0);
-
-  // Split questions into 3 parts: Part 1 (14), Part 2 (13), Part 3 (13)
-  const parts = useMemo(() => {
-    const questions = section.questions || [];
-    
-    return [
-      questions.filter((q) => q.order >= 0 && q.order < 14), // Part 1: Q1-14 (order 0-13)
-      questions.filter((q) => q.order >= 14 && q.order < 27), // Part 2: Q15-27 (order 14-26)
-      questions.filter((q) => q.order >= 27), // Part 3: Q28-40 (order 27-39)
-    ];
-  }, [section.questions]);
-
-  // Calculate progress for each part
-  const partProgress = useMemo(() => {
-    return parts.map((partQuestions) => {
-      const answered = partQuestions.filter((q) => {
-        const answer = answers[q.id];
-        return answer !== undefined && answer !== null && answer !== "";
-      }).length;
-      return {
-        answered,
-        total: partQuestions.length,
-        percentage: partQuestions.length > 0 ? (answered / partQuestions.length) * 100 : 0,
-      };
-    });
-  }, [parts, answers]);
 
   // Initialize timer from localStorage on mount
   useEffect(() => {
@@ -192,19 +174,20 @@ export function IELTSReadingView({
     return "text-gray-700";
   };
 
+  // Report timer state to parent for sidebar display
+  useEffect(() => {
+    onTimerStateChange?.({
+      timeRemaining,
+      isExpired,
+      formatTime,
+      getTimeColor,
+    });
+    return () => onTimerStateChange?.(null);
+  }, [timeRemaining, isExpired, onTimerStateChange]);
+
   return (
     <div className="space-y-6">
-      <IELTSPartsTimerBar
-        partCount={3}
-        partLabel="P"
-        partProgress={partProgress}
-        currentPart={currentPart}
-        onPartChange={onPartChange}
-        timeRemaining={timeRemaining}
-        isExpired={isExpired}
-        formatTime={formatTime}
-        getTimeColor={getTimeColor}
-      />
+      {/* Timer and passage part choosers are shown in the sidebar for IELTS Reading */}
     </div>
   );
 }

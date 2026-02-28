@@ -67,6 +67,7 @@ interface QuestionsAreaProps {
   onSpeakingPartChange?: (part: number) => void; // Callback for speaking part change
   onTimeExpired?: () => void; // Callback for timer expiration
   attemptId?: string; // For localStorage timer
+  onReadingTimerStateChange?: (state: { timeRemaining: number; isExpired: boolean; formatTime: (s: number) => string; getTimeColor: () => string } | null) => void; // IELTS Reading timer for sidebar
   isPassageOpen?: boolean; // Whether the reading passage panel is open
   onPassageToggle?: () => void; // Toggle reading passage panel
 }
@@ -96,6 +97,7 @@ export const QuestionsArea = React.memo(function QuestionsArea({
   onSpeakingPartChange,
   onTimeExpired,
   attemptId,
+  onReadingTimerStateChange,
   isPassageOpen,
   onPassageToggle,
 }: QuestionsAreaProps) {
@@ -180,6 +182,7 @@ export const QuestionsArea = React.memo(function QuestionsArea({
               onPartChange={onReadingPartChange}
               onTimeExpired={onTimeExpired}
               attemptId={attemptId}
+              onTimerStateChange={onReadingTimerStateChange}
             />
           </div>
         )}

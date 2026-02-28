@@ -96,6 +96,12 @@ export default function AttemptRunnerPage() {
   const [speakingPart, setSpeakingPart] = useState(1); // For IELTS Speaking part selection
   const [viewingImage, setViewingImage] = useState<string | null>(null); // Image viewer
   const [viewingPassage, setViewingPassage] = useState(false); // Reading passage panel
+  const [readingTimerState, setReadingTimerState] = useState<{
+    timeRemaining: number;
+    isExpired: boolean;
+    formatTime: (s: number) => string;
+    getTimeColor: () => string;
+  } | null>(null); // IELTS Reading timer (shown in sidebar)
   const [splitPercent, setSplitPercent] = useState(55); // % width for questions side in split view
   const splitContainerRef = useRef<HTMLDivElement>(null);
   const isDraggingSplit = useRef(false);
@@ -1210,6 +1216,36 @@ export default function AttemptRunnerPage() {
   const currentSection = data.sections.find((s) => s.id === activeSection);
   const isSAT = data.examCategory === "SAT";
 
+  // IELTS Reading: part progress for sidebar (answered/total per passage)
+  const readingPartProgress = useMemo(() => {
+    if (!currentSection || currentSection.type !== "READING" || data.examCategory !== "IELTS") return [];
+    const questions = currentSection.questions || [];
+    const parts = [
+      questions.filter((q: { order: number }) => q.order >= 0 && q.order < 14),
+      questions.filter((q: { order: number }) => q.order >= 14 && q.order < 27),
+      questions.filter((q: { order: number }) => q.order >= 27),
+    ];
+    return parts.map((partQuestions: { id: string; order: number }[]) => {
+      const sectionAnswers = answers[currentSection.id] || {};
+      const answered = partQuestions.filter((q) => {
+        const v = sectionAnswers[q.id];
+        return v !== undefined && v !== null && v !== "";
+      }).length;
+      return {
+        answered,
+        total: partQuestions.length,
+        percentage: partQuestions.length > 0 ? (answered / partQuestions.length) * 100 : 0,
+      };
+    });
+  }, [currentSection, activeSection, answers, data?.examCategory]);
+
+  // Clear reading timer state when leaving Reading section
+  useEffect(() => {
+    if (currentSection?.type !== "READING" || data?.examCategory !== "IELTS") {
+      setReadingTimerState(null);
+    }
+  }, [activeSection, currentSection?.type, data?.examCategory]);
+
   return (
     <>
     <div className="min-h-screen h-screen flex flex-col bg-gradient-to-br from-slate-50 to-slate-100">
@@ -1243,6 +1279,11 @@ export default function AttemptRunnerPage() {
               onSubmitModule={isSAT ? handleSubmitModuleClick : undefined}
               getShortSectionTitle={getShortSectionTitle}
               examCategory={data.examCategory}
+              readingPart={readingPart}
+              onReadingPartChange={setReadingPart}
+              readingTimerState={readingTimerState}
+              readingPartProgress={readingPartProgress}
+              isIELTSReading={currentSection?.type === "READING" && data.examCategory === "IELTS"}
             />
 
             {currentSection && (() => {
@@ -1251,7 +1292,6 @@ export default function AttemptRunnerPage() {
               const passageText = typeof rawPassage === "object" && rawPassage !== null
                 ? (rawPassage as any)[`part${readingPart}`] || Object.values(rawPassage as any).join("\n\n")
                 : rawPassage;
-              const partTitles = ["Passage 1", "Passage 2", "Passage 3"];
 
               const questionsAreaEl = (
                 <QuestionsArea
@@ -1277,6 +1317,7 @@ export default function AttemptRunnerPage() {
                   onReadingPartChange={setReadingPart}
                   isPassageOpen={viewingPassage}
                   onPassageToggle={() => setViewingPassage((v) => !v)}
+                  onReadingTimerStateChange={setReadingTimerState}
                   writingPart={writingPart}
                   onWritingPartChange={setWritingPart}
                   speakingPart={speakingPart}
@@ -1315,7 +1356,7 @@ export default function AttemptRunnerPage() {
                     <div className="w-1 h-16 rounded-full bg-slate-300 group-hover:bg-[#303380] transition-colors duration-150" />
                   </div>
 
-                  {/* Passage side - no close button, passage always visible */}
+                  {/* Passage side - no close button, passage always visible; part choosers moved to sidebar */}
                   <div style={{ flex: 1, minWidth: "25%" }} className="min-w-0 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden h-full">
                     {/* Header */}
                     <div className="flex items-center gap-2 px-5 py-4 flex-shrink-0" style={{ backgroundColor: "#303380" }}>
@@ -1325,27 +1366,7 @@ export default function AttemptRunnerPage() {
                       <span className="font-semibold text-white text-sm">Reading Passage</span>
                     </div>
 
-                    {/* Part tabs (only when passage is an object with parts) */}
-                    {typeof rawPassage === "object" && rawPassage !== null && (
-                      <div className="flex border-b border-gray-200 bg-gray-50 flex-shrink-0">
-                        {[1, 2, 3].map((p) => (
-                          <button
-                            key={p}
-                            onClick={() => setReadingPart(p)}
-                            className="flex-1 py-2.5 text-sm font-medium transition-colors"
-                            style={{
-                              color: readingPart === p ? "#303380" : "#6b7280",
-                              borderBottom: readingPart === p ? "2px solid #303380" : "2px solid transparent",
-                              backgroundColor: readingPart === p ? "white" : "transparent",
-                            }}
-                          >
-                            {partTitles[p - 1]}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Passage text */}
+                    {/* Passage text - part selected via sidebar */}
                     <div className="flex-1 min-h-0 overflow-y-auto p-6">
                       <p className="text-slate-700 leading-relaxed whitespace-pre-line text-sm">{passageText}</p>
                     </div>
@@ -1358,21 +1379,19 @@ export default function AttemptRunnerPage() {
               </div>
 
 
-      {/* Image Viewer - fixed on the LEFT, above everything */}
+      {/* Image Viewer - fixed on the LEFT; backdrop does not block scroll */}
       {viewingImage && (
         <>
-          {/* Backdrop - click to close */}
+          {/* Backdrop - visual only; pointer-events: none so main content stays scrollable */}
           <div
-            className="fixed inset-0 bg-black/40 z-[100]"
+            className="fixed inset-0 bg-black/30 z-[100] pointer-events-none"
             style={{ left: 0, right: 0, top: 0, bottom: 0 }}
-            onClick={() => setViewingImage(null)}
             aria-hidden
           />
-          {/* Panel on the left */}
+          {/* Panel on the left - has pointer-events so you can scroll the image and use close */}
           <div
-            className="fixed top-0 h-full bg-white shadow-2xl z-[101] flex flex-col"
+            className="fixed top-0 h-full bg-white shadow-2xl z-[101] flex flex-col pointer-events-auto"
             style={{ left: 0, width: "500px", maxWidth: "100vw" }}
-            onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
               <h3 className="font-medium text-gray-900">Image Viewer</h3>
