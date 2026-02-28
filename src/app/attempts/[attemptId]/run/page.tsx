@@ -1378,7 +1378,7 @@ export default function AttemptRunnerPage() {
               </div>
 
 
-      {/* Image Viewer - fixed on the LEFT; backdrop does not block scroll */}
+      {/* Image Viewer - fixed on the RIGHT; backdrop does not block scroll */}
       {viewingImage && (
         <>
           {/* Backdrop - visual only; pointer-events: none so main content stays scrollable */}
@@ -1387,10 +1387,10 @@ export default function AttemptRunnerPage() {
             style={{ left: 0, right: 0, top: 0, bottom: 0 }}
             aria-hidden
           />
-          {/* Panel on the left - has pointer-events so you can scroll the image and use close */}
+          {/* Panel on the right - has pointer-events so you can scroll the image and use close */}
           <div
             className="fixed top-0 h-full bg-white shadow-2xl z-[101] flex flex-col pointer-events-auto"
-            style={{ left: 0, width: "500px", maxWidth: "100vw" }}
+            style={{ right: 0, width: "500px", maxWidth: "100vw" }}
           >
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
               <h3 className="font-medium text-gray-900">Image Viewer</h3>
