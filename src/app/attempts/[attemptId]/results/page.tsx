@@ -461,10 +461,10 @@ export default function AttemptResultsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen h-screen flex flex-col bg-gray-50">
       <Sidebar />
-      <main className="ml-72">
-        <div className="max-w-7xl mx-auto px-6 py-8">
+      <main className="ml-72 flex-1 flex flex-col min-h-0">
+        <div className="max-w-7xl mx-auto px-6 py-8 flex-1 flex flex-col min-h-0 w-full">
         {/* Header */}
         <div className="mb-6">
           <button
@@ -483,20 +483,22 @@ export default function AttemptResultsPage() {
 
         {/* STUDENT: Show only a friendly message, no scores or section details */}
         {data.role === "STUDENT" ? (
-          <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-8 max-w-2xl">
-            <div className="flex flex-col items-center text-center">
-              <div className="w-16 h-16 rounded-full bg-[#303380]/10 flex items-center justify-center mb-6">
-                <FileCheck className="w-8 h-8 text-[#303380]" />
+          <div className="flex-1 min-h-0 flex items-center justify-center py-12">
+            <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-8 max-w-2xl w-full">
+              <div className="flex flex-col items-center text-center">
+                <div className="w-16 h-16 rounded-full bg-[#303380]/10 flex items-center justify-center mb-6">
+                  <FileCheck className="w-8 h-8 text-[#303380]" />
+                </div>
+                <h2 className="text-xl font-semibold text-gray-900 mb-3">
+                  Exam submitted successfully
+                </h2>
+                <p className="text-gray-600 leading-relaxed mb-2">
+                  Our teachers will check your answers and review your exam. You can expect to receive your results within one business day.
+                </p>
+                <p className="text-gray-500 text-sm">
+                  We will contact you once the review is complete. Thank you for your patience.
+                </p>
               </div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-3">
-                Exam submitted successfully
-              </h2>
-              <p className="text-gray-600 leading-relaxed mb-2">
-                Our teachers will check your answers and review your exam. You can expect to receive your results within one business day.
-              </p>
-              <p className="text-gray-500 text-sm">
-                We will contact you once the review is complete. Thank you for your patience.
-              </p>
             </div>
           </div>
         ) : (
