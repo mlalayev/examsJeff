@@ -1246,7 +1246,7 @@ export default function AttemptRunnerPage() {
             />
 
             {currentSection && (() => {
-              const isReadingSplit = viewingPassage && currentSection.type === "READING" && data.examCategory === "IELTS";
+              const isReadingSplit = currentSection.type === "READING" && data.examCategory === "IELTS";
               const rawPassage = (currentSection as any).passage || currentSection.questions?.[0]?.prompt?.passage;
               const passageText = typeof rawPassage === "object" && rawPassage !== null
                 ? (rawPassage as any)[`part${readingPart}`] || Object.values(rawPassage as any).join("\n\n")
@@ -1315,22 +1315,14 @@ export default function AttemptRunnerPage() {
                     <div className="w-1 h-16 rounded-full bg-slate-300 group-hover:bg-[#303380] transition-colors duration-150" />
                   </div>
 
-                  {/* Passage side */}
+                  {/* Passage side - no close button, passage always visible */}
                   <div style={{ flex: 1, minWidth: "25%" }} className="min-w-0 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden h-full">
                     {/* Header */}
-                    <div className="flex items-center justify-between px-5 py-4 flex-shrink-0" style={{ backgroundColor: "#303380" }}>
-                      <div className="flex items-center gap-2">
-                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                        </svg>
-                        <span className="font-semibold text-white text-sm">Reading Passage</span>
-                      </div>
-                      <button
-                        onClick={() => setViewingPassage(false)}
-                        className="p-1.5 rounded-lg hover:bg-white/20 transition-colors"
-                      >
-                        <X className="w-4 h-4 text-white" />
-                      </button>
+                    <div className="flex items-center gap-2 px-5 py-4 flex-shrink-0" style={{ backgroundColor: "#303380" }}>
+                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                      </svg>
+                      <span className="font-semibold text-white text-sm">Reading Passage</span>
                     </div>
 
                     {/* Part tabs (only when passage is an object with parts) */}
@@ -1366,10 +1358,10 @@ export default function AttemptRunnerPage() {
               </div>
 
 
-      {/* Image Viewer Sidebar */}
+      {/* Image Viewer Sidebar - opens on the left */}
       {viewingImage && (
         <div 
-          className="fixed top-0 right-0 h-full bg-white shadow-2xl z-50 flex flex-col"
+          className="fixed top-0 left-0 h-full bg-white shadow-2xl z-50 flex flex-col"
           style={{ width: "500px" }}
         >
           <div className="flex items-center justify-between p-4 border-b border-gray-200">
