@@ -7,7 +7,6 @@ import {
   Award, 
   ArrowLeft,
   BarChart3,
-  Lock,
   X,
   FileCheck,
   Users,
@@ -122,11 +121,6 @@ export default function AttemptResultsPage() {
       });
       
       setData(json);
-      
-      // Show review restricted modal for students on page load
-      if (json.role === "STUDENT") {
-        setShowReviewRestrictedModal(true);
-      }
     } catch (err: any) {
       console.error(err);
       alert(err.message || "Failed to load results");
@@ -487,6 +481,26 @@ export default function AttemptResultsPage() {
           </p>
         </div>
 
+        {/* STUDENT: Show only a friendly message, no scores or section details */}
+        {data.role === "STUDENT" ? (
+          <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-8 max-w-2xl">
+            <div className="flex flex-col items-center text-center">
+              <div className="w-16 h-16 rounded-full bg-[#303380]/10 flex items-center justify-center mb-6">
+                <FileCheck className="w-8 h-8 text-[#303380]" />
+              </div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-3">
+                Exam submitted successfully
+              </h2>
+              <p className="text-gray-600 leading-relaxed mb-2">
+                Our teachers will check your answers and review your exam. You can expect to receive your results within one business day.
+              </p>
+              <p className="text-gray-500 text-sm">
+                We will contact you once the review is complete. Thank you for your patience.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <>
         {/* Overall Score Card */}
         <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
@@ -575,20 +589,7 @@ export default function AttemptResultsPage() {
             </ul>
           </div>
         </div>
-
-        {/* STUDENT VIEW: Restricted message */}
-        {data.role === "STUDENT" && (
-          <div className="bg-white border border-gray-200 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <Lock className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
-              <div>
-                <h4 className="font-medium text-sm text-gray-900 mb-1">Review Restricted</h4>
-                <p className="text-xs text-gray-600">
-                  Detailed review is not available. Contact your teacher for specific feedback.
-                </p>
-              </div>
-            </div>
-          </div>
+        </>
         )}
       </div>
 
