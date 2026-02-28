@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { IELTSAudioPlayer } from "@/components/audio/IELTSAudioPlayer";
-import { IELTSPartsTimerBar } from "@/components/attempts/IELTSPartsTimerBar";
 import { Headphones } from "lucide-react";
 
 interface Question {
@@ -19,6 +18,13 @@ interface Section {
   durationMin: number;
 }
 
+export type IELTSTimerState = {
+  timeRemaining: number;
+  isExpired: boolean;
+  formatTime: (s: number) => string;
+  getTimeColor: () => string;
+};
+
 interface IELTSListeningViewProps {
   section: Section;
   answers: Record<string, any>;
@@ -26,6 +32,7 @@ interface IELTSListeningViewProps {
   currentPart?: number;
   onTimeExpired?: () => void;
   attemptId?: string; // For localStorage
+  onTimerStateChange?: (state: IELTSTimerState | null) => void; // For sidebar
 }
 
 export function IELTSListeningView({
@@ -35,6 +42,7 @@ export function IELTSListeningView({
   currentPart = 1,
   onTimeExpired,
   attemptId,
+  onTimerStateChange,
 }: IELTSListeningViewProps) {
   // Get localStorage key for timer
   const getTimerStorageKey = () => {
@@ -81,46 +89,6 @@ export function IELTSListeningView({
     return initializeTimer();
   });
   const [isExpired, setIsExpired] = useState(timeRemaining === 0);
-
-  // Split questions into 4 parts (10 questions each)
-  const parts = useMemo(() => {
-    const questions = section.questions || [];
-    return [
-      questions.filter((q) => q.order >= 0 && q.order <= 9), // Part 1: Q1-10 (order 0-9)
-      questions.filter((q) => q.order >= 10 && q.order <= 19), // Part 2: Q11-20 (order 10-19)
-      questions.filter((q) => q.order >= 20 && q.order <= 29), // Part 3: Q21-30 (order 20-29)
-      questions.filter((q) => q.order >= 30 && q.order <= 39), // Part 4: Q31-40 (order 30-39)
-    ];
-  }, [section.questions]);
-
-  // Calculate progress for each part
-  const partProgress = useMemo(() => {
-    return parts.map((partQuestions) => {
-      const answered = partQuestions.filter((q) => {
-        const answer = answers[q.id];
-        return answer !== undefined && answer !== null && answer !== "";
-      }).length;
-      return {
-        answered,
-        total: partQuestions.length,
-        percentage: partQuestions.length > 0 ? (answered / partQuestions.length) * 100 : 0,
-      };
-    });
-  }, [parts, answers]);
-
-  // Calculate overall progress
-  const overallProgress = useMemo(() => {
-    const totalQuestions = section.questions?.length || 0;
-    const answeredQuestions = section.questions?.filter((q) => {
-      const answer = answers[q.id];
-      return answer !== undefined && answer !== null && answer !== "";
-    }).length || 0;
-    return {
-      answered: answeredQuestions,
-      total: totalQuestions,
-      percentage: totalQuestions > 0 ? (answeredQuestions / totalQuestions) * 100 : 0,
-    };
-  }, [section.questions, answers]);
 
   // Initialize timer from localStorage on mount
   useEffect(() => {
@@ -205,9 +173,19 @@ export function IELTSListeningView({
 
   const getTimeColor = () => {
     if (isExpired) return "text-red-600";
-    if (timeRemaining < 300) return "text-orange-600"; // Less than 5 minutes
+    if (timeRemaining < 300) return "text-orange-600";
     return "text-gray-700";
   };
+
+  useEffect(() => {
+    onTimerStateChange?.({
+      timeRemaining,
+      isExpired,
+      formatTime,
+      getTimeColor,
+    });
+    return () => onTimerStateChange?.(null);
+  }, [timeRemaining, isExpired, onTimerStateChange]);
 
   const audioSource = section.audio || (section.questions?.[0] as any)?.prompt?.audio;
 
@@ -244,18 +222,7 @@ export function IELTSListeningView({
         </div>
       )}
 
-      {/* Timer and Part Selection - Fixed Top Right */}
-      <IELTSPartsTimerBar
-        partCount={4}
-        partLabel="P"
-        partProgress={partProgress}
-        currentPart={currentPart}
-        onPartChange={onPartChange}
-        timeRemaining={timeRemaining}
-        isExpired={isExpired}
-        formatTime={formatTime}
-        getTimeColor={getTimeColor}
-      />
+      {/* Timer and part choosers are shown in the sidebar */}
     </div>
   );
 }

@@ -35,18 +35,34 @@ interface ExamSidebarProps {
   onSubmitModule?: () => void | Promise<void>;
   getShortSectionTitle: (title: string) => string;
   examCategory?: string; // IELTS, SAT, TOEFL
-  // IELTS Reading: timer and passage part choosers in sidebar
-  isIELTSReading?: boolean;
+  // IELTS: timer and part choosers for all section types (Listening, Reading, Writing, Speaking)
+  isIELTS?: boolean;
+  currentSectionType?: string; // LISTENING | READING | WRITING | SPEAKING
+  isIELTSReading?: boolean; // kept for backward compat, prefer isIELTS + currentSectionType
   readingPart?: number;
   onReadingPartChange?: (part: number) => void;
-  readingTimerState?: {
-    timeRemaining: number;
-    isExpired: boolean;
-    formatTime: (s: number) => string;
-    getTimeColor: () => string;
-  } | null;
+  readingTimerState?: IELTSTimerState | null;
   readingPartProgress?: ReadingPartProgress[];
+  listeningPart?: number;
+  onListeningPartChange?: (part: number) => void;
+  listeningTimerState?: IELTSTimerState | null;
+  listeningPartProgress?: ReadingPartProgress[];
+  writingPart?: number;
+  onWritingPartChange?: (part: number) => void;
+  writingTimerState?: IELTSTimerState | null;
+  writingPartProgress?: ReadingPartProgress[];
+  speakingPart?: number;
+  onSpeakingPartChange?: (part: number) => void;
+  speakingTimerState?: IELTSTimerState | null;
+  speakingPartProgress?: ReadingPartProgress[];
 }
+
+type IELTSTimerState = {
+  timeRemaining: number;
+  isExpired: boolean;
+  formatTime: (s: number) => string;
+  getTimeColor: () => string;
+};
 
 export const ExamSidebar = React.memo(function ExamSidebar({
   examTitle,
@@ -64,14 +80,49 @@ export const ExamSidebar = React.memo(function ExamSidebar({
   onSubmitModule,
   getShortSectionTitle,
   examCategory,
+  isIELTS = false,
+  currentSectionType,
   isIELTSReading = false,
   readingPart = 1,
   onReadingPartChange,
   readingTimerState,
   readingPartProgress = [],
+  listeningPart = 1,
+  onListeningPartChange,
+  listeningTimerState,
+  listeningPartProgress = [],
+  writingPart = 1,
+  onWritingPartChange,
+  writingTimerState,
+  writingPartProgress = [],
+  speakingPart = 1,
+  onSpeakingPartChange,
+  speakingTimerState,
+  speakingPartProgress = [],
 }: ExamSidebarProps) {
   const ACCENT = "#303380";
   const DONE = "#059669";
+
+  const renderTimer = (state: IELTSTimerState) => {
+    const timeColorClass = state.getTimeColor();
+    const timeColor = timeColorClass === "text-red-600" ? "#dc2626" : timeColorClass === "text-orange-600" ? "#ea580c" : "rgb(55 65 81)";
+    return (
+      <div
+        className="flex items-center justify-center gap-2 py-2 px-3 rounded-lg"
+        style={
+          state.isExpired
+            ? { backgroundColor: "rgb(254 226 226)", color: "#dc2626" }
+            : { backgroundColor: "rgb(243 244 246)", color: timeColor }
+        }
+      >
+        <Clock className="w-4 h-4 shrink-0 opacity-80" style={{ color: "inherit" }} />
+        <span className="text-sm font-bold tabular-nums" style={{ color: "inherit" }}>
+          {state.formatTime(state.timeRemaining)}
+        </span>
+      </div>
+    );
+  };
+
   const sectionOrder = ["LISTENING", "READING", "WRITING", "SPEAKING"];
 
   const activeSectionObj = sections.find((s) => s.id === activeSection);
@@ -133,8 +184,8 @@ export const ExamSidebar = React.memo(function ExamSidebar({
           />
         </div>
 
-        {/* IELTS Reading: Timer + Passage part choosers */}
-        {isIELTSReading && (
+        {/* IELTS: Timer + part/task choosers for current section (Listening, Reading, Writing, Speaking) */}
+        {isIELTS && currentSectionType && (
           <div
             className="mb-4 rounded-lg border p-3 flex flex-col gap-3"
             style={{
@@ -142,61 +193,122 @@ export const ExamSidebar = React.memo(function ExamSidebar({
               backgroundColor: "rgba(255,255,255,0.6)",
             }}
           >
-            <div className="text-xs font-semibold" style={{ color: ACCENT }}>
-              Reading
-            </div>
-            {/* Passage 1, 2, 3 choosers */}
-            <div className="flex rounded-lg overflow-hidden border border-gray-200 bg-white">
-              {[1, 2, 3].map((p) => {
-                const progress = readingPartProgress[p - 1] ?? { answered: 0, total: 1, percentage: 0 };
-                const isActive = readingPart === p;
-                const isDone = progress.percentage >= 100;
-                return (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => onReadingPartChange?.(p)}
-                    className={`
-                      relative flex-1 flex flex-col items-center justify-center py-2 px-1 min-w-0
-                      transition-colors duration-200 text-xs font-semibold
-                      ${isActive ? "text-white" : "text-gray-700 hover:bg-gray-50"}
-                    `}
-                    style={isActive ? { backgroundColor: ACCENT } : undefined}
-                    title={`Passage ${p}: ${progress.answered}/${progress.total}`}
-                  >
-                    <span>P{p}</span>
-                    <span className={`text-[10px] font-medium tabular-nums mt-0.5 ${isActive ? "text-white/90" : "text-gray-500"}`}>
-                      {progress.answered}/{progress.total}
-                    </span>
-                    {isDone && (
-                      <span className={`absolute top-0.5 right-0.5 flex h-3 w-3 items-center justify-center rounded-full ${isActive ? "bg-white/25 text-white" : "bg-emerald-100 text-emerald-600"}`}>
-                        <Check className="h-1.5 w-1.5" strokeWidth={3} />
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-            {/* Timer */}
-            {readingTimerState && (() => {
-              const timeColorClass = readingTimerState.getTimeColor();
-              const timeColor = timeColorClass === "text-red-600" ? "#dc2626" : timeColorClass === "text-orange-600" ? "#ea580c" : "rgb(55 65 81)";
-              return (
-                <div
-                  className="flex items-center justify-center gap-2 py-2 px-3 rounded-lg"
-                  style={
-                    readingTimerState.isExpired
-                      ? { backgroundColor: "rgb(254 226 226)", color: "#dc2626" }
-                      : { backgroundColor: "rgb(243 244 246)", color: timeColor }
-                  }
-                >
-                  <Clock className="w-4 h-4 shrink-0 opacity-80" style={{ color: "inherit" }} />
-                  <span className="text-sm font-bold tabular-nums" style={{ color: "inherit" }}>
-                    {readingTimerState.formatTime(readingTimerState.timeRemaining)}
-                  </span>
+            {currentSectionType === "LISTENING" && (
+              <>
+                <div className="text-xs font-semibold" style={{ color: ACCENT }}>
+                  Listening
                 </div>
-              );
-            })()}
+                <div className="flex rounded-lg overflow-hidden border border-gray-200 bg-white">
+                  {[1, 2, 3, 4].map((p) => {
+                    const progress = listeningPartProgress[p - 1] ?? { answered: 0, total: 1, percentage: 0 };
+                    const isActive = listeningPart === p;
+                    const isDone = progress.percentage >= 100;
+                    return (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => onListeningPartChange?.(p)}
+                        className={`relative flex-1 flex flex-col items-center justify-center py-2 px-0.5 min-w-0 transition-colors duration-200 text-xs font-semibold ${isActive ? "text-white" : "text-gray-700 hover:bg-gray-50"}`}
+                        style={isActive ? { backgroundColor: ACCENT } : undefined}
+                        title={`Part ${p}: ${progress.answered}/${progress.total}`}
+                      >
+                        <span>P{p}</span>
+                        <span className={`text-[10px] font-medium tabular-nums mt-0.5 ${isActive ? "text-white/90" : "text-gray-500"}`}>{progress.answered}/{progress.total}</span>
+                        {isDone && <span className={`absolute top-0.5 right-0.5 flex h-3 w-3 items-center justify-center rounded-full ${isActive ? "bg-white/25 text-white" : "bg-emerald-100 text-emerald-600"}`}><Check className="h-1.5 w-1.5" strokeWidth={3} /></span>}
+                      </button>
+                    );
+                  })}
+                </div>
+                {listeningTimerState && renderTimer(listeningTimerState)}
+              </>
+            )}
+            {currentSectionType === "READING" && (
+              <>
+                <div className="text-xs font-semibold" style={{ color: ACCENT }}>
+                  Reading
+                </div>
+                <div className="flex rounded-lg overflow-hidden border border-gray-200 bg-white">
+                  {[1, 2, 3].map((p) => {
+                    const progress = readingPartProgress[p - 1] ?? { answered: 0, total: 1, percentage: 0 };
+                    const isActive = readingPart === p;
+                    const isDone = progress.percentage >= 100;
+                    return (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => onReadingPartChange?.(p)}
+                        className={`relative flex-1 flex flex-col items-center justify-center py-2 px-1 min-w-0 transition-colors duration-200 text-xs font-semibold ${isActive ? "text-white" : "text-gray-700 hover:bg-gray-50"}`}
+                        style={isActive ? { backgroundColor: ACCENT } : undefined}
+                        title={`Passage ${p}: ${progress.answered}/${progress.total}`}
+                      >
+                        <span>P{p}</span>
+                        <span className={`text-[10px] font-medium tabular-nums mt-0.5 ${isActive ? "text-white/90" : "text-gray-500"}`}>{progress.answered}/{progress.total}</span>
+                        {isDone && <span className={`absolute top-0.5 right-0.5 flex h-3 w-3 items-center justify-center rounded-full ${isActive ? "bg-white/25 text-white" : "bg-emerald-100 text-emerald-600"}`}><Check className="h-1.5 w-1.5" strokeWidth={3} /></span>}
+                      </button>
+                    );
+                  })}
+                </div>
+                {readingTimerState && renderTimer(readingTimerState)}
+              </>
+            )}
+            {currentSectionType === "WRITING" && (
+              <>
+                <div className="text-xs font-semibold" style={{ color: ACCENT }}>
+                  Writing
+                </div>
+                <div className="flex rounded-lg overflow-hidden border border-gray-200 bg-white">
+                  {[1, 2].map((p) => {
+                    const progress = writingPartProgress[p - 1] ?? { answered: 0, total: 1, percentage: 0 };
+                    const isActive = writingPart === p;
+                    const isDone = progress.percentage >= 100;
+                    return (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => onWritingPartChange?.(p)}
+                        className={`relative flex-1 flex flex-col items-center justify-center py-2 px-1 min-w-0 transition-colors duration-200 text-xs font-semibold ${isActive ? "text-white" : "text-gray-700 hover:bg-gray-50"}`}
+                        style={isActive ? { backgroundColor: ACCENT } : undefined}
+                        title={`Task ${p}: ${progress.answered}/${progress.total}`}
+                      >
+                        <span>T{p}</span>
+                        <span className={`text-[10px] font-medium tabular-nums mt-0.5 ${isActive ? "text-white/90" : "text-gray-500"}`}>{progress.answered}/{progress.total}</span>
+                        {isDone && <span className={`absolute top-0.5 right-0.5 flex h-3 w-3 items-center justify-center rounded-full ${isActive ? "bg-white/25 text-white" : "bg-emerald-100 text-emerald-600"}`}><Check className="h-1.5 w-1.5" strokeWidth={3} /></span>}
+                      </button>
+                    );
+                  })}
+                </div>
+                {writingTimerState && renderTimer(writingTimerState)}
+              </>
+            )}
+            {currentSectionType === "SPEAKING" && (
+              <>
+                <div className="text-xs font-semibold" style={{ color: ACCENT }}>
+                  Speaking
+                </div>
+                <div className="flex rounded-lg overflow-hidden border border-gray-200 bg-white">
+                  {[1, 2, 3].map((p) => {
+                    const progress = speakingPartProgress[p - 1] ?? { answered: 0, total: 1, percentage: 0 };
+                    const isActive = speakingPart === p;
+                    const isDone = progress.percentage >= 100;
+                    return (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => onSpeakingPartChange?.(p)}
+                        className={`relative flex-1 flex flex-col items-center justify-center py-2 px-1 min-w-0 transition-colors duration-200 text-xs font-semibold ${isActive ? "text-white" : "text-gray-700 hover:bg-gray-50"}`}
+                        style={isActive ? { backgroundColor: ACCENT } : undefined}
+                        title={`Part ${p}: ${progress.answered}/${progress.total}`}
+                      >
+                        <span>P{p}</span>
+                        <span className={`text-[10px] font-medium tabular-nums mt-0.5 ${isActive ? "text-white/90" : "text-gray-500"}`}>{progress.answered}/{progress.total}</span>
+                        {isDone && <span className={`absolute top-0.5 right-0.5 flex h-3 w-3 items-center justify-center rounded-full ${isActive ? "bg-white/25 text-white" : "bg-emerald-100 text-emerald-600"}`}><Check className="h-1.5 w-1.5" strokeWidth={3} /></span>}
+                      </button>
+                    );
+                  })}
+                </div>
+                {speakingTimerState && renderTimer(speakingTimerState)}
+              </>
+            )}
           </div>
         )}
 

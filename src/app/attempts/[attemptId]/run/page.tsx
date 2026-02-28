@@ -102,6 +102,24 @@ export default function AttemptRunnerPage() {
     formatTime: (s: number) => string;
     getTimeColor: () => string;
   } | null>(null); // IELTS Reading timer (shown in sidebar)
+  const [listeningTimerState, setListeningTimerState] = useState<{
+    timeRemaining: number;
+    isExpired: boolean;
+    formatTime: (s: number) => string;
+    getTimeColor: () => string;
+  } | null>(null);
+  const [writingTimerState, setWritingTimerState] = useState<{
+    timeRemaining: number;
+    isExpired: boolean;
+    formatTime: (s: number) => string;
+    getTimeColor: () => string;
+  } | null>(null);
+  const [speakingTimerState, setSpeakingTimerState] = useState<{
+    timeRemaining: number;
+    isExpired: boolean;
+    formatTime: (s: number) => string;
+    getTimeColor: () => string;
+  } | null>(null);
   const [splitPercent, setSplitPercent] = useState(55); // % width for questions side in split view
   const splitContainerRef = useRef<HTMLDivElement>(null);
   const isDraggingSplit = useRef(false);
@@ -1216,9 +1234,87 @@ export default function AttemptRunnerPage() {
     });
   }, [currentSection, activeSection, answers, data?.examCategory]);
 
+  const listeningPartProgress = useMemo(() => {
+    if (!currentSection || currentSection.type !== "LISTENING" || data?.examCategory !== "IELTS") return [];
+    const questions = currentSection.questions || [];
+    const parts = [
+      questions.filter((q: { order: number }) => q.order >= 0 && q.order <= 9),
+      questions.filter((q: { order: number }) => q.order >= 10 && q.order <= 19),
+      questions.filter((q: { order: number }) => q.order >= 20 && q.order <= 29),
+      questions.filter((q: { order: number }) => q.order >= 30 && q.order <= 39),
+    ];
+    const sectionAnswers = answers[currentSection.id] || {};
+    return parts.map((partQuestions: { id: string }[]) => {
+      const answered = partQuestions.filter((q) => {
+        const v = sectionAnswers[q.id];
+        return v !== undefined && v !== null && v !== "";
+      }).length;
+      return {
+        answered,
+        total: partQuestions.length,
+        percentage: partQuestions.length > 0 ? (answered / partQuestions.length) * 100 : 0,
+      };
+    });
+  }, [currentSection, activeSection, answers, data?.examCategory]);
+
+  const writingPartProgress = useMemo(() => {
+    if (!currentSection || currentSection.type !== "WRITING" || data?.examCategory !== "IELTS" || !data?.sections) return [];
+    const writingSections = data.sections
+      .filter((s: { type: string }) => s.type === "WRITING")
+      .sort((a: { order: number }, b: { order: number }) => a.order - b.order)
+      .slice(0, 2);
+    return writingSections.map((sec: { id: string }) => {
+      const ans = answers[sec.id];
+      const has = ans && typeof ans === "object" && ans.writing_text != null && String(ans.writing_text).trim() !== "";
+      return { answered: has ? 1 : 0, total: 1, percentage: has ? 100 : 0 };
+    });
+  }, [currentSection, data?.examCategory, data?.sections, answers]);
+
+  const speakingPartProgress = useMemo(() => {
+    if (!currentSection || currentSection.type !== "SPEAKING" || data?.examCategory !== "IELTS") return [];
+    const questions = currentSection.questions || [];
+    const n = questions.length;
+    const parts = [
+      questions.filter((_: any, i: number) => i < n / 3),
+      questions.filter((_: any, i: number) => i >= n / 3 && i < (n * 2) / 3),
+      questions.filter((_: any, i: number) => i >= (n * 2) / 3),
+    ];
+    const sectionAnswers = answers[currentSection.id] || {};
+    return parts.map((partQuestions: { id: string }[]) => {
+      const answered = partQuestions.filter((q) => {
+        const v = sectionAnswers[q.id];
+        if (typeof v === "object" && v !== null) return !!(v as any).audioUrl;
+        return v !== undefined && v !== null && v !== "";
+      }).length;
+      return {
+        answered,
+        total: partQuestions.length,
+        percentage: partQuestions.length > 0 ? (answered / partQuestions.length) * 100 : 0,
+      };
+    });
+  }, [currentSection, activeSection, answers, data?.examCategory]);
+
   useEffect(() => {
     if (!currentSection || currentSection.type !== "READING" || data?.examCategory !== "IELTS") {
       setReadingTimerState(null);
+    }
+  }, [activeSection, currentSection?.type, data?.examCategory]);
+
+  useEffect(() => {
+    if (!currentSection || currentSection.type !== "LISTENING" || data?.examCategory !== "IELTS") {
+      setListeningTimerState(null);
+    }
+  }, [activeSection, currentSection?.type, data?.examCategory]);
+
+  useEffect(() => {
+    if (!currentSection || currentSection.type !== "WRITING" || data?.examCategory !== "IELTS") {
+      setWritingTimerState(null);
+    }
+  }, [activeSection, currentSection?.type, data?.examCategory]);
+
+  useEffect(() => {
+    if (!currentSection || currentSection.type !== "SPEAKING" || data?.examCategory !== "IELTS") {
+      setSpeakingTimerState(null);
     }
   }, [activeSection, currentSection?.type, data?.examCategory]);
 
@@ -1283,6 +1379,20 @@ export default function AttemptRunnerPage() {
               readingTimerState={readingTimerState}
               readingPartProgress={readingPartProgress}
               isIELTSReading={currentSection?.type === "READING" && data.examCategory === "IELTS"}
+              isIELTS={data.examCategory === "IELTS"}
+              currentSectionType={currentSection?.type}
+              listeningPart={listeningPart}
+              onListeningPartChange={setListeningPart}
+              listeningTimerState={listeningTimerState}
+              listeningPartProgress={listeningPartProgress}
+              writingPart={writingPart}
+              onWritingPartChange={setWritingPart}
+              writingTimerState={writingTimerState}
+              writingPartProgress={writingPartProgress}
+              speakingPart={speakingPart}
+              onSpeakingPartChange={setSpeakingPart}
+              speakingTimerState={speakingTimerState}
+              speakingPartProgress={speakingPartProgress}
             />
 
             {currentSection && (() => {
@@ -1317,6 +1427,9 @@ export default function AttemptRunnerPage() {
                   isPassageOpen={viewingPassage}
                   onPassageToggle={() => setViewingPassage((v) => !v)}
                   onReadingTimerStateChange={setReadingTimerState}
+                  onListeningTimerStateChange={setListeningTimerState}
+                  onWritingTimerStateChange={setWritingTimerState}
+                  onSpeakingTimerStateChange={setSpeakingTimerState}
                   writingPart={writingPart}
                   onWritingPartChange={setWritingPart}
                   speakingPart={speakingPart}

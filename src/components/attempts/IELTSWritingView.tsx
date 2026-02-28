@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
-import { IELTSPartsTimerBar } from "@/components/attempts/IELTSPartsTimerBar";
+import React, { useState, useEffect } from "react";
 
 interface Question {
   id: string;
@@ -16,6 +15,13 @@ interface Section {
   durationMin: number;
 }
 
+export type IELTSWritingTimerState = {
+  timeRemaining: number;
+  isExpired: boolean;
+  formatTime: (s: number) => string;
+  getTimeColor: () => string;
+};
+
 interface IELTSWritingViewProps {
   section: Section;
   answers: Record<string, any>;
@@ -24,6 +30,7 @@ interface IELTSWritingViewProps {
   onTimeExpired?: () => void;
   attemptId?: string; // For localStorage
   allSections?: Section[]; // All sections to find Task 1 and Task 2
+  onTimerStateChange?: (state: IELTSWritingTimerState | null) => void; // For sidebar
 }
 
 export function IELTSWritingView({
@@ -34,6 +41,7 @@ export function IELTSWritingView({
   onTimeExpired,
   attemptId,
   allSections = [],
+  onTimerStateChange,
 }: IELTSWritingViewProps) {
   // Get localStorage key for timer
   const getTimerStorageKey = () => {
@@ -80,35 +88,6 @@ export function IELTSWritingView({
     return initializeTimer();
   });
   const [isExpired, setIsExpired] = useState(timeRemaining === 0);
-
-  // Find Task 1 and Task 2 sections
-  const writingSections = useMemo(() => {
-    const task1 = allSections.find(s => s.type === "WRITING" && (s.title.includes("Task 1") || s.title.includes("task 1")));
-    const task2 = allSections.find(s => s.type === "WRITING" && (s.title.includes("Task 2") || s.title.includes("task 2")));
-    return [task1, task2].filter(Boolean) as Section[];
-  }, [allSections]);
-
-  // Calculate progress for each task
-  const partProgress = useMemo(() => {
-    return writingSections.map((taskSection) => {
-      if (!taskSection) return { answered: 0, total: 0, percentage: 0 };
-      
-      const hasAnswer = (() => {
-        const answer = answers[taskSection.id];
-        if (typeof answer === "object" && answer !== null) {
-          // Check for writing_text field
-          return answer.writing_text !== undefined && answer.writing_text !== null && answer.writing_text !== "";
-        }
-        return answer !== undefined && answer !== null && answer !== "";
-      })();
-      
-      return {
-        answered: hasAnswer ? 1 : 0,
-        total: 1,
-        percentage: hasAnswer ? 100 : 0,
-      };
-    });
-  }, [writingSections, answers]);
 
   // Initialize timer from localStorage on mount
   useEffect(() => {
@@ -193,23 +172,23 @@ export function IELTSWritingView({
 
   const getTimeColor = () => {
     if (isExpired) return "text-red-600";
-    if (timeRemaining < 300) return "text-orange-600"; // Less than 5 minutes
+    if (timeRemaining < 300) return "text-orange-600";
     return "text-gray-700";
   };
 
+  useEffect(() => {
+    onTimerStateChange?.({
+      timeRemaining,
+      isExpired,
+      formatTime,
+      getTimeColor,
+    });
+    return () => onTimerStateChange?.(null);
+  }, [timeRemaining, isExpired, onTimerStateChange]);
+
   return (
     <div className="space-y-6">
-      <IELTSPartsTimerBar
-        partCount={2}
-        partLabel="T"
-        partProgress={partProgress}
-        currentPart={currentPart}
-        onPartChange={onPartChange}
-        timeRemaining={timeRemaining}
-        isExpired={isExpired}
-        formatTime={formatTime}
-        getTimeColor={getTimeColor}
-      />
+      {/* Timer and task choosers are shown in the sidebar */}
     </div>
   );
 }

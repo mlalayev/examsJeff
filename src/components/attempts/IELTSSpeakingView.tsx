@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
-import { IELTSPartsTimerBar } from "@/components/attempts/IELTSPartsTimerBar";
+import React, { useState, useEffect } from "react";
 
 interface Question {
   id: string;
@@ -20,6 +19,13 @@ interface Section {
   durationMin: number;
 }
 
+export type IELTSSpeakingTimerState = {
+  timeRemaining: number;
+  isExpired: boolean;
+  formatTime: (s: number) => string;
+  getTimeColor: () => string;
+};
+
 interface IELTSSpeakingViewProps {
   section: Section;
   answers: Record<string, any>;
@@ -27,6 +33,7 @@ interface IELTSSpeakingViewProps {
   currentPart?: number;
   onTimeExpired?: () => void;
   attemptId?: string; // For localStorage
+  onTimerStateChange?: (state: IELTSSpeakingTimerState | null) => void; // For sidebar
 }
 
 export function IELTSSpeakingView({
@@ -36,6 +43,7 @@ export function IELTSSpeakingView({
   currentPart = 1,
   onTimeExpired,
   attemptId,
+  onTimerStateChange,
 }: IELTSSpeakingViewProps) {
   // Get localStorage key for timer
   const getTimerStorageKey = () => {
@@ -82,68 +90,6 @@ export function IELTSSpeakingView({
     return initializeTimer();
   });
   const [isExpired, setIsExpired] = useState(timeRemaining === 0);
-
-  // Split questions into 3 parts based on prompt.part or order
-  const parts = useMemo(() => {
-    const questions = section.questions || [];
-    
-    // Try to group by prompt.part first, then fall back to order-based grouping
-    const part1Questions: Question[] = [];
-    const part2Questions: Question[] = [];
-    const part3Questions: Question[] = [];
-    
-    questions.forEach((q) => {
-      const part = q.prompt?.part;
-      if (part === 1) {
-        part1Questions.push(q);
-      } else if (part === 2) {
-        part2Questions.push(q);
-      } else if (part === 3) {
-        part3Questions.push(q);
-      } else {
-        // Fall back to order-based grouping if no part specified
-        // Assume roughly equal distribution or check prompt text for "Part 1", "Part 2", "Part 3"
-        const promptText = q.prompt?.text?.toLowerCase() || "";
-        if (promptText.includes("part 1") || promptText.includes("part1")) {
-          part1Questions.push(q);
-        } else if (promptText.includes("part 2") || promptText.includes("part2")) {
-          part2Questions.push(q);
-        } else if (promptText.includes("part 3") || promptText.includes("part3")) {
-          part3Questions.push(q);
-        } else {
-          // Default: distribute by order (roughly equal)
-          if (q.order < questions.length / 3) {
-            part1Questions.push(q);
-          } else if (q.order < (questions.length * 2) / 3) {
-            part2Questions.push(q);
-          } else {
-            part3Questions.push(q);
-          }
-        }
-      }
-    });
-    
-    return [part1Questions, part2Questions, part3Questions];
-  }, [section.questions]);
-
-  // Calculate progress for each part
-  const partProgress = useMemo(() => {
-    return parts.map((partQuestions) => {
-      const answered = partQuestions.filter((q) => {
-        const answer = answers[q.id];
-        // For speaking, check if there's an audio URL or text answer
-        if (typeof answer === "object" && answer !== null) {
-          return answer.audioUrl !== undefined && answer.audioUrl !== null && answer.audioUrl !== "";
-        }
-        return answer !== undefined && answer !== null && answer !== "";
-      }).length;
-      return {
-        answered,
-        total: partQuestions.length,
-        percentage: partQuestions.length > 0 ? (answered / partQuestions.length) * 100 : 0,
-      };
-    });
-  }, [parts, answers]);
 
   // Initialize timer from localStorage on mount
   useEffect(() => {
@@ -228,23 +174,23 @@ export function IELTSSpeakingView({
 
   const getTimeColor = () => {
     if (isExpired) return "text-red-600";
-    if (timeRemaining < 300) return "text-orange-600"; // Less than 5 minutes
+    if (timeRemaining < 300) return "text-orange-600";
     return "text-gray-700";
   };
 
+  useEffect(() => {
+    onTimerStateChange?.({
+      timeRemaining,
+      isExpired,
+      formatTime,
+      getTimeColor,
+    });
+    return () => onTimerStateChange?.(null);
+  }, [timeRemaining, isExpired, onTimerStateChange]);
+
   return (
     <div className="space-y-6">
-      <IELTSPartsTimerBar
-        partCount={3}
-        partLabel="P"
-        partProgress={partProgress}
-        currentPart={currentPart}
-        onPartChange={onPartChange}
-        timeRemaining={timeRemaining}
-        isExpired={isExpired}
-        formatTime={formatTime}
-        getTimeColor={getTimeColor}
-      />
+      {/* Timer and part choosers are shown in the sidebar */}
     </div>
   );
 }
