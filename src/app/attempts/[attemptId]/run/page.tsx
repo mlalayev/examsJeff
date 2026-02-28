@@ -1358,29 +1358,40 @@ export default function AttemptRunnerPage() {
               </div>
 
 
-      {/* Image Viewer Sidebar - opens on the left */}
+      {/* Image Viewer - fixed on the LEFT, above everything */}
       {viewingImage && (
-        <div 
-          className="fixed top-0 left-0 h-full bg-white shadow-2xl z-50 flex flex-col"
-          style={{ width: "500px" }}
-        >
-          <div className="flex items-center justify-between p-4 border-b border-gray-200">
-            <h3 className="font-medium text-gray-900">Image Viewer</h3>
-            <button
-              onClick={() => setViewingImage(null)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <X className="w-5 h-5 text-gray-600" />
-            </button>
+        <>
+          {/* Backdrop - click to close */}
+          <div
+            className="fixed inset-0 bg-black/40 z-[100]"
+            style={{ left: 0, right: 0, top: 0, bottom: 0 }}
+            onClick={() => setViewingImage(null)}
+            aria-hidden
+          />
+          {/* Panel on the left */}
+          <div
+            className="fixed top-0 h-full bg-white shadow-2xl z-[101] flex flex-col"
+            style={{ left: 0, width: "500px", maxWidth: "100vw" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h3 className="font-medium text-gray-900">Image Viewer</h3>
+              <button
+                onClick={() => setViewingImage(null)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-600" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-gray-50 min-h-0">
+              <img
+                src={viewingImage}
+                alt="Viewing"
+                className="max-w-full h-auto object-contain"
+              />
+            </div>
           </div>
-          <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-gray-50">
-            <img
-              src={viewingImage}
-              alt="Viewing"
-              className="max-w-full h-auto"
-            />
-          </div>
-        </div>
+        </>
       )}
 
       {/* Modals and Notifications */}
