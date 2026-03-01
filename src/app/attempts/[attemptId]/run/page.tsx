@@ -99,7 +99,7 @@ export default function AttemptRunnerPage() {
   const [speakingSecondsLeft, setSpeakingSecondsLeft] = useState(35); // Countdown for current question view (35 / 180 / 65)
   const [viewingImage, setViewingImage] = useState<string | null>(null); // Image viewer
   const [viewingPassage, setViewingPassage] = useState(false); // Reading passage panel
-  const [speakingIntroDismissed, setSpeakingIntroDismissed] = useState(true); // false = show intro modal when on Speaking
+  const [speakingIntroDismissed, setSpeakingIntroDismissed] = useState(false); // show intro modal when on Speaking until user clicks Okay
   const [ieltsTimerState, setIeltsTimerState] = useState<{
     timeRemaining: number;
     isExpired: boolean;
