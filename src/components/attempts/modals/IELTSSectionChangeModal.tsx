@@ -1,13 +1,14 @@
 "use client";
 
+import React from "react";
+import { AlertTriangle, X } from "lucide-react";
+
 interface IELTSSectionChangeModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
   fromSection: string;
   toSection: string;
-  currentSectionAnswers: Record<string, any>;
-  currentSectionQuestions: Array<{ id: string; prompt: any; qtype: string }>;
 }
 
 export function IELTSSectionChangeModal({
@@ -16,82 +17,76 @@ export function IELTSSectionChangeModal({
   onConfirm,
   fromSection,
   toSection,
-  currentSectionAnswers,
-  currentSectionQuestions,
-  }: IELTSSectionChangeModalProps) {
-    if (!isOpen) return null;
+}: IELTSSectionChangeModalProps) {
+  if (!isOpen) return null;
 
-    // Log answers with question details for backend submission
-    const answersWithQuestions = currentSectionQuestions.map((q) => ({
-      questionId: q.id,
-      questionType: q.qtype,
-      prompt: q.prompt,
-      answer: currentSectionAnswers[q.id] || null,
-    }));
-
-    console.log("=== IELTS Section Change - Answers Log ===");
-    console.log("From Section:", fromSection);
-    console.log("To Section:", toSection);
-    console.log("Total Questions:", currentSectionQuestions.length);
-    console.log("Answers with Questions:", JSON.stringify(answersWithQuestions, null, 2));
-    console.log("==========================================");
-  
-    return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="w-full max-w-md rounded-lg bg-white shadow-xl">
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 px-4">
+      <div className="w-full max-w-md rounded-xl bg-white shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="flex items-start justify-between gap-3 px-5 pt-4 pb-3 border-b border-gray-100">
-          <div>
-            <h2 className="text-[13px] font-semibold tracking-tight text-gray-900">
-              Move to next section?
-            </h2>
-            <p className="mt-1 text-[11px] text-gray-500">
-              From <span className="font-semibold text-gray-700">{fromSection}</span> to{" "}
-              <span className="font-semibold text-gray-700">{toSection}</span>
-            </p>
+        <div className="px-6 pt-6 pb-4 text-center border-b border-gray-100 relative">
+          <div className="flex justify-center mb-3">
+            <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center">
+              <AlertTriangle className="w-8 h-8 text-amber-500" />
+            </div>
           </div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-1">
+            Leave this section?
+          </h2>
+          <p className="text-sm text-gray-500 mt-1">
+            <span className="font-medium text-gray-700">{fromSection}</span>
+            {" → "}
+            <span className="font-medium text-gray-700">{toSection}</span>
+          </p>
           <button
-            type="button"
             onClick={onClose}
-            aria-label="Close"
-            className="ml-2 inline-flex h-7 w-7 items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 text-base"
+            className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition-colors"
+            aria-label="Close modal"
           >
-            ×
+            <X className="w-4 h-4 text-gray-500" />
           </button>
         </div>
 
-        {/* Warning strip */}
-        <div className="mx-5 mt-3 rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-[11px] font-medium text-amber-900">
-          Warning: After moving to the next section, you won&apos;t be able to return here to view or change answers.
-        </div>
-
-        {/* Description under warning */}
-        <div className="mx-5 mt-3 text-[11px] text-gray-600 leading-relaxed">
-          You can wait until the timer finishes or move to the next section now. If you want to double-check
-          anything before continuing, press{" "}
-          <span className="font-semibold text-gray-800">Cancel</span> and stay in the current section.
+        {/* Body */}
+        <div className="px-6 py-5 space-y-3">
+          <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3">
+            <p className="text-sm font-semibold text-amber-800 mb-1">
+              ⚠️ Your timer is still running
+            </p>
+            <p className="text-xs text-amber-700 leading-relaxed">
+              You are leaving this section before the time is up. Once you move on, you
+              will <strong>not</strong> be able to return to this section or review your
+              answers.
+            </p>
+          </div>
+          <p className="text-sm text-gray-600 leading-relaxed">
+            If you still have time remaining, we strongly recommend staying in the current
+            section to review your responses. Once you proceed, this section will be
+            permanently closed.
+          </p>
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-4 mt-4 flex justify-end gap-2 border-t border-gray-100">
+        <div className="px-6 pb-6 pt-4 border-t border-gray-100 flex justify-end gap-3">
           <button
+            type="button"
             onClick={onClose}
             className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
           >
-            Stay in current
+            Stay &amp; Review
           </button>
           <button
+            type="button"
             onClick={() => {
               onConfirm();
               onClose();
             }}
-            className="rounded-md bg-[#303380] px-4 py-2 text-sm font-medium text-white hover:bg-[#252a6b] transition-colors"
+            className="rounded-md px-4 py-2 text-sm font-medium text-white bg-amber-500 hover:bg-amber-600 transition-colors shadow-sm"
           >
-            Continue
+            Leave Section
           </button>
         </div>
       </div>
     </div>
   );
 }
-

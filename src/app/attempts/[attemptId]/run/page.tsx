@@ -559,8 +559,11 @@ export default function AttemptRunnerPage() {
         alert("This was the last module. You can now submit the entire exam.");
       }
     }
-    // IELTS: auto-advance to the next section when timer expires
+    // IELTS: mark section as completed and auto-advance to the next section
     if (data?.examCategory === "IELTS" && data?.sections) {
+      // Lock this section so it shows the tick and becomes unclickable
+      setCompletedSections((prev) => new Set([...prev, sectionId]));
+
       const currentIndex = data.sections.findIndex((s: { id: string }) => s.id === sectionId);
       if (currentIndex < data.sections.length - 1) {
         const nextSection = data.sections[currentIndex + 1];
@@ -996,8 +999,16 @@ export default function AttemptRunnerPage() {
         }
       }
 
-      // IELTS: free switching — no restrictions, no modal, no auto-save
-      // Just switch directly.
+      // IELTS: if the current section's timer is still running, show a warning modal
+      if (data.examCategory === "IELTS" && sectionId !== activeSection) {
+        const timerStillRunning =
+          ieltsTimerState && !ieltsTimerState.isExpired && ieltsTimerState.timeRemaining > 0;
+        if (timerStillRunning) {
+          setPendingSectionChange({ fromId: activeSection, toId: sectionId });
+          setShowIELTSSectionChangeModal(true);
+          return;
+        }
+      }
 
       // SAT only: start timer for newly entered section
       if (data.examCategory === "SAT" && !lockedSections.has(sectionId)) {
@@ -1017,8 +1028,17 @@ export default function AttemptRunnerPage() {
 
       setActiveSection(sectionId);
     },
-    [activeSection, data, accessedSections, sectionStartTimes, lockedSections, attemptId]
+    [activeSection, data, accessedSections, sectionStartTimes, lockedSections, attemptId, ieltsTimerState]
   );
+
+  const handleIELTSSectionChangeConfirm = useCallback(() => {
+    if (!pendingSectionChange) return;
+    // Mark the section they are leaving as completed (tick + disabled)
+    setCompletedSections((prev) => new Set([...prev, pendingSectionChange.fromId]));
+    setActiveSection(pendingSectionChange.toId);
+    setPendingSectionChange(null);
+    setShowIELTSSectionChangeModal(false);
+  }, [pendingSectionChange]);
 
   const handleAnswerChange = useCallback(
     (questionId: string, value: any) => {
@@ -1391,6 +1411,22 @@ export default function AttemptRunnerPage() {
       />
 
       {/* IELTS Section Change Modal */}
-                             </>
+      {pendingSectionChange && (
+        <IELTSSectionChangeModal
+          isOpen={showIELTSSectionChangeModal}
+          onClose={() => {
+            setShowIELTSSectionChangeModal(false);
+            setPendingSectionChange(null);
+          }}
+          onConfirm={handleIELTSSectionChangeConfirm}
+          fromSection={
+            data?.sections?.find((s: { id: string }) => s.id === pendingSectionChange.fromId)?.title ?? ""
+          }
+          toSection={
+            data?.sections?.find((s: { id: string }) => s.id === pendingSectionChange.toId)?.title ?? ""
+          }
+        />
+      )}
+    </>
     );
 }

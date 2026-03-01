@@ -348,8 +348,8 @@ export const ExamSidebar = React.memo(function ExamSidebar({
               let isDisabled = false;
 
               if (examCategory === "IELTS") {
-                // IELTS: all sections are freely clickable
-                isDisabled = false;
+                // IELTS: completed sections are locked; others are freely clickable
+                isDisabled = isCompleted;
               } else {
                 // SAT: only current and past/locked modules are clickable
                 isDisabled = isSAT && index > currentSectionIndex && !isLocked;

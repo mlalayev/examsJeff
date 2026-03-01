@@ -32,13 +32,17 @@ export const SectionListItem = React.memo(function SectionListItem({
   return (
     <button
       onClick={onClick}
-      disabled={isDisabled}
+      disabled={isDisabled || isCompleted}
       className={`w-full text-left px-3 py-2.5 rounded-lg transition-all ${
         isActive
           ? "border"
           : "border border-transparent"
-      } ${isDisabled || isCompleted ? "opacity-40 cursor-not-allowed" : ""}`}
-      style={isActive ? { 
+      } ${isDisabled || isCompleted ? "opacity-50 cursor-not-allowed" : ""}`}
+      style={isCompleted ? {
+        backgroundColor: 'rgba(5, 150, 105, 0.06)',
+        borderColor: 'rgba(5, 150, 105, 0.25)',
+        color: 'rgba(5, 150, 105, 0.9)',
+      } : isActive ? { 
         backgroundColor: '#E0E1EC',
         borderColor: 'rgba(48, 51, 128, 0.2)',
         color: '#303380'
@@ -65,7 +69,7 @@ export const SectionListItem = React.memo(function SectionListItem({
           {isLocked ? (
             <Lock className="w-4 h-4 text-green-600 flex-shrink-0" />
           ) : isCompleted ? (
-            <CheckCircle className="w-4 h-4 text-blue-600 flex-shrink-0" />
+            <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
           ) : (
             <BookOpen className="w-4 h-4 flex-shrink-0" />
           )}
@@ -74,9 +78,7 @@ export const SectionListItem = React.memo(function SectionListItem({
           </span>
         </div>
         {(isLocked || isCompleted) && (
-          <CheckCircle className={`w-4 h-4 flex-shrink-0 ${
-            isLocked ? "text-green-600" : "text-blue-600"
-          }`} />
+          <CheckCircle className="w-4 h-4 flex-shrink-0 text-emerald-600" />
         )}
       </div>
       <div className="mt-1 text-xs"
