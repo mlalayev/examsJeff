@@ -178,6 +178,8 @@ export default function AttemptRunnerPage() {
     sectionStartTimes,
     lockedSections,
     completedSections,
+    speakingPart,
+    speakingCurrentQuestionIndex,
     isSubmitted: submitting || showSuccessModal,
     onRestore: (restored: PersistedAttemptState) => {
       // Only restore once
@@ -218,6 +220,17 @@ export default function AttemptRunnerPage() {
       // Restore active section (will be validated later when data is loaded)
       if (restored.activeSection) {
         setActiveSection(restored.activeSection);
+      }
+      // Restore IELTS Speaking position so reload doesn't restart from question 1
+      if (typeof restored.speakingPart === "number" && restored.speakingPart >= 1 && restored.speakingPart <= 3) {
+        setSpeakingPart(restored.speakingPart);
+      }
+      if (typeof restored.speakingCurrentQuestionIndex === "number" && restored.speakingCurrentQuestionIndex >= 0) {
+        setSpeakingCurrentQuestionIndex(restored.speakingCurrentQuestionIndex);
+      }
+      if (restored.speakingPart != null && restored.speakingCurrentQuestionIndex != null) {
+        const total = restored.speakingPart === 1 ? 35 : restored.speakingPart === 2 ? 180 : 65;
+        setSpeakingSecondsLeft(total);
       }
 
       // Show notification
@@ -416,6 +429,8 @@ export default function AttemptRunnerPage() {
           const localCompleted = loadCompletedSectionsFromStorageHelper();
           let persistenceCompleted = new Set<string>();
           let savedSectionId: string | null = null;
+          let savedSpeakingPart: number | null = null;
+          let savedSpeakingQuestionIndex: number | null = null;
           try {
             const persistKey = `ielts_attempt:${attemptId}:${json.examCategory}`;
             const persistRaw = typeof window !== "undefined" ? localStorage.getItem(persistKey) : null;
@@ -431,6 +446,12 @@ export default function AttemptRunnerPage() {
                 ) {
                   savedSectionId = parsed.activeSection;
                 }
+                if (typeof parsed.speakingPart === "number" && parsed.speakingPart >= 1 && parsed.speakingPart <= 3) {
+                  savedSpeakingPart = parsed.speakingPart;
+                }
+                if (typeof parsed.speakingCurrentQuestionIndex === "number" && parsed.speakingCurrentQuestionIndex >= 0) {
+                  savedSpeakingQuestionIndex = parsed.speakingCurrentQuestionIndex;
+                }
               }
             }
           } catch (_) {}
@@ -439,7 +460,6 @@ export default function AttemptRunnerPage() {
           const mergedCompleted = new Set([...localCompleted, ...persistenceCompleted]);
           if (mergedCompleted.size > 0) {
             setCompletedSections(mergedCompleted);
-            // Sync back the merged set to the dedicated key
             saveCompletedSectionsToStorageHelper(mergedCompleted);
           }
 
@@ -447,6 +467,14 @@ export default function AttemptRunnerPage() {
           if (savedSectionId && !mergedCompleted.has(savedSectionId)) {
             setActiveSection(savedSectionId);
             setAccessedSections((prev) => new Set([...prev, savedSectionId!]));
+            // If we're restoring to Speaking, restore part and question index so reload doesn't restart from first question
+            const speakingSection = json.sections.find((s: Section) => s.type === "SPEAKING");
+            if (speakingSection && savedSectionId === speakingSection.id && savedSpeakingPart != null && savedSpeakingQuestionIndex != null) {
+              setSpeakingPart(savedSpeakingPart);
+              setSpeakingCurrentQuestionIndex(savedSpeakingQuestionIndex);
+              const total = savedSpeakingPart === 1 ? 35 : savedSpeakingPart === 2 ? 180 : 65;
+              setSpeakingSecondsLeft(total);
+            }
           } else {
             // Fall back: first non-completed section in IELTS order
             const sectionOrder = ["LISTENING", "READING", "WRITING", "SPEAKING"];
@@ -1289,6 +1317,34 @@ export default function AttemptRunnerPage() {
     return () => clearInterval(interval);
   }, [currentSection, speakingIntroDismissed, data?.examCategory, speakingPartQuestions]);
 
+  // Exam security: block right-click, F12/dev tools shortcuts, text selection (all exam types)
+  useEffect(() => {
+    const preventContextMenu = (e: MouseEvent) => e.preventDefault();
+    const preventKey = (e: KeyboardEvent) => {
+      if (e.key === "F12") {
+        e.preventDefault();
+        return;
+      }
+      if (e.ctrlKey && e.shiftKey && (e.key === "I" || e.key === "J" || e.key === "C" || e.key === "i" || e.key === "j" || e.key === "c")) {
+        e.preventDefault();
+        return;
+      }
+      if (e.ctrlKey && (e.key === "U" || e.key === "u")) {
+        e.preventDefault();
+        return;
+      }
+      if (e.key === "PrintScreen" || e.key === "Snapshot") {
+        e.preventDefault();
+      }
+    };
+    document.addEventListener("contextmenu", preventContextMenu);
+    document.addEventListener("keydown", preventKey);
+    return () => {
+      document.removeEventListener("contextmenu", preventContextMenu);
+      document.removeEventListener("keydown", preventKey);
+    };
+  }, []);
+
   if (loading) {
     return <LoadingSkeleton />;
   }
@@ -1314,7 +1370,10 @@ export default function AttemptRunnerPage() {
 
   return (
     <>
-    <div className="min-h-screen h-screen flex flex-col bg-gradient-to-br from-slate-50 to-slate-100">
+    <div
+      className="min-h-screen h-screen flex flex-col bg-gradient-to-br from-slate-50 to-slate-100 select-none"
+      style={{ WebkitUserSelect: "none", userSelect: "none" }}
+    >
         {/* SAT Timer */}
         {isSAT && currentSection && !lockedSections.has(currentSection.id) && (
           <SectionTimer

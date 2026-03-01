@@ -30,6 +30,8 @@ export interface PersistedAttemptState {
   sectionStartTimes?: Record<string, number>; // sectionId -> timestamp
   lockedSections?: string[]; // Array of locked section IDs
   completedSections?: string[]; // Array of completed section IDs (IELTS)
+  speakingPart?: number; // IELTS Speaking current part (1–3)
+  speakingCurrentQuestionIndex?: number; // IELTS Speaking question index within part
   lastSaved: number; // timestamp
   version: string; // For version mismatch detection
 }
@@ -50,6 +52,8 @@ export interface UseAttemptPersistenceOptions {
   sectionStartTimes?: Record<string, number>;
   lockedSections?: Set<string>;
   completedSections?: Set<string>;
+  speakingPart?: number; // IELTS Speaking: current part (1–3)
+  speakingCurrentQuestionIndex?: number; // IELTS Speaking: question index within part
   isSubmitted?: boolean;
   onRestore?: (state: PersistedAttemptState) => void;
   debounceMs?: number;
@@ -94,6 +98,8 @@ export function useAttemptPersistence(options: UseAttemptPersistenceOptions) {
     sectionStartTimes,
     lockedSections,
     completedSections,
+    speakingPart,
+    speakingCurrentQuestionIndex,
     isSubmitted = false,
     onRestore,
     debounceMs = DEBOUNCE_MS,
@@ -127,6 +133,8 @@ export function useAttemptPersistence(options: UseAttemptPersistenceOptions) {
         sectionStartTimes,
         lockedSections: lockedSections ? Array.from(lockedSections) : undefined,
         completedSections: completedSections ? Array.from(completedSections) : undefined,
+        speakingPart,
+        speakingCurrentQuestionIndex,
         lastSaved: Date.now(),
         version: STORAGE_VERSION,
       };
@@ -148,6 +156,8 @@ export function useAttemptPersistence(options: UseAttemptPersistenceOptions) {
     sectionStartTimes,
     lockedSections,
     completedSections,
+    speakingPart,
+    speakingCurrentQuestionIndex,
     isSubmitted,
     storageKey,
   ]);
@@ -246,6 +256,8 @@ export function useAttemptPersistence(options: UseAttemptPersistenceOptions) {
     sectionStartTimes,
     lockedSections,
     completedSections,
+    speakingPart,
+    speakingCurrentQuestionIndex,
     saveDebounced,
   ]);
 
