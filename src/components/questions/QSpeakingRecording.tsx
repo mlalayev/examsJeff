@@ -261,6 +261,52 @@ export function QSpeakingRecording({
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
+  /**
+   * Format IELTS Speaking prompt for display.
+   * Part 2 cue cards: "Main prompt\nYou should say: __point1__ - __point2__" → main bold + bullet list.
+   */
+  const formatSpeakingPrompt = (text: string): React.ReactNode => {
+    if (!text || typeof text !== "string") return "Speaking question";
+    const trimmed = text.trim();
+
+    // Check for "You should say:" (Part 2 cue card style)
+    const sayIndex = trimmed.search(/\bYou should say\s*:/i);
+    if (sayIndex === -1) {
+      // No structure: show as-is, strip only __ for consistency
+      const cleaned = trimmed.replace(/__([^_]*?)__/g, "$1");
+      return <p className="text-sm text-gray-800 whitespace-pre-line">{cleaned}</p>;
+    }
+
+    const mainPart = trimmed.slice(0, sayIndex).trim();
+    const rest = trimmed.slice(sayIndex).trim();
+    // After "You should say:" take the rest and split by " - " to get bullets; strip __
+    const afterLabel = rest.replace(/^You should say\s*:\s*/i, "").trim();
+    const rawBullets = afterLabel.split(/\s*-\s*/).map((s) => s.trim()).filter(Boolean);
+    const bullets = rawBullets.map((b) => b.replace(/^__|__$/g, "").replace(/__/g, " ").trim());
+
+    return (
+      <div className="space-y-3">
+        {mainPart && (
+          <p className="text-base font-semibold text-gray-900 leading-snug">
+            {mainPart.replace(/\*\*/g, "").trim()}
+          </p>
+        )}
+        {bullets.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+              You should say:
+            </p>
+            <ul className="list-disc list-inside space-y-1.5 text-sm text-gray-700">
+              {bullets.map((item, i) => (
+                <li key={i}>{item}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // If already completed (has audio URL) and read-only
   if (readOnly && value.audioUrl) {
     return (
@@ -279,7 +325,7 @@ export function QSpeakingRecording({
   return (
     <div className="space-y-4">
       <div className="rounded-lg border border-gray-200 bg-white px-5 py-4">
-        <p className="text-sm text-gray-800 whitespace-pre-line">{question.prompt?.text || "Speaking question"}</p>
+        {formatSpeakingPrompt(question.prompt?.text || "Speaking question")}
       </div>
     </div>
   );
