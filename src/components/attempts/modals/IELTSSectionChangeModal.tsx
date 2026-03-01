@@ -22,25 +22,25 @@ export function IELTSSectionChangeModal({
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 px-4">
-      <div className="w-full max-w-md rounded-xl bg-white shadow-2xl overflow-hidden">
+      <div className="w-full max-w-lg rounded-xl bg-white shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="px-6 pt-6 pb-4 text-center border-b border-gray-100 relative">
-          <div className="flex justify-center mb-3">
-            <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center">
-              <AlertTriangle className="w-8 h-8 text-amber-500" />
+        <div className="px-6 pt-5 pb-3 text-center border-b border-gray-100 relative">
+          <div className="flex justify-center mb-2">
+            <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center">
+              <AlertTriangle className="w-6 h-6 text-amber-500" />
             </div>
           </div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-1">
+          <h2 className="text-lg font-semibold text-gray-900 mb-0.5">
             Leave this section?
           </h2>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-gray-500">
             <span className="font-medium text-gray-700">{fromSection}</span>
             {" → "}
             <span className="font-medium text-gray-700">{toSection}</span>
           </p>
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition-colors"
+            className="absolute top-3 right-3 p-2 rounded-full hover:bg-gray-100 transition-colors"
             aria-label="Close modal"
           >
             <X className="w-4 h-4 text-gray-500" />
@@ -48,9 +48,9 @@ export function IELTSSectionChangeModal({
         </div>
 
         {/* Body */}
-        <div className="px-6 py-5 space-y-3">
-          <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3">
-            <p className="text-sm font-semibold text-amber-800 mb-1">
+        <div className="px-6 py-4 space-y-2">
+          <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-2.5">
+            <p className="text-sm font-semibold text-amber-800 mb-0.5">
               ⚠️ Your timer is still running
             </p>
             <p className="text-xs text-amber-700 leading-relaxed">
@@ -67,11 +67,11 @@ export function IELTSSectionChangeModal({
         </div>
 
         {/* Footer */}
-        <div className="px-6 pb-6 pt-4 border-t border-gray-100 flex items-center justify-end gap-3">
+        <div className="px-6 pb-5 pt-3 border-t border-gray-100 flex items-center justify-end gap-3">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md border border-gray-300 px-5 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            className="rounded-md border border-gray-300 px-5 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
           >
             Stay &amp; Review
           </button>
@@ -81,7 +81,7 @@ export function IELTSSectionChangeModal({
               onConfirm();
               onClose();
             }}
-            className="rounded-md px-6 py-1.5 text-sm font-medium text-white bg-[#303380] hover:bg-[#252a6b] transition-colors shadow-sm"
+            className="rounded-md px-6 py-2 text-sm font-medium text-white bg-[#303380] hover:bg-[#252a6b] transition-colors shadow-sm"
           >
             Leave Section
           </button>

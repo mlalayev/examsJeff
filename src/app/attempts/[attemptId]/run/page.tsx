@@ -394,44 +394,50 @@ export default function AttemptRunnerPage() {
       setAccessedSections(restoredAccessedSections);
 
       if (json.sections && json.sections.length > 0) {
-        // Helper: read saved activeSection directly from the persistence localStorage key
-        const readSavedActiveSection = (examCategory: string): string | null => {
-          try {
-            const key = `ielts_attempt:${attemptId}:${examCategory}`;
-            const saved = localStorage.getItem(key);
-            if (!saved) return null;
-            const parsed = JSON.parse(saved);
-            if (
-              parsed.attemptId === attemptId &&
-              parsed.activeSection &&
-              json.sections.some((s: Section) => s.id === parsed.activeSection)
-            ) {
-              return parsed.activeSection;
-            }
-          } catch (_) {}
-          return null;
-        };
-
         // For IELTS: Load completed sections and find first non-completed section
         if (json.examCategory === "IELTS") {
-          const loadedCompletedSections = loadCompletedSectionsFromStorageHelper();
-          if (loadedCompletedSections.size > 0) {
-            setCompletedSections(loadedCompletedSections);
+          // Read from both storage sources and merge for maximum reliability
+          const localCompleted = loadCompletedSectionsFromStorageHelper();
+          let persistenceCompleted = new Set<string>();
+          let savedSectionId: string | null = null;
+          try {
+            const persistKey = `ielts_attempt:${attemptId}:${json.examCategory}`;
+            const persistRaw = typeof window !== "undefined" ? localStorage.getItem(persistKey) : null;
+            if (persistRaw) {
+              const parsed = JSON.parse(persistRaw);
+              if (parsed.attemptId === attemptId) {
+                if (Array.isArray(parsed.completedSections)) {
+                  persistenceCompleted = new Set(parsed.completedSections);
+                }
+                if (
+                  parsed.activeSection &&
+                  json.sections.some((s: Section) => s.id === parsed.activeSection)
+                ) {
+                  savedSectionId = parsed.activeSection;
+                }
+              }
+            }
+          } catch (_) {}
+
+          // Merge both sources
+          const mergedCompleted = new Set([...localCompleted, ...persistenceCompleted]);
+          if (mergedCompleted.size > 0) {
+            setCompletedSections(mergedCompleted);
+            // Sync back the merged set to the dedicated key
+            saveCompletedSectionsToStorageHelper(mergedCompleted);
           }
 
-          // Try to restore the exact section the user was on
-          const savedSectionId = readSavedActiveSection(json.examCategory);
-          if (savedSectionId && !loadedCompletedSections.has(savedSectionId)) {
-            // Restore exactly where they were
+          // Restore the exact section the user was on (if still valid / not completed)
+          if (savedSectionId && !mergedCompleted.has(savedSectionId)) {
             setActiveSection(savedSectionId);
-            setAccessedSections((prev) => new Set([...prev, savedSectionId]));
+            setAccessedSections((prev) => new Set([...prev, savedSectionId!]));
           } else {
             // Fall back: first non-completed section in IELTS order
             const sectionOrder = ["LISTENING", "READING", "WRITING", "SPEAKING"];
             let firstNonCompletedSection = null;
             for (const sectionType of sectionOrder) {
               const sectionOfType = json.sections.find(
-                (s: Section) => s.type === sectionType && !loadedCompletedSections.has(s.id)
+                (s: Section) => s.type === sectionType && !mergedCompleted.has(s.id)
               );
               if (sectionOfType) {
                 firstNonCompletedSection = sectionOfType;
