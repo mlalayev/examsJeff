@@ -537,63 +537,48 @@ export default function AttemptRunnerPage() {
   };
 
   const handleTimeExpired = useCallback(async (sectionId: string) => {
-    // Clear timer from localStorage
-    if (typeof window !== "undefined") {
-      const storageKey = `sat_timer_${attemptId}_${sectionId}`;
-      localStorage.removeItem(storageKey);
-    }
-
-    // Auto-save and lock the section
-    await saveSection(sectionId, answers[sectionId] || {});
-    setLockedSections((prev) => new Set([...prev, sectionId]));
-
-    alert("Time's up for this module! Your answers have been auto-saved and the module is now locked.");
-
-    // SAT üçün avtomatik növbəti modula keçid
+    // SAT only: lock section and auto-advance to next module
     if (data?.examCategory === "SAT" && data?.sections) {
+      // Clear timer from localStorage
+      if (typeof window !== "undefined") {
+        const storageKey = `sat_timer_${attemptId}_${sectionId}`;
+        localStorage.removeItem(storageKey);
+      }
+
+      // Auto-save and lock the section
+      await saveSection(sectionId, answers[sectionId] || {});
+      setLockedSections((prev) => new Set([...prev, sectionId]));
+      alert("Time's up for this module! Your answers have been auto-saved and the module is now locked.");
+
       const currentIndex = data.sections.findIndex((s) => s.id === sectionId);
       if (currentIndex < data.sections.length - 1) {
-      const nextSection = data.sections[currentIndex + 1];
-      
-      // Clear old timer from localStorage for next section
-      if (typeof window !== "undefined") {
-        const nextStorageKey = `sat_timer_${attemptId}_${nextSection.id}`;
-        localStorage.removeItem(nextStorageKey);
-      }
-      
-      // Always start new timer for next section
-      const newStartTime = Date.now();
-      const newStartTimes = {
-        ...sectionStartTimes,
-        [nextSection.id]: newStartTime,
-      };
-      setSectionStartTimes(newStartTimes);
-      setAccessedSections((prev) => new Set([...prev, nextSection.id]));
-      
-      // Save start time
-      await fetch(`/api/attempts/${attemptId}/save`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sectionStartTimes: newStartTimes,
-        }),
-      });
-      
-      setActiveSection(nextSection.id);
+        const nextSection = data.sections[currentIndex + 1];
+
+        if (typeof window !== "undefined") {
+          const nextStorageKey = `sat_timer_${attemptId}_${nextSection.id}`;
+          localStorage.removeItem(nextStorageKey);
+        }
+
+        const newStartTime = Date.now();
+        const newStartTimes = {
+          ...sectionStartTimes,
+          [nextSection.id]: newStartTime,
+        };
+        setSectionStartTimes(newStartTimes);
+        setAccessedSections((prev) => new Set([...prev, nextSection.id]));
+
+        await fetch(`/api/attempts/${attemptId}/save`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sectionStartTimes: newStartTimes }),
+        });
+
+        setActiveSection(nextSection.id);
       } else {
-        // Last module
         alert("This was the last module. You can now submit the entire exam.");
       }
-    } else {
-      // Normal exam (non-SAT) - keep old behavior
-      if (data?.sections) {
-        const currentIndex = data.sections.findIndex((s) => s.id === sectionId);
-        if (currentIndex < data.sections.length - 1) {
-          const nextSection = data.sections[currentIndex + 1];
-          setActiveSection(nextSection.id);
-        }
-      }
     }
+    // IELTS and all other exam types: timer expiry has no effect (no lock, no switch)
   }, [answers, data, saveSection, sectionStartTimes, accessedSections, lockedSections, attemptId]);
 
   const handleEndSection = async (sectionId: string) => {
