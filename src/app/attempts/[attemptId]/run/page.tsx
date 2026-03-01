@@ -29,6 +29,7 @@ import { SubmitModuleModal } from "@/components/attempts/modals/SubmitModuleModa
 import { ResumeNotification } from "@/components/attempts/ResumeNotification";
 import { IELTSSectionChangeModal } from "@/components/attempts/modals/IELTSSectionChangeModal";
 import { SpeakingIntroModal } from "@/components/attempts/modals/SpeakingIntroModal";
+import { SpeakingTimeUpModal } from "@/components/attempts/modals/SpeakingTimeUpModal";
 import { Clock, Save, CheckCircle, Send, ChevronRight, X } from "lucide-react";
 
 interface Question {
@@ -112,6 +113,7 @@ export default function AttemptRunnerPage() {
 
   const [showIELTSSectionChangeModal, setShowIELTSSectionChangeModal] = useState(false);
   const [pendingSectionChange, setPendingSectionChange] = useState<{ fromId: string; toId: string } | null>(null);
+  const [showSpeakingTimeUpModal, setShowSpeakingTimeUpModal] = useState(false);
   const [completedSections, setCompletedSections] = useState<Set<string>>(new Set());
 
   const autosaveTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -599,8 +601,14 @@ export default function AttemptRunnerPage() {
         alert("This was the last module. You can now submit the entire exam.");
       }
     }
-    // IELTS: mark section as completed and auto-advance to the next section
+    // IELTS: mark section as completed and auto-advance to the next section (or show time-up modal for Speaking)
     if (data?.examCategory === "IELTS" && data?.sections) {
+      const expiredSection = data.sections.find((s: { id: string; type: string }) => s.id === sectionId);
+      if (expiredSection?.type === "SPEAKING") {
+        setCompletedSections((prev) => new Set([...prev, sectionId]));
+        setShowSpeakingTimeUpModal(true);
+        return;
+      }
       // Lock this section so it shows the tick and becomes unclickable
       setCompletedSections((prev) => new Set([...prev, sectionId]));
 
@@ -1520,6 +1528,16 @@ export default function AttemptRunnerPage() {
       <SuccessModal
         isOpen={showSuccessModal}
         onClose={handleSuccessModalClose}
+      />
+
+      {/* IELTS Speaking: time's up → show modal and auto-submit */}
+      <SpeakingTimeUpModal
+        isOpen={showSpeakingTimeUpModal}
+        onConfirm={() => {
+          setShowSpeakingTimeUpModal(false);
+          handleSubmitConfirm();
+        }}
+        autoSubmitDelayMs={3000}
       />
 
       {/* IELTS Speaking intro — shown when entering Speaking until user clicks Okay */}
