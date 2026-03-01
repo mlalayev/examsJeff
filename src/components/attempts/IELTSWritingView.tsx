@@ -15,6 +15,9 @@ interface Section {
   durationMin: number;
 }
 
+// All IELTS sections use 2 minutes
+const IELTS_DURATION_MIN = 2;
+
 export type IELTSWritingTimerState = {
   timeRemaining: number;
   isExpired: boolean;
@@ -51,10 +54,10 @@ export function IELTSWritingView({
 
   // Initialize timer from localStorage or default
   const initializeTimer = () => {
-    if (typeof window === "undefined") return section.durationMin * 60;
+    if (typeof window === "undefined") return IELTS_DURATION_MIN * 60;
     
     const storageKey = getTimerStorageKey();
-    if (!storageKey) return section.durationMin * 60;
+    if (!storageKey) return IELTS_DURATION_MIN * 60;
 
     const savedTimer = localStorage.getItem(storageKey);
     if (savedTimer) {
@@ -66,7 +69,6 @@ export function IELTSWritingView({
         if (remaining > 0) {
           return remaining;
         } else {
-          // Timer expired, remove from localStorage
           localStorage.removeItem(storageKey);
           return 0;
         }
@@ -76,20 +78,18 @@ export function IELTSWritingView({
       }
     }
     
-    // No saved timer, start fresh
     const startTime = Date.now();
-    const endTime = startTime + section.durationMin * 60 * 1000;
+    const endTime = startTime + IELTS_DURATION_MIN * 60 * 1000;
     localStorage.setItem(storageKey, JSON.stringify({ startTime, endTime }));
-    return section.durationMin * 60;
+    return IELTS_DURATION_MIN * 60;
   };
 
   const [timeRemaining, setTimeRemaining] = useState(() => {
-    if (typeof window === "undefined") return section.durationMin * 60;
+    if (typeof window === "undefined") return IELTS_DURATION_MIN * 60;
     return initializeTimer();
   });
   const [isExpired, setIsExpired] = useState(timeRemaining === 0);
 
-  // Initialize timer from localStorage on mount
   useEffect(() => {
     if (typeof window === "undefined") return;
     
@@ -107,29 +107,24 @@ export function IELTSWritingView({
           setTimeRemaining(remaining);
           setIsExpired(false);
         } else {
-          // Timer expired
           setTimeRemaining(0);
           setIsExpired(true);
           localStorage.removeItem(storageKey);
-          if (onTimeExpired) {
-            onTimeExpired();
-          }
+          if (onTimeExpired) onTimeExpired();
         }
       } catch (e) {
         console.error("Failed to parse saved timer:", e);
         localStorage.removeItem(storageKey);
       }
     } else {
-      // No saved timer, start fresh
       const startTime = Date.now();
-      const endTime = startTime + section.durationMin * 60 * 1000;
+      const endTime = startTime + IELTS_DURATION_MIN * 60 * 1000;
       localStorage.setItem(storageKey, JSON.stringify({ startTime, endTime }));
-      setTimeRemaining(section.durationMin * 60);
+      setTimeRemaining(IELTS_DURATION_MIN * 60);
       setIsExpired(false);
     }
-  }, [attemptId, section.id, section.durationMin, onTimeExpired]);
+  }, [attemptId, section.id, onTimeExpired]);
 
-  // Timer effect - countdown and save to localStorage
   useEffect(() => {
     if (isExpired) return;
 
@@ -137,23 +132,19 @@ export function IELTSWritingView({
       setTimeRemaining((prev) => {
         if (prev <= 1) {
           setIsExpired(true);
-          // Clear timer from localStorage when expired
           const storageKey = getTimerStorageKey();
           if (storageKey && typeof window !== "undefined") {
             localStorage.removeItem(storageKey);
           }
-          if (onTimeExpired) {
-            onTimeExpired();
-          }
+          if (onTimeExpired) onTimeExpired();
           return 0;
         }
         
-        // Update localStorage with remaining time
         const storageKey = getTimerStorageKey();
         if (storageKey && typeof window !== "undefined") {
           const now = Date.now();
           const endTime = now + (prev - 1) * 1000;
-          const startTime = endTime - section.durationMin * 60 * 1000;
+          const startTime = endTime - IELTS_DURATION_MIN * 60 * 1000;
           localStorage.setItem(storageKey, JSON.stringify({ startTime, endTime }));
         }
         
@@ -162,7 +153,7 @@ export function IELTSWritingView({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isExpired, onTimeExpired, section.durationMin, attemptId, section.id]);
+  }, [isExpired, onTimeExpired, attemptId, section.id]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);

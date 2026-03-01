@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Send, Check } from "lucide-react";
+import { Send, Check, Clock } from "lucide-react";
 import { ProgressBar } from "./ProgressBar";
 import { SectionListItem } from "./SectionListItem";
 
@@ -51,14 +51,13 @@ interface ExamSidebarProps {
   speakingPart?: number;
   onSpeakingPartChange?: (part: number) => void;
   speakingPartProgress?: ReadingPartProgress[];
+  ieltsTimerState?: {
+    timeRemaining: number;
+    isExpired: boolean;
+    formatTime: (s: number) => string;
+    getTimeColor: () => string;
+  } | null;
 }
-
-type IELTSTimerState = {
-  timeRemaining: number;
-  isExpired: boolean;
-  formatTime: (s: number) => string;
-  getTimeColor: () => string;
-};
 
 export const ExamSidebar = React.memo(function ExamSidebar({
   examTitle,
@@ -91,11 +90,40 @@ export const ExamSidebar = React.memo(function ExamSidebar({
   speakingPart = 1,
   onSpeakingPartChange,
   speakingPartProgress = [],
+  ieltsTimerState,
 }: ExamSidebarProps) {
   const ACCENT = "#303380";
   const DONE = "#059669";
 
-  const renderTimer = (_state: unknown) => null; // Timer removed
+  const renderTimer = () => {
+    if (!ieltsTimerState) return null;
+    const { timeRemaining, isExpired, formatTime, getTimeColor } = ieltsTimerState;
+    const colorClass = isExpired
+      ? "text-red-600"
+      : timeRemaining < 30
+      ? "text-orange-500"
+      : "text-slate-700";
+    return (
+      <div
+        className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm font-semibold tabular-nums ${colorClass}`}
+        style={{
+          backgroundColor: isExpired
+            ? "rgba(239,68,68,0.08)"
+            : timeRemaining < 30
+            ? "rgba(249,115,22,0.08)"
+            : "rgba(48,51,128,0.06)",
+        }}
+      >
+        <div className="flex items-center gap-1.5">
+          <Clock className="h-3.5 w-3.5" />
+          <span className="text-xs font-medium">Time</span>
+        </div>
+        <span className="text-base font-bold tracking-tight">
+          {isExpired ? "00:00" : formatTime(timeRemaining)}
+        </span>
+      </div>
+    );
+  };
 
   const sectionOrder = ["LISTENING", "READING", "WRITING", "SPEAKING"];
 
@@ -193,6 +221,7 @@ export const ExamSidebar = React.memo(function ExamSidebar({
                     );
                   })}
                 </div>
+                {renderTimer()}
               </>
             )}
             {currentSectionType === "READING" && (
@@ -221,7 +250,7 @@ export const ExamSidebar = React.memo(function ExamSidebar({
                     );
                   })}
                 </div>
-                {/* Timer removed */}
+                {renderTimer()}
               </>
             )}
             {currentSectionType === "WRITING" && (
@@ -250,7 +279,7 @@ export const ExamSidebar = React.memo(function ExamSidebar({
                     );
                   })}
                 </div>
-                {/* Timer removed */}
+                {renderTimer()}
               </>
             )}
             {currentSectionType === "SPEAKING" && (
@@ -279,7 +308,7 @@ export const ExamSidebar = React.memo(function ExamSidebar({
                     );
                   })}
                 </div>
-                {/* Timer removed */}
+                {renderTimer()}
               </>
             )}
           </div>
