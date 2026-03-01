@@ -67,11 +67,11 @@ export function IELTSSectionChangeModal({
         </div>
 
         {/* Footer */}
-        <div className="px-6 pb-6 pt-4 border-t border-gray-100 flex justify-end gap-3">
+        <div className="px-6 pb-6 pt-4 border-t border-gray-100 flex items-center justify-end gap-3">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            className="rounded-md border border-gray-300 px-5 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
           >
             Stay &amp; Review
           </button>
@@ -81,7 +81,7 @@ export function IELTSSectionChangeModal({
               onConfirm();
               onClose();
             }}
-            className="rounded-md px-4 py-2 text-sm font-medium text-white bg-amber-500 hover:bg-amber-600 transition-colors shadow-sm"
+            className="rounded-md px-6 py-1.5 text-sm font-medium text-white bg-[#303380] hover:bg-[#252a6b] transition-colors shadow-sm"
           >
             Leave Section
           </button>
