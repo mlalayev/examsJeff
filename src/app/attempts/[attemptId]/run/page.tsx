@@ -28,6 +28,7 @@ import { SuccessModal } from "@/components/attempts/modals/SuccessModal";
 import { SubmitModuleModal } from "@/components/attempts/modals/SubmitModuleModal";
 import { ResumeNotification } from "@/components/attempts/ResumeNotification";
 import { IELTSSectionChangeModal } from "@/components/attempts/modals/IELTSSectionChangeModal";
+import { SpeakingIntroModal } from "@/components/attempts/modals/SpeakingIntroModal";
 import { Clock, Save, CheckCircle, Send, ChevronRight, X } from "lucide-react";
 
 interface Question {
@@ -96,6 +97,7 @@ export default function AttemptRunnerPage() {
   const [speakingPart, setSpeakingPart] = useState(1); // For IELTS Speaking part selection
   const [viewingImage, setViewingImage] = useState<string | null>(null); // Image viewer
   const [viewingPassage, setViewingPassage] = useState(false); // Reading passage panel
+  const [speakingIntroDismissed, setSpeakingIntroDismissed] = useState(true); // false = show intro modal when on Speaking
   const [ieltsTimerState, setIeltsTimerState] = useState<{
     timeRemaining: number;
     isExpired: boolean;
@@ -112,6 +114,16 @@ export default function AttemptRunnerPage() {
 
   const autosaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const hasRestoredFromPersistence = useRef(false);
+
+  // When entering IELTS Speaking section, show intro modal if not yet seen this attempt
+  useEffect(() => {
+    if (typeof window === "undefined" || !attemptId || !data?.sections) return;
+    const speakingSection = data.sections.find((s: { type: string }) => s.type === "SPEAKING");
+    if (!speakingSection || activeSection !== speakingSection.id) return;
+    const key = `ielts_speaking_intro_seen_${attemptId}`;
+    const seen = sessionStorage.getItem(key) === "true";
+    setSpeakingIntroDismissed(seen);
+  }, [activeSection, attemptId, data?.sections]);
 
   // Resizable split drag logic for IELTS Reading passage panel
   useEffect(() => {
@@ -1285,10 +1297,22 @@ export default function AttemptRunnerPage() {
 
             {currentSection && (() => {
               const isReadingSplit = currentSection.type === "READING" && data.examCategory === "IELTS";
+              const isSpeakingWithIntro = currentSection.type === "SPEAKING" && data.examCategory === "IELTS" && !speakingIntroDismissed;
               const rawPassage = (currentSection as any).passage || currentSection.questions?.[0]?.prompt?.passage;
               const passageText = typeof rawPassage === "object" && rawPassage !== null
                 ? (rawPassage as any)[`part${readingPart}`] || Object.values(rawPassage as any).join("\n\n")
                 : rawPassage;
+
+              // Speaking: show placeholder until user dismisses intro modal
+              if (isSpeakingWithIntro) {
+                return (
+                  <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+                    <div className="flex-1 min-h-0 overflow-y-auto flex items-center justify-center bg-white/60 rounded-xl border border-slate-200">
+                      <p className="text-gray-500 text-sm">Read the instructions in the modal to begin the speaking section.</p>
+                    </div>
+                  </div>
+                );
+              }
 
               const questionsAreaEl = (
                 <QuestionsArea
@@ -1326,11 +1350,34 @@ export default function AttemptRunnerPage() {
               );
 
               if (!isReadingSplit) {
+                const isSpeakingWithBar = currentSection.type === "SPEAKING" && data.examCategory === "IELTS" && speakingIntroDismissed;
+                const speakingTotalSeconds = 2 * 60; // section timer in seconds
+                const speakingRemaining = ieltsTimerState?.timeRemaining ?? 0;
+                const barPercent = Math.max(0, Math.min(100, (speakingRemaining / speakingTotalSeconds) * 100));
+
                 return (
                   <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
                     <div className="flex-1 min-h-0 overflow-y-auto">
                       {questionsAreaEl}
                     </div>
+                    {isSpeakingWithBar && (
+                      <div className="flex-shrink-0 px-1 pb-2">
+                        <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-1000 ease-linear"
+                            style={{
+                              width: `${barPercent}%`,
+                              backgroundColor: speakingRemaining < 30 ? "#dc2626" : "#303380",
+                            }}
+                          />
+                        </div>
+                        {ieltsTimerState && !ieltsTimerState.isExpired && (
+                          <p className="text-xs text-gray-500 mt-1 text-right tabular-nums">
+                            Time remaining: {ieltsTimerState.formatTime(speakingRemaining)}
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               }
@@ -1435,6 +1482,17 @@ export default function AttemptRunnerPage() {
       <SuccessModal
         isOpen={showSuccessModal}
         onClose={handleSuccessModalClose}
+      />
+
+      {/* IELTS Speaking intro — shown when entering Speaking until user clicks Okay */}
+      <SpeakingIntroModal
+        isOpen={!!(currentSection?.type === "SPEAKING" && data?.examCategory === "IELTS" && !speakingIntroDismissed)}
+        onClose={() => {
+          if (attemptId && typeof window !== "undefined") {
+            sessionStorage.setItem(`ielts_speaking_intro_seen_${attemptId}`, "true");
+          }
+          setSpeakingIntroDismissed(true);
+        }}
       />
 
       {/* IELTS Section Change Modal */}
