@@ -1188,13 +1188,14 @@ export default function AttemptRunnerPage() {
   const speakingPartProgress = useMemo(() => {
     if (!currentSection || currentSection.type !== "SPEAKING" || data?.examCategory !== "IELTS") return [];
     const questions = currentSection.questions || [];
-    const n = questions.length;
-    const parts = [
-      questions.filter((_: any, i: number) => i < n / 3),
-      questions.filter((_: any, i: number) => i >= n / 3 && i < (n * 2) / 3),
-      questions.filter((_: any, i: number) => i >= (n * 2) / 3),
-    ];
     const sectionAnswers = answers[currentSection.id] || {};
+
+    // Group by actual prompt.part (1, 2, 3) so counts match P1/P2/P3 selector
+    const part1 = questions.filter((q: any) => (q.prompt?.part ?? 1) === 1);
+    const part2 = questions.filter((q: any) => (q.prompt?.part ?? 1) === 2);
+    const part3 = questions.filter((q: any) => (q.prompt?.part ?? 1) === 3);
+    const parts = [part1, part2, part3];
+
     return parts.map((partQuestions: { id: string }[]) => {
       const answered = partQuestions.filter((q) => {
         const v = sectionAnswers[q.id];
