@@ -96,8 +96,22 @@ export const ExamSidebar = React.memo(function ExamSidebar({
   const DONE = "#059669";
 
   const renderTimer = () => {
-    if (!ieltsTimerState) return null;
-    const { timeRemaining, isExpired, formatTime, getTimeColor } = ieltsTimerState;
+    // Skeleton while timer state is loading (e.g. after page reload)
+    if (!ieltsTimerState) {
+      return (
+        <div
+          className="flex items-center justify-between rounded-lg px-3 py-2 bg-slate-100 animate-pulse"
+          aria-hidden
+        >
+          <div className="flex items-center gap-1.5">
+            <div className="h-3.5 w-3.5 rounded bg-slate-200/80" />
+            <div className="h-3 rounded bg-slate-200/80" style={{ width: "2rem" }} />
+          </div>
+          <div className="h-5 w-11 rounded bg-slate-200/80" />
+        </div>
+      );
+    }
+    const { timeRemaining, isExpired, formatTime } = ieltsTimerState;
     const colorClass = isExpired
       ? "text-red-600"
       : timeRemaining < 30

@@ -58,8 +58,9 @@ export const QuestionCard = React.memo(function QuestionCard({
     (question.prompt.text.includes("____") ||
       question.prompt.text.includes("___"));
 
-  // FILL_IN_BLANK shows prompt.text with inputs inline
+  // FILL_IN_BLANK and SPEAKING_RECORDING show prompt inside the component (no duplicate header)
   const isFillInBlank = question.qtype === "FILL_IN_BLANK";
+  const isSpeakingRecording = question.qtype === "SPEAKING_RECORDING";
 
   return (
     <div
@@ -134,7 +135,7 @@ export const QuestionCard = React.memo(function QuestionCard({
               {questionNumber}
             </div>
             <div className="flex-1 pt-0.5">
-              {!(isPrepositionDnD || isGapWithBlanks || isFillInBlank) && (
+              {!(isPrepositionDnD || isGapWithBlanks || isFillInBlank || isSpeakingRecording) && (
                 <p
                   className="text-gray-800 text-base leading-relaxed font-normal mb-4"
                   style={{ lineHeight: "1.6" }}
