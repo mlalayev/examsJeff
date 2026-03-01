@@ -275,132 +275,37 @@ export function QSpeakingRecording({
     );
   }
 
+  // Show only the question text (voice recorder and HTTPS messages commented out)
+  return (
+    <div className="space-y-4">
+      <div className="rounded-lg border border-gray-200 bg-white px-5 py-4">
+        <p className="text-sm text-gray-800 whitespace-pre-line">{question.prompt?.text || "Speaking question"}</p>
+      </div>
+    </div>
+  );
+
+  /* COMMENTED OUT: Voice recorder UI and Secure Connection / Microphone HTTPS texts
   // If completed (has audio URL)
   if (status === "completed" && value.audioUrl) {
     return (
       <div className="space-y-3">
-        <div className="rounded-lg border border-green-200 bg-green-50 px-5 py-4">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
-              <svg className="w-5 h-5 text-white" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-                <path d="M5 13l4 4L19 7"></path>
-              </svg>
-            </div>
-            <p className="text-sm font-medium text-green-900">Recording completed successfully!</p>
-          </div>
-          <audio controls src={value.audioUrl} className="w-full">
-            Your browser does not support the audio element.
-          </audio>
-        </div>
+        ...
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      {/* Security Warning for Non-HTTPS */}
       {!isSecureContext && (
-        <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3">
-          <div className="flex items-start gap-2">
-            <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-yellow-900 mb-1">
-                Secure Connection Required
-              </p>
-              <p className="text-sm text-yellow-800">
-                Microphone access requires HTTPS. Please access this page via HTTPS or use localhost for development.
-              </p>
-            </div>
-          </div>
+        <div ...>
+          Secure Connection Required
+          Microphone access requires HTTPS. Please access this page via HTTPS or use localhost for development.
         </div>
       )}
-
-      {/* Error message */}
-      {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 flex items-start gap-2">
-          <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-red-900">{error}</p>
-        </div>
-      )}
-
-      {/* Timer display */}
-      {(status === "preparing" || status === "reading" || status === "recording") && (
-        <div className={`rounded-lg border px-5 py-4 ${
-          status === "reading" ? "border-yellow-200 bg-yellow-50" : 
-          status === "recording" ? "border-red-200 bg-red-50" : 
-          "border-blue-200 bg-blue-50"
-        }`}>
-          <div className="flex items-center justify-center gap-3">
-            <Clock className={`w-6 h-6 ${
-              status === "reading" ? "text-yellow-600" :
-              status === "recording" ? "text-red-600" :
-              "text-blue-600"
-            }`} />
-            <div className="text-center">
-              <p className={`text-sm font-medium ${
-                status === "reading" ? "text-yellow-900" :
-                status === "recording" ? "text-red-900" :
-                "text-blue-900"
-              }`}>
-                {status === "preparing" ? "Preparation Time" : 
-                 status === "reading" ? "Reading Time - Recording starts soon!" : 
-                 "Recording Time"}
-              </p>
-              <p className={`text-3xl font-bold mt-1 ${
-                status === "reading" ? "text-yellow-600" :
-                status === "recording" ? "text-red-600" :
-                "text-blue-600"
-              }`}>
-                {formatTime(timeLeft)}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Recording indicator */}
-      {status === "recording" && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-5 py-4 flex items-center justify-center gap-3">
-          <div className="w-4 h-4 rounded-full bg-red-500 animate-pulse"></div>
-          <p className="text-sm font-medium text-red-900">Recording in progress...</p>
-        </div>
-      )}
-
-      {/* Uploading indicator */}
-      {status === "uploading" && (
-        <div className="rounded-lg border border-gray-200 bg-white px-5 py-4 flex items-center justify-center gap-3">
-          <div className="w-5 h-5 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
-          <p className="text-sm font-medium text-gray-700">Uploading your recording...</p>
-        </div>
-      )}
-
-      {/* Start button */}
-      {status === "idle" && (
-        <div className="rounded-lg border border-gray-200 bg-white px-5 py-4">
-          <div className="text-center space-y-4">
-            <div className="space-y-2">
-              <p className="text-sm text-gray-600">
-                {hasPreparation 
-                  ? `You will have 1 minute to prepare, 3 seconds to read, and 2 minutes to record your answer.`
-                  : `You will have 3 seconds to read and ${recordingDuration} seconds to record your answer.`
-                }
-              </p>
-              <p className="text-xs text-yellow-600 font-medium">
-                ⚠️ Recording will start and stop automatically. You cannot pause or stop it manually.
-              </p>
-            </div>
-            <button
-              onClick={handleStart}
-              disabled={readOnly}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Mic className="w-5 h-5" />
-              {hasPreparation ? "Start Preparation" : "Start"}
-            </button>
-          </div>
-        </div>
-      )}
+      ... error, timer, recording indicator, start button ...
     </div>
   );
+  */
 }
+
 

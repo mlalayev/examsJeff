@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 interface Question {
   id: string;
@@ -18,6 +18,9 @@ interface Section {
   questions: Question[];
   durationMin: number;
 }
+
+// Speaking section time limit: 20 minutes
+const SPEAKING_DURATION_MIN = 20;
 
 export type IELTSSpeakingTimerState = {
   timeRemaining: number;
@@ -45,18 +48,20 @@ export function IELTSSpeakingView({
   attemptId,
   onTimerStateChange,
 }: IELTSSpeakingViewProps) {
+  const durationMin = SPEAKING_DURATION_MIN;
+
   // Get localStorage key for timer
   const getTimerStorageKey = () => {
     if (!attemptId || !section.id) return null;
     return `ielts_speaking_timer_${attemptId}_${section.id}`;
   };
 
-  // Initialize timer from localStorage or default
+  // Initialize timer from localStorage or default (20 min)
   const initializeTimer = () => {
-    if (typeof window === "undefined") return section.durationMin * 60;
-    
+    if (typeof window === "undefined") return durationMin * 60;
+
     const storageKey = getTimerStorageKey();
-    if (!storageKey) return section.durationMin * 60;
+    if (!storageKey) return durationMin * 60;
 
     const savedTimer = localStorage.getItem(storageKey);
     if (savedTimer) {
@@ -64,11 +69,10 @@ export function IELTSSpeakingView({
         const { endTime } = JSON.parse(savedTimer);
         const now = Date.now();
         const remaining = Math.max(0, Math.floor((endTime - now) / 1000));
-        
+
         if (remaining > 0) {
           return remaining;
         } else {
-          // Timer expired, remove from localStorage
           localStorage.removeItem(storageKey);
           return 0;
         }
@@ -77,24 +81,24 @@ export function IELTSSpeakingView({
         localStorage.removeItem(storageKey);
       }
     }
-    
-    // No saved timer, start fresh
+
     const startTime = Date.now();
-    const endTime = startTime + section.durationMin * 60 * 1000;
+    const endTime = startTime + durationMin * 60 * 1000;
     localStorage.setItem(storageKey, JSON.stringify({ startTime, endTime }));
-    return section.durationMin * 60;
+    return durationMin * 60;
   };
 
   const [timeRemaining, setTimeRemaining] = useState(() => {
-    if (typeof window === "undefined") return section.durationMin * 60;
+    if (typeof window === "undefined") return durationMin * 60;
     return initializeTimer();
   });
   const [isExpired, setIsExpired] = useState(timeRemaining === 0);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Initialize timer from localStorage on mount
   useEffect(() => {
     if (typeof window === "undefined") return;
-    
+
     const storageKey = getTimerStorageKey();
     if (!storageKey) return;
 
@@ -104,67 +108,61 @@ export function IELTSSpeakingView({
         const { endTime } = JSON.parse(savedTimer);
         const now = Date.now();
         const remaining = Math.max(0, Math.floor((endTime - now) / 1000));
-        
+
         if (remaining > 0) {
           setTimeRemaining(remaining);
           setIsExpired(false);
         } else {
-          // Timer expired
           setTimeRemaining(0);
           setIsExpired(true);
           localStorage.removeItem(storageKey);
-          if (onTimeExpired) {
-            onTimeExpired();
-          }
+          if (onTimeExpired) onTimeExpired();
         }
       } catch (e) {
         console.error("Failed to parse saved timer:", e);
         localStorage.removeItem(storageKey);
       }
     } else {
-      // No saved timer, start fresh
       const startTime = Date.now();
-      const endTime = startTime + section.durationMin * 60 * 1000;
+      const endTime = startTime + durationMin * 60 * 1000;
       localStorage.setItem(storageKey, JSON.stringify({ startTime, endTime }));
-      setTimeRemaining(section.durationMin * 60);
+      setTimeRemaining(durationMin * 60);
       setIsExpired(false);
     }
-  }, [attemptId, section.id, section.durationMin, onTimeExpired]);
+  }, [attemptId, section.id, onTimeExpired]);
 
-  // Timer effect - countdown and save to localStorage
+  // Countdown: read from localStorage endTime each tick so only one source of truth (fixes double-tick)
   useEffect(() => {
     if (isExpired) return;
 
-    const interval = setInterval(() => {
-      setTimeRemaining((prev) => {
-        if (prev <= 1) {
+    intervalRef.current = setInterval(() => {
+      const storageKey = getTimerStorageKey();
+      if (!storageKey || typeof window === "undefined") return;
+      const saved = localStorage.getItem(storageKey);
+      if (!saved) return;
+      try {
+        const { endTime } = JSON.parse(saved);
+        const remaining = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
+        setTimeRemaining(remaining);
+        if (remaining === 0) {
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+          }
           setIsExpired(true);
-          // Clear timer from localStorage when expired
-          const storageKey = getTimerStorageKey();
-          if (storageKey && typeof window !== "undefined") {
-            localStorage.removeItem(storageKey);
-          }
-          if (onTimeExpired) {
-            onTimeExpired();
-          }
-          return 0;
+          localStorage.removeItem(storageKey);
+          if (onTimeExpired) onTimeExpired();
         }
-        
-        // Update localStorage with remaining time
-        const storageKey = getTimerStorageKey();
-        if (storageKey && typeof window !== "undefined") {
-          const now = Date.now();
-          const endTime = now + (prev - 1) * 1000;
-          const startTime = endTime - section.durationMin * 60 * 1000;
-          localStorage.setItem(storageKey, JSON.stringify({ startTime, endTime }));
-        }
-        
-        return prev - 1;
-      });
+      } catch (_) {}
     }, 1000);
 
-    return () => clearInterval(interval);
-  }, [isExpired, onTimeExpired, section.durationMin, attemptId, section.id]);
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [isExpired, onTimeExpired, attemptId, section.id]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
