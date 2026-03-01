@@ -96,6 +96,12 @@ export default function AttemptRunnerPage() {
   const [speakingPart, setSpeakingPart] = useState(1); // For IELTS Speaking part selection
   const [viewingImage, setViewingImage] = useState<string | null>(null); // Image viewer
   const [viewingPassage, setViewingPassage] = useState(false); // Reading passage panel
+  const [ieltsTimerState, setIeltsTimerState] = useState<{
+    timeRemaining: number;
+    isExpired: boolean;
+    formatTime: (s: number) => string;
+    getTimeColor: () => string;
+  } | null>(null); // IELTS timer shown in sidebar
   const [splitPercent, setSplitPercent] = useState(55); // % width for questions side in split view
   const splitContainerRef = useRef<HTMLDivElement>(null);
   const isDraggingSplit = useRef(false);
@@ -553,9 +559,15 @@ export default function AttemptRunnerPage() {
         alert("This was the last module. You can now submit the entire exam.");
       }
     }
-    // IELTS and all other exam types: timer expiry has no effect (no lock, no switch)
+    // IELTS: auto-advance to the next section when timer expires
+    if (data?.examCategory === "IELTS" && data?.sections) {
+      const currentIndex = data.sections.findIndex((s: { id: string }) => s.id === sectionId);
+      if (currentIndex < data.sections.length - 1) {
+        const nextSection = data.sections[currentIndex + 1];
+        setActiveSection(nextSection.id);
+      }
+    }
   }, [answers, data, saveSection, sectionStartTimes, accessedSections, lockedSections, attemptId]);
-
   const handleEndSection = async (sectionId: string) => {
     if (!data?.sections) return;
     const section = data.sections.find(s => s.id === sectionId);
@@ -1064,6 +1076,11 @@ export default function AttemptRunnerPage() {
   const currentSection = data?.sections?.find((s: { id: string }) => s.id === activeSection) ?? null;
   const isSAT = data?.examCategory === "SAT";
 
+  // Clear IELTS timer state when section changes
+  useEffect(() => {
+    setIeltsTimerState(null);
+  }, [activeSection]);
+
   const readingPartProgress = useMemo(() => {
     if (!currentSection || currentSection.type !== "READING" || data?.examCategory !== "IELTS") return [];
     const questions = currentSection.questions || [];
@@ -1207,6 +1224,7 @@ export default function AttemptRunnerPage() {
               readingPartProgress={readingPartProgress}
               isIELTS={data.examCategory === "IELTS"}
               currentSectionType={currentSection?.type}
+              ieltsTimerState={ieltsTimerState}
               listeningPart={listeningPart}
               onListeningPartChange={setListeningPart}
               listeningPartProgress={listeningPartProgress}
@@ -1253,6 +1271,10 @@ export default function AttemptRunnerPage() {
                   onWritingPartChange={setWritingPart}
                   speakingPart={speakingPart}
                   onSpeakingPartChange={setSpeakingPart}
+                  onReadingTimerStateChange={setIeltsTimerState}
+                  onListeningTimerStateChange={setIeltsTimerState}
+                  onWritingTimerStateChange={setIeltsTimerState}
+                  onSpeakingTimerStateChange={setIeltsTimerState}
                 />
               );
 
