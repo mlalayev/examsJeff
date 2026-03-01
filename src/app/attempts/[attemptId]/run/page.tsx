@@ -96,38 +96,13 @@ export default function AttemptRunnerPage() {
   const [speakingPart, setSpeakingPart] = useState(1); // For IELTS Speaking part selection
   const [viewingImage, setViewingImage] = useState<string | null>(null); // Image viewer
   const [viewingPassage, setViewingPassage] = useState(false); // Reading passage panel
-  const [readingTimerState, setReadingTimerState] = useState<{
-    timeRemaining: number;
-    isExpired: boolean;
-    formatTime: (s: number) => string;
-    getTimeColor: () => string;
-  } | null>(null); // IELTS Reading timer (shown in sidebar)
-  const [listeningTimerState, setListeningTimerState] = useState<{
-    timeRemaining: number;
-    isExpired: boolean;
-    formatTime: (s: number) => string;
-    getTimeColor: () => string;
-  } | null>(null);
-  const [writingTimerState, setWritingTimerState] = useState<{
-    timeRemaining: number;
-    isExpired: boolean;
-    formatTime: (s: number) => string;
-    getTimeColor: () => string;
-  } | null>(null);
-  const [speakingTimerState, setSpeakingTimerState] = useState<{
-    timeRemaining: number;
-    isExpired: boolean;
-    formatTime: (s: number) => string;
-    getTimeColor: () => string;
-  } | null>(null);
   const [splitPercent, setSplitPercent] = useState(55); // % width for questions side in split view
   const splitContainerRef = useRef<HTMLDivElement>(null);
   const isDraggingSplit = useRef(false);
-  
-  // IELTS section navigation
+
   const [showIELTSSectionChangeModal, setShowIELTSSectionChangeModal] = useState(false);
   const [pendingSectionChange, setPendingSectionChange] = useState<{ fromId: string; toId: string } | null>(null);
-  const [completedSections, setCompletedSections] = useState<Set<string>>(new Set()); // Track which sections user has left
+  const [completedSections, setCompletedSections] = useState<Set<string>>(new Set());
 
   const autosaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const hasRestoredFromPersistence = useRef(false);
@@ -754,7 +729,7 @@ export default function AttemptRunnerPage() {
                  <img
                    src={q.prompt.imageUrl}
                    alt="Question diagram"
-                   onClick={() => onImageClick(q.prompt.imageUrl)}
+                   onClick={() => setViewingImage(q.prompt.imageUrl)}
                    className="h-auto max-h-96 mx-auto rounded border border-gray-300 cursor-pointer hover:opacity-90 transition-opacity"
                    style={{ width: "90%", minWidth: "90%" }}
                  />
@@ -989,157 +964,49 @@ export default function AttemptRunnerPage() {
     async (sectionId: string) => {
       if (!data) return;
 
-      // SAT üçün locked section-lara qayıtmaq olmaz
+      // SAT: locked sections cannot be re-entered
       if (data.examCategory === "SAT" && lockedSections.has(sectionId)) {
         alert("This module has been completed and locked. You cannot make changes.");
         return;
       }
 
-      // SAT üçün yalnız növbəti modula keçmək olar (əvvəlki modullara yox)
+      // SAT: can only go forward, and must submit current module first
       if (data.examCategory === "SAT") {
         const currentIndex = data.sections.findIndex((s) => s.id === activeSection);
         const targetIndex = data.sections.findIndex((s) => s.id === sectionId);
-        
-        // Əgər istifadəçi əvvəlki modula keçmək istəyirsə
         if (targetIndex < currentIndex) {
           alert("You cannot go back to previous modules in SAT exams.");
           return;
         }
-
-        // Əgər istifadəçi cari modulu submit etmədən növbəti modula keçmək istəyirsə
         if (targetIndex > currentIndex && !lockedSections.has(activeSection)) {
           alert("Please submit the current module before moving to the next one.");
           return;
         }
       }
 
-      // IELTS üçün: Strict section order və geriyə qayıtma qadağası (yalnız növbəti section-a keçid)
-      if (data.examCategory === "IELTS") {
-        const currentSection = data.sections.find(s => s.id === activeSection);
-        const targetSection = data.sections.find(s => s.id === sectionId);
-        
-        if (!currentSection || !targetSection) return;
-        
-        // IELTS section order: LISTENING -> READING -> WRITING -> SPEAKING
-        const sectionOrder = ["LISTENING", "READING", "WRITING", "SPEAKING"];
-        const currentOrder = sectionOrder.indexOf(currentSection.type);
-        const targetOrder = sectionOrder.indexOf(targetSection.type);
+      // IELTS: free switching — no restrictions, no modal, no auto-save
+      // Just switch directly.
 
-        const isSameSection = sectionId === activeSection;
-        const isNextSectionType =
-          currentOrder !== -1 &&
-          targetOrder === currentOrder + 1 &&
-          currentSection.type !== targetSection.type;
-
-        // Yalnız cari section və onun ardınca gələn növbəti section type kliklənə bilər.
-        // Digər hallarda heç nə etmədən çıxırıq (alert yoxdur).
-        if (!isSameSection && !isNextSectionType) {
-          return;
-        }
-
-        // Növbəti əsas section-a keçid zamanı modal açılır
-        if (isNextSectionType) {
-          setPendingSectionChange({ fromId: activeSection, toId: sectionId });
-          setShowIELTSSectionChangeModal(true);
-          return; // Wait for modal confirmation
-        }
-      }
-
-      // Save current section before switching
-      if (activeSection && answers[activeSection]) {
-        const currentSection = data.sections.find(s => s.id === activeSection);
-        const targetSection = data.sections.find(s => s.id === sectionId);
-        
-        // IELTS Writing: Submit writing when leaving Writing section
-        if (data.examCategory === "IELTS" && currentSection?.type === "WRITING" && targetSection?.type !== "WRITING") {
-          try {
-            // Get all writing section answers
-            const writingSections = data.sections.filter(s => s.type === "WRITING");
-            const task1Section = writingSections.find(s => s.title.includes("Task 1"));
-            const task2Section = writingSections.find(s => s.title.includes("Task 2"));
-            
-            const task1Response = task1Section ? answers[task1Section.id]?.["writing_text"] || "" : "";
-            const task2Response = task2Section ? answers[task2Section.id]?.["writing_text"] || "" : "";
-            
-            // Only submit if we have responses
-            if (task1Response || task2Response) {
-              const writingStartTime = sectionStartTimes[writingSections[0]?.id];
-              const timeSpent = writingStartTime ? Math.floor((Date.now() - writingStartTime) / 1000) : 0;
-              
-              await fetch(`/api/attempts/${attemptId}/writing/submit`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  task1Response,
-                  task2Response,
-                  startedAt: writingStartTime ? new Date(writingStartTime).toISOString() : new Date().toISOString(),
-                  timeSpentSeconds: timeSpent,
-                }),
-              });
-            }
-          } catch (error) {
-            console.error("Failed to submit writing:", error);
-            // Don't block navigation if submission fails
-          }
-        }
-        
-        await saveSection(activeSection, answers[activeSection]);
-      }
-
-      // SAT üçün timer başlat (həmişə yenidən başlat)
+      // SAT only: start timer for newly entered section
       if (data.examCategory === "SAT" && !lockedSections.has(sectionId)) {
-        // Clear old timer from localStorage
         if (typeof window !== "undefined") {
-          const storageKey = `sat_timer_${attemptId}_${sectionId}`;
-          localStorage.removeItem(storageKey);
+          localStorage.removeItem(`sat_timer_${attemptId}_${sectionId}`);
         }
-        
-        // Always start new timer
         const newStartTime = Date.now();
-        const newStartTimes = {
-          ...sectionStartTimes,
-          [sectionId]: newStartTime,
-        };
+        const newStartTimes = { ...sectionStartTimes, [sectionId]: newStartTime };
         setSectionStartTimes(newStartTimes);
         setAccessedSections((prev) => new Set([...prev, sectionId]));
-        
-        // Save start time immediately
         await fetch(`/api/attempts/${attemptId}/save`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            sectionStartTimes: newStartTimes,
-          }),
+          body: JSON.stringify({ sectionStartTimes: newStartTimes }),
         });
       }
 
       setActiveSection(sectionId);
     },
-    [activeSection, answers, saveSection, data, accessedSections, sectionStartTimes, lockedSections, attemptId, completedSections]
+    [activeSection, data, accessedSections, sectionStartTimes, lockedSections, attemptId]
   );
-
-  // IELTS: Handle confirmed section change
-  const handleIELTSSectionChangeConfirm = useCallback(async () => {
-    if (!pendingSectionChange || !data) return;
-
-    const { fromId, toId } = pendingSectionChange;
-    
-    // Mark current section as completed
-    const newCompletedSections = new Set([...completedSections, fromId]);
-    setCompletedSections(newCompletedSections);
-    
-    // Save to localStorage immediately
-    saveCompletedSectionsToStorageHelper(newCompletedSections);
-    
-    // Save current section answers
-    if (answers[fromId]) {
-      await saveSection(fromId, answers[fromId]);
-    }
-    
-    // Switch to target section
-    setActiveSection(toId);
-    setPendingSectionChange(null);
-  }, [pendingSectionChange, data, answers, saveSection, completedSections]);
 
   const handleAnswerChange = useCallback(
     (questionId: string, value: any) => {
@@ -1279,30 +1146,6 @@ export default function AttemptRunnerPage() {
     });
   }, [currentSection, activeSection, answers, data?.examCategory]);
 
-  useEffect(() => {
-    if (!currentSection || currentSection.type !== "READING" || data?.examCategory !== "IELTS") {
-      setReadingTimerState(null);
-    }
-  }, [activeSection, currentSection?.type, data?.examCategory]);
-
-  useEffect(() => {
-    if (!currentSection || currentSection.type !== "LISTENING" || data?.examCategory !== "IELTS") {
-      setListeningTimerState(null);
-    }
-  }, [activeSection, currentSection?.type, data?.examCategory]);
-
-  useEffect(() => {
-    if (!currentSection || currentSection.type !== "WRITING" || data?.examCategory !== "IELTS") {
-      setWritingTimerState(null);
-    }
-  }, [activeSection, currentSection?.type, data?.examCategory]);
-
-  useEffect(() => {
-    if (!currentSection || currentSection.type !== "SPEAKING" || data?.examCategory !== "IELTS") {
-      setSpeakingTimerState(null);
-    }
-  }, [activeSection, currentSection?.type, data?.examCategory]);
-
   if (loading) {
     return <LoadingSkeleton />;
   }
@@ -1361,22 +1204,17 @@ export default function AttemptRunnerPage() {
               examCategory={data.examCategory}
               readingPart={readingPart}
               onReadingPartChange={setReadingPart}
-              readingTimerState={readingTimerState}
               readingPartProgress={readingPartProgress}
-              isIELTSReading={currentSection?.type === "READING" && data.examCategory === "IELTS"}
               isIELTS={data.examCategory === "IELTS"}
               currentSectionType={currentSection?.type}
               listeningPart={listeningPart}
               onListeningPartChange={setListeningPart}
-              listeningTimerState={listeningTimerState}
               listeningPartProgress={listeningPartProgress}
               writingPart={writingPart}
               onWritingPartChange={setWritingPart}
-              writingTimerState={writingTimerState}
               writingPartProgress={writingPartProgress}
               speakingPart={speakingPart}
               onSpeakingPartChange={setSpeakingPart}
-              speakingTimerState={speakingTimerState}
               speakingPartProgress={speakingPartProgress}
             />
 
@@ -1411,10 +1249,6 @@ export default function AttemptRunnerPage() {
                   onReadingPartChange={setReadingPart}
                   isPassageOpen={viewingPassage}
                   onPassageToggle={() => setViewingPassage((v) => !v)}
-                  onReadingTimerStateChange={setReadingTimerState}
-                  onListeningTimerStateChange={setListeningTimerState}
-                  onWritingTimerStateChange={setWritingTimerState}
-                  onSpeakingTimerStateChange={setSpeakingTimerState}
                   writingPart={writingPart}
                   onWritingPartChange={setWritingPart}
                   speakingPart={speakingPart}
@@ -1535,22 +1369,6 @@ export default function AttemptRunnerPage() {
       />
 
       {/* IELTS Section Change Modal */}
-      {data?.examCategory === "IELTS" && pendingSectionChange && (
-        <IELTSSectionChangeModal
-          isOpen={showIELTSSectionChangeModal}
-          onClose={() => {
-            setShowIELTSSectionChangeModal(false);
-            setPendingSectionChange(null);
-          }}
-          onConfirm={handleIELTSSectionChangeConfirm}
-          fromSection={data.sections.find(s => s.id === pendingSectionChange.fromId)?.title || ""}
-          toSection={data.sections.find(s => s.id === pendingSectionChange.toId)?.title || ""}
-          currentSectionAnswers={answers[pendingSectionChange.fromId] || {}}
-          currentSectionQuestions={
-            data.sections.find(s => s.id === pendingSectionChange.fromId)?.questions || []
-          }
-        />
-      )}
                              </>
     );
 }

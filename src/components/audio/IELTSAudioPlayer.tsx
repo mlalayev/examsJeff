@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
-import { Play } from "lucide-react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import { Play, Pause } from "lucide-react";
 
 interface IELTSAudioPlayerProps {
   src?: string | null;
@@ -10,10 +10,10 @@ interface IELTSAudioPlayerProps {
 
 export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({ src, className = "" }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
+  const progressRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [hasStarted, setHasStarted] = useState(false);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -22,50 +22,64 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({ src, classNa
     setIsPlaying(false);
     setCurrentTime(0);
     setDuration(0);
-    setHasStarted(false);
     audio.load();
 
-    const updateTime = () => setCurrentTime(audio.currentTime);
-    const updateDuration = () => setDuration(audio.duration);
-    const handleEnded = () => {
-      setIsPlaying(false);
-      setCurrentTime(0);
-    };
+    const onTimeUpdate = () => setCurrentTime(audio.currentTime);
+    const onLoadedMetadata = () => setDuration(audio.duration);
+    const onEnded = () => setIsPlaying(false);
 
-    audio.addEventListener("timeupdate", updateTime);
-    audio.addEventListener("loadedmetadata", updateDuration);
-    audio.addEventListener("ended", handleEnded);
+    audio.addEventListener("timeupdate", onTimeUpdate);
+    audio.addEventListener("loadedmetadata", onLoadedMetadata);
+    audio.addEventListener("ended", onEnded);
 
     return () => {
-      audio.removeEventListener("timeupdate", updateTime);
-      audio.removeEventListener("loadedmetadata", updateDuration);
-      audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("timeupdate", onTimeUpdate);
+      audio.removeEventListener("loadedmetadata", onLoadedMetadata);
+      audio.removeEventListener("ended", onEnded);
     };
   }, [src]);
 
-  const handlePlay = () => {
+  const togglePlay = () => {
     const audio = audioRef.current;
-    if (!audio || hasStarted) return;
+    if (!audio) return;
+    if (isPlaying) {
+      audio.pause();
+    } else {
+      audio.play().catch((err) => console.error("Audio play error:", err));
+    }
+  };
 
-    setHasStarted(true);
-    audio.controls = false;
-    audio.addEventListener("seeking", (e) => {
-      e.preventDefault();
-      audio.currentTime = currentTime;
-    });
+  const seek = useCallback((clientX: number) => {
+    const audio = audioRef.current;
+    const bar = progressRef.current;
+    if (!audio || !bar || !duration) return;
+    const rect = bar.getBoundingClientRect();
+    const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+    audio.currentTime = ratio * duration;
+    setCurrentTime(audio.currentTime);
+  }, [duration]);
 
-    audio.play().catch((err) => console.error("Error playing audio:", err));
-    setIsPlaying(true);
+  const handleBarClick = (e: React.MouseEvent<HTMLDivElement>) => seek(e.clientX);
+
+  const handleBarMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    seek(e.clientX);
+    const onMove = (ev: MouseEvent) => seek(ev.clientX);
+    const onUp = () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
   };
 
   const formatTime = (time: number) => {
-    if (isNaN(time)) return "0:00";
-    const minutes = Math.floor(time / 60);
-    const seconds = Math.floor(time % 60);
-    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+    if (!isFinite(time) || isNaN(time)) return "0:00";
+    const m = Math.floor(time / 60);
+    const s = Math.floor(time % 60);
+    return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
-  const progressPercentage = duration ? (currentTime / duration) * 100 : 0;
+  const progressPct = duration ? (currentTime / duration) * 100 : 0;
 
   if (!src) {
     return (
@@ -73,72 +87,64 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({ src, classNa
         <div className="h-12 w-12 shrink-0 rounded-full bg-gray-200 flex items-center justify-center">
           <Play className="h-5 w-5 text-gray-400 ml-0.5" fill="currentColor" />
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm text-gray-500">No audio available</p>
-        </div>
+        <p className="text-sm text-gray-500">No audio available</p>
       </div>
     );
   }
 
   return (
-    <div
-      className={`flex items-center gap-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm ${className}`}
-    >
+    <div className={`flex items-center gap-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm ${className}`}>
       <audio
         ref={audioRef}
         src={src}
         preload="metadata"
-        controls={false}
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
-        onEnded={() => {
-          setIsPlaying(false);
-          setCurrentTime(0);
-        }}
+        onEnded={() => setIsPlaying(false)}
       />
 
-      {/* Play button – disabled after first click */}
+      {/* Play / Pause */}
       <button
         type="button"
-        onClick={handlePlay}
-        disabled={hasStarted}
-        className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 transition-all ${
-          hasStarted
-            ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
-            : "border-[#303380] bg-[#303380] text-white hover:bg-[#252a6b] hover:border-[#252a6b] active:scale-95"
-        }`}
+        onClick={togglePlay}
+        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#303380] text-white hover:bg-[#252a6b] active:scale-95 transition-all"
+        title={isPlaying ? "Pause" : "Play"}
       >
-        {hasStarted && isPlaying ? (
-          <span className="h-5 w-5 rounded-full border-2 border-gray-400 border-t-transparent animate-spin" />
-        ) : hasStarted && !isPlaying ? (
-          <span className="text-[10px] font-medium text-gray-400">Ended</span>
-        ) : (
-          <Play className="h-6 w-6 ml-0.5" fill="currentColor" />
-        )}
+        {isPlaying
+          ? <Pause className="h-5 w-5" fill="currentColor" />
+          : <Play className="h-5 w-5 ml-0.5" fill="currentColor" />}
       </button>
 
-      {/* Progress bar + time (classic player layout) */}
+      {/* Progress bar + timestamps */}
       <div className="flex-1 min-w-0 flex flex-col gap-1.5">
         <div className="flex items-center gap-3">
-          <span className="text-sm tabular-nums text-gray-600 w-9 shrink-0">
+          <span className="text-xs tabular-nums text-gray-500 w-9 shrink-0">
             {formatTime(currentTime)}
           </span>
-          <div className="flex-1 min-w-0 h-2 rounded-full bg-gray-200 overflow-hidden">
+
+          {/* Clickable / draggable progress bar */}
+          <div
+            ref={progressRef}
+            className="flex-1 min-w-0 h-2 rounded-full bg-gray-200 cursor-pointer relative group"
+            onClick={handleBarClick}
+            onMouseDown={handleBarMouseDown}
+          >
             <div
-              className="h-full rounded-full bg-[#303380] transition-all duration-150 ease-out"
-              style={{ width: `${progressPercentage}%` }}
+              className="h-full rounded-full bg-[#303380] transition-none"
+              style={{ width: `${progressPct}%` }}
+            />
+            {/* Thumb dot */}
+            <div
+              className="absolute top-1/2 -translate-y-1/2 h-3.5 w-3.5 rounded-full bg-[#303380] border-2 border-white shadow opacity-0 group-hover:opacity-100 transition-opacity"
+              style={{ left: `${progressPct}%`, transform: "translate(-50%, -50%)" }}
             />
           </div>
-          <span className="text-sm tabular-nums text-gray-500 w-9 shrink-0 text-right">
+
+          <span className="text-xs tabular-nums text-gray-400 w-9 shrink-0 text-right">
             {formatTime(duration)}
           </span>
         </div>
-        {hasStarted && (
-          <p className="text-xs text-gray-400">
-            {isPlaying ? "Playing — you cannot pause or skip" : "Playback finished"}
-          </p>
-        )}
       </div>
     </div>
   );
-}
+};

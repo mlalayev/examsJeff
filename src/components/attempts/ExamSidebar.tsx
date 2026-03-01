@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Send, Clock, Check } from "lucide-react";
+import { Send, Check } from "lucide-react";
 import { ProgressBar } from "./ProgressBar";
 import { SectionListItem } from "./SectionListItem";
 
@@ -37,23 +37,19 @@ interface ExamSidebarProps {
   examCategory?: string; // IELTS, SAT, TOEFL
   // IELTS: timer and part choosers for all section types (Listening, Reading, Writing, Speaking)
   isIELTS?: boolean;
-  currentSectionType?: string; // LISTENING | READING | WRITING | SPEAKING
-  isIELTSReading?: boolean; // kept for backward compat, prefer isIELTS + currentSectionType
+  currentSectionType?: string;
+  isIELTSReading?: boolean; // kept for compat
   readingPart?: number;
   onReadingPartChange?: (part: number) => void;
-  readingTimerState?: IELTSTimerState | null;
   readingPartProgress?: ReadingPartProgress[];
   listeningPart?: number;
   onListeningPartChange?: (part: number) => void;
-  listeningTimerState?: IELTSTimerState | null;
   listeningPartProgress?: ReadingPartProgress[];
   writingPart?: number;
   onWritingPartChange?: (part: number) => void;
-  writingTimerState?: IELTSTimerState | null;
   writingPartProgress?: ReadingPartProgress[];
   speakingPart?: number;
   onSpeakingPartChange?: (part: number) => void;
-  speakingTimerState?: IELTSTimerState | null;
   speakingPartProgress?: ReadingPartProgress[];
 }
 
@@ -85,43 +81,21 @@ export const ExamSidebar = React.memo(function ExamSidebar({
   isIELTSReading = false,
   readingPart = 1,
   onReadingPartChange,
-  readingTimerState,
   readingPartProgress = [],
   listeningPart = 1,
   onListeningPartChange,
-  listeningTimerState,
   listeningPartProgress = [],
   writingPart = 1,
   onWritingPartChange,
-  writingTimerState,
   writingPartProgress = [],
   speakingPart = 1,
   onSpeakingPartChange,
-  speakingTimerState,
   speakingPartProgress = [],
 }: ExamSidebarProps) {
   const ACCENT = "#303380";
   const DONE = "#059669";
 
-  const renderTimer = (state: IELTSTimerState) => {
-    const timeColorClass = state.getTimeColor();
-    const timeColor = timeColorClass === "text-red-600" ? "#dc2626" : timeColorClass === "text-orange-600" ? "#ea580c" : "rgb(55 65 81)";
-    return (
-      <div
-        className="flex items-center justify-center gap-2 py-2 px-3 rounded-lg"
-        style={
-          state.isExpired
-            ? { backgroundColor: "rgb(254 226 226)", color: "#dc2626" }
-            : { backgroundColor: "rgb(243 244 246)", color: timeColor }
-        }
-      >
-        <Clock className="w-4 h-4 shrink-0 opacity-80" style={{ color: "inherit" }} />
-        <span className="text-sm font-bold tabular-nums" style={{ color: "inherit" }}>
-          {state.formatTime(state.timeRemaining)}
-        </span>
-      </div>
-    );
-  };
+  const renderTimer = (_state: unknown) => null; // Timer removed
 
   const sectionOrder = ["LISTENING", "READING", "WRITING", "SPEAKING"];
 
@@ -219,7 +193,6 @@ export const ExamSidebar = React.memo(function ExamSidebar({
                     );
                   })}
                 </div>
-                {listeningTimerState && renderTimer(listeningTimerState)}
               </>
             )}
             {currentSectionType === "READING" && (
@@ -248,7 +221,7 @@ export const ExamSidebar = React.memo(function ExamSidebar({
                     );
                   })}
                 </div>
-                {readingTimerState && renderTimer(readingTimerState)}
+                {/* Timer removed */}
               </>
             )}
             {currentSectionType === "WRITING" && (
@@ -277,7 +250,7 @@ export const ExamSidebar = React.memo(function ExamSidebar({
                     );
                   })}
                 </div>
-                {writingTimerState && renderTimer(writingTimerState)}
+                {/* Timer removed */}
               </>
             )}
             {currentSectionType === "SPEAKING" && (
@@ -306,7 +279,7 @@ export const ExamSidebar = React.memo(function ExamSidebar({
                     );
                   })}
                 </div>
-                {speakingTimerState && renderTimer(speakingTimerState)}
+                {/* Timer removed */}
               </>
             )}
           </div>
@@ -346,24 +319,11 @@ export const ExamSidebar = React.memo(function ExamSidebar({
               let isDisabled = false;
 
               if (examCategory === "IELTS") {
-                // IELTS: yalnız cari section və ondan sonrakı ilk section type aktiv olsun.
-                const isCurrent = isActive;
-
-                let isNextTypeFirstSection = false;
-                if (nextType && section.type === nextType) {
-                  const firstIndexOfNextType = sections.findIndex(
-                    (s) => s.type === nextType
-                  );
-                  isNextTypeFirstSection = firstIndexOfNextType === index;
-                }
-
-                // Əvvəlki section-lar və daha sonrakı bütün section-lar disabled,
-                // yalnız cari və növbəti type-ın ilk section-u kliklənə bilir.
-                isDisabled = !isCurrent && !isNextTypeFirstSection;
+                // IELTS: all sections are freely clickable
+                isDisabled = false;
               } else {
-                // SAT üçün: yalnız cari, keçmiş və locked modullar aktiv
-                isDisabled =
-                  isSAT && index > currentSectionIndex && !isLocked;
+                // SAT: only current and past/locked modules are clickable
+                isDisabled = isSAT && index > currentSectionIndex && !isLocked;
               }
 
               return (
