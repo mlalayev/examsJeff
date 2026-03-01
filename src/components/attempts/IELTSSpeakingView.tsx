@@ -94,8 +94,10 @@ export function IELTSSpeakingView({
   });
   const [isExpired, setIsExpired] = useState(timeRemaining === 0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const onTimeExpiredRef = useRef(onTimeExpired);
+  onTimeExpiredRef.current = onTimeExpired;
 
-  // Initialize timer from localStorage on mount
+  // Init: read from localStorage once on mount
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -106,9 +108,7 @@ export function IELTSSpeakingView({
     if (savedTimer) {
       try {
         const { endTime } = JSON.parse(savedTimer);
-        const now = Date.now();
-        const remaining = Math.max(0, Math.floor((endTime - now) / 1000));
-
+        const remaining = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
         if (remaining > 0) {
           setTimeRemaining(remaining);
           setIsExpired(false);
@@ -116,22 +116,22 @@ export function IELTSSpeakingView({
           setTimeRemaining(0);
           setIsExpired(true);
           localStorage.removeItem(storageKey);
-          if (onTimeExpired) onTimeExpired();
+          onTimeExpiredRef.current?.();
         }
       } catch (e) {
         console.error("Failed to parse saved timer:", e);
         localStorage.removeItem(storageKey);
       }
     } else {
-      const startTime = Date.now();
-      const endTime = startTime + durationMin * 60 * 1000;
-      localStorage.setItem(storageKey, JSON.stringify({ startTime, endTime }));
+      const endTime = Date.now() + durationMin * 60 * 1000;
+      localStorage.setItem(storageKey, JSON.stringify({ endTime }));
       setTimeRemaining(durationMin * 60);
       setIsExpired(false);
     }
-  }, [attemptId, section.id, onTimeExpired]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attemptId, section.id]);
 
-  // Countdown: read from localStorage endTime each tick so only one source of truth (fixes double-tick)
+  // Countdown: read actual remaining time from localStorage each tick — immune to double-decrement
   useEffect(() => {
     if (isExpired) return;
 
@@ -145,24 +145,19 @@ export function IELTSSpeakingView({
         const remaining = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
         setTimeRemaining(remaining);
         if (remaining === 0) {
-          if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-            intervalRef.current = null;
-          }
+          if (intervalRef.current) clearInterval(intervalRef.current);
           setIsExpired(true);
           localStorage.removeItem(storageKey);
-          if (onTimeExpired) onTimeExpired();
+          onTimeExpiredRef.current?.();
         }
       } catch (_) {}
     }, 1000);
 
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+      if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [isExpired, onTimeExpired, attemptId, section.id]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isExpired]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);

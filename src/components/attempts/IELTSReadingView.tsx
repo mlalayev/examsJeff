@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 interface Question {
   id: string;
@@ -87,10 +87,13 @@ export function IELTSReadingView({
     return initializeTimer();
   });
   const [isExpired, setIsExpired] = useState(timeRemaining === 0);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const onTimeExpiredRef = useRef(onTimeExpired);
+  onTimeExpiredRef.current = onTimeExpired;
 
+  // Init: read from localStorage once on mount (no onTimeExpired in deps to avoid restarts)
   useEffect(() => {
     if (typeof window === "undefined") return;
-    
     const storageKey = getTimerStorageKey();
     if (!storageKey) return;
 
@@ -98,9 +101,7 @@ export function IELTSReadingView({
     if (savedTimer) {
       try {
         const { endTime } = JSON.parse(savedTimer);
-        const now = Date.now();
-        const remaining = Math.max(0, Math.floor((endTime - now) / 1000));
-        
+        const remaining = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
         if (remaining > 0) {
           setTimeRemaining(remaining);
           setIsExpired(false);
@@ -108,50 +109,49 @@ export function IELTSReadingView({
           setTimeRemaining(0);
           setIsExpired(true);
           localStorage.removeItem(storageKey);
-          if (onTimeExpired) onTimeExpired();
+          onTimeExpiredRef.current?.();
         }
       } catch (e) {
         console.error("Failed to parse saved timer:", e);
         localStorage.removeItem(storageKey);
       }
     } else {
-      const startTime = Date.now();
-      const endTime = startTime + IELTS_DURATION_MIN * 60 * 1000;
-      localStorage.setItem(storageKey, JSON.stringify({ startTime, endTime }));
+      const endTime = Date.now() + IELTS_DURATION_MIN * 60 * 1000;
+      localStorage.setItem(storageKey, JSON.stringify({ endTime }));
       setTimeRemaining(IELTS_DURATION_MIN * 60);
       setIsExpired(false);
     }
-  }, [attemptId, section.id, onTimeExpired]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attemptId, section.id]);
 
+  // Countdown: read actual remaining time from localStorage each tick — immune to double-decrement
   useEffect(() => {
     if (isExpired) return;
 
-    const interval = setInterval(() => {
-      setTimeRemaining((prev) => {
-        if (prev <= 1) {
+    intervalRef.current = setInterval(() => {
+      const storageKey = getTimerStorageKey();
+      if (!storageKey || typeof window === "undefined") return;
+      const saved = localStorage.getItem(storageKey);
+      if (!saved) return;
+      try {
+        const { endTime } = JSON.parse(saved);
+        const remaining = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
+        setTimeRemaining(remaining);
+        if (remaining === 0) {
+          if (intervalRef.current) clearInterval(intervalRef.current);
           setIsExpired(true);
-          const storageKey = getTimerStorageKey();
-          if (storageKey && typeof window !== "undefined") {
-            localStorage.removeItem(storageKey);
-          }
-          if (onTimeExpired) onTimeExpired();
-          return 0;
+          localStorage.removeItem(storageKey);
+          onTimeExpiredRef.current?.();
         }
-        
-        const storageKey = getTimerStorageKey();
-        if (storageKey && typeof window !== "undefined") {
-          const now = Date.now();
-          const endTime = now + (prev - 1) * 1000;
-          const startTime = endTime - IELTS_DURATION_MIN * 60 * 1000;
-          localStorage.setItem(storageKey, JSON.stringify({ startTime, endTime }));
-        }
-        
-        return prev - 1;
-      });
+      } catch (_) {}
     }, 1000);
 
-    return () => clearInterval(interval);
-  }, [isExpired, onTimeExpired, attemptId, section.id]);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  // Only re-create when expiry state changes — not on every render
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isExpired]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
