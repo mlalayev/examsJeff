@@ -65,6 +65,8 @@ interface QuestionsAreaProps {
   onReadingPartChange?: (part: number) => void; // Callback for reading part change
   onWritingPartChange?: (part: number) => void; // Callback for writing part change
   onSpeakingPartChange?: (part: number) => void; // Callback for speaking part change
+  /** When set, Speaking shows only this question index within current part (auto-advance mode) */
+  speakingCurrentQuestionIndex?: number;
   onTimeExpired?: () => void; // Callback for timer expiration
   attemptId?: string; // For localStorage timer
   onReadingTimerStateChange?: (state: { timeRemaining: number; isExpired: boolean; formatTime: (s: number) => string; getTimeColor: () => string } | null) => void; // IELTS Reading timer for sidebar
@@ -98,6 +100,7 @@ export const QuestionsArea = React.memo(function QuestionsArea({
   onReadingPartChange,
   onWritingPartChange,
   onSpeakingPartChange,
+  speakingCurrentQuestionIndex = 0,
   onTimeExpired,
   attemptId,
   onReadingTimerStateChange,
@@ -326,27 +329,27 @@ export const QuestionsArea = React.memo(function QuestionsArea({
                   filteredQuestions = section.questions;
                 }
               } else if (section.type === "SPEAKING" && examCategory === "IELTS") {
-                // For Speaking, filter by prompt.part or prompt text containing "Part X"
+                // For Speaking, filter by prompt.part
                 filteredQuestions = section.questions.filter((q) => {
                   const part = q.prompt?.part;
                   if (part === speakingPart) return true;
-                  
-                  // Fall back to checking prompt text
                   const promptText = q.prompt?.text?.toLowerCase() || "";
                   if (speakingPart === 1 && (promptText.includes("part 1") || promptText.includes("part1"))) return true;
                   if (speakingPart === 2 && (promptText.includes("part 2") || promptText.includes("part2"))) return true;
                   if (speakingPart === 3 && (promptText.includes("part 3") || promptText.includes("part3"))) return true;
-                  
-                  // If no part specified, distribute by order
                   if (!part && !promptText.includes("part")) {
                     const totalQuestions = section.questions.length;
                     if (speakingPart === 1 && q.order < totalQuestions / 3) return true;
                     if (speakingPart === 2 && q.order >= totalQuestions / 3 && q.order < (totalQuestions * 2) / 3) return true;
                     if (speakingPart === 3 && q.order >= (totalQuestions * 2) / 3) return true;
                   }
-                  
                   return false;
                 }).sort((a, b) => a.order - b.order);
+                // Auto-advance mode: show only the single question at speakingCurrentQuestionIndex
+                if (typeof speakingCurrentQuestionIndex === "number" && speakingCurrentQuestionIndex >= 0) {
+                  const at = speakingCurrentQuestionIndex;
+                  filteredQuestions = filteredQuestions[at] != null ? [filteredQuestions[at]] : filteredQuestions;
+                }
               }
               
               return filteredQuestions;

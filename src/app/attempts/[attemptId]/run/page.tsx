@@ -95,6 +95,8 @@ export default function AttemptRunnerPage() {
   const [readingPart, setReadingPart] = useState(1); // For IELTS Reading part selection
   const [writingPart, setWritingPart] = useState(1); // For IELTS Writing part selection
   const [speakingPart, setSpeakingPart] = useState(1); // For IELTS Speaking part selection
+  const [speakingCurrentQuestionIndex, setSpeakingCurrentQuestionIndex] = useState(0); // Which question within part (auto-advance)
+  const [speakingSecondsLeft, setSpeakingSecondsLeft] = useState(35); // Countdown for current question view (35 / 180 / 65)
   const [viewingImage, setViewingImage] = useState<string | null>(null); // Image viewer
   const [viewingPassage, setViewingPassage] = useState(false); // Reading passage panel
   const [speakingIntroDismissed, setSpeakingIntroDismissed] = useState(true); // false = show intro modal when on Speaking
@@ -1222,6 +1224,63 @@ export default function AttemptRunnerPage() {
     });
   }, [currentSection, activeSection, answers, data?.examCategory]);
 
+  // IELTS Speaking: auto-advance one question at a time (Part 1: 35s, Part 2: 3min, Part 3: 65s)
+  const speakingPartQuestions = useMemo(() => {
+    if (!currentSection?.questions || currentSection.type !== "SPEAKING") return { part1: [], part2: [], part3: [] };
+    const q = currentSection.questions;
+    return {
+      part1: q.filter((x: any) => (x.prompt?.part ?? 1) === 1).sort((a: any, b: any) => a.order - b.order),
+      part2: q.filter((x: any) => (x.prompt?.part ?? 1) === 2).sort((a: any, b: any) => a.order - b.order),
+      part3: q.filter((x: any) => (x.prompt?.part ?? 1) === 3).sort((a: any, b: any) => a.order - b.order),
+    };
+  }, [currentSection]);
+
+  const speakingPartRef = useRef(speakingPart);
+  const speakingCurrentQuestionIndexRef = useRef(speakingCurrentQuestionIndex);
+  speakingPartRef.current = speakingPart;
+  speakingCurrentQuestionIndexRef.current = speakingCurrentQuestionIndex;
+
+  useEffect(() => {
+    if (currentSection?.type !== "SPEAKING" || !speakingIntroDismissed || !data?.examCategory || data.examCategory !== "IELTS") return;
+    const { part1, part2, part3 } = speakingPartQuestions;
+
+    const interval = setInterval(() => {
+      setSpeakingSecondsLeft((prev) => {
+        if (prev <= 1) {
+          const part = speakingPartRef.current;
+          const idx = speakingCurrentQuestionIndexRef.current;
+          const partQuestions = part === 1 ? part1 : part === 2 ? part2 : part3;
+          const totalForPart = part === 1 ? 35 : part === 2 ? 180 : 65;
+
+          if (idx + 1 < partQuestions.length) {
+            setSpeakingCurrentQuestionIndex(idx + 1);
+            return totalForPart;
+          }
+          if (part === 1) {
+            if (part2.length > 0) {
+              setSpeakingPart(2);
+              setSpeakingCurrentQuestionIndex(0);
+              return 180;
+            }
+            if (part3.length > 0) {
+              setSpeakingPart(3);
+              setSpeakingCurrentQuestionIndex(0);
+              return 65;
+            }
+          }
+          if (part === 2 && part3.length > 0) {
+            setSpeakingPart(3);
+            setSpeakingCurrentQuestionIndex(0);
+            return 65;
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [currentSection, speakingIntroDismissed, data?.examCategory, speakingPartQuestions]);
+
   if (loading) {
     return <LoadingSkeleton />;
   }
@@ -1342,6 +1401,7 @@ export default function AttemptRunnerPage() {
                   onWritingPartChange={setWritingPart}
                   speakingPart={speakingPart}
                   onSpeakingPartChange={setSpeakingPart}
+                  speakingCurrentQuestionIndex={currentSection.type === "SPEAKING" && data.examCategory === "IELTS" && speakingIntroDismissed ? speakingCurrentQuestionIndex : undefined}
                   onReadingTimerStateChange={setIeltsTimerState}
                   onListeningTimerStateChange={setIeltsTimerState}
                   onWritingTimerStateChange={setIeltsTimerState}
@@ -1351,9 +1411,10 @@ export default function AttemptRunnerPage() {
 
               if (!isReadingSplit) {
                 const isSpeakingWithBar = currentSection.type === "SPEAKING" && data.examCategory === "IELTS" && speakingIntroDismissed;
-                const speakingTotalSeconds = 2 * 60; // section timer in seconds
-                const speakingRemaining = ieltsTimerState?.timeRemaining ?? 0;
-                const barPercent = Math.max(0, Math.min(100, (speakingRemaining / speakingTotalSeconds) * 100));
+                const speakingTotalSeconds = speakingPart === 1 ? 35 : speakingPart === 2 ? 180 : 65;
+                const barPercent = isSpeakingWithBar
+                  ? Math.max(0, Math.min(100, (speakingSecondsLeft / speakingTotalSeconds) * 100))
+                  : 0;
 
                 return (
                   <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
@@ -1367,13 +1428,13 @@ export default function AttemptRunnerPage() {
                             className="h-full rounded-full transition-all duration-1000 ease-linear"
                             style={{
                               width: `${barPercent}%`,
-                              backgroundColor: speakingRemaining < 30 ? "#dc2626" : "#303380",
+                              backgroundColor: speakingSecondsLeft < 30 ? "#dc2626" : "#303380",
                             }}
                           />
                         </div>
-                        {ieltsTimerState && !ieltsTimerState.isExpired && (
+                        {speakingSecondsLeft > 0 && (
                           <p className="text-xs text-gray-500 mt-1 text-right tabular-nums">
-                            Time remaining: {ieltsTimerState.formatTime(speakingRemaining)}
+                            Time for this question: {Math.floor(speakingSecondsLeft / 60)}:{(speakingSecondsLeft % 60).toString().padStart(2, "0")}
                           </p>
                         )}
                       </div>
@@ -1492,6 +1553,9 @@ export default function AttemptRunnerPage() {
             sessionStorage.setItem(`ielts_speaking_intro_seen_${attemptId}`, "true");
           }
           setSpeakingIntroDismissed(true);
+          setSpeakingPart(1);
+          setSpeakingCurrentQuestionIndex(0);
+          setSpeakingSecondsLeft(35);
         }}
       />
 
