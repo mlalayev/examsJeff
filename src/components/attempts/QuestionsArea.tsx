@@ -67,6 +67,8 @@ interface QuestionsAreaProps {
   onSpeakingPartChange?: (part: number) => void; // Callback for speaking part change
   /** When set, Speaking shows only this question index within current part (auto-advance mode) */
   speakingCurrentQuestionIndex?: number;
+  /** Seconds left for current speaking question (for progress bar inside card) */
+  speakingSecondsLeft?: number;
   onTimeExpired?: () => void; // Callback for timer expiration
   attemptId?: string; // For localStorage timer
   onReadingTimerStateChange?: (state: { timeRemaining: number; isExpired: boolean; formatTime: (s: number) => string; getTimeColor: () => string } | null) => void; // IELTS Reading timer for sidebar
@@ -101,6 +103,7 @@ export const QuestionsArea = React.memo(function QuestionsArea({
   onWritingPartChange,
   onSpeakingPartChange,
   speakingCurrentQuestionIndex = 0,
+  speakingSecondsLeft,
   onTimeExpired,
   attemptId,
   onReadingTimerStateChange,
@@ -406,6 +409,39 @@ export const QuestionsArea = React.memo(function QuestionsArea({
                 );
               }
 
+              // IELTS Speaking: progress bar inside card when we have time left for this question
+              const isSpeakingWithBar =
+                section.type === "SPEAKING" &&
+                examCategory === "IELTS" &&
+                q.qtype === "SPEAKING_RECORDING" &&
+                typeof speakingSecondsLeft === "number" &&
+                speakingSecondsLeft >= 0;
+              const speakingTotalSeconds =
+                speakingPart === 1 ? 35 : speakingPart === 2 ? 180 : 65;
+              const barPercent = isSpeakingWithBar
+                ? Math.max(0, Math.min(100, (speakingSecondsLeft! / speakingTotalSeconds) * 100))
+                : 0;
+              const speakingFooterSlot =
+                isSpeakingWithBar ? (
+                  <div className="pt-3 border-t border-slate-100">
+                    <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-1000 ease-linear"
+                        style={{
+                          width: `${barPercent}%`,
+                          backgroundColor: speakingSecondsLeft! < 30 ? "#dc2626" : "#303380",
+                        }}
+                      />
+                    </div>
+                    {speakingSecondsLeft! > 0 && (
+                      <p className="text-xs text-gray-500 mt-1.5 text-right tabular-nums">
+                        Time for this question: {Math.floor(speakingSecondsLeft! / 60)}:
+                        {(speakingSecondsLeft! % 60).toString().padStart(2, "0")}
+                      </p>
+                    )}
+                  </div>
+                ) : undefined;
+
               // Regular question
               return (
                 <QuestionCard
@@ -418,6 +454,7 @@ export const QuestionsArea = React.memo(function QuestionsArea({
                   renderQuestionComponent={(q, v, onChange, readOnly, showWordBank, externalDraggedOption, onDropComplete) => 
                     renderQuestionComponent(q, v, onChange, readOnly, showWordBank, externalDraggedOption, onDropComplete, section.type)
                   }
+                  footerSlot={speakingFooterSlot}
                 />
               );
             })}

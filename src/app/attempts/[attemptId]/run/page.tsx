@@ -1402,6 +1402,7 @@ export default function AttemptRunnerPage() {
                   speakingPart={speakingPart}
                   onSpeakingPartChange={setSpeakingPart}
                   speakingCurrentQuestionIndex={currentSection.type === "SPEAKING" && data.examCategory === "IELTS" && speakingIntroDismissed ? speakingCurrentQuestionIndex : undefined}
+                  speakingSecondsLeft={currentSection.type === "SPEAKING" && data.examCategory === "IELTS" && speakingIntroDismissed ? speakingSecondsLeft : undefined}
                   onReadingTimerStateChange={setIeltsTimerState}
                   onListeningTimerStateChange={setIeltsTimerState}
                   onWritingTimerStateChange={setIeltsTimerState}
@@ -1410,35 +1411,11 @@ export default function AttemptRunnerPage() {
               );
 
               if (!isReadingSplit) {
-                const isSpeakingWithBar = currentSection.type === "SPEAKING" && data.examCategory === "IELTS" && speakingIntroDismissed;
-                const speakingTotalSeconds = speakingPart === 1 ? 35 : speakingPart === 2 ? 180 : 65;
-                const barPercent = isSpeakingWithBar
-                  ? Math.max(0, Math.min(100, (speakingSecondsLeft / speakingTotalSeconds) * 100))
-                  : 0;
-
                 return (
                   <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
                     <div className="flex-1 min-h-0 overflow-y-auto">
                       {questionsAreaEl}
                     </div>
-                    {isSpeakingWithBar && (
-                      <div className="flex-shrink-0 px-1 pb-2">
-                        <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
-                          <div
-                            className="h-full rounded-full transition-all duration-1000 ease-linear"
-                            style={{
-                              width: `${barPercent}%`,
-                              backgroundColor: speakingSecondsLeft < 30 ? "#dc2626" : "#303380",
-                            }}
-                          />
-                        </div>
-                        {speakingSecondsLeft > 0 && (
-                          <p className="text-xs text-gray-500 mt-1 text-right tabular-nums">
-                            Time for this question: {Math.floor(speakingSecondsLeft / 60)}:{(speakingSecondsLeft % 60).toString().padStart(2, "0")}
-                          </p>
-                        )}
-                      </div>
-                    )}
                   </div>
                 );
               }

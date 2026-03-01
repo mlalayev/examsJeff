@@ -29,6 +29,8 @@ interface QuestionCardProps {
     externalDraggedOption?: string | null,
     onDropComplete?: () => void
   ) => React.ReactNode;
+  /** Optional slot at bottom of card (e.g. IELTS Speaking progress bar) */
+  footerSlot?: React.ReactNode;
 }
 
 export const QuestionCard = React.memo(function QuestionCard({
@@ -38,6 +40,7 @@ export const QuestionCard = React.memo(function QuestionCard({
   isLocked,
   questionNumber,
   renderQuestionComponent,
+  footerSlot,
 }: QuestionCardProps) {
   const isInlineLayout =
     question.qtype === "INLINE_SELECT" ||
@@ -150,6 +153,11 @@ export const QuestionCard = React.memo(function QuestionCard({
           </div>
         )}
       </div>
+      {footerSlot && (
+        <div className="px-6 pb-6 pt-0">
+          {footerSlot}
+        </div>
+      )}
     </div>
   );
 });
