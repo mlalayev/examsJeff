@@ -19,8 +19,8 @@ interface Section {
   durationMin: number;
 }
 
-// All IELTS sections use 2 minutes
-const SPEAKING_DURATION_MIN = 2;
+// IELTS Speaking: 20 minutes
+const SPEAKING_DURATION_MIN = 20;
 
 export type IELTSSpeakingTimerState = {
   timeRemaining: number;

@@ -18,8 +18,8 @@ interface Section {
   durationMin: number;
 }
 
-// All IELTS sections use 2 minutes
-const IELTS_DURATION_MIN = 2;
+// IELTS Listening: 30 minutes
+const IELTS_DURATION_MIN = 30;
 
 export type IELTSTimerState = {
   timeRemaining: number;

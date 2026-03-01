@@ -15,8 +15,8 @@ interface Section {
   durationMin: number;
 }
 
-// All IELTS sections use 2 minutes
-const IELTS_DURATION_MIN = 2;
+// IELTS Reading: 1 hour
+const IELTS_DURATION_MIN = 60;
 
 export interface ReadingTimerState {
   timeRemaining: number;
