@@ -313,19 +313,19 @@ export default function StudentAttemptsPage() {
                       </div>
                     )}
 
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center justify-end gap-2">
                       <button
                         type="button"
                         onClick={() => handleDeleteAttempt(attempt.id)}
                         disabled={deletingId === attempt.id}
-                        className="inline-flex items-center gap-1.5 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md px-2.5 py-1.5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                        className="inline-flex items-center gap-1 text-[11px] font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md px-2 py-1 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3.5 h-3.5" />
                         {deletingId === attempt.id ? "Deleting..." : "Delete"}
                       </button>
                       <button
                         onClick={() => router.push(`/attempts/${attempt.id}/results`)}
-                        className="inline-flex items-center gap-2 px-3.5 py-2 text-white rounded-md transition-colors text-xs sm:text-sm font-medium shadow-sm whitespace-nowrap"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-white rounded-md transition-colors text-[11px] font-medium shadow-sm whitespace-nowrap"
                         style={{ backgroundColor: "#303380" }}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.backgroundColor = "#252a6b";
@@ -334,8 +334,8 @@ export default function StudentAttemptsPage() {
                           e.currentTarget.style.backgroundColor = "#303380";
                         }}
                       >
-                        <FileText className="w-4 h-4" />
-                        View Details
+                        <FileText className="w-3.5 h-3.5" />
+                        View
                       </button>
                     </div>
                   </div>
