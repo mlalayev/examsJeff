@@ -231,13 +231,13 @@ export default function StudentAttemptsPage() {
             return (
               <div
                 key={attempt.id}
-                className="bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-shadow"
+                className="bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow-md transition-shadow"
               >
-                <div className="p-5 space-y-4">
-                  {/* Top row: exam meta + score */}
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                <div className="px-5 py-4 flex flex-col gap-3 sm:flex-row sm:items-stretch sm:justify-between">
+                  {/* Left: exam meta + section stats */}
+                  <div className="flex-1 min-w-0 flex flex-col gap-3">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                         {attempt.exam && (
                           <span
                             className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium ${getCategoryColor(
@@ -262,26 +262,44 @@ export default function StudentAttemptsPage() {
                       <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate">
                         {attempt.exam?.title || "Unknown Exam"}
                       </h3>
-                      <div className="mt-1 flex items-center gap-3 text-xs sm:text-sm text-gray-600">
+                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm text-gray-600">
                         <span className="flex items-center gap-1">
                           <Calendar className="w-4 h-4" />
                           {formatDate(attempt.createdAt)}
                         </span>
                         {attempt.submittedAt && (
-                          <span className="hidden sm:inline text-gray-400">
-                            • Submitted{" "}
-                            {formatDate(attempt.submittedAt)}
+                          <span className="text-gray-400">
+                            • Submitted {formatDate(attempt.submittedAt)}
                           </span>
                         )}
                       </div>
                     </div>
 
+                    {/* Section inline stats */}
+                    {attempt.sections && attempt.sections.length > 0 && (
+                      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs sm:text-sm text-slate-600">
+                        {attempt.sections.map((section, idx) => (
+                          <div key={idx} className="flex items-baseline gap-1">
+                            <span className="uppercase tracking-wide text-[10px] text-slate-500">
+                              {section.type}
+                            </span>
+                            <span className="font-semibold tabular-nums text-slate-900">
+                              {section.rawScore ?? "—"}/{section.maxScore ?? "—"}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right: score + actions */}
+                  <div className="mt-3 sm:mt-0 sm:w-56 flex flex-col justify-between items-stretch gap-3 sm:pl-6 sm:border-l sm:border-slate-100">
                     {attempt.overallPercent !== null && (
-                      <div className="flex flex-col items-end gap-1">
+                      <div className="flex items-start justify-between sm:flex-col sm:items-end sm:justify-start gap-1">
                         <span className="text-xs uppercase tracking-wide text-gray-400">
-                          Score
+                          Overall score
                         </span>
-                        <div
+                        <span
                           className={`text-2xl sm:text-3xl font-semibold tabular-nums ${
                             attempt.overallPercent >= 75
                               ? "text-emerald-600"
@@ -291,57 +309,35 @@ export default function StudentAttemptsPage() {
                           }`}
                         >
                           {attempt.overallPercent}%
-                        </div>
+                        </span>
                       </div>
                     )}
-                  </div>
 
-                  {/* Section scores */}
-                  {attempt.sections && attempt.sections.length > 0 && (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-                      {attempt.sections.map((section, idx) => (
-                        <div
-                          key={idx}
-                          className="rounded-lg bg-slate-50 px-3 py-2 text-center border border-slate-100"
-                        >
-                          <div className="text-[11px] font-medium text-slate-500 uppercase tracking-wide">
-                            {section.type}
-                          </div>
-                          <div className="mt-0.5 text-sm font-semibold text-slate-900 tabular-nums">
-                            {section.rawScore ?? "—"}{" "}
-                            <span className="text-slate-400">/</span>{" "}
-                            {section.maxScore ?? "—"}
-                          </div>
-                        </div>
-                      ))}
+                    <div className="flex items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteAttempt(attempt.id)}
+                        disabled={deletingId === attempt.id}
+                        className="inline-flex items-center gap-1.5 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md px-2.5 py-1.5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        {deletingId === attempt.id ? "Deleting..." : "Delete"}
+                      </button>
+                      <button
+                        onClick={() => router.push(`/attempts/${attempt.id}/results`)}
+                        className="inline-flex items-center gap-2 px-3.5 py-2 text-white rounded-md transition-colors text-xs sm:text-sm font-medium shadow-sm whitespace-nowrap"
+                        style={{ backgroundColor: "#303380" }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = "#252a6b";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = "#303380";
+                        }}
+                      >
+                        <FileText className="w-4 h-4" />
+                        View Details
+                      </button>
                     </div>
-                  )}
-
-                  {/* Actions */}
-                  <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteAttempt(attempt.id)}
-                      disabled={deletingId === attempt.id}
-                      className="inline-flex items-center gap-1.5 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md px-2.5 py-1.5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      {deletingId === attempt.id ? "Deleting..." : "Delete attempt"}
-                    </button>
-                    <button
-                      onClick={() => router.push(`/attempts/${attempt.id}/results`)}
-                      className="inline-flex items-center gap-2 px-4 py-2 text-white rounded-md transition-colors text-sm font-medium shadow-sm"
-                      style={{ backgroundColor: "#303380" }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = "#252a6b";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = "#303380";
-                      }}
-                    >
-                      <FileText className="w-4 h-4" />
-                      View Detailed Results
-                    </button>
                   </div>
                 </div>
               </div>
