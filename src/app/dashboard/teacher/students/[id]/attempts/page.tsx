@@ -1,8 +1,9 @@
-"use client";
+ "use client";
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, FileText, Calendar, CheckCircle, Clock, Trash2 } from "lucide-react";
+import { ConfirmModal } from "@/components/modals/ConfirmModal";
 
 interface Attempt {
   id: string;
@@ -37,6 +38,7 @@ export default function StudentAttemptsPage() {
   const [attempts, setAttempts] = useState<Attempt[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [attemptToDelete, setAttemptToDelete] = useState<Attempt | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -114,17 +116,7 @@ export default function StudentAttemptsPage() {
     return colors[category] || "bg-gray-100 text-gray-800";
   };
 
-  const handleDeleteAttempt = async (attemptId: string) => {
-    const target = attempts.find((a) => a.id === attemptId);
-    const label = target?.exam?.title || "this exam";
-    if (
-      !confirm(
-        `Are you sure you want to delete the attempt for "${label}"? This cannot be undone.`
-      )
-    ) {
-      return;
-    }
-
+  const performDeleteAttempt = async (attemptId: string) => {
     setDeletingId(attemptId);
     try {
       const res = await fetch(`/api/teacher/attempts/${attemptId}`, {
@@ -141,6 +133,10 @@ export default function StudentAttemptsPage() {
     } finally {
       setDeletingId(null);
     }
+  };
+
+  const handleDeleteAttempt = (attempt: Attempt) => {
+    setAttemptToDelete(attempt);
   };
 
   const totalAttempts = attempts.length;
@@ -316,7 +312,7 @@ export default function StudentAttemptsPage() {
                     <div className="flex items-center justify-end gap-2">
                       <button
                         type="button"
-                        onClick={() => handleDeleteAttempt(attempt.id)}
+                    onClick={() => handleDeleteAttempt(attempt)}
                         disabled={deletingId === attempt.id}
                         className="inline-flex items-center gap-1 text-[11px] font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md px-2 py-1 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                       >
@@ -344,6 +340,21 @@ export default function StudentAttemptsPage() {
             );
           })}
         </div>
+      )}
+      {/* Delete attempt confirmation modal */}
+      {attemptToDelete && (
+        <ConfirmModal
+          isOpen={!!attemptToDelete}
+          onClose={() => setAttemptToDelete(null)}
+          onConfirm={() => performDeleteAttempt(attemptToDelete.id)}
+          title="Delete attempt?"
+          message={`Are you sure you want to delete the attempt for "${
+            attemptToDelete.exam?.title || "this exam"
+          }"? This action cannot be undone.`}
+          confirmText="Delete"
+          cancelText="Cancel"
+          type="danger"
+        />
       )}
     </div>
   );
