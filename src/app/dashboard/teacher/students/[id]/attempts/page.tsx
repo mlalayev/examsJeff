@@ -1,8 +1,8 @@
-\"use client\";
+"use client";
 
-import { useEffect, useState } from \"react\";
-import { useParams, useRouter } from \"next/navigation\";
-import { ArrowLeft, FileText, Calendar, CheckCircle, Clock, Trash2 } from \"lucide-react\";
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { ArrowLeft, FileText, Calendar, CheckCircle, Clock, Trash2 } from "lucide-react";
 
 interface Attempt {
   id: string;
@@ -61,7 +61,7 @@ export default function StudentAttemptsPage() {
         setAttempts(attemptsData.attempts || []);
       }
     } catch (error) {
-      console.error(\"Error fetching data:\", error);
+      console.error("Error fetching data:", error);
     } finally {
       setLoading(false);
     }
@@ -105,19 +105,19 @@ export default function StudentAttemptsPage() {
 
   const getCategoryColor = (category: string) => {
     const colors: Record<string, string> = {
-      IELTS: \"bg-blue-100 text-blue-800\",
-      TOEFL: \"bg-purple-100 text-purple-800\",
-      SAT: \"bg-orange-100 text-orange-800\",
-      GENERAL_ENGLISH: \"bg-green-100 text-green-800\",
-      MATH: \"bg-red-100 text-red-800\",
-      KIDS: \"bg-pink-100 text-pink-800\",
+      IELTS: "bg-blue-100 text-blue-800",
+      TOEFL: "bg-purple-100 text-purple-800",
+      SAT: "bg-orange-100 text-orange-800",
+      GENERAL_ENGLISH: "bg-green-100 text-green-800",
+      MATH: "bg-red-100 text-red-800",
+      KIDS: "bg-pink-100 text-pink-800",
     };
-    return colors[category] || \"bg-gray-100 text-gray-800\";
+    return colors[category] || "bg-gray-100 text-gray-800";
   };
 
   const handleDeleteAttempt = async (attemptId: string) => {
     const target = attempts.find((a) => a.id === attemptId);
-    const label = target?.exam?.title || \"this exam\";
+    const label = target?.exam?.title || "this exam";
     if (
       !confirm(
         `Are you sure you want to delete the attempt for \"${label}\"? This cannot be undone.`
@@ -137,8 +137,8 @@ export default function StudentAttemptsPage() {
       }
       setAttempts((prev) => prev.filter((a) => a.id !== attemptId));
     } catch (error: any) {
-      console.error(\"Delete attempt error:\", error);
-      alert(error?.message || \"Failed to delete attempt\");
+      console.error("Delete attempt error:", error);
+      alert(error?.message || "Failed to delete attempt");
     } finally {
       setDeletingId(null);
     }
