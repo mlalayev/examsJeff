@@ -100,7 +100,19 @@ export default function AttemptResultsPage() {
         },
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to load results");
+      if (!res.ok) {
+        // Attempt not submitted: redirect to run page so user can continue
+        if (json.error === "Attempt not submitted yet") {
+          router.replace(`/attempts/${attemptId}/run`);
+          return;
+        }
+        // Auth error: redirect to login
+        if (res.status === 401 || json.error === "Unauthorized") {
+          router.replace("/auth/login");
+          return;
+        }
+        throw new Error(json.error || "Failed to load results");
+      }
       
       console.log('📊 Results data fetched at', new Date().toLocaleTimeString(), ':', json);
       console.log('📊 Sections:', json.sections?.map((s: any) => ({ 
@@ -123,7 +135,11 @@ export default function AttemptResultsPage() {
       setData(json);
     } catch (err: any) {
       console.error(err);
-      alert(err.message || "Failed to load results");
+      const msg = err.message || "Failed to load results";
+      // Don't alert for redirects we already handled
+      if (msg !== "Attempt not submitted yet" && msg !== "Unauthorized") {
+        alert(msg);
+      }
       router.push("/dashboard/student/exams");
     } finally {
       setLoading(false);

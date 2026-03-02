@@ -69,6 +69,7 @@ export const config = {
   matcher: [
     "/dashboard/:path*",
     "/pending",
+    "/attempts/:path*",
   ],
 };
 
