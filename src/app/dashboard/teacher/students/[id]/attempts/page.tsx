@@ -218,99 +218,135 @@ export default function StudentAttemptsPage() {
           <p className="text-gray-600">This student hasn&apos;t attempted any exams yet.</p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {attempts.map((attempt) => (
-            <div
-              key={attempt.id}
-              className="bg-white border border-gray-200 rounded-md hover:border-gray-300 transition-colors"
-            >
-              <div className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2 flex-wrap">
-                      {attempt.exam && (
-                        <span
-                          className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${getCategoryColor(
-                            attempt.exam.category
-                          )}`}
-                        >
-                          {attempt.exam.category}
-                        </span>
-                      )}
-                      {getStatusBadge(attempt.status)}
-                    </div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">
-                      {attempt.exam?.title || "Unknown Exam"}
-                    </h3>
-                    <div className="flex items-center gap-4 text-sm text-gray-600">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-4 h-4" />
-                        {formatDate(attempt.createdAt)}
-                      </span>
-                    </div>
-                  </div>
+        <div className="space-y-3">
+          {attempts.map((attempt) => {
+            const isSubmitted = attempt.status === "SUBMITTED";
+            const statusLabel =
+              attempt.status === "SUBMITTED"
+                ? "Submitted"
+                : attempt.status === "IN_PROGRESS"
+                ? "In progress"
+                : attempt.status;
 
-                  {attempt.overallPercent !== null && (
-                    <div className="text-right ml-4">
-                      <div className="text-sm text-gray-500 mb-1">Score</div>
-                      <div
-                        className={`text-3xl font-medium ${
-                          attempt.overallPercent >= 75
-                            ? "text-green-600"
-                            : attempt.overallPercent >= 50
-                            ? "text-yellow-600"
-                            : "text-red-600"
-                        }`}
-                      >
-                        {attempt.overallPercent}%
+            return (
+              <div
+                key={attempt.id}
+                className="bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-shadow"
+              >
+                <div className="p-5 space-y-4">
+                  {/* Top row: exam meta + score */}
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        {attempt.exam && (
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium ${getCategoryColor(
+                              attempt.exam.category
+                            )}`}
+                          >
+                            {attempt.exam.category}
+                          </span>
+                        )}
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium ${
+                            isSubmitted
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                              : attempt.status === "IN_PROGRESS"
+                              ? "bg-blue-50 text-blue-700 border border-blue-100"
+                              : "bg-gray-50 text-gray-600 border border-gray-100"
+                          }`}
+                        >
+                          {statusLabel}
+                        </span>
+                      </div>
+                      <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate">
+                        {attempt.exam?.title || "Unknown Exam"}
+                      </h3>
+                      <div className="mt-1 flex items-center gap-3 text-xs sm:text-sm text-gray-600">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-4 h-4" />
+                          {formatDate(attempt.createdAt)}
+                        </span>
+                        {attempt.submittedAt && (
+                          <span className="hidden sm:inline text-gray-400">
+                            • Submitted{" "}
+                            {formatDate(attempt.submittedAt)}
+                          </span>
+                        )}
                       </div>
                     </div>
-                  )}
-                </div>
 
-                {/* Section Scores */}
-                {attempt.sections && attempt.sections.length > 0 && (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-4 pt-4 border-t border-gray-200">
-                    {attempt.sections.map((section, idx) => (
-                      <div key={idx} className="text-center p-3 bg-gray-50 rounded-md">
-                        <div className="text-xs text-gray-500 mb-1">{section.type}</div>
-                        <div className="text-sm font-medium text-gray-900">
-                          {section.rawScore ?? "—"} / {section.maxScore ?? "—"}
+                    {attempt.overallPercent !== null && (
+                      <div className="flex flex-col items-end gap-1">
+                        <span className="text-xs uppercase tracking-wide text-gray-400">
+                          Score
+                        </span>
+                        <div
+                          className={`text-2xl sm:text-3xl font-semibold tabular-nums ${
+                            attempt.overallPercent >= 75
+                              ? "text-emerald-600"
+                              : attempt.overallPercent >= 50
+                              ? "text-amber-600"
+                              : "text-rose-600"
+                          }`}
+                        >
+                          {attempt.overallPercent}%
                         </div>
                       </div>
-                    ))}
+                    )}
                   </div>
-                )}
 
-                {/* Actions */}
-                <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteAttempt(attempt.id)}
-                    disabled={deletingId === attempt.id}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    {deletingId === attempt.id ? "Deleting..." : "Delete attempt"}
-                  </button>
-                  <button
-                    onClick={() => router.push(`/attempts/${attempt.id}/results`)}
-                    className="inline-flex items-center gap-2 px-4 py-2 text-white rounded-md transition-colors text-sm font-medium"
-                    style={{ backgroundColor: "#303380" }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = "#252a6b";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = "#303380";
-                    }}
-                  >
-                    <FileText className="w-4 h-4" />
-                    View Detailed Results
-                  </button>
+                  {/* Section scores */}
+                  {attempt.sections && attempt.sections.length > 0 && (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+                      {attempt.sections.map((section, idx) => (
+                        <div
+                          key={idx}
+                          className="rounded-lg bg-slate-50 px-3 py-2 text-center border border-slate-100"
+                        >
+                          <div className="text-[11px] font-medium text-slate-500 uppercase tracking-wide">
+                            {section.type}
+                          </div>
+                          <div className="mt-0.5 text-sm font-semibold text-slate-900 tabular-nums">
+                            {section.rawScore ?? "—"}{" "}
+                            <span className="text-slate-400">/</span>{" "}
+                            {section.maxScore ?? "—"}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteAttempt(attempt.id)}
+                      disabled={deletingId === attempt.id}
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md px-2.5 py-1.5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      {deletingId === attempt.id ? "Deleting..." : "Delete attempt"}
+                    </button>
+                    <button
+                      onClick={() => router.push(`/attempts/${attempt.id}/results`)}
+                      className="inline-flex items-center gap-2 px-4 py-2 text-white rounded-md transition-colors text-sm font-medium shadow-sm"
+                      style={{ backgroundColor: "#303380" }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = "#252a6b";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = "#303380";
+                      }}
+                    >
+                      <FileText className="w-4 h-4" />
+                      View Detailed Results
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
