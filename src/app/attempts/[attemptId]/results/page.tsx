@@ -18,6 +18,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import Sidebar from "@/components/dashboard/Sidebar";
+import { WritingAiFeedbackCard } from "@/components/attempts/WritingAiFeedbackCard";
 
 interface ResultsData {
   attemptId: string;
@@ -809,14 +810,9 @@ export default function AttemptResultsPage() {
                       </div>
                     </div>
                     {data.writingSubmission.aiTask1Feedback && (
-                      <div className="rounded-xl border border-slate-200 bg-white pl-4 pr-4 py-4 shadow-sm border-l-4 border-l-[#303380]">
-                        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                          AI Feedback
-                        </p>
-                        <p className="text-sm leading-relaxed text-slate-700 whitespace-pre-line">
-                          {data.writingSubmission.aiTask1Feedback}
-                        </p>
-                      </div>
+                      <WritingAiFeedbackCard
+                        feedback={data.writingSubmission.aiTask1Feedback}
+                      />
                     )}
                   </div>
                 )}
@@ -870,14 +866,9 @@ export default function AttemptResultsPage() {
                       </div>
                     </div>
                     {data.writingSubmission.aiTask2Feedback && (
-                      <div className="rounded-xl border border-slate-200 bg-white pl-4 pr-4 py-4 shadow-sm border-l-4 border-l-[#303380]">
-                        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                          AI Feedback
-                        </p>
-                        <p className="text-sm leading-relaxed text-slate-700 whitespace-pre-line">
-                          {data.writingSubmission.aiTask2Feedback}
-                        </p>
-                      </div>
+                      <WritingAiFeedbackCard
+                        feedback={data.writingSubmission.aiTask2Feedback}
+                      />
                     )}
                   </div>
                 )}

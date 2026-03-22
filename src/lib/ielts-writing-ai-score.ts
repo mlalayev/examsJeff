@@ -140,18 +140,18 @@ ${data.task2.userAnswer}
     const penalty = Math.min(1.0, (150 - data.task1.wordCount) / 50);
     scores.task1.taskResponse = Math.max(0, scores.task1.taskResponse - penalty);
     scores.task1.overall = Math.max(0, scores.task1.overall - penalty * 0.5);
-    scores.task1.feedback = `⚠️ Söz sayı: ${data.task1.wordCount}/150 (cəza tətbiq edildi)\n\n${scores.task1.feedback}`;
+    scores.task1.feedback = `Söz sayı: ${data.task1.wordCount}/150 (cəza tətbiq edildi)\n\n${scores.task1.feedback}`;
   } else {
-    scores.task1.feedback = `✅ Söz sayı: ${data.task1.wordCount}/150\n\n${scores.task1.feedback}`;
+    scores.task1.feedback = `Söz sayı: ${data.task1.wordCount}/150\n\n${scores.task1.feedback}`;
   }
 
   if (data.task2.wordCount < 250) {
     const penalty = Math.min(1.0, (250 - data.task2.wordCount) / 50);
     scores.task2.taskResponse = Math.max(0, scores.task2.taskResponse - penalty);
     scores.task2.overall = Math.max(0, scores.task2.overall - penalty * 0.5);
-    scores.task2.feedback = `⚠️ Söz sayı: ${data.task2.wordCount}/250 (cəza tətbiq edildi)\n\n${scores.task2.feedback}`;
+    scores.task2.feedback = `Söz sayı: ${data.task2.wordCount}/250 (cəza tətbiq edildi)\n\n${scores.task2.feedback}`;
   } else {
-    scores.task2.feedback = `✅ Söz sayı: ${data.task2.wordCount}/250\n\n${scores.task2.feedback}`;
+    scores.task2.feedback = `Söz sayı: ${data.task2.wordCount}/250\n\n${scores.task2.feedback}`;
   }
 
   scores.task1.wordCount = data.task1.wordCount;
@@ -226,9 +226,9 @@ Your response MUST be valid JSON in this exact format:
     const penalty = Math.min(1.0, (minWordCount - wordCount) / 50);
     parsed.taskResponse = Math.max(0, parsed.taskResponse - penalty);
     parsed.overall = Math.max(0, parsed.overall - penalty * 0.5);
-    parsed.feedback = `⚠️ Word count: ${wordCount}/${minWordCount} (penalty applied)\n\n${parsed.feedback}`;
+    parsed.feedback = `Word count: ${wordCount}/${minWordCount} (penalty applied)\n\n${parsed.feedback}`;
   } else {
-    parsed.feedback = `✅ Word count: ${wordCount}/${minWordCount}\n\n${parsed.feedback}`;
+    parsed.feedback = `Word count: ${wordCount}/${minWordCount}\n\n${parsed.feedback}`;
   }
 
   return {
