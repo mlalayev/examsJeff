@@ -104,6 +104,8 @@ export default function AttemptResultsPage() {
   const [editedAnswers, setEditedAnswers] = useState<Record<string, any>>({});
   const [saving, setSaving] = useState(false);
   const [showReviewRestrictedModal, setShowReviewRestrictedModal] = useState(false);
+  const [checkingWithAI, setCheckingWithAI] = useState(false);
+  const [aiCheckResults, setAiCheckResults] = useState<any>(null);
 
   useEffect(() => {
     fetchResults();
@@ -182,6 +184,7 @@ export default function AttemptResultsPage() {
     setSelectedSection(null);
     setEditingQuestion(null);
     setEditedAnswers({});
+    setAiCheckResults(null);
     document.body.style.overflow = 'unset';
   };
 
@@ -228,6 +231,57 @@ export default function AttemptResultsPage() {
   const handleCancelEdit = () => {
     setEditingQuestion(null);
     setEditedAnswers({});
+  };
+
+  const handleCheckWithAI = async () => {
+    if (!selectedSection || selectedSection.type !== "WRITING") {
+      alert("AI checking is only available for Writing sections");
+      return;
+    }
+
+    // Find the writing questions
+    const writingQuestions = data?.sections
+      ?.find(s => s.type === "WRITING")
+      ?.questions || [];
+
+    if (writingQuestions.length < 2) {
+      alert("Writing section must have at least 2 tasks");
+      return;
+    }
+
+    // Get Task 1 and Task 2 responses
+    const task1Question = writingQuestions.find(q => q.order === 1);
+    const task2Question = writingQuestions.find(q => q.order === 2);
+
+    if (!task1Question?.studentAnswer || !task2Question?.studentAnswer) {
+      alert("Both Task 1 and Task 2 must have student answers");
+      return;
+    }
+
+    setCheckingWithAI(true);
+    try {
+      const response = await fetch("/api/ai-writing-score", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          task1Response: task1Question.studentAnswer,
+          task2Response: task2Question.studentAnswer,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to check with AI");
+      }
+
+      const results = await response.json();
+      setAiCheckResults(results);
+      alert("✅ AI check completed! Scroll down to see the results.");
+    } catch (error: any) {
+      console.error("AI check error:", error);
+      alert("Error: " + (error.message || "Failed to check with AI"));
+    } finally {
+      setCheckingWithAI(false);
+    }
   };
 
   const handleSaveAnswer = async (questionId: string, qtype: string) => {
@@ -824,12 +878,33 @@ export default function AttemptResultsPage() {
                 </h3>
                 <p className="text-sm text-gray-500 mt-0.5">Questions Review</p>
               </div>
-              <button
-                onClick={closeModal}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5 text-gray-600" />
-              </button>
+              <div className="flex items-center gap-2">
+                {selectedSection.type === "WRITING" && (
+                  <button
+                    onClick={handleCheckWithAI}
+                    disabled={checkingWithAI}
+                    className="flex items-center gap-2 px-4 py-2 bg-[#303380] text-white rounded-lg hover:bg-[#252a6b] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {checkingWithAI ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Checking...
+                      </>
+                    ) : (
+                      <>
+                        <FileCheck className="w-4 h-4" />
+                        Check with AI
+                      </>
+                    )}
+                  </button>
+                )}
+                <button
+                  onClick={closeModal}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-600" />
+                </button>
+              </div>
             </div>
             
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-100px)]">
@@ -1163,6 +1238,161 @@ export default function AttemptResultsPage() {
                     </div>
                 ))}
               </div>
+
+              {/* AI Check Results */}
+              {aiCheckResults && selectedSection.type === "WRITING" && (
+                <div className="mt-8 border-t-4 border-[#303380] pt-6">
+                  <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                    <FileCheck className="w-6 h-6 text-[#303380]" />
+                    AI Assessment Results
+                  </h3>
+                  
+                  <div className="space-y-6">
+                    {/* Task 1 Results */}
+                    {aiCheckResults.task1 && (
+                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-6">
+                        <div className="flex items-center justify-between mb-4">
+                          <h4 className="text-lg font-bold text-gray-900">Task 1</h4>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-gray-600">Overall Band:</span>
+                            <div className="px-4 py-2 bg-[#303380] text-white rounded-lg text-xl font-bold">
+                              {aiCheckResults.task1.overall.toFixed(1)}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                          <div className="bg-white p-3 rounded-lg border-2 border-blue-300 shadow-sm">
+                            <div className="text-xs font-semibold text-gray-600 mb-1">Task Response</div>
+                            <div className="text-2xl font-bold text-blue-700">
+                              {aiCheckResults.task1.taskResponse.toFixed(1)}
+                            </div>
+                          </div>
+                          <div className="bg-white p-3 rounded-lg border-2 border-green-300 shadow-sm">
+                            <div className="text-xs font-semibold text-gray-600 mb-1">Coherence & Cohesion</div>
+                            <div className="text-2xl font-bold text-green-700">
+                              {aiCheckResults.task1.coherenceCohesion.toFixed(1)}
+                            </div>
+                          </div>
+                          <div className="bg-white p-3 rounded-lg border-2 border-purple-300 shadow-sm">
+                            <div className="text-xs font-semibold text-gray-600 mb-1">Lexical Resource</div>
+                            <div className="text-2xl font-bold text-purple-700">
+                              {aiCheckResults.task1.lexicalResource.toFixed(1)}
+                            </div>
+                          </div>
+                          <div className="bg-white p-3 rounded-lg border-2 border-orange-300 shadow-sm">
+                            <div className="text-xs font-semibold text-gray-600 mb-1">Grammar</div>
+                            <div className="text-2xl font-bold text-orange-700">
+                              {aiCheckResults.task1.grammaticalRangeAccuracy.toFixed(1)}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="bg-white p-4 rounded-lg border-2 border-blue-200 shadow-sm">
+                          <p className="text-xs font-bold text-blue-900 mb-2 uppercase tracking-wide">
+                            AI Feedback
+                          </p>
+                          <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
+                            {aiCheckResults.task1.feedback}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Task 2 Results */}
+                    {aiCheckResults.task2 && (
+                      <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-6">
+                        <div className="flex items-center justify-between mb-4">
+                          <h4 className="text-lg font-bold text-gray-900">Task 2</h4>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-gray-600">Overall Band:</span>
+                            <div className="px-4 py-2 bg-[#303380] text-white rounded-lg text-xl font-bold">
+                              {aiCheckResults.task2.overall.toFixed(1)}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                          <div className="bg-white p-3 rounded-lg border-2 border-blue-300 shadow-sm">
+                            <div className="text-xs font-semibold text-gray-600 mb-1">Task Response</div>
+                            <div className="text-2xl font-bold text-blue-700">
+                              {aiCheckResults.task2.taskResponse.toFixed(1)}
+                            </div>
+                          </div>
+                          <div className="bg-white p-3 rounded-lg border-2 border-green-300 shadow-sm">
+                            <div className="text-xs font-semibold text-gray-600 mb-1">Coherence & Cohesion</div>
+                            <div className="text-2xl font-bold text-green-700">
+                              {aiCheckResults.task2.coherenceCohesion.toFixed(1)}
+                            </div>
+                          </div>
+                          <div className="bg-white p-3 rounded-lg border-2 border-purple-300 shadow-sm">
+                            <div className="text-xs font-semibold text-gray-600 mb-1">Lexical Resource</div>
+                            <div className="text-2xl font-bold text-purple-700">
+                              {aiCheckResults.task2.lexicalResource.toFixed(1)}
+                            </div>
+                          </div>
+                          <div className="bg-white p-3 rounded-lg border-2 border-orange-300 shadow-sm">
+                            <div className="text-xs font-semibold text-gray-600 mb-1">Grammar</div>
+                            <div className="text-2xl font-bold text-orange-700">
+                              {aiCheckResults.task2.grammaticalRangeAccuracy.toFixed(1)}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="bg-white p-4 rounded-lg border-2 border-green-200 shadow-sm">
+                          <p className="text-xs font-bold text-green-900 mb-2 uppercase tracking-wide">
+                            AI Feedback
+                          </p>
+                          <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
+                            {aiCheckResults.task2.feedback}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Overall Summary */}
+                    <div className="bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl p-6">
+                      <h4 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <Award className="w-5 h-5 text-purple-600" />
+                        Overall Assessment
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {aiCheckResults.task1 && (
+                          <div className="bg-white p-4 rounded-lg border border-purple-300 shadow-sm">
+                            <div className="text-sm font-medium text-gray-600 mb-1">Task 1 Band</div>
+                            <div className="text-3xl font-bold text-[#303380]">
+                              {aiCheckResults.task1.overall.toFixed(1)}
+                            </div>
+                          </div>
+                        )}
+                        {aiCheckResults.task2 && (
+                          <div className="bg-white p-4 rounded-lg border border-purple-300 shadow-sm">
+                            <div className="text-sm font-medium text-gray-600 mb-1">Task 2 Band</div>
+                            <div className="text-3xl font-bold text-[#303380]">
+                              {aiCheckResults.task2.overall.toFixed(1)}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      {aiCheckResults.task1 && aiCheckResults.task2 && (
+                        <div className="mt-4 pt-4 border-t border-purple-200">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-semibold text-gray-700">
+                              Estimated Writing Band Score:
+                            </span>
+                            <div className="px-6 py-3 bg-gradient-to-r from-[#303380] to-[#252a6b] text-white rounded-lg text-2xl font-bold shadow-lg">
+                              {((aiCheckResults.task1.overall + aiCheckResults.task2.overall) / 2).toFixed(1)}
+                            </div>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-2 text-center">
+                            * This is an AI estimation. Final band score may vary based on official IELTS criteria.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
