@@ -91,6 +91,11 @@ interface ResultsData {
   } | null;
 }
 
+/** Exam/API may return section type with different casing */
+function isWritingSectionType(type: unknown): boolean {
+  return String(type ?? "").toUpperCase() === "WRITING";
+}
+
 export default function AttemptResultsPage() {
   const params = useParams();
   const router = useRouter();
@@ -234,14 +239,14 @@ export default function AttemptResultsPage() {
   };
 
   const handleCheckWithAI = async () => {
-    if (!selectedSection || selectedSection.type !== "WRITING") {
+    if (!selectedSection || !isWritingSectionType(selectedSection.type)) {
       alert("AI checking is only available for Writing sections");
       return;
     }
 
     // Find the writing questions
     const writingQuestions = data?.sections
-      ?.find(s => s.type === "WRITING")
+      ?.find(s => isWritingSectionType(s.type))
       ?.questions || [];
 
     if (writingQuestions.length < 2) {
@@ -249,9 +254,10 @@ export default function AttemptResultsPage() {
       return;
     }
 
-    // Get Task 1 and Task 2 responses
-    const task1Question = writingQuestions.find(q => q.order === 1);
-    const task2Question = writingQuestions.find(q => q.order === 2);
+    // Task 1 / Task 2 = first two questions by exam order (not always order === 1,2)
+    const sortedByOrder = [...writingQuestions].sort((a, b) => a.order - b.order);
+    const task1Question = sortedByOrder[0];
+    const task2Question = sortedByOrder[1];
 
     if (!task1Question?.studentAnswer || !task2Question?.studentAnswer) {
       alert("Both Task 1 and Task 2 must have student answers");
@@ -643,7 +649,7 @@ export default function AttemptResultsPage() {
                       <div>
                         <h3 className="font-medium text-gray-900">{section.title}</h3>
                         <div className="flex items-center gap-2 text-xs text-gray-600 mt-1">
-                          {section.type === "WRITING" && data.writingSubmission?.aiTask2Overall ? (
+                          {isWritingSectionType(section.type) && data.writingSubmission?.aiTask2Overall ? (
                             <>
                               <span>AI Score: Band {data.writingSubmission.aiTask2Overall.toFixed(1)}</span>
                               <span>•</span>
@@ -671,7 +677,7 @@ export default function AttemptResultsPage() {
                     </div>
                     <div className="flex items-center gap-4">
                       <div className="text-right">
-                        {section.type === "WRITING" && data.writingSubmission?.aiTask2Overall ? (
+                        {isWritingSectionType(section.type) && data.writingSubmission?.aiTask2Overall ? (
                           <div className="text-xl font-semibold text-[#303380]">
                             {data.writingSubmission.aiTask2Overall.toFixed(1)}
                           </div>
@@ -878,41 +884,21 @@ export default function AttemptResultsPage() {
                 </h3>
                 <p className="text-sm text-gray-500 mt-0.5">Questions Review</p>
               </div>
-              <div className="flex items-center gap-2">
-                {selectedSection.type === "WRITING" && (
-                  <button
-                    onClick={handleCheckWithAI}
-                    disabled={checkingWithAI}
-                    className="flex items-center gap-2 px-4 py-2 bg-[#303380] text-white rounded-lg hover:bg-[#252a6b] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {checkingWithAI ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        Checking...
-                      </>
-                    ) : (
-                      <>
-                        <FileCheck className="w-4 h-4" />
-                        Check with AI
-                      </>
-                    )}
-                  </button>
-                )}
-                <button
-                  onClick={closeModal}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  <X className="w-5 h-5 text-gray-600" />
-                </button>
-              </div>
+              <button
+                onClick={closeModal}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5 text-gray-600" />
+              </button>
             </div>
             
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-100px)]">
               {/* Section Summary Card */}
               <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-sm">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-sm shrink-0">
                       <BarChart3 className="w-6 h-6 text-blue-600" />
                     </div>
                     <div>
@@ -922,11 +908,33 @@ export default function AttemptResultsPage() {
                       </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm text-gray-600">Score</p>
-                    <p className="text-lg font-semibold text-gray-900">
-                      {selectedSection.correct} / {selectedSection.total}
-                    </p>
+                  <div className="flex flex-col items-stretch sm:items-end gap-2 sm:flex-row sm:items-center sm:gap-3">
+                    {isWritingSectionType(selectedSection.type) && (
+                      <button
+                        type="button"
+                        onClick={handleCheckWithAI}
+                        disabled={checkingWithAI}
+                        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-[#303380] text-white text-sm font-medium hover:bg-[#252a6b] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shrink-0"
+                      >
+                        {checkingWithAI ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            Checking with AI…
+                          </>
+                        ) : (
+                          <>
+                            <FileCheck className="w-4 h-4 shrink-0" />
+                            Check with AI
+                          </>
+                        )}
+                      </button>
+                    )}
+                    <div className="text-right sm:text-right">
+                      <p className="text-sm text-gray-600">Score</p>
+                      <p className="text-lg font-semibold text-gray-900">
+                        {selectedSection.correct} / {selectedSection.total}
+                      </p>
+                    </div>
                   </div>
                 </div>
                 <div className="w-full h-3 bg-white/60 rounded-full overflow-hidden shadow-inner">
@@ -1240,7 +1248,7 @@ export default function AttemptResultsPage() {
               </div>
 
               {/* AI Check Results */}
-              {aiCheckResults && selectedSection.type === "WRITING" && (
+              {aiCheckResults && isWritingSectionType(selectedSection.type) && (
                 <div className="mt-8 border-t-4 border-[#303380] pt-6">
                   <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
                     <FileCheck className="w-6 h-6 text-[#303380]" />
