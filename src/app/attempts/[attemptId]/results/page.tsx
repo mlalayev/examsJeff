@@ -15,6 +15,7 @@ import {
   Save,
   FileText,
   AlertCircle,
+  Sparkles,
 } from "lucide-react";
 import Sidebar from "@/components/dashboard/Sidebar";
 
@@ -741,48 +742,78 @@ export default function AttemptResultsPage() {
         {/* AI Writing Scores (Teacher Only) — same structure as before; light visual polish only */}
         {data.writingSubmission && data.writingSubmission.aiScoredAt && (
           <div className="mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">AI Writing Assessment</h2>
-            <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-              <div className="p-6 space-y-6">
+            <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-md ring-1 ring-slate-100/80">
+              {/* Top accent + title row */}
+              <div className="h-1 bg-gradient-to-r from-[#303380] via-[#4548a8] to-[#303380]" />
+              <div className="flex items-start gap-3 border-b border-slate-100 bg-gradient-to-r from-slate-50/90 to-white px-5 py-4 sm:px-6">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#303380]/10">
+                  <Sparkles className="h-5 w-5 text-[#303380]" aria-hidden />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-lg font-semibold tracking-tight text-gray-900">
+                    AI Writing Assessment
+                  </h2>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    Band scores by criterion and full AI feedback (Tasks 1 &amp; 2)
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-8 p-5 sm:p-6">
                 {/* Task 1 Scores */}
                 {data.writingSubmission.aiTask1Overall && (
-                  <div className="border-b border-gray-200 pb-6 last:border-b-0 last:pb-0">
-                    <div className="flex items-center justify-between mb-4">
+                  <div className="rounded-xl border border-slate-200/80 bg-slate-50/40 p-4 sm:p-5 shadow-sm">
+                    <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <h3 className="text-base font-semibold text-gray-900">Task 1 - AI Score</h3>
-                      <div className="text-2xl font-bold text-[#303380]">
-                        Band {data.writingSubmission.aiTask1Overall.toFixed(1)}
+                      <div className="inline-flex items-center gap-2 self-start rounded-full bg-[#303380] px-4 py-1.5 text-sm font-bold text-white shadow-sm">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-white/80">
+                          Band
+                        </span>
+                        <span className="tabular-nums">
+                          {data.writingSubmission.aiTask1Overall.toFixed(1)}
+                        </span>
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                      <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                        <div className="text-xs font-medium text-gray-600 mb-1">Task Response</div>
-                        <div className="text-xl font-bold text-blue-700">
+                    <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+                      <div className="rounded-xl border border-blue-200/80 bg-blue-50/90 p-3.5 shadow-sm transition-shadow hover:shadow-md">
+                        <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-blue-800/80">
+                          Task Response
+                        </div>
+                        <div className="text-xl font-bold tabular-nums text-blue-700">
                           {data.writingSubmission.aiTask1TR?.toFixed(1)}
                         </div>
                       </div>
-                      <div className="bg-green-50 p-3 rounded-lg border border-green-200">
-                        <div className="text-xs font-medium text-gray-600 mb-1">Coherence & Cohesion</div>
-                        <div className="text-xl font-bold text-green-700">
+                      <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/90 p-3.5 shadow-sm transition-shadow hover:shadow-md">
+                        <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-emerald-800/80">
+                          Coherence &amp; Cohesion
+                        </div>
+                        <div className="text-xl font-bold tabular-nums text-emerald-700">
                           {data.writingSubmission.aiTask1CC?.toFixed(1)}
                         </div>
                       </div>
-                      <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
-                        <div className="text-xs font-medium text-gray-600 mb-1">Lexical Resource</div>
-                        <div className="text-xl font-bold text-purple-700">
+                      <div className="rounded-xl border border-violet-200/80 bg-violet-50/90 p-3.5 shadow-sm transition-shadow hover:shadow-md">
+                        <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-violet-800/80">
+                          Lexical Resource
+                        </div>
+                        <div className="text-xl font-bold tabular-nums text-violet-700">
                           {data.writingSubmission.aiTask1LR?.toFixed(1)}
                         </div>
                       </div>
-                      <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
-                        <div className="text-xs font-medium text-gray-600 mb-1">Grammar</div>
-                        <div className="text-xl font-bold text-orange-700">
+                      <div className="rounded-xl border border-amber-200/80 bg-amber-50/90 p-3.5 shadow-sm transition-shadow hover:shadow-md">
+                        <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-amber-800/80">
+                          Grammar
+                        </div>
+                        <div className="text-xl font-bold tabular-nums text-amber-800">
                           {data.writingSubmission.aiTask1GRA?.toFixed(1)}
                         </div>
                       </div>
                     </div>
                     {data.writingSubmission.aiTask1Feedback && (
-                      <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                        <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">AI Feedback</p>
-                        <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
+                      <div className="rounded-xl border border-slate-200 bg-white pl-4 pr-4 py-4 shadow-sm border-l-4 border-l-[#303380]">
+                        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                          AI Feedback
+                        </p>
+                        <p className="text-sm leading-relaxed text-slate-700 whitespace-pre-line">
                           {data.writingSubmission.aiTask1Feedback}
                         </p>
                       </div>
@@ -792,43 +823,58 @@ export default function AttemptResultsPage() {
 
                 {/* Task 2 Scores */}
                 {data.writingSubmission.aiTask2Overall && (
-                  <div>
-                    <div className="flex items-center justify-between mb-4">
+                  <div className="rounded-xl border border-slate-200/80 bg-slate-50/40 p-4 sm:p-5 shadow-sm">
+                    <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <h3 className="text-base font-semibold text-gray-900">Task 2 - AI Score</h3>
-                      <div className="text-2xl font-bold text-[#303380]">
-                        Band {data.writingSubmission.aiTask2Overall.toFixed(1)}
+                      <div className="inline-flex items-center gap-2 self-start rounded-full bg-[#303380] px-4 py-1.5 text-sm font-bold text-white shadow-sm">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-white/80">
+                          Band
+                        </span>
+                        <span className="tabular-nums">
+                          {data.writingSubmission.aiTask2Overall.toFixed(1)}
+                        </span>
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                      <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                        <div className="text-xs font-medium text-gray-600 mb-1">Task Response</div>
-                        <div className="text-xl font-bold text-blue-700">
+                    <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+                      <div className="rounded-xl border border-blue-200/80 bg-blue-50/90 p-3.5 shadow-sm transition-shadow hover:shadow-md">
+                        <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-blue-800/80">
+                          Task Response
+                        </div>
+                        <div className="text-xl font-bold tabular-nums text-blue-700">
                           {data.writingSubmission.aiTask2TR?.toFixed(1)}
                         </div>
                       </div>
-                      <div className="bg-green-50 p-3 rounded-lg border border-green-200">
-                        <div className="text-xs font-medium text-gray-600 mb-1">Coherence & Cohesion</div>
-                        <div className="text-xl font-bold text-green-700">
+                      <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/90 p-3.5 shadow-sm transition-shadow hover:shadow-md">
+                        <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-emerald-800/80">
+                          Coherence &amp; Cohesion
+                        </div>
+                        <div className="text-xl font-bold tabular-nums text-emerald-700">
                           {data.writingSubmission.aiTask2CC?.toFixed(1)}
                         </div>
                       </div>
-                      <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
-                        <div className="text-xs font-medium text-gray-600 mb-1">Lexical Resource</div>
-                        <div className="text-xl font-bold text-purple-700">
+                      <div className="rounded-xl border border-violet-200/80 bg-violet-50/90 p-3.5 shadow-sm transition-shadow hover:shadow-md">
+                        <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-violet-800/80">
+                          Lexical Resource
+                        </div>
+                        <div className="text-xl font-bold tabular-nums text-violet-700">
                           {data.writingSubmission.aiTask2LR?.toFixed(1)}
                         </div>
                       </div>
-                      <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
-                        <div className="text-xs font-medium text-gray-600 mb-1">Grammar</div>
-                        <div className="text-xl font-bold text-orange-700">
+                      <div className="rounded-xl border border-amber-200/80 bg-amber-50/90 p-3.5 shadow-sm transition-shadow hover:shadow-md">
+                        <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-amber-800/80">
+                          Grammar
+                        </div>
+                        <div className="text-xl font-bold tabular-nums text-amber-800">
                           {data.writingSubmission.aiTask2GRA?.toFixed(1)}
                         </div>
                       </div>
                     </div>
                     {data.writingSubmission.aiTask2Feedback && (
-                      <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                        <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">AI Feedback</p>
-                        <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
+                      <div className="rounded-xl border border-slate-200 bg-white pl-4 pr-4 py-4 shadow-sm border-l-4 border-l-[#303380]">
+                        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                          AI Feedback
+                        </p>
+                        <p className="text-sm leading-relaxed text-slate-700 whitespace-pre-line">
                           {data.writingSubmission.aiTask2Feedback}
                         </p>
                       </div>
@@ -836,9 +882,12 @@ export default function AttemptResultsPage() {
                   </div>
                 )}
 
-                <div className="pt-4 border-t border-gray-200">
-                  <p className="text-xs text-gray-500 text-center">
-                    AI assessment completed at {new Date(data.writingSubmission.aiScoredAt).toLocaleString()}
+                <div className="rounded-lg bg-slate-50 px-3 py-2.5 text-center">
+                  <p className="text-xs text-slate-500">
+                    AI assessment completed at{" "}
+                    <span className="font-medium text-slate-600">
+                      {new Date(data.writingSubmission.aiScoredAt).toLocaleString()}
+                    </span>
                   </p>
                 </div>
               </div>
