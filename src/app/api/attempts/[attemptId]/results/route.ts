@@ -132,7 +132,11 @@ export async function GET(
             teacher: true,
           },
         },
-        sections: true,
+        sections: {
+          include: {
+            writingSubmission: true,
+          },
+        },
       },
     });
 
@@ -240,6 +244,10 @@ export async function GET(
       const totalQuestions = perSection.reduce((sum, s) => sum + s.total, 0);
       const totalPercentage = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
 
+      // Get writing submission if exists
+      const writingSection = attempt.sections.find((s) => s.type === "WRITING");
+      const writingSubmission = writingSection?.writingSubmission || null;
+
       return NextResponse.json({
         attemptId: attempt.id,
         examTitle: booking.exam.title,
@@ -253,6 +261,26 @@ export async function GET(
           totalPercentage,
           perSection,
         },
+        writingSubmission: writingSubmission ? {
+          id: writingSubmission.id,
+          task1Response: writingSubmission.task1Response,
+          task2Response: writingSubmission.task2Response,
+          wordCountTask1: writingSubmission.wordCountTask1,
+          wordCountTask2: writingSubmission.wordCountTask2,
+          aiTask1Overall: writingSubmission.aiTask1Overall,
+          aiTask1TR: writingSubmission.aiTask1TR,
+          aiTask1CC: writingSubmission.aiTask1CC,
+          aiTask1LR: writingSubmission.aiTask1LR,
+          aiTask1GRA: writingSubmission.aiTask1GRA,
+          aiTask1Feedback: writingSubmission.aiTask1Feedback,
+          aiTask2Overall: writingSubmission.aiTask2Overall,
+          aiTask2TR: writingSubmission.aiTask2TR,
+          aiTask2CC: writingSubmission.aiTask2CC,
+          aiTask2LR: writingSubmission.aiTask2LR,
+          aiTask2GRA: writingSubmission.aiTask2GRA,
+          aiTask2Feedback: writingSubmission.aiTask2Feedback,
+          aiScoredAt: writingSubmission.aiScoredAt,
+        } : null,
       });
     }
 
@@ -453,6 +481,10 @@ export async function GET(
       const totalQuestions = fullSections.reduce((sum, s) => sum + s.total, 0);
       const totalPercentage = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
 
+      // Get writing submission if exists
+      const writingSection = attempt.sections.find((s) => s.type === "WRITING");
+      const writingSubmission = writingSection?.writingSubmission || null;
+
       return NextResponse.json({
         attemptId: attempt.id,
         examTitle: booking.exam.title,
@@ -466,6 +498,26 @@ export async function GET(
           totalPercentage,
         },
         sections: fullSections,
+        writingSubmission: writingSubmission ? {
+          id: writingSubmission.id,
+          task1Response: writingSubmission.task1Response,
+          task2Response: writingSubmission.task2Response,
+          wordCountTask1: writingSubmission.wordCountTask1,
+          wordCountTask2: writingSubmission.wordCountTask2,
+          aiTask1Overall: writingSubmission.aiTask1Overall,
+          aiTask1TR: writingSubmission.aiTask1TR,
+          aiTask1CC: writingSubmission.aiTask1CC,
+          aiTask1LR: writingSubmission.aiTask1LR,
+          aiTask1GRA: writingSubmission.aiTask1GRA,
+          aiTask1Feedback: writingSubmission.aiTask1Feedback,
+          aiTask2Overall: writingSubmission.aiTask2Overall,
+          aiTask2TR: writingSubmission.aiTask2TR,
+          aiTask2CC: writingSubmission.aiTask2CC,
+          aiTask2LR: writingSubmission.aiTask2LR,
+          aiTask2GRA: writingSubmission.aiTask2GRA,
+          aiTask2Feedback: writingSubmission.aiTask2Feedback,
+          aiScoredAt: writingSubmission.aiScoredAt,
+        } : null,
       });
     }
 

@@ -69,6 +69,26 @@ interface ResultsData {
       explanation: any;
     }>;
   }>;
+  writingSubmission?: {
+    id: string;
+    task1Response: string;
+    task2Response: string;
+    wordCountTask1: number;
+    wordCountTask2: number;
+    aiTask1Overall: number | null;
+    aiTask1TR: number | null;
+    aiTask1CC: number | null;
+    aiTask1LR: number | null;
+    aiTask1GRA: number | null;
+    aiTask1Feedback: string | null;
+    aiTask2Overall: number | null;
+    aiTask2TR: number | null;
+    aiTask2CC: number | null;
+    aiTask2LR: number | null;
+    aiTask2GRA: number | null;
+    aiTask2Feedback: string | null;
+    aiScoredAt: string | null;
+  } | null;
 }
 
 export default function AttemptResultsPage() {
@@ -569,9 +589,19 @@ export default function AttemptResultsPage() {
                       <div>
                         <h3 className="font-medium text-gray-900">{section.title}</h3>
                         <div className="flex items-center gap-2 text-xs text-gray-600 mt-1">
-                          <span>{section.correct} / {section.total} correct</span>
-                          <span>•</span>
-                          <span>{section.type}</span>
+                          {section.type === "WRITING" && data.writingSubmission?.aiTask2Overall ? (
+                            <>
+                              <span>AI Score: Band {data.writingSubmission.aiTask2Overall.toFixed(1)}</span>
+                              <span>•</span>
+                              <span>Task 1: {data.writingSubmission.aiTask1Overall?.toFixed(1)}, Task 2: {data.writingSubmission.aiTask2Overall?.toFixed(1)}</span>
+                            </>
+                          ) : (
+                            <>
+                              <span>{section.correct} / {section.total} correct</span>
+                              <span>•</span>
+                              <span>{section.type}</span>
+                            </>
+                          )}
                         </div>
                         {/* IELTS Listening Part Breakdown (Teacher Only) */}
                         {data.role === "TEACHER" && section.type === "LISTENING" && section.listeningParts && (
@@ -587,7 +617,13 @@ export default function AttemptResultsPage() {
                     </div>
                     <div className="flex items-center gap-4">
                       <div className="text-right">
-                        <div className="text-xl font-semibold text-gray-900">{section.percentage}%</div>
+                        {section.type === "WRITING" && data.writingSubmission?.aiTask2Overall ? (
+                          <div className="text-xl font-semibold text-[#303380]">
+                            {data.writingSubmission.aiTask2Overall.toFixed(1)}
+                          </div>
+                        ) : (
+                          <div className="text-xl font-semibold text-gray-900">{section.percentage}%</div>
+                        )}
                       </div>
                       <div className="w-32">
                         <div className="relative w-full rounded-full h-2 bg-gray-200">
@@ -607,6 +643,114 @@ export default function AttemptResultsPage() {
             </ul>
           </div>
         </div>
+
+        {/* AI Writing Scores (Teacher Only) */}
+        {data.writingSubmission && data.writingSubmission.aiScoredAt && (
+          <div className="mb-6">
+            <h2 className="text-lg font-medium text-gray-900 mb-4">AI Writing Assessment</h2>
+            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+              <div className="p-6 space-y-6">
+                {/* Task 1 Scores */}
+                {data.writingSubmission.aiTask1Overall && (
+                  <div className="border-b border-gray-200 pb-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-base font-semibold text-gray-900">Task 1 - AI Score</h3>
+                      <div className="text-2xl font-bold text-[#303380]">
+                        Band {data.writingSubmission.aiTask1Overall.toFixed(1)}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                      <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                        <div className="text-xs font-medium text-gray-600 mb-1">Task Response</div>
+                        <div className="text-xl font-bold text-blue-700">
+                          {data.writingSubmission.aiTask1TR?.toFixed(1)}
+                        </div>
+                      </div>
+                      <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+                        <div className="text-xs font-medium text-gray-600 mb-1">Coherence & Cohesion</div>
+                        <div className="text-xl font-bold text-green-700">
+                          {data.writingSubmission.aiTask1CC?.toFixed(1)}
+                        </div>
+                      </div>
+                      <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
+                        <div className="text-xs font-medium text-gray-600 mb-1">Lexical Resource</div>
+                        <div className="text-xl font-bold text-purple-700">
+                          {data.writingSubmission.aiTask1LR?.toFixed(1)}
+                        </div>
+                      </div>
+                      <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
+                        <div className="text-xs font-medium text-gray-600 mb-1">Grammar</div>
+                        <div className="text-xl font-bold text-orange-700">
+                          {data.writingSubmission.aiTask1GRA?.toFixed(1)}
+                        </div>
+                      </div>
+                    </div>
+                    {data.writingSubmission.aiTask1Feedback && (
+                      <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">AI Feedback</p>
+                        <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
+                          {data.writingSubmission.aiTask1Feedback}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Task 2 Scores */}
+                {data.writingSubmission.aiTask2Overall && (
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-base font-semibold text-gray-900">Task 2 - AI Score</h3>
+                      <div className="text-2xl font-bold text-[#303380]">
+                        Band {data.writingSubmission.aiTask2Overall.toFixed(1)}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                      <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                        <div className="text-xs font-medium text-gray-600 mb-1">Task Response</div>
+                        <div className="text-xl font-bold text-blue-700">
+                          {data.writingSubmission.aiTask2TR?.toFixed(1)}
+                        </div>
+                      </div>
+                      <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+                        <div className="text-xs font-medium text-gray-600 mb-1">Coherence & Cohesion</div>
+                        <div className="text-xl font-bold text-green-700">
+                          {data.writingSubmission.aiTask2CC?.toFixed(1)}
+                        </div>
+                      </div>
+                      <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
+                        <div className="text-xs font-medium text-gray-600 mb-1">Lexical Resource</div>
+                        <div className="text-xl font-bold text-purple-700">
+                          {data.writingSubmission.aiTask2LR?.toFixed(1)}
+                        </div>
+                      </div>
+                      <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
+                        <div className="text-xs font-medium text-gray-600 mb-1">Grammar</div>
+                        <div className="text-xl font-bold text-orange-700">
+                          {data.writingSubmission.aiTask2GRA?.toFixed(1)}
+                        </div>
+                      </div>
+                    </div>
+                    {data.writingSubmission.aiTask2Feedback && (
+                      <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">AI Feedback</p>
+                        <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
+                          {data.writingSubmission.aiTask2Feedback}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="pt-4 border-t border-gray-200">
+                  <p className="text-xs text-gray-500 text-center">
+                    AI assessment completed at {new Date(data.writingSubmission.aiScoredAt).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         </>
         )}
       </div>

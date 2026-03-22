@@ -10,6 +10,62 @@ const submitWritingSchema = z.object({
   timeSpentSeconds: z.number().min(0),
 });
 
+// Background function to score writing with AI
+async function scoreWritingWithAI(
+  submissionId: string,
+  task1Response: string,
+  task2Response: string
+) {
+  try {
+    console.log("🤖 Starting AI scoring for submission:", submissionId);
+
+    // Call the AI scoring endpoint
+    const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+    const response = await fetch(`${baseUrl}/api/ai-writing-score`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        task1Response,
+        task2Response,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`AI scoring failed: ${response.statusText}`);
+    }
+
+    const scores = await response.json();
+    console.log("✅ AI scores received:", scores);
+
+    // Update the submission with AI scores
+    await prisma.writingSubmission.update({
+      where: { id: submissionId },
+      data: {
+        aiTask1TR: scores.task1?.taskResponse,
+        aiTask1CC: scores.task1?.coherenceCohesion,
+        aiTask1LR: scores.task1?.lexicalResource,
+        aiTask1GRA: scores.task1?.grammaticalRangeAccuracy,
+        aiTask1Overall: scores.task1?.overall,
+        aiTask1Feedback: scores.task1?.feedback,
+        aiTask2TR: scores.task2?.taskResponse,
+        aiTask2CC: scores.task2?.coherenceCohesion,
+        aiTask2LR: scores.task2?.lexicalResource,
+        aiTask2GRA: scores.task2?.grammaticalRangeAccuracy,
+        aiTask2Overall: scores.task2?.overall,
+        aiTask2Feedback: scores.task2?.feedback,
+        aiScoredAt: new Date(),
+      },
+    });
+
+    console.log("✅ AI scores saved to database");
+  } catch (error) {
+    console.error("❌ Error in AI scoring:", error);
+    throw error;
+  }
+}
+
 // POST /api/attempts/[attemptId]/writing/submit - Submit IELTS Writing
 export async function POST(
   request: Request,
@@ -126,6 +182,12 @@ export async function POST(
     });
 
     console.log("✅ Writing submission created:", submission.id);
+
+    // Call AI scoring API in the background (don't wait for it)
+    scoreWritingWithAI(submission.id, validatedData.task1Response, validatedData.task2Response)
+      .catch((error) => {
+        console.error("❌ AI scoring failed (non-blocking):", error);
+      });
 
     return NextResponse.json(
       {

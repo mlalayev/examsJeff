@@ -194,6 +194,19 @@ model WritingSubmission {
   feedbackPublished Boolean        @default(false)
   gradedAt          DateTime?
   gradedById        String?
+  aiTask1TR         Float?
+  aiTask1CC         Float?
+  aiTask1LR         Float?
+  aiTask1GRA        Float?
+  aiTask1Overall    Float?
+  aiTask1Feedback   String?
+  aiTask2TR         Float?
+  aiTask2CC         Float?
+  aiTask2LR         Float?
+  aiTask2GRA        Float?
+  aiTask2Overall    Float?
+  aiTask2Feedback   String?
+  aiScoredAt        DateTime?
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
   attemptSection    AttemptSection @relation(fields: [attemptSectionId], references: [id], onDelete: Cascade)
