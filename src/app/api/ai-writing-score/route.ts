@@ -3,6 +3,16 @@ import { scoreIELTSWriting } from "@/lib/ielts-writing-ai-score";
 
 export async function POST(request: NextRequest) {
   try {
+    if (!process.env.OPENAI_API_KEY?.trim()) {
+      return NextResponse.json(
+        {
+          error: "OPENAI_API_KEY is not configured on this server",
+          hint: "Set OPENAI_API_KEY in the server environment and restart Next.js.",
+        },
+        { status: 503 }
+      );
+    }
+
     const { task1Response, task2Response, taskType } = await request.json();
 
     if (!task1Response && !task2Response) {

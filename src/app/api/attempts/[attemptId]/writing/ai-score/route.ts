@@ -73,6 +73,16 @@ export async function POST(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    if (!process.env.OPENAI_API_KEY?.trim()) {
+      return NextResponse.json(
+        {
+          error: "OPENAI_API_KEY is not configured on this server",
+          hint: "Add OPENAI_API_KEY to the environment that runs Next.js (e.g. .env next to the app, PM2 ecosystem env, systemd Environment=, or Docker env) and restart the process.",
+        },
+        { status: 503 }
+      );
+    }
+
     const { attemptId } = await params;
     const body = await req.json().catch(() => ({}));
     const force = Boolean(body?.force);
