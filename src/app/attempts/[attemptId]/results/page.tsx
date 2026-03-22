@@ -14,7 +14,9 @@ import {
   Edit2,
   Save,
   FileText,
-  AlertCircle
+  AlertCircle,
+  Sparkles,
+  MessageSquare,
 } from "lucide-react";
 import Sidebar from "@/components/dashboard/Sidebar";
 
@@ -119,6 +121,245 @@ function hasSavedAiWriting(
   if (!ws) return false;
   if (ws.aiScoredAt) return true;
   return getPersistedWritingBand(ws) != null;
+}
+
+/** Split word-count / penalty lines into a highlight vs main feedback body */
+function parseAiWritingFeedback(text: string): { note: string | null; body: string } {
+  const trimmed = text.trim();
+  if (!trimmed) return { note: null, body: "" };
+  const paras = trimmed.split(/\n{2,}/);
+  const first = paras[0] ?? "";
+  const looksLikeMeta =
+    /word count|söz sayı|penalty|cəza|\/\d+\s*\)/i.test(first);
+  if (looksLikeMeta && paras.length > 1) {
+    return { note: first.trim(), body: paras.slice(1).join("\n\n").trim() };
+  }
+  if (looksLikeMeta) {
+    return { note: first.trim(), body: "" };
+  }
+  return { note: null, body: trimmed };
+}
+
+function AiWritingFeedbackProse({ text }: { text: string }) {
+  const { note, body } = parseAiWritingFeedback(text);
+  const isWarning = note && /cəza|penalty|below|above|⚠|✅/i.test(note);
+  return (
+    <div className="space-y-4">
+      {note && (
+        <div
+          className={`flex gap-3 rounded-xl border px-4 py-3 text-sm leading-relaxed ${
+            isWarning
+              ? "border-amber-200 bg-amber-50/90 text-amber-950"
+              : "border-emerald-200 bg-emerald-50/80 text-emerald-950"
+          }`}
+        >
+          <span className="mt-0.5 shrink-0 text-lg" aria-hidden>
+            {isWarning ? "⚠️" : "✅"}
+          </span>
+          <p className="min-w-0 whitespace-pre-line">{note}</p>
+        </div>
+      )}
+      {body ? (
+        <div className="rounded-xl border border-slate-200/80 bg-white px-4 py-4 shadow-sm">
+          <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <MessageSquare className="h-3.5 w-3.5 text-[#303380]" />
+            Feedback
+          </div>
+          <p className="text-sm leading-relaxed text-slate-700 whitespace-pre-line">{body}</p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function AiWritingTaskCard({
+  taskNumber,
+  overall,
+  tr,
+  cc,
+  lr,
+  gra,
+  feedback,
+}: {
+  taskNumber: 1 | 2;
+  overall: number;
+  tr: number | null | undefined;
+  cc: number | null | undefined;
+  lr: number | null | undefined;
+  gra: number | null | undefined;
+  feedback: string | null | undefined;
+}) {
+  const criteria: {
+    label: string;
+    abbr: string;
+    value: number | null | undefined;
+    accent: string;
+    ring: string;
+  }[] = [
+    {
+      label: "Task Response",
+      abbr: "TR",
+      value: tr,
+      accent: "text-sky-700",
+      ring: "ring-sky-100 bg-gradient-to-br from-sky-50 to-white",
+    },
+    {
+      label: "Coherence & cohesion",
+      abbr: "CC",
+      value: cc,
+      accent: "text-emerald-700",
+      ring: "ring-emerald-100 bg-gradient-to-br from-emerald-50 to-white",
+    },
+    {
+      label: "Lexical resource",
+      abbr: "LR",
+      value: lr,
+      accent: "text-violet-700",
+      ring: "ring-violet-100 bg-gradient-to-br from-violet-50 to-white",
+    },
+    {
+      label: "Grammar",
+      abbr: "GRA",
+      value: gra,
+      accent: "text-amber-700",
+      ring: "ring-amber-100 bg-gradient-to-br from-amber-50 to-white",
+    },
+  ];
+
+  return (
+    <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-sm ring-1 ring-slate-100/80">
+      <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            Writing · Task {taskNumber}
+          </p>
+          <h3 className="mt-1 text-lg font-semibold text-slate-900">
+            Band descriptors
+          </h3>
+        </div>
+        <div className="flex items-center gap-3 rounded-2xl border border-[#303380]/15 bg-[#303380]/[0.06] px-4 py-2">
+          <div className="text-right">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+              Overall band
+            </p>
+            <p className="text-3xl font-bold tabular-nums text-[#303380]">
+              {overall.toFixed(1)}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {criteria.map((c) => (
+          <div
+            key={c.abbr}
+            className={`rounded-xl p-4 ring-1 ${c.ring} transition-shadow hover:shadow-md`}
+          >
+            <div className="mb-2 flex items-center justify-between gap-1">
+              <span className="text-[11px] font-medium leading-tight text-slate-600">
+                {c.label}
+              </span>
+              <span className="rounded-md bg-white/80 px-1.5 py-0.5 text-[10px] font-bold text-slate-400">
+                {c.abbr}
+              </span>
+            </div>
+            <p className={`text-2xl font-bold tabular-nums ${c.accent}`}>
+              {c.value != null && !Number.isNaN(Number(c.value))
+                ? Number(c.value).toFixed(1)
+                : "—"}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {feedback && (
+        <div className="mt-5 border-t border-slate-100 pt-5">
+          <AiWritingFeedbackProse text={feedback} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AiWritingAssessmentPanel({
+  ws,
+}: {
+  ws: NonNullable<ResultsData["writingSubmission"]>;
+}) {
+  const combined =
+    ws.aiTask1Overall != null && ws.aiTask2Overall != null
+      ? ((ws.aiTask1Overall + ws.aiTask2Overall) / 2).toFixed(1)
+      : null;
+
+  return (
+    <div className="mb-6 overflow-hidden rounded-2xl border border-slate-200/90 bg-gradient-to-b from-white via-slate-50/40 to-slate-50/80 shadow-md ring-1 ring-slate-100">
+      <div className="border-b border-slate-200/80 bg-gradient-to-r from-[#303380] via-[#3d4494] to-[#303380] px-6 py-5 text-white">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 backdrop-blur-sm">
+              <Sparkles className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight">
+                AI Writing Assessment
+              </h2>
+              <p className="mt-0.5 text-sm text-white/80">
+                IELTS-style band scores and detailed feedback for Tasks 1 &amp; 2
+              </p>
+            </div>
+          </div>
+          {combined != null && (
+            <div className="flex items-center gap-3 rounded-xl bg-white/10 px-4 py-2 backdrop-blur-sm">
+              <div className="text-right">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-white/70">
+                  Combined
+                </p>
+                <p className="text-2xl font-bold tabular-nums">{combined}</p>
+              </div>
+              <div className="h-10 w-px bg-white/25" />
+              <p className="max-w-[10rem] text-xs text-white/85">
+                Average of Task 1 and Task 2 overall bands
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="space-y-6 p-5 sm:p-6">
+        {ws.aiTask1Overall != null && (
+          <AiWritingTaskCard
+            taskNumber={1}
+            overall={ws.aiTask1Overall}
+            tr={ws.aiTask1TR}
+            cc={ws.aiTask1CC}
+            lr={ws.aiTask1LR}
+            gra={ws.aiTask1GRA}
+            feedback={ws.aiTask1Feedback}
+          />
+        )}
+        {ws.aiTask2Overall != null && (
+          <AiWritingTaskCard
+            taskNumber={2}
+            overall={ws.aiTask2Overall}
+            tr={ws.aiTask2TR}
+            cc={ws.aiTask2CC}
+            lr={ws.aiTask2LR}
+            gra={ws.aiTask2GRA}
+            feedback={ws.aiTask2Feedback}
+          />
+        )}
+      </div>
+
+      <div className="border-t border-slate-200/80 bg-slate-50/80 px-6 py-3">
+        <p className="text-center text-xs text-slate-500">
+          AI assessment completed{" "}
+          <span className="font-medium text-slate-600">
+            {ws.aiScoredAt ? new Date(ws.aiScoredAt).toLocaleString() : ""}
+          </span>
+        </p>
+      </div>
+    </div>
+  );
 }
 
 export default function AttemptResultsPage() {
@@ -740,110 +981,7 @@ export default function AttemptResultsPage() {
 
         {/* AI Writing Scores (Teacher Only) */}
         {data.writingSubmission && data.writingSubmission.aiScoredAt && (
-          <div className="mb-6">
-            <h2 className="text-lg font-medium text-gray-900 mb-4">AI Writing Assessment</h2>
-            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-              <div className="p-6 space-y-6">
-                {/* Task 1 Scores */}
-                {data.writingSubmission.aiTask1Overall && (
-                  <div className="border-b border-gray-200 pb-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-base font-semibold text-gray-900">Task 1 - AI Score</h3>
-                      <div className="text-2xl font-bold text-[#303380]">
-                        Band {data.writingSubmission.aiTask1Overall.toFixed(1)}
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                      <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                        <div className="text-xs font-medium text-gray-600 mb-1">Task Response</div>
-                        <div className="text-xl font-bold text-blue-700">
-                          {data.writingSubmission.aiTask1TR?.toFixed(1)}
-                        </div>
-                      </div>
-                      <div className="bg-green-50 p-3 rounded-lg border border-green-200">
-                        <div className="text-xs font-medium text-gray-600 mb-1">Coherence & Cohesion</div>
-                        <div className="text-xl font-bold text-green-700">
-                          {data.writingSubmission.aiTask1CC?.toFixed(1)}
-                        </div>
-                      </div>
-                      <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
-                        <div className="text-xs font-medium text-gray-600 mb-1">Lexical Resource</div>
-                        <div className="text-xl font-bold text-purple-700">
-                          {data.writingSubmission.aiTask1LR?.toFixed(1)}
-                        </div>
-                      </div>
-                      <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
-                        <div className="text-xs font-medium text-gray-600 mb-1">Grammar</div>
-                        <div className="text-xl font-bold text-orange-700">
-                          {data.writingSubmission.aiTask1GRA?.toFixed(1)}
-                        </div>
-                      </div>
-                    </div>
-                    {data.writingSubmission.aiTask1Feedback && (
-                      <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                        <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">AI Feedback</p>
-                        <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
-                          {data.writingSubmission.aiTask1Feedback}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Task 2 Scores */}
-                {data.writingSubmission.aiTask2Overall && (
-                  <div>
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-base font-semibold text-gray-900">Task 2 - AI Score</h3>
-                      <div className="text-2xl font-bold text-[#303380]">
-                        Band {data.writingSubmission.aiTask2Overall.toFixed(1)}
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                      <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                        <div className="text-xs font-medium text-gray-600 mb-1">Task Response</div>
-                        <div className="text-xl font-bold text-blue-700">
-                          {data.writingSubmission.aiTask2TR?.toFixed(1)}
-                        </div>
-                      </div>
-                      <div className="bg-green-50 p-3 rounded-lg border border-green-200">
-                        <div className="text-xs font-medium text-gray-600 mb-1">Coherence & Cohesion</div>
-                        <div className="text-xl font-bold text-green-700">
-                          {data.writingSubmission.aiTask2CC?.toFixed(1)}
-                        </div>
-                      </div>
-                      <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
-                        <div className="text-xs font-medium text-gray-600 mb-1">Lexical Resource</div>
-                        <div className="text-xl font-bold text-purple-700">
-                          {data.writingSubmission.aiTask2LR?.toFixed(1)}
-                        </div>
-                      </div>
-                      <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
-                        <div className="text-xs font-medium text-gray-600 mb-1">Grammar</div>
-                        <div className="text-xl font-bold text-orange-700">
-                          {data.writingSubmission.aiTask2GRA?.toFixed(1)}
-                        </div>
-                      </div>
-                    </div>
-                    {data.writingSubmission.aiTask2Feedback && (
-                      <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                        <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">AI Feedback</p>
-                        <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
-                          {data.writingSubmission.aiTask2Feedback}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div className="pt-4 border-t border-gray-200">
-                  <p className="text-xs text-gray-500 text-center">
-                    AI assessment completed at {new Date(data.writingSubmission.aiScoredAt).toLocaleString()}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
+          <AiWritingAssessmentPanel ws={data.writingSubmission} />
         )}
         </>
         )}
