@@ -1,8 +1,18 @@
 import OpenAI from "openai";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+let openaiSingleton: OpenAI | null = null;
+
+/** Lazy init so `next build` does not require OPENAI_API_KEY at module load time */
+function getOpenAI(): OpenAI {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey?.trim()) {
+    throw new Error("OPENAI_API_KEY is not set");
+  }
+  if (!openaiSingleton) {
+    openaiSingleton = new OpenAI({ apiKey });
+  }
+  return openaiSingleton;
+}
 
 export interface IELTSTaskScore {
   taskResponse: number;
@@ -107,7 +117,7 @@ ${data.task2.userAnswer}
 
 **Word Count:** ${data.task2.wordCount} words`;
 
-  const completion = await openai.chat.completions.create({
+  const completion = await getOpenAI().chat.completions.create({
     model: "gpt-4o-mini",
     messages: [
       { role: "system", content: systemPrompt },
@@ -154,5 +164,80 @@ ${data.task2.userAnswer}
     task1: scores.task1,
     task2: scores.task2,
     overallBand: scores.overallBand,
+  };
+}
+
+/**
+ * Score a single task (used by `/api/ai-writing-score`).
+ * Question text is optional; pass empty string to score answer only.
+ */
+export async function scoreIELTSWriting(
+  response: string,
+  taskType: "Task 1" | "Task 2",
+  minWordCount: number
+): Promise<IELTSTaskScore> {
+  const wordCount = response.trim().split(/\s+/).filter(Boolean).length;
+
+  const systemPrompt = `You are an IELTS Writing examiner. Score the following ${taskType} response according to the IELTS Writing Assessment Criteria.
+
+IELTS Writing Criteria:
+
+1️⃣ Task Response (TR) / Task Achievement (TA)
+2️⃣ Coherence & Cohesion (CC)
+3️⃣ Lexical Resource (LR)
+4️⃣ Grammatical Range and Accuracy (GRA)
+
+Minimum word count: ${minWordCount} words (Actual: ${wordCount} words)
+
+Provide scores on a scale of 0-9 (with 0.5 increments) for each criterion.
+Also provide overall band score and detailed feedback in Azerbaijani language.
+
+Your response MUST be valid JSON in this exact format:
+{
+  "taskResponse": 6.5,
+  "coherenceCohesion": 7.0,
+  "lexicalResource": 6.0,
+  "grammaticalRangeAccuracy": 6.5,
+  "overall": 6.5,
+  "feedback": "Detailed feedback in Azerbaijani"
+}`;
+
+  const userPrompt = `${taskType} Response:\n\n${response}`;
+
+  const completion = await getOpenAI().chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ],
+    temperature: 0.3,
+    max_tokens: 1500,
+    response_format: { type: "json_object" },
+  });
+
+  const content = completion.choices[0]?.message?.content;
+  if (!content) {
+    throw new Error("No response from OpenAI");
+  }
+
+  const parsed = JSON.parse(content);
+
+  if (wordCount < minWordCount) {
+    const penalty = Math.min(1.0, (minWordCount - wordCount) / 50);
+    parsed.taskResponse = Math.max(0, parsed.taskResponse - penalty);
+    parsed.overall = Math.max(0, parsed.overall - penalty * 0.5);
+    parsed.feedback = `⚠️ Word count: ${wordCount}/${minWordCount} (penalty applied)\n\n${parsed.feedback}`;
+  } else {
+    parsed.feedback = `✅ Word count: ${wordCount}/${minWordCount}\n\n${parsed.feedback}`;
+  }
+
+  return {
+    taskResponse: parsed.taskResponse,
+    coherenceCohesion: parsed.coherenceCohesion,
+    lexicalResource: parsed.lexicalResource,
+    grammaticalRangeAccuracy: parsed.grammaticalRangeAccuracy,
+    overall: parsed.overall,
+    feedback: parsed.feedback,
+    wordCount,
   };
 }
