@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { 
   XCircle, 
@@ -88,12 +88,37 @@ interface ResultsData {
     aiTask2GRA: number | null;
     aiTask2Feedback: string | null;
     aiScoredAt: string | null;
+    overallBand?: number | null;
   } | null;
 }
 
 /** Exam/API may return section type with different casing */
 function isWritingSectionType(type: unknown): boolean {
   return String(type ?? "").toUpperCase() === "WRITING";
+}
+
+/** Saved AI writing band (DB); prefers overallBand, else average of tasks */
+function getPersistedWritingBand(
+  ws: ResultsData["writingSubmission"] | null | undefined
+): number | null {
+  if (!ws) return null;
+  if (ws.overallBand != null && !Number.isNaN(Number(ws.overallBand))) {
+    return Number(ws.overallBand);
+  }
+  const t1 = ws.aiTask1Overall;
+  const t2 = ws.aiTask2Overall;
+  if (t1 != null && t2 != null) return (t1 + t2) / 2;
+  if (t1 != null) return t1;
+  if (t2 != null) return t2;
+  return null;
+}
+
+function hasSavedAiWriting(
+  ws: ResultsData["writingSubmission"] | null | undefined
+): boolean {
+  if (!ws) return false;
+  if (ws.aiScoredAt) return true;
+  return getPersistedWritingBand(ws) != null;
 }
 
 export default function AttemptResultsPage() {
@@ -110,7 +135,6 @@ export default function AttemptResultsPage() {
   const [saving, setSaving] = useState(false);
   const [showReviewRestrictedModal, setShowReviewRestrictedModal] = useState(false);
   const [checkingWithAI, setCheckingWithAI] = useState(false);
-  const [aiCheckResults, setAiCheckResults] = useState<any>(null);
 
   useEffect(() => {
     fetchResults();
@@ -189,7 +213,6 @@ export default function AttemptResultsPage() {
     setSelectedSection(null);
     setEditingQuestion(null);
     setEditedAnswers({});
-    setAiCheckResults(null);
     document.body.style.overflow = 'unset';
   };
 
@@ -238,53 +261,28 @@ export default function AttemptResultsPage() {
     setEditedAnswers({});
   };
 
-  const handleCheckWithAI = async () => {
-    if (!selectedSection || !isWritingSectionType(selectedSection.type)) {
-      alert("AI checking is only available for Writing sections");
-      return;
-    }
-
-    // Find the writing questions
-    const writingQuestions = data?.sections
-      ?.find(s => isWritingSectionType(s.type))
-      ?.questions || [];
-
-    if (writingQuestions.length < 2) {
-      alert("Writing section must have at least 2 tasks");
-      return;
-    }
-
-    // Task 1 / Task 2 = first two questions by exam order (not always order === 1,2)
-    const sortedByOrder = [...writingQuestions].sort((a, b) => a.order - b.order);
-    const task1Question = sortedByOrder[0];
-    const task2Question = sortedByOrder[1];
-
-    if (!task1Question?.studentAnswer || !task2Question?.studentAnswer) {
-      alert("Both Task 1 and Task 2 must have student answers");
-      return;
-    }
-
+  /** Persists scores in DB via API; one click — next visits load saved grades */
+  const handlePersistWritingAiScore = async (e?: MouseEvent) => {
+    e?.stopPropagation();
+    e?.preventDefault();
     setCheckingWithAI(true);
     try {
-      const response = await fetch("/api/ai-writing-score", {
+      const res = await fetch(`/api/attempts/${attemptId}/writing/ai-score`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          task1Response: task1Question.studentAnswer,
-          task2Response: task2Question.studentAnswer,
-        }),
+        body: JSON.stringify({}),
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to check with AI");
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error || "Failed to score writing with AI");
       }
-
-      const results = await response.json();
-      setAiCheckResults(results);
-      alert("✅ AI check completed! Scroll down to see the results.");
+      await fetchResults();
+      if (!json.cached) {
+        // Saved successfully; list + “AI Writing Assessment” update from DB
+      }
     } catch (error: any) {
-      console.error("AI check error:", error);
-      alert("Error: " + (error.message || "Failed to check with AI"));
+      console.error("AI writing score error:", error);
+      alert(error.message || "Failed to score writing with AI");
     } finally {
       setCheckingWithAI(false);
     }
@@ -635,25 +633,58 @@ export default function AttemptResultsPage() {
           <h2 className="text-lg font-medium text-gray-900 mb-4">Section Results</h2>
           <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
             <ul className="divide-y divide-gray-100">
-              {(data.summary.perSection || data.sections)?.map((section, index) => (
+              {(data.summary.perSection || data.sections)?.map((section, index) => {
+                const writingBand = getPersistedWritingBand(data.writingSubmission);
+                const showWritingAi = isWritingSectionType(section.type) && hasSavedAiWriting(data.writingSubmission);
+                const writingBarPct = showWritingAi && writingBand != null
+                  ? Math.min(100, Math.round((writingBand / 9) * 100))
+                  : section.percentage;
+                return (
                 <li 
                   key={`${section.type}-${index}`}
                   className={`p-4 hover:bg-gray-50 ${data.role === "TEACHER" ? "cursor-pointer" : ""}`}
                   onClick={() => openSectionModal(section)}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gray-100 rounded-md flex items-center justify-center">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="w-10 h-10 bg-gray-100 rounded-md flex items-center justify-center shrink-0">
                         <BarChart3 className="w-5 h-5 text-gray-600" />
                       </div>
-                      <div>
-                        <h3 className="font-medium text-gray-900">{section.title}</h3>
-                        <div className="flex items-center gap-2 text-xs text-gray-600 mt-1">
-                          {isWritingSectionType(section.type) && data.writingSubmission?.aiTask2Overall ? (
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2 gap-y-1">
+                          <h3 className="font-medium text-gray-900">{section.title}</h3>
+                          {data.role === "TEACHER" && isWritingSectionType(section.type) && !showWritingAi && (
+                            <button
+                              type="button"
+                              onClick={handlePersistWritingAiScore}
+                              disabled={checkingWithAI}
+                              className="inline-flex items-center gap-1.5 shrink-0 rounded-md bg-[#303380] px-2.5 py-1 text-xs font-medium text-white hover:bg-[#252a6b] disabled:opacity-50"
+                            >
+                              {checkingWithAI ? (
+                                <>
+                                  <span className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                                  AI…
+                                </>
+                              ) : (
+                                <>
+                                  <FileCheck className="h-3.5 w-3.5" />
+                                  Check with AI
+                                </>
+                              )}
+                            </button>
+                          )}
+                          {data.role === "TEACHER" && isWritingSectionType(section.type) && showWritingAi && writingBand != null && (
+                            <span className="inline-flex items-center rounded-full bg-[#303380]/10 px-2.5 py-0.5 text-xs font-semibold text-[#303380]">
+                              Band {writingBand.toFixed(1)} (saved)
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600 mt-1">
+                          {showWritingAi && writingBand != null ? (
                             <>
-                              <span>AI Score: Band {data.writingSubmission.aiTask2Overall.toFixed(1)}</span>
+                              <span>AI writing • T1 {data.writingSubmission?.aiTask1Overall?.toFixed(1) ?? "—"} · T2 {data.writingSubmission?.aiTask2Overall?.toFixed(1) ?? "—"}</span>
                               <span>•</span>
-                              <span>Task 1: {data.writingSubmission.aiTask1Overall?.toFixed(1)}, Task 2: {data.writingSubmission.aiTask2Overall?.toFixed(1)}</span>
+                              <span>{section.type}</span>
                             </>
                           ) : (
                             <>
@@ -675,11 +706,11 @@ export default function AttemptResultsPage() {
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 shrink-0">
                       <div className="text-right">
-                        {isWritingSectionType(section.type) && data.writingSubmission?.aiTask2Overall ? (
+                        {showWritingAi && writingBand != null ? (
                           <div className="text-xl font-semibold text-[#303380]">
-                            {data.writingSubmission.aiTask2Overall.toFixed(1)}
+                            {writingBand.toFixed(1)}
                           </div>
                         ) : (
                           <div className="text-xl font-semibold text-gray-900">{section.percentage}%</div>
@@ -690,8 +721,10 @@ export default function AttemptResultsPage() {
                           <div
                             className="h-2 rounded-full transition-all duration-500"
                             style={{
-                              backgroundColor: section.percentage >= 75 ? '#22c55e' : '#303380',
-                              width: `${section.percentage}%`
+                              backgroundColor: showWritingAi && writingBand != null
+                                ? (writingBand >= 6.5 ? '#22c55e' : '#303380')
+                                : (section.percentage >= 75 ? '#22c55e' : '#303380'),
+                              width: `${writingBarPct}%`
                             }}
                           ></div>
                         </div>
@@ -699,7 +732,8 @@ export default function AttemptResultsPage() {
                     </div>
                   </div>
                 </li>
-              ))}
+              );
+              })}
             </ul>
           </div>
         </div>
@@ -896,9 +930,9 @@ export default function AttemptResultsPage() {
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-100px)]">
               {/* Section Summary Card */}
               <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-sm shrink-0">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-sm">
                       <BarChart3 className="w-6 h-6 text-blue-600" />
                     </div>
                     <div>
@@ -908,33 +942,11 @@ export default function AttemptResultsPage() {
                       </p>
                     </div>
                   </div>
-                  <div className="flex flex-col items-stretch sm:items-end gap-2 sm:flex-row sm:items-center sm:gap-3">
-                    {isWritingSectionType(selectedSection.type) && (
-                      <button
-                        type="button"
-                        onClick={handleCheckWithAI}
-                        disabled={checkingWithAI}
-                        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-[#303380] text-white text-sm font-medium hover:bg-[#252a6b] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shrink-0"
-                      >
-                        {checkingWithAI ? (
-                          <>
-                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                            Checking with AI…
-                          </>
-                        ) : (
-                          <>
-                            <FileCheck className="w-4 h-4 shrink-0" />
-                            Check with AI
-                          </>
-                        )}
-                      </button>
-                    )}
-                    <div className="text-right sm:text-right">
-                      <p className="text-sm text-gray-600">Score</p>
-                      <p className="text-lg font-semibold text-gray-900">
-                        {selectedSection.correct} / {selectedSection.total}
-                      </p>
-                    </div>
+                  <div className="text-right">
+                    <p className="text-sm text-gray-600">Score</p>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {selectedSection.correct} / {selectedSection.total}
+                    </p>
                   </div>
                 </div>
                 <div className="w-full h-3 bg-white/60 rounded-full overflow-hidden shadow-inner">
@@ -1246,161 +1258,6 @@ export default function AttemptResultsPage() {
                     </div>
                 ))}
               </div>
-
-              {/* AI Check Results */}
-              {aiCheckResults && isWritingSectionType(selectedSection.type) && (
-                <div className="mt-8 border-t-4 border-[#303380] pt-6">
-                  <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                    <FileCheck className="w-6 h-6 text-[#303380]" />
-                    AI Assessment Results
-                  </h3>
-                  
-                  <div className="space-y-6">
-                    {/* Task 1 Results */}
-                    {aiCheckResults.task1 && (
-                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-6">
-                        <div className="flex items-center justify-between mb-4">
-                          <h4 className="text-lg font-bold text-gray-900">Task 1</h4>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-gray-600">Overall Band:</span>
-                            <div className="px-4 py-2 bg-[#303380] text-white rounded-lg text-xl font-bold">
-                              {aiCheckResults.task1.overall.toFixed(1)}
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                          <div className="bg-white p-3 rounded-lg border-2 border-blue-300 shadow-sm">
-                            <div className="text-xs font-semibold text-gray-600 mb-1">Task Response</div>
-                            <div className="text-2xl font-bold text-blue-700">
-                              {aiCheckResults.task1.taskResponse.toFixed(1)}
-                            </div>
-                          </div>
-                          <div className="bg-white p-3 rounded-lg border-2 border-green-300 shadow-sm">
-                            <div className="text-xs font-semibold text-gray-600 mb-1">Coherence & Cohesion</div>
-                            <div className="text-2xl font-bold text-green-700">
-                              {aiCheckResults.task1.coherenceCohesion.toFixed(1)}
-                            </div>
-                          </div>
-                          <div className="bg-white p-3 rounded-lg border-2 border-purple-300 shadow-sm">
-                            <div className="text-xs font-semibold text-gray-600 mb-1">Lexical Resource</div>
-                            <div className="text-2xl font-bold text-purple-700">
-                              {aiCheckResults.task1.lexicalResource.toFixed(1)}
-                            </div>
-                          </div>
-                          <div className="bg-white p-3 rounded-lg border-2 border-orange-300 shadow-sm">
-                            <div className="text-xs font-semibold text-gray-600 mb-1">Grammar</div>
-                            <div className="text-2xl font-bold text-orange-700">
-                              {aiCheckResults.task1.grammaticalRangeAccuracy.toFixed(1)}
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="bg-white p-4 rounded-lg border-2 border-blue-200 shadow-sm">
-                          <p className="text-xs font-bold text-blue-900 mb-2 uppercase tracking-wide">
-                            AI Feedback
-                          </p>
-                          <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
-                            {aiCheckResults.task1.feedback}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Task 2 Results */}
-                    {aiCheckResults.task2 && (
-                      <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-6">
-                        <div className="flex items-center justify-between mb-4">
-                          <h4 className="text-lg font-bold text-gray-900">Task 2</h4>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-gray-600">Overall Band:</span>
-                            <div className="px-4 py-2 bg-[#303380] text-white rounded-lg text-xl font-bold">
-                              {aiCheckResults.task2.overall.toFixed(1)}
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                          <div className="bg-white p-3 rounded-lg border-2 border-blue-300 shadow-sm">
-                            <div className="text-xs font-semibold text-gray-600 mb-1">Task Response</div>
-                            <div className="text-2xl font-bold text-blue-700">
-                              {aiCheckResults.task2.taskResponse.toFixed(1)}
-                            </div>
-                          </div>
-                          <div className="bg-white p-3 rounded-lg border-2 border-green-300 shadow-sm">
-                            <div className="text-xs font-semibold text-gray-600 mb-1">Coherence & Cohesion</div>
-                            <div className="text-2xl font-bold text-green-700">
-                              {aiCheckResults.task2.coherenceCohesion.toFixed(1)}
-                            </div>
-                          </div>
-                          <div className="bg-white p-3 rounded-lg border-2 border-purple-300 shadow-sm">
-                            <div className="text-xs font-semibold text-gray-600 mb-1">Lexical Resource</div>
-                            <div className="text-2xl font-bold text-purple-700">
-                              {aiCheckResults.task2.lexicalResource.toFixed(1)}
-                            </div>
-                          </div>
-                          <div className="bg-white p-3 rounded-lg border-2 border-orange-300 shadow-sm">
-                            <div className="text-xs font-semibold text-gray-600 mb-1">Grammar</div>
-                            <div className="text-2xl font-bold text-orange-700">
-                              {aiCheckResults.task2.grammaticalRangeAccuracy.toFixed(1)}
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="bg-white p-4 rounded-lg border-2 border-green-200 shadow-sm">
-                          <p className="text-xs font-bold text-green-900 mb-2 uppercase tracking-wide">
-                            AI Feedback
-                          </p>
-                          <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
-                            {aiCheckResults.task2.feedback}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Overall Summary */}
-                    <div className="bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl p-6">
-                      <h4 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                        <Award className="w-5 h-5 text-purple-600" />
-                        Overall Assessment
-                      </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {aiCheckResults.task1 && (
-                          <div className="bg-white p-4 rounded-lg border border-purple-300 shadow-sm">
-                            <div className="text-sm font-medium text-gray-600 mb-1">Task 1 Band</div>
-                            <div className="text-3xl font-bold text-[#303380]">
-                              {aiCheckResults.task1.overall.toFixed(1)}
-                            </div>
-                          </div>
-                        )}
-                        {aiCheckResults.task2 && (
-                          <div className="bg-white p-4 rounded-lg border border-purple-300 shadow-sm">
-                            <div className="text-sm font-medium text-gray-600 mb-1">Task 2 Band</div>
-                            <div className="text-3xl font-bold text-[#303380]">
-                              {aiCheckResults.task2.overall.toFixed(1)}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                      {aiCheckResults.task1 && aiCheckResults.task2 && (
-                        <div className="mt-4 pt-4 border-t border-purple-200">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-semibold text-gray-700">
-                              Estimated Writing Band Score:
-                            </span>
-                            <div className="px-6 py-3 bg-gradient-to-r from-[#303380] to-[#252a6b] text-white rounded-lg text-2xl font-bold shadow-lg">
-                              {((aiCheckResults.task1.overall + aiCheckResults.task2.overall) / 2).toFixed(1)}
-                            </div>
-                          </div>
-                          <p className="text-xs text-gray-500 mt-2 text-center">
-                            * This is an AI estimation. Final band score may vary based on official IELTS criteria.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </div>
