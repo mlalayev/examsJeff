@@ -417,7 +417,7 @@ export const QuestionsArea = React.memo(function QuestionsArea({
                 typeof speakingSecondsLeft === "number" &&
                 speakingSecondsLeft >= 0;
               const speakingTotalSeconds =
-                speakingPart === 1 ? 35 : speakingPart === 2 ? 180 : 65;
+                speakingPart === 1 ? 50 : speakingPart === 2 ? 120 : 90;
               const barPercent = isSpeakingWithBar
                 ? Math.max(0, Math.min(100, (speakingSecondsLeft! / speakingTotalSeconds) * 100))
                 : 0;

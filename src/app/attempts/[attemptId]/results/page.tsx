@@ -92,11 +92,28 @@ interface ResultsData {
     aiScoredAt: string | null;
     overallBand?: number | null;
   } | null;
+  /** IELTS Speaking AI scores (stored on AttemptSection.rubric.ieltsSpeakingAi) */
+  speakingAi?: {
+    overallBand: number;
+    fluencyCoherence: number;
+    lexicalResource: number;
+    grammar: number;
+    pronunciation: number;
+    part1: { band: number; feedback: string };
+    part2: { band: number; feedback: string };
+    part3: { band: number; feedback: string };
+    overallFeedback: string;
+    scoredAt: string;
+  } | null;
 }
 
 /** Exam/API may return section type with different casing */
 function isWritingSectionType(type: unknown): boolean {
   return String(type ?? "").toUpperCase() === "WRITING";
+}
+
+function isSpeakingSectionType(type: unknown): boolean {
+  return String(type ?? "").toUpperCase() === "SPEAKING";
 }
 
 /** Saved AI writing band (DB); prefers overallBand, else average of tasks */
@@ -123,6 +140,24 @@ function hasSavedAiWriting(
   return getPersistedWritingBand(ws) != null;
 }
 
+function getPersistedSpeakingBand(
+  sa: ResultsData["speakingAi"] | null | undefined
+): number | null {
+  if (!sa) return null;
+  if (sa.overallBand != null && !Number.isNaN(Number(sa.overallBand))) {
+    return Number(sa.overallBand);
+  }
+  return null;
+}
+
+function hasSavedAiSpeaking(
+  sa: ResultsData["speakingAi"] | null | undefined
+): boolean {
+  if (!sa) return false;
+  if (sa.scoredAt) return true;
+  return getPersistedSpeakingBand(sa) != null;
+}
+
 export default function AttemptResultsPage() {
   const params = useParams();
   const router = useRouter();
@@ -137,6 +172,7 @@ export default function AttemptResultsPage() {
   const [saving, setSaving] = useState(false);
   const [showReviewRestrictedModal, setShowReviewRestrictedModal] = useState(false);
   const [checkingWithAI, setCheckingWithAI] = useState(false);
+  const [checkingSpeakingAi, setCheckingSpeakingAi] = useState(false);
 
   useEffect(() => {
     fetchResults();
@@ -290,6 +326,29 @@ export default function AttemptResultsPage() {
     }
   };
 
+  const handlePersistSpeakingAiScore = async (e?: MouseEvent) => {
+    e?.stopPropagation();
+    e?.preventDefault();
+    setCheckingSpeakingAi(true);
+    try {
+      const res = await fetch(`/api/attempts/${attemptId}/speaking/ai-score`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error || "Failed to score speaking with AI");
+      }
+      await fetchResults();
+    } catch (error: any) {
+      console.error("AI speaking score error:", error);
+      alert(error.message || "Failed to score speaking with AI");
+    } finally {
+      setCheckingSpeakingAi(false);
+    }
+  };
+
   const handleSaveAnswer = async (questionId: string, qtype: string) => {
     if (!selectedSection || !data) {
       alert('Error: Missing section or data');
@@ -415,6 +474,19 @@ export default function AttemptResultsPage() {
       console.log('⚠️ FILL_IN_BLANK: Not object or array');
       return "No answer";
     }
+
+    // Speaking: answers are transcribed text (string) or legacy { audioUrl }
+    if (qtype === "SPEAKING_RECORDING") {
+      if (typeof answer === "string" && answer.trim()) {
+        return answer.trim();
+      }
+      if (answer && typeof answer === "object" && !Array.isArray(answer)) {
+        const o = answer as { text?: string; audioUrl?: string };
+        if (typeof o.text === "string" && o.text.trim()) return o.text.trim();
+        if (o.audioUrl) return ""; // audio player rendered separately in the UI
+      }
+      return "No recording";
+    }
     
     // General check for other question types
     if (!answer && answer !== 0 && answer !== false) {
@@ -460,12 +532,6 @@ export default function AttemptResultsPage() {
       case "SHORT_TEXT":
       case "ESSAY":
         return answer || "No answer";
-      case "SPEAKING_RECORDING":
-        // For speaking recording, show the audio player
-        if (answer && typeof answer === "object" && answer.audioUrl) {
-          return ""; // We'll handle audio player separately in the UI
-        }
-        return "No recording";
       default:
         return JSON.stringify(answer);
     }
@@ -638,9 +704,18 @@ export default function AttemptResultsPage() {
               {(data.summary.perSection || data.sections)?.map((section, index) => {
                 const writingBand = getPersistedWritingBand(data.writingSubmission);
                 const showWritingAi = isWritingSectionType(section.type) && hasSavedAiWriting(data.writingSubmission);
-                const writingBarPct = showWritingAi && writingBand != null
-                  ? Math.min(100, Math.round((writingBand / 9) * 100))
-                  : section.percentage;
+                const speakingBand = getPersistedSpeakingBand(data.speakingAi);
+                const showSpeakingAi = isSpeakingSectionType(section.type) && hasSavedAiSpeaking(data.speakingAi);
+                const aiSectionBand =
+                  showWritingAi && writingBand != null
+                    ? writingBand
+                    : showSpeakingAi && speakingBand != null
+                      ? speakingBand
+                      : null;
+                const sectionBarPct =
+                  aiSectionBand != null
+                    ? Math.min(100, Math.round((aiSectionBand / 9) * 100))
+                    : section.percentage;
                 return (
                 <li 
                   key={`${section.type}-${index}`}
@@ -675,9 +750,34 @@ export default function AttemptResultsPage() {
                               )}
                             </button>
                           )}
+                          {data.role === "TEACHER" && isSpeakingSectionType(section.type) && !showSpeakingAi && (
+                            <button
+                              type="button"
+                              onClick={handlePersistSpeakingAiScore}
+                              disabled={checkingSpeakingAi}
+                              className="inline-flex items-center gap-1.5 shrink-0 rounded-md bg-[#303380] px-2.5 py-1 text-xs font-medium text-white hover:bg-[#252a6b] disabled:opacity-50"
+                            >
+                              {checkingSpeakingAi ? (
+                                <>
+                                  <span className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                                  AI…
+                                </>
+                              ) : (
+                                <>
+                                  <FileCheck className="h-3.5 w-3.5" />
+                                  Check with AI
+                                </>
+                              )}
+                            </button>
+                          )}
                           {data.role === "TEACHER" && isWritingSectionType(section.type) && showWritingAi && writingBand != null && (
                             <span className="inline-flex items-center rounded-full bg-[#303380]/10 px-2.5 py-0.5 text-xs font-semibold text-[#303380]">
                               Band {writingBand.toFixed(1)} (saved)
+                            </span>
+                          )}
+                          {data.role === "TEACHER" && isSpeakingSectionType(section.type) && showSpeakingAi && speakingBand != null && (
+                            <span className="inline-flex items-center rounded-full bg-[#303380]/10 px-2.5 py-0.5 text-xs font-semibold text-[#303380]">
+                              Band {speakingBand.toFixed(1)} (saved)
                             </span>
                           )}
                         </div>
@@ -685,6 +785,14 @@ export default function AttemptResultsPage() {
                           {showWritingAi && writingBand != null ? (
                             <>
                               <span>AI writing • T1 {data.writingSubmission?.aiTask1Overall?.toFixed(1) ?? "—"} · T2 {data.writingSubmission?.aiTask2Overall?.toFixed(1) ?? "—"}</span>
+                              <span>•</span>
+                              <span>{section.type}</span>
+                            </>
+                          ) : showSpeakingAi && speakingBand != null && data.speakingAi ? (
+                            <>
+                              <span>
+                                AI speaking • FC {data.speakingAi.fluencyCoherence.toFixed(1)} · LR {data.speakingAi.lexicalResource.toFixed(1)} · GRA {data.speakingAi.grammar.toFixed(1)} · PR {data.speakingAi.pronunciation.toFixed(1)}
+                              </span>
                               <span>•</span>
                               <span>{section.type}</span>
                             </>
@@ -710,9 +818,9 @@ export default function AttemptResultsPage() {
                     </div>
                     <div className="flex items-center gap-4 shrink-0">
                       <div className="text-right">
-                        {showWritingAi && writingBand != null ? (
+                        {aiSectionBand != null ? (
                           <div className="text-xl font-semibold text-[#303380]">
-                            {writingBand.toFixed(1)}
+                            {aiSectionBand.toFixed(1)}
                           </div>
                         ) : (
                           <div className="text-xl font-semibold text-gray-900">{section.percentage}%</div>
@@ -723,10 +831,10 @@ export default function AttemptResultsPage() {
                           <div
                             className="h-2 rounded-full transition-all duration-500"
                             style={{
-                              backgroundColor: showWritingAi && writingBand != null
-                                ? (writingBand >= 6.5 ? '#22c55e' : '#303380')
+                              backgroundColor: aiSectionBand != null
+                                ? (aiSectionBand >= 6.5 ? '#22c55e' : '#303380')
                                 : (section.percentage >= 75 ? '#22c55e' : '#303380'),
-                              width: `${writingBarPct}%`
+                              width: `${sectionBarPct}%`
                             }}
                           ></div>
                         </div>
@@ -878,6 +986,111 @@ export default function AttemptResultsPage() {
                     AI assessment completed at{" "}
                     <span className="font-medium text-slate-600">
                       {new Date(data.writingSubmission.aiScoredAt).toLocaleString()}
+                    </span>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* AI Speaking Assessment (Teacher) — one holistic score from Parts 1–3 transcripts */}
+        {data.speakingAi && data.speakingAi.scoredAt && (
+          <div className="mb-6">
+            <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-md ring-1 ring-slate-100/80">
+              <div className="h-1 bg-gradient-to-r from-[#303380] via-[#4548a8] to-[#303380]" />
+              <div className="flex items-start gap-3 border-b border-slate-100 bg-gradient-to-r from-slate-50/90 to-white px-5 py-4 sm:px-6">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#303380]/10">
+                  <Sparkles className="h-5 w-5 text-[#303380]" aria-hidden />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-lg font-semibold tracking-tight text-gray-900">
+                    AI Speaking Assessment
+                  </h2>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    Fluency &amp; Coherence, Lexical Resource, Grammar, Pronunciation — overall band = (FC + LR + GRA + PR) / 4
+                  </p>
+                </div>
+                <div className="shrink-0 rounded-full bg-[#303380] px-4 py-2 text-sm font-bold text-white shadow-sm">
+                  Band {data.speakingAi.overallBand.toFixed(1)}
+                </div>
+              </div>
+
+              <div className="space-y-6 p-5 sm:p-6">
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                  <div className="rounded-xl border border-blue-200/80 bg-blue-50/90 p-3.5 shadow-sm">
+                    <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-blue-800/80">
+                      Fluency &amp; Coherence
+                    </div>
+                    <div className="text-xl font-bold tabular-nums text-blue-700">
+                      {data.speakingAi.fluencyCoherence.toFixed(1)}
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-violet-200/80 bg-violet-50/90 p-3.5 shadow-sm">
+                    <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-violet-800/80">
+                      Lexical Resource
+                    </div>
+                    <div className="text-xl font-bold tabular-nums text-violet-700">
+                      {data.speakingAi.lexicalResource.toFixed(1)}
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-amber-200/80 bg-amber-50/90 p-3.5 shadow-sm">
+                    <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-amber-800/80">
+                      Grammar
+                    </div>
+                    <div className="text-xl font-bold tabular-nums text-amber-800">
+                      {data.speakingAi.grammar.toFixed(1)}
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/90 p-3.5 shadow-sm">
+                    <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-emerald-800/80">
+                      Pronunciation
+                    </div>
+                    <div className="text-xl font-bold tabular-nums text-emerald-700">
+                      {data.speakingAi.pronunciation.toFixed(1)}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-3">
+                  {(["part1", "part2", "part3"] as const).map((key) => {
+                    const part = data.speakingAi![key];
+                    const label = key === "part1" ? "Part 1" : key === "part2" ? "Part 2" : "Part 3";
+                    return (
+                      <div
+                        key={key}
+                        className="rounded-xl border border-slate-200/80 bg-slate-50/40 p-4 shadow-sm"
+                      >
+                        <div className="mb-2 flex items-center justify-between gap-2">
+                          <h3 className="text-sm font-semibold text-gray-900">{label}</h3>
+                          <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-bold tabular-nums text-[#303380] shadow-sm">
+                            {part.band.toFixed(1)}
+                          </span>
+                        </div>
+                        <p className="text-xs leading-relaxed text-gray-700 whitespace-pre-wrap">
+                          {part.feedback}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {data.speakingAi.overallFeedback && (
+                  <div className="rounded-xl border border-slate-200 bg-white p-4">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Overall feedback
+                    </p>
+                    <p className="text-sm leading-relaxed text-gray-800 whitespace-pre-wrap">
+                      {data.speakingAi.overallFeedback}
+                    </p>
+                  </div>
+                )}
+
+                <div className="rounded-lg bg-slate-50 px-3 py-2.5 text-center">
+                  <p className="text-xs text-slate-500">
+                    AI speaking assessment completed at{" "}
+                    <span className="font-medium text-slate-600">
+                      {new Date(data.speakingAi.scoredAt).toLocaleString()}
                     </span>
                   </p>
                 </div>
@@ -1231,17 +1444,48 @@ export default function AttemptResultsPage() {
                             </div>
                           ) : (
                             <>
-                              {q.qtype === "SPEAKING_RECORDING" && q.studentAnswer?.audioUrl ? (
+                              {q.qtype === "SPEAKING_RECORDING" &&
+                              typeof q.studentAnswer === "object" &&
+                              q.studentAnswer !== null &&
+                              "audioUrl" in q.studentAnswer &&
+                              (q.studentAnswer as { audioUrl?: string }).audioUrl ? (
                                 <div className="space-y-2">
                                   <p className="text-xs text-gray-600">Recorded Answer:</p>
-                                  <audio controls src={q.studentAnswer.audioUrl} className="w-full">
+                                  <audio
+                                    controls
+                                    src={(q.studentAnswer as { audioUrl: string }).audioUrl}
+                                    className="w-full"
+                                  >
                                     Your browser does not support the audio element.
                                   </audio>
                                 </div>
+                              ) : q.qtype === "SPEAKING_RECORDING" &&
+                                (typeof q.studentAnswer === "string"
+                                  ? q.studentAnswer.trim()
+                                  : typeof q.studentAnswer === "object" &&
+                                      q.studentAnswer !== null &&
+                                      typeof (q.studentAnswer as { text?: string }).text === "string" &&
+                                      (q.studentAnswer as { text: string }).text.trim()) ? (
+                                <div className="space-y-2">
+                                  <p className="text-xs font-medium text-gray-600">
+                                    Transcribed answer
+                                  </p>
+                                  <p
+                                    className={`text-sm leading-relaxed whitespace-pre-wrap ${
+                                      q.isCorrect ? "text-green-800" : "text-gray-900"
+                                    }`}
+                                  >
+                                    {typeof q.studentAnswer === "string"
+                                      ? q.studentAnswer
+                                      : (q.studentAnswer as { text: string }).text}
+                                  </p>
+                                </div>
                               ) : (
-                                <p className={`text-sm font-medium ${
-                                  q.isCorrect ? "text-green-800" : "text-red-800"
-                                }`}>
+                                <p
+                                  className={`text-sm font-medium ${
+                                    q.isCorrect ? "text-green-800" : "text-red-800"
+                                  }`}
+                                >
                                   {formatAnswer(q.qtype, q.studentAnswer, q.options)}
                                 </p>
                               )}

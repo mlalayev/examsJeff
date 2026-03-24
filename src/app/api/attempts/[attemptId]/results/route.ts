@@ -486,6 +486,10 @@ export async function GET(
       const writingSection = attempt.sections.find((s) => s.type === "WRITING");
       const writingSubmission = writingSection?.writingSubmission || null;
 
+      const speakingSection = attempt.sections.find((s) => s.type === "SPEAKING");
+      const speakingRubric = speakingSection?.rubric as { ieltsSpeakingAi?: Record<string, unknown> } | null;
+      const speakingAi = speakingRubric?.ieltsSpeakingAi ?? null;
+
       return NextResponse.json({
         attemptId: attempt.id,
         examTitle: booking.exam.title,
@@ -499,6 +503,7 @@ export async function GET(
           totalPercentage,
         },
         sections: fullSections,
+        speakingAi,
         writingSubmission: writingSubmission ? {
           id: writingSubmission.id,
           task1Response: writingSubmission.task1Response,

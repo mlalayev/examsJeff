@@ -97,7 +97,7 @@ export default function AttemptRunnerPage() {
   const [writingPart, setWritingPart] = useState(1); // For IELTS Writing part selection
   const [speakingPart, setSpeakingPart] = useState(1); // For IELTS Speaking part selection
   const [speakingCurrentQuestionIndex, setSpeakingCurrentQuestionIndex] = useState(0); // Which question within part (auto-advance)
-  const [speakingSecondsLeft, setSpeakingSecondsLeft] = useState(35); // Countdown for current question view (35 / 180 / 65)
+  const [speakingSecondsLeft, setSpeakingSecondsLeft] = useState(50); // Countdown for current question view (50 / 120 / 90)
   const [viewingImage, setViewingImage] = useState<string | null>(null); // Image viewer
   const [viewingPassage, setViewingPassage] = useState(false); // Reading passage panel
   const [speakingIntroDismissed, setSpeakingIntroDismissed] = useState(false); // show intro modal when on Speaking until user clicks Okay
@@ -229,7 +229,7 @@ export default function AttemptRunnerPage() {
         setSpeakingCurrentQuestionIndex(restored.speakingCurrentQuestionIndex);
       }
       if (restored.speakingPart != null && restored.speakingCurrentQuestionIndex != null) {
-        const total = restored.speakingPart === 1 ? 35 : restored.speakingPart === 2 ? 180 : 65;
+        const total = restored.speakingPart === 1 ? 50 : restored.speakingPart === 2 ? 120 : 90;
         setSpeakingSecondsLeft(total);
       }
 
@@ -472,7 +472,7 @@ export default function AttemptRunnerPage() {
             if (speakingSection && savedSectionId === speakingSection.id && savedSpeakingPart != null && savedSpeakingQuestionIndex != null) {
               setSpeakingPart(savedSpeakingPart);
               setSpeakingCurrentQuestionIndex(savedSpeakingQuestionIndex);
-              const total = savedSpeakingPart === 1 ? 35 : savedSpeakingPart === 2 ? 180 : 65;
+              const total = savedSpeakingPart === 1 ? 50 : savedSpeakingPart === 2 ? 120 : 90;
               setSpeakingSecondsLeft(total);
             }
           } else {
@@ -838,7 +838,57 @@ export default function AttemptRunnerPage() {
        case "FILL_IN_BLANK":
          return <QFillInBlank {...props} />;
        case "SPEAKING_RECORDING":
-         return <QSpeakingRecording {...props} attemptId={attemptId} speakingPart={sectionType === "SPEAKING" ? speakingPart : undefined} />;
+         return (
+           <QSpeakingRecording
+             {...props}
+             attemptId={attemptId}
+             speakingPart={sectionType === "SPEAKING" ? speakingPart : undefined}
+             questionSecondsLeft={
+               sectionType === "SPEAKING" && data?.examCategory === "IELTS"
+                 ? speakingSecondsLeft
+                 : undefined
+             }
+             onSkipToNext={
+               sectionType === "SPEAKING" && data?.examCategory === "IELTS"
+                 ? () => {
+                     const sec = data?.sections?.find((s: { id: string }) => s.id === activeSection);
+                     const q = sec?.questions;
+                     if (!q?.length) return;
+                     const part1 = q
+                       .filter((x: { prompt?: { part?: number } }) => (x.prompt?.part ?? 1) === 1)
+                       .sort((a: { order: number }, b: { order: number }) => a.order - b.order);
+                     const part2 = q
+                       .filter((x: { prompt?: { part?: number } }) => (x.prompt?.part ?? 1) === 2)
+                       .sort((a: { order: number }, b: { order: number }) => a.order - b.order);
+                     const part3 = q
+                       .filter((x: { prompt?: { part?: number } }) => (x.prompt?.part ?? 1) === 3)
+                       .sort((a: { order: number }, b: { order: number }) => a.order - b.order);
+                     const part = speakingPart;
+                     const idx = speakingCurrentQuestionIndex;
+                     const partQuestions = part === 1 ? part1 : part === 2 ? part2 : part3;
+                     const totalForPart = part === 1 ? 50 : part === 2 ? 120 : 90;
+
+                     if (idx + 1 < partQuestions.length) {
+                       setSpeakingCurrentQuestionIndex(idx + 1);
+                       setSpeakingSecondsLeft(totalForPart);
+                     } else if (part === 1 && part2.length > 0) {
+                       setSpeakingPart(2);
+                       setSpeakingCurrentQuestionIndex(0);
+                       setSpeakingSecondsLeft(120);
+                     } else if (part === 1 && part3.length > 0) {
+                       setSpeakingPart(3);
+                       setSpeakingCurrentQuestionIndex(0);
+                       setSpeakingSecondsLeft(90);
+                     } else if (part === 2 && part3.length > 0) {
+                       setSpeakingPart(3);
+                       setSpeakingCurrentQuestionIndex(0);
+                       setSpeakingSecondsLeft(90);
+                     }
+                   }
+                 : undefined
+             }
+           />
+         );
        default:
     return (
             <div className="text-sm text-gray-500">
@@ -847,7 +897,7 @@ export default function AttemptRunnerPage() {
     );
   }
     },
-    []
+    [attemptId, speakingPart, speakingSecondsLeft, data?.examCategory, data?.sections, activeSection, speakingCurrentQuestionIndex]
   );
 
   const getShortSectionTitle = useCallback((title: string) => {
@@ -1286,7 +1336,7 @@ export default function AttemptRunnerPage() {
           const part = speakingPartRef.current;
           const idx = speakingCurrentQuestionIndexRef.current;
           const partQuestions = part === 1 ? part1 : part === 2 ? part2 : part3;
-          const totalForPart = part === 1 ? 35 : part === 2 ? 180 : 65;
+          const totalForPart = part === 1 ? 50 : part === 2 ? 120 : 90;
 
           if (idx + 1 < partQuestions.length) {
             setSpeakingCurrentQuestionIndex(idx + 1);
@@ -1296,18 +1346,18 @@ export default function AttemptRunnerPage() {
             if (part2.length > 0) {
               setSpeakingPart(2);
               setSpeakingCurrentQuestionIndex(0);
-              return 180;
+              return 120;
             }
             if (part3.length > 0) {
               setSpeakingPart(3);
               setSpeakingCurrentQuestionIndex(0);
-              return 65;
+              return 90;
             }
           }
           if (part === 2 && part3.length > 0) {
             setSpeakingPart(3);
             setSpeakingCurrentQuestionIndex(0);
-            return 65;
+            return 90;
           }
           return 0;
         }
@@ -1609,7 +1659,7 @@ export default function AttemptRunnerPage() {
           setSpeakingIntroDismissed(true);
           setSpeakingPart(1);
           setSpeakingCurrentQuestionIndex(0);
-          setSpeakingSecondsLeft(35);
+          setSpeakingSecondsLeft(50);
         }}
       />
 
