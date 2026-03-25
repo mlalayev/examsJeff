@@ -5,10 +5,10 @@ import { scoreIELTSWritingFull } from "@/lib/ielts-writing-ai-score";
 import { countWords } from "@/lib/get-writing-task-texts";
 import { checkRateLimit } from "@/lib/rate-limiter";
 import { handleOpenAIError } from "@/lib/openai-client";
-import { RATE_LIMITS, ROUTE_CONFIG } from "@/lib/rate-limit-config";
+import { RATE_LIMITS } from "@/lib/rate-limit-config";
 
 // Configure route for longer execution time
-export const maxDuration = ROUTE_CONFIG.maxDuration;
+export const maxDuration = 60;
 
 function isStaff(role: string | undefined) {
   return (

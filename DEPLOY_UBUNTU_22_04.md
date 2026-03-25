@@ -17,12 +17,12 @@ Replace **all** placeholders like `example.com`, `CHANGE_ME_...`, and `<YOUR_GIT
 
 ## 0) Decide values
 
-- **domain**: `example.com`
-- **app path**: `/var/www/aimentor`
+- **domain**: your real domain (recommended) or server IP
+- **app path**: `/var/www/examsJeff`
 - **linux user**: `aimentor`
 - **app port**: `3000` (internal only)
-- **postgres db**: `aimentor_prod`
-- **postgres user**: `aimentor_user`
+- **postgres db**: `jeff_exams` (from your current `.env`)
+- **postgres user**: `murad` (from your current `.env`)
 
 ---
 
@@ -56,10 +56,10 @@ npm -v
 ## 3) Create app user + folder
 
 ```bash
-sudo adduser --system --group --home /var/www/aimentor --shell /bin/bash aimentor
+sudo adduser --system --group --home /var/www/examsJeff --shell /bin/bash aimentor
 
-sudo mkdir -p /var/www/aimentor
-sudo chown -R aimentor:aimentor /var/www/aimentor
+sudo mkdir -p /var/www/examsJeff
+sudo chown -R aimentor:aimentor /var/www/examsJeff
 ```
 
 ---
@@ -69,31 +69,36 @@ sudo chown -R aimentor:aimentor /var/www/aimentor
 ### Option A: clone with git
 
 ```bash
-sudo -u aimentor -H bash -c "cd /var/www/aimentor && git clone <YOUR_GIT_REPO_URL> ."
+sudo -u aimentor -H bash -c "cd /var/www/examsJeff && git clone <YOUR_GIT_REPO_URL> ."
 ```
 
 ### Option B: upload (scp/rsync)
 
-Upload your project into `/var/www/aimentor`, then:
+Upload your project into `/var/www/examsJeff`, then:
 
 ```bash
-sudo chown -R aimentor:aimentor /var/www/aimentor
+sudo chown -R aimentor:aimentor /var/www/examsJeff
 ```
 
 ---
 
-## 5) Create PostgreSQL DB + user
+## 5) Create PostgreSQL DB + user (Postgres)
 
 ```bash
 sudo -u postgres psql
 ```
 
-In the `psql` prompt:
+In the `psql` prompt (matches your current `.env`):
 
 ```sql
-CREATE DATABASE aimentor_prod;
-CREATE USER aimentor_user WITH ENCRYPTED PASSWORD 'CHANGE_ME_STRONG_PASSWORD';
-GRANT ALL PRIVILEGES ON DATABASE aimentor_prod TO aimentor_user;
+-- Create user/role (skip if it already exists)
+CREATE USER murad WITH ENCRYPTED PASSWORD 'SeninSehfre123!';
+
+-- Create DB owned by the user (recommended)
+CREATE DATABASE jeff_exams OWNER murad;
+
+-- If the DB already exists, ensure privileges:
+GRANT ALL PRIVILEGES ON DATABASE jeff_exams TO murad;
 \q
 ```
 
@@ -101,10 +106,10 @@ GRANT ALL PRIVILEGES ON DATABASE aimentor_prod TO aimentor_user;
 
 ## 6) Create production environment file
 
-Create `/var/www/aimentor/.env` (owned by user `aimentor`).
+Create `/var/www/examsJeff/.env` (owned by user `aimentor`).
 
 ```bash
-sudo -u aimentor -H bash -c "nano /var/www/aimentor/.env"
+sudo -u aimentor -H bash -c "nano /var/www/examsJeff/.env"
 ```
 
 Minimum recommended keys (add any others your app needs):
@@ -113,7 +118,7 @@ Minimum recommended keys (add any others your app needs):
 NODE_ENV=production
 PORT=3000
 
-DATABASE_URL="postgresql://aimentor_user:CHANGE_ME_STRONG_PASSWORD@127.0.0.1:5432/aimentor_prod?schema=public"
+DATABASE_URL="postgresql://murad:CHANGE_ME_STRONG_PASSWORD@127.0.0.1:5432/jeff_exams?schema=public"
 
 NEXTAUTH_URL="https://example.com"
 NEXTAUTH_SECRET="CHANGE_ME_TO_A_LONG_RANDOM_SECRET"
@@ -133,7 +138,7 @@ openssl rand -base64 32
 
 ```bash
 sudo -u aimentor -H bash -c "
-cd /var/www/aimentor &&
+cd /var/www/examsJeff &&
 npm ci &&
 npx prisma generate &&
 npx prisma migrate deploy &&
@@ -165,7 +170,8 @@ Group=aimentor
 WorkingDirectory=/var/www/aimentor
 Environment=NODE_ENV=production
 Environment=PORT=3000
-EnvironmentFile=/var/www/aimentor/.env
+WorkingDirectory=/var/www/examsJeff
+EnvironmentFile=/var/www/examsJeff/.env
 ExecStart=/usr/bin/npm run start
 Restart=always
 RestartSec=5
@@ -249,6 +255,7 @@ sudo certbot renew --dry-run
 ```bash
 sudo -u aimentor -H bash -c "
 cd /var/www/aimentor &&
+cd /var/www/examsJeff &&
 git pull &&
 npm ci &&
 npx prisma generate &&

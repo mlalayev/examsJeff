@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { getOpenAI, handleOpenAIError } from "@/lib/openai-client";
 import { checkRateLimit } from "@/lib/rate-limiter";
-import { RATE_LIMITS, ROUTE_CONFIG } from "@/lib/rate-limit-config";
+import { RATE_LIMITS } from "@/lib/rate-limit-config";
 import { createReadStream } from "fs";
 import { writeFile, unlink } from "fs/promises";
 import { join } from "path";
@@ -10,7 +10,7 @@ import { tmpdir } from "os";
 import { randomUUID } from "crypto";
 
 // Configure route for longer execution time
-export const maxDuration = ROUTE_CONFIG.maxDuration;
+export const maxDuration = 60;
 
 /**
  * POST /api/attempts/:attemptId/speaking/transcribe
