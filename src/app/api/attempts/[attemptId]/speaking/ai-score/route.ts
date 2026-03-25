@@ -6,6 +6,12 @@ import {
   type IELTSSpeakingExamPayload,
   type IELTSSpeakingScoreResult,
 } from "@/lib/ielts-speaking-ai-score";
+import { checkRateLimit } from "@/lib/rate-limiter";
+import { handleOpenAIError } from "@/lib/openai-client";
+import { RATE_LIMITS, ROUTE_CONFIG } from "@/lib/rate-limit-config";
+
+// Configure route for longer execution time
+export const maxDuration = ROUTE_CONFIG.maxDuration;
 
 function isStaff(role: string | undefined) {
   return (
@@ -107,6 +113,28 @@ export async function POST(
     const role = (user as any).role as string | undefined;
     if (!isStaff(role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Rate limiting: 10 AI scoring requests per minute per user
+    const limit = RATE_LIMITS.AI_SPEAKING_SCORE;
+    const rateLimitCheck = checkRateLimit(user.id, limit.maxRequests, limit.windowMs);
+    if (rateLimitCheck.limited) {
+      return NextResponse.json(
+        {
+          error: "Too many AI scoring requests",
+          hint: `Please wait ${rateLimitCheck.resetIn} seconds before trying again.`,
+          remaining: rateLimitCheck.remaining,
+          resetIn: rateLimitCheck.resetIn,
+        },
+        {
+          status: 429,
+          headers: {
+            "X-RateLimit-Limit": limit.maxRequests.toString(),
+            "X-RateLimit-Remaining": rateLimitCheck.remaining.toString(),
+            "X-RateLimit-Reset": rateLimitCheck.resetIn.toString(),
+          },
+        }
+      );
     }
 
     if (!process.env.OPENAI_API_KEY?.trim()) {
@@ -230,7 +258,13 @@ export async function POST(
       );
     }
 
-    const scores = await scoreIELTSSpeakingFromPayload(payload);
+    // Score with AI (with error handling)
+    let scores;
+    try {
+      scores = await scoreIELTSSpeakingFromPayload(payload);
+    } catch (aiError: any) {
+      handleOpenAIError(aiError);
+    }
     const scoredAt = new Date().toISOString();
 
     const newRubric = {

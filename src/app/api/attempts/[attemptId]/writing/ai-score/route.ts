@@ -3,6 +3,12 @@ import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-utils";
 import { scoreIELTSWritingFull } from "@/lib/ielts-writing-ai-score";
 import { countWords } from "@/lib/get-writing-task-texts";
+import { checkRateLimit } from "@/lib/rate-limiter";
+import { handleOpenAIError } from "@/lib/openai-client";
+import { RATE_LIMITS, ROUTE_CONFIG } from "@/lib/rate-limit-config";
+
+// Configure route for longer execution time
+export const maxDuration = ROUTE_CONFIG.maxDuration;
 
 function isStaff(role: string | undefined) {
   return (
@@ -71,6 +77,28 @@ export async function POST(
     const role = (user as any).role as string | undefined;
     if (!isStaff(role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Rate limiting: 10 AI scoring requests per minute per user
+    const limit = RATE_LIMITS.AI_WRITING_SCORE;
+    const rateLimitCheck = checkRateLimit(user.id, limit.maxRequests, limit.windowMs);
+    if (rateLimitCheck.limited) {
+      return NextResponse.json(
+        {
+          error: "Too many AI scoring requests",
+          hint: `Please wait ${rateLimitCheck.resetIn} seconds before trying again.`,
+          remaining: rateLimitCheck.remaining,
+          resetIn: rateLimitCheck.resetIn,
+        },
+        {
+          status: 429,
+          headers: {
+            "X-RateLimit-Limit": limit.maxRequests.toString(),
+            "X-RateLimit-Remaining": rateLimitCheck.remaining.toString(),
+            "X-RateLimit-Reset": rateLimitCheck.resetIn.toString(),
+          },
+        }
+      );
     }
 
     if (!process.env.OPENAI_API_KEY?.trim()) {
@@ -225,19 +253,24 @@ export async function POST(
       });
     }
 
-    // Score with AI
-    const scores = await scoreIELTSWritingFull({
-      task1: {
-        question: String(task1Prompt),
-        userAnswer: task1Answer,
-        wordCount: task1WordCount,
-      },
-      task2: {
-        question: String(task2Prompt),
-        userAnswer: task2Answer,
-        wordCount: task2WordCount,
-      },
-    });
+    // Score with AI (with error handling)
+    let scores;
+    try {
+      scores = await scoreIELTSWritingFull({
+        task1: {
+          question: String(task1Prompt),
+          userAnswer: task1Answer,
+          wordCount: task1WordCount,
+        },
+        task2: {
+          question: String(task2Prompt),
+          userAnswer: task2Answer,
+          wordCount: task2WordCount,
+        },
+      });
+    } catch (aiError: any) {
+      handleOpenAIError(aiError);
+    }
 
     const updated = await prisma.writingSubmission.update({
       where: { id: submission.id },

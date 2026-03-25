@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
-import { getOpenAI } from "@/lib/openai-client";
+import { getOpenAI, handleOpenAIError } from "@/lib/openai-client";
+import { checkRateLimit } from "@/lib/rate-limiter";
+import { RATE_LIMITS, ROUTE_CONFIG } from "@/lib/rate-limit-config";
 import { createReadStream } from "fs";
 import { writeFile, unlink } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
 import { randomUUID } from "crypto";
+
+// Configure route for longer execution time
+export const maxDuration = ROUTE_CONFIG.maxDuration;
 
 /**
  * POST /api/attempts/:attemptId/speaking/transcribe
@@ -20,6 +25,28 @@ export async function POST(
   try {
     const user = await requireAuth();
     const { attemptId } = await params;
+
+    // Rate limiting: 20 transcription requests per minute per user (more lenient than scoring)
+    const limit = RATE_LIMITS.AUDIO_TRANSCRIBE;
+    const rateLimitCheck = checkRateLimit(`transcribe:${user.id}`, limit.maxRequests, limit.windowMs);
+    if (rateLimitCheck.limited) {
+      return NextResponse.json(
+        {
+          error: "Too many transcription requests",
+          hint: `Please wait ${rateLimitCheck.resetIn} seconds before trying again.`,
+          remaining: rateLimitCheck.remaining,
+          resetIn: rateLimitCheck.resetIn,
+        },
+        {
+          status: 429,
+          headers: {
+            "X-RateLimit-Limit": limit.maxRequests.toString(),
+            "X-RateLimit-Remaining": rateLimitCheck.remaining.toString(),
+            "X-RateLimit-Reset": rateLimitCheck.resetIn.toString(),
+          },
+        }
+      );
+    }
 
     if (!process.env.OPENAI_API_KEY?.trim()) {
       return NextResponse.json(
@@ -50,11 +77,20 @@ export async function POST(
 
     // Transcribe with OpenAI Whisper using fs.createReadStream
     const openai = getOpenAI();
-    const transcription = await openai.audio.transcriptions.create({
-      file: createReadStream(tempFilePath) as any,
-      model: "whisper-1",
-      language: "en", // IELTS is in English
-    });
+    let transcription;
+    try {
+      transcription = await openai.audio.transcriptions.create({
+        file: createReadStream(tempFilePath) as any,
+        model: "whisper-1",
+        language: "en", // IELTS is in English
+      });
+    } catch (aiError: any) {
+      // Clean up temp file on AI error
+      if (tempFilePath) {
+        await unlink(tempFilePath).catch(() => {});
+      }
+      handleOpenAIError(aiError);
+    }
 
     // Clean up temp file
     if (tempFilePath) {
