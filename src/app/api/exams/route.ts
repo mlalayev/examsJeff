@@ -14,7 +14,7 @@ export async function GET(request: Request) {
         isActive: true,
         createdAt: true,
         createdBy: {
-          select: { id: true, name: true, email: true },
+          select: { id: true, firstName: true, lastName: true, email: true },
         },
         _count: {
           select: {

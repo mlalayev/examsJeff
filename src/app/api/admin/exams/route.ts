@@ -77,7 +77,8 @@ export async function GET(request: Request) {
         createdBy: {
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
           }
         },
@@ -206,7 +207,8 @@ export async function POST(request: Request) {
         createdBy: {
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
           }
         },
@@ -285,7 +287,8 @@ export async function POST(request: Request) {
           createdBy: {
             select: {
               id: true,
-              name: true,
+              firstName: true,
+              lastName: true,
               email: true,
             }
           },
