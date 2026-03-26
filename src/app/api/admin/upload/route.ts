@@ -2,14 +2,28 @@ import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { requireAdminOrBranchAdmin } from "@/lib/auth-utils";
+import { applyRateLimit } from "@/lib/rate-limiter-enhanced";
+import { validateFileUpload, createErrorResponse } from "@/lib/security";
+
+// Maximum file sizes from environment
+const MAX_AUDIO_SIZE = parseInt(process.env.MAX_AUDIO_FILE_SIZE_BYTES || "52428800"); // 50MB
+const MAX_IMAGE_SIZE = parseInt(process.env.MAX_IMAGE_FILE_SIZE_BYTES || "5242880"); // 5MB
+
+const ALLOWED_AUDIO_EXTENSIONS = (process.env.ALLOWED_AUDIO_EXTENSIONS || "mp3,wav,ogg,m4a,aac,flac,wma,webm").split(",");
+const ALLOWED_IMAGE_EXTENSIONS = (process.env.ALLOWED_IMAGE_EXTENSIONS || "jpg,jpeg,png,gif,webp").split(",");
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting
+    const rateLimitResult = await applyRateLimit(request, "UPLOAD");
+    if (rateLimitResult) return rateLimitResult;
+
+    // Authentication check
     await requireAdminOrBranchAdmin();
     
     const formData = await request.formData();
     const file = formData.get("file") as File;
-    const type = formData.get("type") as string; // "audio" or "image"
+    const type = formData.get("type") as string;
     
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
@@ -19,27 +33,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid type. Must be 'audio' or 'image'" }, { status: 400 });
     }
     
-    // Validate file type
-    if (type === "audio") {
-      const validAudioExtensions = ['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac', '.wma'];
-      const hasValidExtension = validAudioExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
-      
-      if (!hasValidExtension && !file.type.includes('audio')) {
-        return NextResponse.json({ error: "Only audio files are allowed (mp3, wav, ogg, m4a, aac, flac, wma)" }, { status: 400 });
-      }
-    } else if (type === "image") {
-      if (!file.type.startsWith('image/')) {
-        return NextResponse.json({ error: "Only image files are allowed" }, { status: 400 });
-      }
+    // Validate file based on type
+    const maxSize = type === "audio" ? MAX_AUDIO_SIZE : MAX_IMAGE_SIZE;
+    const allowedExtensions = type === "audio" ? ALLOWED_AUDIO_EXTENSIONS : ALLOWED_IMAGE_EXTENSIONS;
+    
+    const validation = validateFileUpload(file, allowedExtensions, maxSize);
+    if (!validation.valid) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
     }
     
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     
-    // Generate unique filename
+    // Generate secure filename (prevent directory traversal)
     const timestamp = Date.now();
     const randomStr = Math.random().toString(36).substring(2, 15);
-    const ext = file.name.split('.').pop();
+    const ext = file.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'bin';
     const filename = `${timestamp}-${randomStr}.${ext}`;
     
     // Determine upload directory
@@ -50,7 +59,7 @@ export async function POST(request: NextRequest) {
     try {
       await mkdir(join(process.cwd(), uploadDir), { recursive: true });
     } catch (error) {
-      // Directory might already exist, ignore error
+      // Directory might already exist
     }
     
     // Write file
@@ -66,17 +75,7 @@ export async function POST(request: NextRequest) {
     });
     
   } catch (error) {
-    if (error instanceof Error) {
-      if (error.message === "Unauthorized" || error.message.startsWith("Forbidden")) {
-        return NextResponse.json({ error: error.message }, { status: 403 });
-      }
-    }
-    
-    console.error("Upload error:", error);
-    return NextResponse.json(
-      { error: "Failed to upload file" },
-      { status: 500 }
-    );
+    return createErrorResponse(error, 500);
   }
 }
 

@@ -18,8 +18,8 @@ Replace **all** placeholders like `example.com`, `CHANGE_ME_...`, and `<YOUR_GIT
 ## 0) Decide values
 
 - **domain**: your real domain (recommended) or server IP
-- **app path**: `/var/www/examsJeff`
-- **linux user**: `aimentor`
+- **app path**: `~/examsJeff` (single folder, no `/var/www`)
+- **linux user**: your normal SSH user (example: `ubuntu`)
 - **app port**: `3000` (internal only)
 - **postgres db**: `jeff_exams` (from your current `.env`)
 - **postgres user**: `murad` (from your current `.env`)
@@ -53,13 +53,10 @@ npm -v
 
 ---
 
-## 3) Create app user + folder
+## 3) Create app folder (single folder)
 
 ```bash
-sudo adduser --system --group --home /var/www/examsJeff --shell /bin/bash aimentor
-
-sudo mkdir -p /var/www/examsJeff
-sudo chown -R aimentor:aimentor /var/www/examsJeff
+mkdir -p ~/examsJeff
 ```
 
 ---
@@ -69,15 +66,15 @@ sudo chown -R aimentor:aimentor /var/www/examsJeff
 ### Option A: clone with git
 
 ```bash
-sudo -u aimentor -H bash -c "cd /var/www/examsJeff && git clone <YOUR_GIT_REPO_URL> ."
+cd ~/examsJeff && git clone <YOUR_GIT_REPO_URL> .
 ```
 
 ### Option B: upload (scp/rsync)
 
-Upload your project into `/var/www/examsJeff`, then:
+Upload your project into `~/examsJeff`, then:
 
 ```bash
-sudo chown -R aimentor:aimentor /var/www/examsJeff
+cd ~/examsJeff
 ```
 
 ---
@@ -92,7 +89,7 @@ In the `psql` prompt (matches your current `.env`):
 
 ```sql
 -- Create user/role (skip if it already exists)
-CREATE USER murad WITH ENCRYPTED PASSWORD 'SeninSehfre123!';
+CREATE USER murad WITH ENCRYPTED PASSWORD 'CHANGE_ME_STRONG_PASSWORD';
 
 -- Create DB owned by the user (recommended)
 CREATE DATABASE jeff_exams OWNER murad;
@@ -106,10 +103,10 @@ GRANT ALL PRIVILEGES ON DATABASE jeff_exams TO murad;
 
 ## 6) Create production environment file
 
-Create `/var/www/examsJeff/.env` (owned by user `aimentor`).
+Create `~/examsJeff/.env`.
 
 ```bash
-sudo -u aimentor -H bash -c "nano /var/www/examsJeff/.env"
+nano ~/examsJeff/.env
 ```
 
 Minimum recommended keys (add any others your app needs):
@@ -137,13 +134,11 @@ openssl rand -base64 32
 ## 7) Install deps, run migrations, build
 
 ```bash
-sudo -u aimentor -H bash -c "
-cd /var/www/examsJeff &&
+cd ~/examsJeff &&
 npm ci &&
 npx prisma generate &&
 npx prisma migrate deploy &&
 npm run build
-"
 ```
 
 ---
@@ -165,13 +160,12 @@ After=network.target
 
 [Service]
 Type=simple
-User=aimentor
-Group=aimentor
-WorkingDirectory=/var/www/aimentor
+User=YOUR_SSH_USER
+Group=YOUR_SSH_USER
+WorkingDirectory=/home/YOUR_SSH_USER/examsJeff
 Environment=NODE_ENV=production
 Environment=PORT=3000
-WorkingDirectory=/var/www/examsJeff
-EnvironmentFile=/var/www/examsJeff/.env
+EnvironmentFile=/home/YOUR_SSH_USER/examsJeff/.env
 ExecStart=/usr/bin/npm run start
 Restart=always
 RestartSec=5
@@ -189,6 +183,93 @@ sudo systemctl start aimentor
 
 sudo systemctl status aimentor --no-pager
 sudo journalctl -u aimentor -f
+```
+
+---
+
+## 8b) Alternative: PM2 (recommended if you prefer PM2)
+
+If you use PM2, you **do not need** the systemd service above (PM2 will generate its own startup service).
+
+### Install PM2
+
+```bash
+sudo npm i -g pm2
+pm2 -v
+```
+
+### Create PM2 ecosystem file
+
+Create `~/examsJeff/ecosystem.config.js`:
+
+```bash
+nano ~/examsJeff/ecosystem.config.js
+```
+
+Paste:
+
+```js
+module.exports = {
+  apps: [
+    {
+      name: "examsJeff",
+      cwd: process.env.HOME + "/examsJeff",
+      script: "node_modules/next/dist/bin/next",
+      args: "start -p 3000",
+      env: {
+        NODE_ENV: "production",
+        PORT: "3000",
+      },
+    },
+  ],
+};
+```
+
+### Start with PM2 (loads `.env`)
+
+```bash
+cd ~/examsJeff &&
+pm2 start ecosystem.config.js --update-env --env production
+```
+
+If you want PM2 to load your `.env` automatically, start like this instead:
+
+```bash
+cd ~/examsJeff &&
+pm2 start ecosystem.config.js --update-env --env production --env-file "$HOME/examsJeff/.env"
+```
+
+### Enable PM2 on boot
+
+```bash
+pm2 startup systemd -u "$USER" --hp "$HOME"
+```
+
+PM2 will print a command starting with `sudo env ...`. Copy/paste that command exactly, then:
+
+```bash
+pm2 save
+```
+
+### PM2 useful commands
+
+```bash
+pm2 status
+pm2 logs examsJeff
+pm2 restart examsJeff
+pm2 reload examsJeff
+```
+
+### Deploy updates with PM2
+
+```bash
+cd ~/examsJeff &&
+git pull &&
+npm ci &&
+npx prisma generate &&
+npx prisma migrate deploy &&
+npm run build &&
+pm2 reload ecosystem.config.js --update-env
 ```
 
 ---
@@ -253,15 +334,12 @@ sudo certbot renew --dry-run
 ## 11) Update deployment (pull, migrate, rebuild, restart)
 
 ```bash
-sudo -u aimentor -H bash -c "
-cd /var/www/aimentor &&
-cd /var/www/examsJeff &&
+cd ~/examsJeff &&
 git pull &&
 npm ci &&
 npx prisma generate &&
 npx prisma migrate deploy &&
 npm run build
-"
 
 sudo systemctl restart aimentor
 sudo systemctl status aimentor --no-pager

@@ -1,38 +1,51 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth-utils';
+import { applyRateLimit } from '@/lib/rate-limiter-enhanced';
+import { createErrorResponse, validateBodySize } from '@/lib/security';
+
+// DEPRECATED: This endpoint returns mock data
+// For production AI scoring, use:
+// - /api/attempts/[attemptId]/writing/ai-score
+// - /api/attempts/[attemptId]/speaking/ai-score
 
 export async function POST(request: NextRequest) {
   try {
-    const { type, content, audioData } = await request.json();
+    // Rate limiting
+    const rateLimitResult = await applyRateLimit(request, "AI");
+    if (rateLimitResult) return rateLimitResult;
 
-    // In a real implementation, you would:
-    // 1. Send the content/audio to ChatGPT API
-    // 2. Process the response
-    // 3. Return structured feedback
+    // Authentication required (prevent public abuse)
+    await requireAuth();
 
-    // For now, return mock feedback based on the type
+    const body = await request.json();
+    
+    // Validate body size
+    const sizeValidation = validateBodySize(body);
+    if (!sizeValidation.valid) {
+      return NextResponse.json({ error: sizeValidation.error }, { status: 400 });
+    }
+
+    const { type, content, audioData } = body;
+
+    // Validate input
+    if (!type || !['writing', 'speaking'].includes(type)) {
+      return NextResponse.json(
+        { error: 'Invalid type. Must be "writing" or "speaking"' },
+        { status: 400 }
+      );
+    }
+
+    // MOCK IMPLEMENTATION - Replace with real AI integration
     let feedback;
 
     switch (type) {
       case 'writing':
         feedback = {
-          score: Math.floor(Math.random() * 2) + 6, // 6-7
-          feedback: "Your essay demonstrates good understanding of the topic. The structure is clear with introduction, body paragraphs, and conclusion. However, there are areas for improvement in vocabulary range and grammatical accuracy.",
-          suggestions: [
-            "Use more varied vocabulary and avoid repetition",
-            "Include more specific examples to support arguments",
-            "Pay attention to subject-verb agreement",
-            "Use more complex sentence structures"
-          ],
-          strengths: [
-            "Clear introduction and conclusion",
-            "Logical paragraph organization",
-            "Good use of linking words"
-          ],
-          improvements: [
-            "Expand vocabulary range",
-            "Improve grammatical accuracy",
-            "Add more specific examples"
-          ]
+          score: Math.floor(Math.random() * 2) + 6,
+          feedback: "Your essay demonstrates good understanding of the topic.",
+          suggestions: ["Use more varied vocabulary"],
+          strengths: ["Clear introduction and conclusion"],
+          improvements: ["Expand vocabulary range"],
         };
         break;
 
@@ -44,36 +57,24 @@ export async function POST(request: NextRequest) {
           grammaticalRange: 6,
           pronunciation: 7,
           overallScore: 6.6,
-          feedback: "Your speaking demonstrates good fluency and pronunciation. You use a range of vocabulary effectively and your ideas are generally well-organized. However, there are some areas where you could improve your grammatical accuracy.",
-          strengths: [
-            "Good pronunciation and intonation",
-            "Appropriate use of linking words",
-            "Clear and coherent ideas"
-          ],
-          improvements: [
-            "Work on grammatical accuracy",
-            "Provide more specific examples",
-            "Develop ideas more fully"
-          ]
+          feedback: "Your speaking demonstrates good fluency and pronunciation.",
+          strengths: ["Good pronunciation"],
+          improvements: ["Work on grammatical accuracy"],
         };
         break;
 
       default:
         feedback = {
           score: 6,
-          feedback: "Good attempt. Continue practicing to improve your skills.",
-          suggestions: ["Keep practicing regularly", "Focus on weak areas"],
+          feedback: "Good attempt.",
+          suggestions: ["Keep practicing"],
           strengths: ["Good effort"],
-          improvements: ["Continue practicing"]
+          improvements: ["Continue practicing"],
         };
     }
 
     return NextResponse.json(feedback);
   } catch (error) {
-    console.error('Error processing AI feedback:', error);
-    return NextResponse.json(
-      { error: 'Failed to process feedback' },
-      { status: 500 }
-    );
+    return createErrorResponse(error, 500);
   }
 }

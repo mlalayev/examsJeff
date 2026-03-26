@@ -1,7 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { validateCronAuth } from "@/lib/security";
 
-export async function GET() {
+export async function GET(request: Request) {
+  try {
+    // Verify cron authorization
+    if (!validateCronAuth(request)) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
   try {
     // This endpoint will be called by Vercel Cron
     const today = new Date();

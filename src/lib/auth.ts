@@ -19,11 +19,20 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Missing email or password");
         }
 
+        // Basic email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(credentials.email)) {
+          throw new Error("Invalid email format");
+        }
+
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email }
+          where: { email: credentials.email.toLowerCase().trim() }
         });
 
         if (!user || !user.passwordHash) {
+          // Use constant-time comparison to prevent timing attacks
+          // Hash a dummy password even if user doesn't exist
+          await bcrypt.compare(credentials.password, "$2a$10$invalidhashtopreventtimingattacks");
           throw new Error("Invalid email or password");
         }
 

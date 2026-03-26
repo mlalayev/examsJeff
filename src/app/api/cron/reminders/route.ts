@@ -1,17 +1,19 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendBookingReminder } from "@/lib/email";
+import { validateCronAuth, createErrorResponse } from "@/lib/security";
 
-// Protect cron endpoint with a secret token
-// In production, set CRON_SECRET in Vercel environment variables
-const CRON_SECRET = process.env.CRON_SECRET || "dev-secret-change-in-production";
+// SECURITY: Cron endpoints must be called with Authorization: Bearer <CRON_SECRET>
+// Set CRON_SECRET in environment variables (minimum 32 characters)
 
 export async function GET(request: Request) {
   try {
-    // Verify cron secret
-    const authHeader = request.headers.get("authorization");
-    if (authHeader !== `Bearer ${CRON_SECRET}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Verify cron authorization
+    if (!validateCronAuth(request)) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
     }
 
     const now = new Date();

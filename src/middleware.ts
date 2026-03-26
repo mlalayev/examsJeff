@@ -1,14 +1,36 @@
 import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 
+/**
+ * Get security headers
+ */
+function getSecurityHeaders(): Record<string, string> {
+  return {
+    "X-Frame-Options": "DENY",
+    "X-Content-Type-Options": "nosniff",
+    "X-XSS-Protection": "1; mode=block",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), interest-cohort=()",
+  };
+}
+
 export default withAuth(
   function middleware(req) {
     const token = req.nextauth.token;
     const path = req.nextUrl.pathname;
 
+    // Create response with security headers
+    let response = NextResponse.next();
+    
+    // Add security headers
+    const headers = getSecurityHeaders();
+    Object.entries(headers).forEach(([key, value]) => {
+      response.headers.set(key, value);
+    });
+
   // CREATOR has full access to everything - no restrictions
   if (token?.role === "CREATOR") {
-    return NextResponse.next();
+    return response;
   }
 
   // Student dashboard routes (must be approved unless elevated roles)
@@ -56,7 +78,7 @@ export default withAuth(
     }
   }
 
-    return NextResponse.next();
+    return response;
   },
   {
     callbacks: {

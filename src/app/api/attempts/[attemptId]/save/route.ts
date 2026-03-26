@@ -1,13 +1,25 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireStudent } from "@/lib/auth-utils";
+import { applyRateLimit } from "@/lib/rate-limiter-enhanced";
+import { createErrorResponse, validateBodySize } from "@/lib/security";
 
 export async function POST(request: Request, { params }: { params: Promise<{ attemptId: string }> }) {
   try {
+    // Rate limiting to prevent submission spam
+    const rateLimitResult = await applyRateLimit(request as any, "API");
+    if (rateLimitResult) return rateLimitResult;
+
     const user = await requireStudent();
     const { attemptId } = await params;
     const studentId = (user as any).id as string;
     const body = await request.json();
+
+    // Validate body size
+    const sizeValidation = validateBodySize(body, 2097152); // 2MB max for exam answers
+    if (!sizeValidation.valid) {
+      return NextResponse.json({ error: sizeValidation.error }, { status: 400 });
+    }
 
     console.log('Save attempt request:', { attemptId, studentId, bodyKeys: Object.keys(body) });
 
