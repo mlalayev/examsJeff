@@ -6,7 +6,8 @@ import UnifiedLoading from "@/components/loading/UnifiedLoading";
 
 interface User {
   id: string;
-  name: string | null;
+  firstName: string | null;
+  lastName: string | null;
   email: string;
   role: string;
   createdAt: string;
@@ -118,7 +119,11 @@ export default function UsersTab() {
           <tbody className="divide-y">
             {users.map((user) => (
               <tr key={user.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 font-medium">{user.name || "—"}</td>
+                <td className="px-4 py-3 font-medium">
+                  {user.firstName && user.lastName 
+                    ? `${user.firstName} ${user.lastName}` 
+                    : user.firstName || user.lastName || "—"}
+                </td>
                 <td className="px-4 py-3">{user.email}</td>
                 <td className="px-4 py-3">
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${

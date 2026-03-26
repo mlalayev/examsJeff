@@ -9,7 +9,8 @@ import bcrypt from "bcryptjs";
 
 const CREATOR_EMAIL = "creator@creator.com";
 const CREATOR_PASSWORD = "murad123";
-const CREATOR_NAME = "System Creator";
+const CREATOR_FIRST_NAME = "System";
+const CREATOR_LAST_NAME = "Creator";
 
 export async function initializeCreatorAccount() {
   try {
@@ -55,7 +56,8 @@ export async function initializeCreatorAccount() {
     // Create the creator account
     await prisma.user.create({
       data: {
-        name: CREATOR_NAME,
+        firstName: CREATOR_FIRST_NAME,
+        lastName: CREATOR_LAST_NAME,
         email: CREATOR_EMAIL,
         passwordHash,
         role: "CREATOR",

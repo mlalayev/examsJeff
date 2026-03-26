@@ -48,7 +48,7 @@ export const authOptions: NextAuthOptions = {
         return {
           id: user.id,
           email: user.email,
-          name: user.name,
+          name: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.firstName || user.lastName || null,
           role: user.role,
           approved: (user as any).approved ?? false,
           branchId: (user as any).branchId ?? null,
@@ -83,21 +83,22 @@ export const authOptions: NextAuthOptions = {
             const dbUser = await prisma.user.findUnique({
               where: { id: token.id as string },
               select: { 
-                name: true, 
+                firstName: true,
+                lastName: true, 
                 role: true, 
                 email: true, 
                 branchId: true,
-                approved: true,  // Get approved in same query
+                approved: true,
               },
             });
             
             if (dbUser) {
-              token.name = dbUser.name ?? token.name;
+              token.name = dbUser.firstName && dbUser.lastName ? `${dbUser.firstName} ${dbUser.lastName}` : dbUser.firstName || dbUser.lastName || token.name;
               token.email = dbUser.email ?? token.email;
               (token as any).branchId = dbUser.branchId ?? null;
               token.role = dbUser.role as any;
               (token as any).approved = dbUser.approved ?? (token as any).approved ?? false;
-              (token as any).lastSync = now;  // Update last sync time
+              (token as any).lastSync = now;
             }
           } catch {
             // Keep existing token data on error

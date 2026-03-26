@@ -51,7 +51,8 @@ export default function AdminStudentsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [branches, setBranches] = useState<any[]>([]);
   const [formData, setFormData] = useState({
-    name: "",
+    firstName: "",
+    lastName: "",
     email: "",
     password: "",
     role: "STUDENT" as string,
@@ -280,7 +281,8 @@ export default function AdminStudentsPage() {
 
   const openCreateModal = () => {
     setFormData({
-      name: "",
+      firstName: "",
+      lastName: "",
       email: "",
       password: "",
       role: "STUDENT",
@@ -307,7 +309,7 @@ export default function AdminStudentsPage() {
     e.preventDefault();
     setCreateError("");
 
-    if (!formData.name || !formData.email || !formData.password) {
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.password) {
       setCreateError("Please fill in all required fields");
       return;
     }
@@ -333,7 +335,8 @@ export default function AdminStudentsPage() {
 
     try {
       const payload: any = {
-        name: formData.name,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
         email: formData.email,
         password: formData.password,
         role: formData.role,
@@ -902,18 +905,33 @@ export default function AdminStudentsPage() {
               )}
 
               <form onSubmit={handleCreateUser} className="space-y-4">
-                {/* Name */}
+                {/* First Name */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Full Name *
+                    First Name *
                   </label>
                   <input
                     type="text"
                     required
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    value={formData.firstName}
+                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent"
-                    placeholder="John Doe"
+                    placeholder="John"
+                  />
+                </div>
+
+                {/* Last Name */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Last Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.lastName}
+                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent"
+                    placeholder="Doe"
                   />
                 </div>
 

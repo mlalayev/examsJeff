@@ -5,10 +5,10 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 
 const createUserSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
+  firstName: z.string().min(2, "First name must be at least 2 characters"),
+  lastName: z.string().min(2, "Last name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  // Admins are only allowed to create STUDENT, TEACHER, and ADMIN accounts
   role: z.enum(["STUDENT", "TEACHER", "ADMIN"]),
   branchId: z.string().nullable(),
   approved: z.boolean().default(false),
@@ -54,10 +54,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Branch is required for students" }, { status: 400 });
     }
 
-    // Create user with student profile if role is STUDENT
     const newUser = await prisma.user.create({
       data: {
-        name: validatedData.name,
+        firstName: validatedData.firstName,
+        lastName: validatedData.lastName,
         email: validatedData.email,
         passwordHash,
         role: validatedData.role,
@@ -78,7 +78,8 @@ export async function POST(request: Request) {
       },
       select: {
         id: true,
-        name: true,
+        firstName: true,
+        lastName: true,
         email: true,
         role: true,
         approved: true,

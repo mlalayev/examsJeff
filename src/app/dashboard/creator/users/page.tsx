@@ -33,7 +33,8 @@ export default function CreatorUsersPage() {
   const [usersLoading, setUsersLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createFormData, setCreateFormData] = useState({
-    name: "",
+    firstName: "",
+    lastName: "",
     email: "",
     password: "",
     role: "STUDENT" as string,
@@ -207,7 +208,7 @@ export default function CreatorUsersPage() {
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreateError("");
-    if (!createFormData.name || !createFormData.email || !createFormData.password) {
+    if (!createFormData.firstName || !createFormData.lastName || !createFormData.email || !createFormData.password) {
       setCreateError("Please fill in all required fields");
       return;
     }
@@ -228,7 +229,8 @@ export default function CreatorUsersPage() {
     setCreateCreating(true);
     try {
       const payload: any = {
-        name: createFormData.name,
+        firstName: createFormData.firstName,
+        lastName: createFormData.lastName,
         email: createFormData.email,
         password: createFormData.password,
         role: createFormData.role,
@@ -253,7 +255,8 @@ export default function CreatorUsersPage() {
       if (res.ok) {
         setShowCreateModal(false);
         setCreateFormData({
-          name: "",
+          firstName: "",
+          lastName: "",
           email: "",
           password: "",
           role: "STUDENT",
@@ -325,7 +328,8 @@ export default function CreatorUsersPage() {
           onClick={() => {
             setCreateError("");
             setCreateFormData({
-              name: "",
+              firstName: "",
+              lastName: "",
               email: "",
               password: "",
               role: "STUDENT",
@@ -454,7 +458,11 @@ export default function CreatorUsersPage() {
                 users.map((user) => (
                   <tr key={user.id} className="hover:bg-gray-50">
                     <td className="px-3 sm:px-4 py-3 text-sm">
-                      <div className="font-medium text-gray-900">{user.name}</div>
+                      <div className="font-medium text-gray-900">
+                        {user.firstName && user.lastName 
+                          ? `${user.firstName} ${user.lastName}` 
+                          : user.firstName || user.lastName || "—"}
+                      </div>
                     </td>
                     <td className="px-3 sm:px-4 py-3 text-sm text-gray-600">
                       {user.email}
@@ -646,14 +654,25 @@ export default function CreatorUsersPage() {
                 </div>
               )}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
                 <input
                   type="text"
                   required
-                  value={createFormData.name}
-                  onChange={(e) => setCreateFormData({ ...createFormData, name: e.target.value })}
+                  value={createFormData.firstName}
+                  onChange={(e) => setCreateFormData({ ...createFormData, firstName: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
-                  placeholder="John Doe"
+                  placeholder="John"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={createFormData.lastName}
+                  onChange={(e) => setCreateFormData({ ...createFormData, lastName: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+                  placeholder="Doe"
                 />
               </div>
               <div>

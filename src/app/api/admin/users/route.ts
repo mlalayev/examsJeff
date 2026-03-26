@@ -15,24 +15,23 @@ export async function GET(request: Request) {
     
     const users = await prisma.user.findMany({
       where: {
-        // Hide CREATOR accounts from everyone
         role: { not: "CREATOR" },
         ...(roleFilter && { role: roleFilter as any }),
         ...(search && {
           OR: [
-            { name: { contains: search, mode: "insensitive" } },
+            { firstName: { contains: search, mode: "insensitive" } },
+            { lastName: { contains: search, mode: "insensitive" } },
             { email: { contains: search, mode: "insensitive" } }
           ]
         }),
-        // If admin is BRANCH_ADMIN, scope to same branch only
-        // BOSS and ADMIN can see all users
         ...(currentRole === "BRANCH_ADMIN" && currentBranchId
           ? { branchId: currentBranchId }
           : {})
       },
       select: {
         id: true,
-        name: true,
+        firstName: true,
+        lastName: true,
         email: true,
         role: true,
         approved: true,
