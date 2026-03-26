@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "exams" ADD COLUMN "readingType" TEXT DEFAULT 'ACADEMIC',
+ADD COLUMN "writingType" TEXT DEFAULT 'ACADEMIC';
