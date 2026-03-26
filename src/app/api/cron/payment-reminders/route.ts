@@ -11,7 +11,7 @@ export async function GET(request: Request) {
         { status: 401 }
       );
     }
-  try {
+
     // This endpoint will be called by Vercel Cron
     const today = new Date();
     const tomorrow = new Date(today);
