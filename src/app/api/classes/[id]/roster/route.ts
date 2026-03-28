@@ -24,10 +24,11 @@ export async function GET(
             student: {
               select: {
                 id: true,
-                name: true,
+                firstName: true,
+                lastName: true,
                 email: true,
-              }
-            }
+              },
+            },
           },
           orderBy: {
             createdAt: "asc"
@@ -61,9 +62,14 @@ export async function GET(
           }
         });
         
+        const s = enrollment.student;
         return {
           enrollmentId: enrollment.id,
-          student: enrollment.student,
+          student: {
+            id: s.id,
+            email: s.email,
+            name: [s.firstName, s.lastName].filter(Boolean).join(" ").trim() || null,
+          },
           enrolledAt: enrollment.createdAt,
           latestAttempt: latestAttempt || null,
         };
