@@ -17,6 +17,17 @@ function useSecureSessionCookie(req: NextRequest): boolean {
   return process.env.NEXTAUTH_URL?.startsWith("https://") === true;
 }
 
+/** Try both cookie naming schemes — nginx / mixed NEXTAUTH_URL can leave one set wrong. */
+async function getTokenFromRequest(req: NextRequest) {
+  const secret = process.env.NEXTAUTH_SECRET;
+  const preferSecure = useSecureSessionCookie(req);
+  let token = await getToken({ req, secret, secureCookie: preferSecure });
+  if (!token) {
+    token = await getToken({ req, secret, secureCookie: !preferSecure });
+  }
+  return token;
+}
+
 /**
  * Get security headers
  */
@@ -31,12 +42,7 @@ function getSecurityHeaders(): Record<string, string> {
 }
 
 export default async function middleware(req: NextRequest) {
-  const secureCookie = useSecureSessionCookie(req);
-  const token = await getToken({
-    req,
-    secret: process.env.NEXTAUTH_SECRET,
-    secureCookie,
-  });
+  const token = await getTokenFromRequest(req);
 
   const path = req.nextUrl.pathname;
 
@@ -77,7 +83,8 @@ export default async function middleware(req: NextRequest) {
   if (path.startsWith("/dashboard/teacher")) {
     const approved = (token as any)?.approved ?? false;
     const allowed = ["TEACHER", "ADMIN", "BOSS", "BRANCH_ADMIN"];
-    if (!(token as any).role || !allowed.includes((token as any).role)) {
+    const role = (token as any).role as string | undefined;
+    if (!role || !allowed.includes(role)) {
       return NextResponse.redirect(new URL("/auth/login?error=unauthorized", req.url));
     }
     if ((token as any).role === "TEACHER" && !approved) {
