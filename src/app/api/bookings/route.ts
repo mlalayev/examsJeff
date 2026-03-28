@@ -1,7 +1,28 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAuth, requireAdminOrBoss, requireBranchAdminOrBoss, getScopedBranchId, assertSameBranchOrBoss } from "@/lib/auth-utils";
+import { requireAuth, requireAdminOrBoss, requireBranchAdminOrBoss, assertSameBranchOrBoss } from "@/lib/auth-utils";
 import { z } from "zod";
+
+/** User model has firstName/lastName, not name — map for API responses */
+const userListSelect = {
+  id: true,
+  firstName: true,
+  lastName: true,
+  email: true,
+} as const;
+
+function userToNameFields(u: {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string;
+}) {
+  return {
+    id: u.id,
+    email: u.email,
+    name: [u.firstName, u.lastName].filter(Boolean).join(" ").trim() || null,
+  };
+}
 
 const createBookingSchema = z.object({
   studentId: z.string().min(1, "Student ID is required"),
@@ -108,13 +129,7 @@ export async function POST(request: Request) {
         branchId: userBranchId ?? student.branchId ?? null,
       },
       include: {
-        student: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          }
-        },
+        student: { select: userListSelect },
         exam: {
           select: {
             id: true,
@@ -122,18 +137,18 @@ export async function POST(request: Request) {
           }
         },
         teacher: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          }
+          select: userListSelect,
         }
       }
     });
     
     return NextResponse.json({
       message: "Exam assigned successfully",
-      booking
+      booking: {
+        ...booking,
+        student: userToNameFields(booking.student),
+        teacher: booking.teacher ? userToNameFields(booking.teacher) : null,
+      },
     }, { status: 201 });
     
   } catch (error) {
@@ -187,11 +202,7 @@ export async function GET(request: Request) {
             }
           },
           teacher: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            }
+            select: userListSelect,
           }
         },
         orderBy: {
@@ -207,11 +218,7 @@ export async function GET(request: Request) {
         },
         include: {
           student: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            }
+            select: userListSelect,
           },
           exam: {
             select: {
@@ -229,11 +236,7 @@ export async function GET(request: Request) {
       bookings = await prisma.booking.findMany({
         include: {
           student: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            }
+            select: userListSelect,
           },
           exam: {
             select: {
@@ -242,11 +245,7 @@ export async function GET(request: Request) {
             }
           },
           teacher: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            }
+            select: userListSelect,
           }
         },
         orderBy: {
@@ -256,9 +255,9 @@ export async function GET(request: Request) {
     } else if (userRole === "BOSS") {
       bookings = await prisma.booking.findMany({
         include: {
-          student: { select: { id: true, name: true, email: true } },
+          student: { select: userListSelect },
           exam: { select: { id: true, title: true } },
-          teacher: { select: { id: true, name: true, email: true } }
+          teacher: { select: userListSelect },
         },
         orderBy: { startAt: "asc" }
       });
@@ -269,7 +268,13 @@ export async function GET(request: Request) {
       );
     }
     
-    return NextResponse.json({ bookings });
+    return NextResponse.json({
+      bookings: bookings.map((b) => ({
+        ...b,
+        student: b.student != null ? userToNameFields(b.student) : b.student,
+        teacher: b.teacher != null ? userToNameFields(b.teacher) : b.teacher,
+      })),
+    });
     
   } catch (error) {
     if (error instanceof Error) {
