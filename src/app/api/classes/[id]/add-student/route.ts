@@ -10,14 +10,14 @@ const addStudentSchema = z.object({
 // POST /api/classes/[id]/add-student - Add a student to a class
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireTeacher();
     const body = await request.json();
     
     const validatedData = addStudentSchema.parse(body);
-    const classId = params.id;
+    const { id: classId } = await params;
     
     // Verify the class belongs to this teacher
     const classExists = await prisma.class.findFirst({
@@ -57,7 +57,7 @@ export async function POST(
     
     // Add student to class (unique constraint will prevent duplicates)
     try {
-      const classStudent = await prisma.classStudent.create({
+      const created = await prisma.classStudent.create({
         data: {
           classId,
           studentId: student.id,
@@ -66,12 +66,25 @@ export async function POST(
           student: {
             select: {
               id: true,
-              name: true,
+              firstName: true,
+              lastName: true,
               email: true,
-            }
-          }
-        }
+            },
+          },
+        },
       });
+
+      const classStudent = {
+        ...created,
+        student: {
+          id: created.student.id,
+          email: created.student.email,
+          name: [created.student.firstName, created.student.lastName]
+            .filter(Boolean)
+            .join(" ")
+            .trim() || null,
+        },
+      };
       
       return NextResponse.json({
         message: "Student added successfully",
