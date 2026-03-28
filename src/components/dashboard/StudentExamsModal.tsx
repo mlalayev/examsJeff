@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { X, ExternalLink, Loader2 } from "lucide-react";
+import { studentExamsApiUrl } from "@/lib/student-exams-api";
 
 export type StudentExamsModalStudent = {
   id: string;
@@ -30,6 +32,7 @@ type Props = {
 };
 
 export default function StudentExamsModal({ open, onClose, student }: Props) {
+  const pathname = usePathname();
   const [rows, setRows] = useState<ExamRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +48,7 @@ export default function StudentExamsModal({ open, onClose, student }: Props) {
     setLoading(true);
     setError(null);
 
-    fetch(`/api/admin/students/${student.id}/exams`)
+    fetch(studentExamsApiUrl(student.id, pathname))
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Failed to load");
@@ -64,7 +67,7 @@ export default function StudentExamsModal({ open, onClose, student }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [open, student?.id]);
+  }, [open, student?.id, pathname]);
 
   if (!open || !student) return null;
 

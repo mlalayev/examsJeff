@@ -14,7 +14,8 @@ function authErrorResponse(error: unknown): NextResponse | null {
 }
 
 /**
- * GET /api/admin/students/:id/exams — All exam attempts for a student (ADMIN, BOSS, CREATOR).
+ * GET /api/creator/students/:id/exams — Same as admin route; CREATOR uses this path from the UI.
+ * Authorization: ADMIN, BOSS, CREATOR (see requireAdmin).
  */
 export async function GET(
   _request: Request,
@@ -33,7 +34,7 @@ export async function GET(
   } catch (error) {
     const auth = authErrorResponse(error);
     if (auth) return auth;
-    console.error("Admin student exams:", error);
+    console.error("Creator student exams:", error);
     return NextResponse.json(
       { error: "Failed to load student exams" },
       { status: 500 }

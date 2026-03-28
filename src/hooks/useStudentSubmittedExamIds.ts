@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
+import { studentExamsApiUrl } from "@/lib/student-exams-api";
 
 /**
  * Loads exam IDs the student has already submitted (completed), for Assign Exam UI.
  */
 export function useStudentSubmittedExamIds(studentId: string | null, enabled: boolean) {
+  const pathname = usePathname();
   const [submittedExamIds, setSubmittedExamIds] = useState<Set<string>>(() => new Set());
   const [loading, setLoading] = useState(false);
 
@@ -19,7 +22,7 @@ export function useStudentSubmittedExamIds(studentId: string | null, enabled: bo
     let cancelled = false;
     setLoading(true);
 
-    fetch(`/api/admin/students/${studentId}/exams`)
+    fetch(studentExamsApiUrl(studentId, pathname))
       .then((r) => r.json())
       .then((data) => {
         if (cancelled) return;
@@ -39,7 +42,7 @@ export function useStudentSubmittedExamIds(studentId: string | null, enabled: bo
     return () => {
       cancelled = true;
     };
-  }, [studentId, enabled]);
+  }, [studentId, enabled, pathname]);
 
   return { submittedExamIds, loading };
 }
