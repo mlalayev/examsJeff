@@ -15,8 +15,8 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await requireAuth();
-    const role = (user as any).role;
+    const sessionUser = await requireAuth();
+    const role = (sessionUser as any).role;
 
     // Only CREATOR can access this endpoint
     if (role !== "CREATOR") {
@@ -54,13 +54,13 @@ export async function PATCH(
       },
     });
 
-    const user = {
+    const payload = {
       ...updated,
       name: [updated.firstName, updated.lastName].filter(Boolean).join(" ").trim() || null,
     };
 
     return NextResponse.json({
-      user,
+      user: payload,
       message: approved ? "User approved" : "User disapproved",
     });
   } catch (error) {
