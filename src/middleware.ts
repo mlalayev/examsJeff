@@ -1,5 +1,21 @@
-import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { getToken } from "next-auth/jwt";
+
+/**
+ * Session cookies use the __Secure- prefix when the *browser* hits HTTPS.
+ * next-auth/middleware's getToken() only looks at NEXTAUTH_URL; if that is still http://
+ * while users use https://, the JWT cookie name won't match and every protected route
+ * looks logged-out. Derive secure cookies from the actual request (and proxy headers).
+ */
+function useSecureSessionCookie(req: NextRequest): boolean {
+  const raw = req.headers.get("x-forwarded-proto");
+  const first = raw?.split(",")[0]?.trim();
+  if (first === "https") return true;
+  if (first === "http") return false;
+  if (req.nextUrl.protocol === "https:") return true;
+  return process.env.NEXTAUTH_URL?.startsWith("https://") === true;
+}
 
 /**
  * Get security headers
@@ -14,32 +30,45 @@ function getSecurityHeaders(): Record<string, string> {
   };
 }
 
-export default withAuth(
-  function middleware(req) {
-    const token = req.nextauth.token;
-    const path = req.nextUrl.pathname;
+export default async function middleware(req: NextRequest) {
+  const secureCookie = useSecureSessionCookie(req);
+  const token = await getToken({
+    req,
+    secret: process.env.NEXTAUTH_SECRET,
+    secureCookie,
+  });
 
-    // Create response with security headers
-    let response = NextResponse.next();
-    
-    // Add security headers
-    const headers = getSecurityHeaders();
-    Object.entries(headers).forEach(([key, value]) => {
-      response.headers.set(key, value);
-    });
+  const path = req.nextUrl.pathname;
+
+  if (!token) {
+    const url = new URL("/auth/login", req.url);
+    url.searchParams.set("callbackUrl", `${path}${req.nextUrl.search}`);
+    return NextResponse.redirect(url);
+  }
+
+  let response = NextResponse.next();
+  const headers = getSecurityHeaders();
+  Object.entries(headers).forEach(([key, value]) => {
+    response.headers.set(key, value);
+  });
 
   // CREATOR has full access to everything - no restrictions
-  if (token?.role === "CREATOR") {
+  if ((token as any).role === "CREATOR") {
     return response;
   }
 
   // Student dashboard routes (must be approved unless elevated roles)
   if (path.startsWith("/dashboard/student")) {
     const approved = (token as any)?.approved ?? false;
-    if (token?.role !== "STUDENT" && token?.role !== "ADMIN" && token?.role !== "BOSS" && token?.role !== "BRANCH_ADMIN") {
+    if (
+      (token as any).role !== "STUDENT" &&
+      (token as any).role !== "ADMIN" &&
+      (token as any).role !== "BOSS" &&
+      (token as any).role !== "BRANCH_ADMIN"
+    ) {
       return NextResponse.redirect(new URL("/auth/login?error=unauthorized", req.url));
     }
-    if (token?.role === "STUDENT" && !approved) {
+    if ((token as any).role === "STUDENT" && !approved) {
       return NextResponse.redirect(new URL("/pending", req.url));
     }
   }
@@ -47,11 +76,11 @@ export default withAuth(
   // Teacher dashboard routes (must be approved unless elevated roles)
   if (path.startsWith("/dashboard/teacher")) {
     const approved = (token as any)?.approved ?? false;
-    const allowed = ["TEACHER", "ADMIN", "BOSS", "BRANCH_ADMIN"]; 
-    if (!token?.role || !allowed.includes(token.role as any)) {
+    const allowed = ["TEACHER", "ADMIN", "BOSS", "BRANCH_ADMIN"];
+    if (!(token as any).role || !allowed.includes((token as any).role)) {
       return NextResponse.redirect(new URL("/auth/login?error=unauthorized", req.url));
     }
-    if (token?.role === "TEACHER" && !approved) {
+    if ((token as any).role === "TEACHER" && !approved) {
       return NextResponse.redirect(new URL("/pending", req.url));
     }
   }
@@ -59,33 +88,27 @@ export default withAuth(
   // Admin dashboard routes (BOSS or ADMIN)
   if (path.startsWith("/dashboard/admin")) {
     const allowed = ["ADMIN", "BOSS"];
-    if (!token?.role || !allowed.includes(token.role as any)) {
+    if (!(token as any).role || !allowed.includes((token as any).role)) {
       return NextResponse.redirect(new URL("/auth/login?error=unauthorized", req.url));
     }
   }
 
   // Boss dashboard routes (BOSS only)
   if (path.startsWith("/dashboard/boss")) {
-    if (token?.role !== "BOSS") {
+    if ((token as any).role !== "BOSS") {
       return NextResponse.redirect(new URL("/auth/login?error=unauthorized", req.url));
     }
   }
 
   // Branch Admin dashboard routes (BRANCH_ADMIN or BOSS)
   if (path.startsWith("/dashboard/branch-admin")) {
-    if (token?.role !== "BRANCH_ADMIN" && token?.role !== "BOSS") {
+    if ((token as any).role !== "BRANCH_ADMIN" && (token as any).role !== "BOSS") {
       return NextResponse.redirect(new URL("/auth/login?error=unauthorized", req.url));
     }
   }
 
-    return response;
-  },
-  {
-    callbacks: {
-      authorized: ({ token }) => !!token,
-    },
-  }
-);
+  return response;
+}
 
 export const config = {
   matcher: [
@@ -94,4 +117,3 @@ export const config = {
     "/attempts/:path*",
   ],
 };
-
