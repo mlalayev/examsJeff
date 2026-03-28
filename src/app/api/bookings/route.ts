@@ -112,6 +112,17 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+
+    const studentHasCompletedThisExamBefore = Boolean(
+      await prisma.attempt.findFirst({
+        where: {
+          studentId: validatedData.studentId,
+          examId: validatedData.examId,
+          status: "SUBMITTED",
+        },
+        select: { id: true },
+      })
+    );
     
     // Use current time as startAt
     const startAt = new Date();
@@ -144,6 +155,7 @@ export async function POST(request: Request) {
     
     return NextResponse.json({
       message: "Exam assigned successfully",
+      studentHasCompletedThisExamBefore,
       booking: {
         ...booking,
         student: userToNameFields(booking.student),

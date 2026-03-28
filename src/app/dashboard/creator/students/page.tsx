@@ -222,10 +222,15 @@ export default function CreatorStudentsPage() {
         return;
       }
 
+      const retakeNote =
+        data.studentHasCompletedThisExamBefore === true
+          ? "\n\nThis student had already submitted this exam before — this assignment is a new attempt (retake)."
+          : "";
+
       setAlertModal({
         isOpen: true,
         title: "Success",
-        message: `Exam assigned successfully to ${selectedStudent.name || selectedStudent.email}`,
+        message: `Exam assigned successfully to ${selectedStudent.name || selectedStudent.email}.${retakeNote}`,
         type: "success",
       });
       closeAssignModal();
