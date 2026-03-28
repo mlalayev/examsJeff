@@ -43,19 +43,25 @@ export async function PATCH(
         ...(newRole ? { role: newRole } : {}),
         ...(branchId !== undefined ? { branchId } : {}),
       },
-      select: { 
-        id: true, 
-        approved: true, 
-        role: true, 
+      select: {
+        id: true,
+        approved: true,
+        role: true,
         branchId: true,
-        name: true,
-        email: true
-      }
+        firstName: true,
+        lastName: true,
+        email: true,
+      },
     });
 
-    return NextResponse.json({ 
-      user: updated, 
-      message: approved ? "User approved" : "User disapproved" 
+    const user = {
+      ...updated,
+      name: [updated.firstName, updated.lastName].filter(Boolean).join(" ").trim() || null,
+    };
+
+    return NextResponse.json({
+      user,
+      message: approved ? "User approved" : "User disapproved",
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
