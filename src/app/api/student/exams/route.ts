@@ -8,7 +8,7 @@ export async function GET() {
     const studentId = (user as any).id as string;
 
     // Fetch bookings/assignments for student that do not have SUBMITTED attempts
-    const bookings = await prisma.booking.findMany({
+    const rows = await prisma.booking.findMany({
       where: {
         studentId,
         OR: [
@@ -18,10 +18,23 @@ export async function GET() {
       },
       include: {
         exam: true,
-        teacher: { select: { id: true, name: true } },
+        teacher: { select: { id: true, firstName: true, lastName: true } },
         attempt: { select: { id: true, status: true } },
       },
       orderBy: { startAt: "asc" },
+    });
+
+    const bookings = rows.map((b) => {
+      const { teacher: t, ...rest } = b;
+      return {
+        ...rest,
+        teacher: t
+          ? {
+              id: t.id,
+              name: [t.firstName, t.lastName].filter(Boolean).join(" ").trim() || null,
+            }
+          : null,
+      };
     });
 
     return NextResponse.json({ bookings });
