@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Users, Search, BookOpen, X, Calendar, ChevronRight, ChevronLeft, Target, FileText, CheckCircle, UserPlus } from "lucide-react";
+import { Users, Search, BookOpen, X, Calendar, ChevronRight, ChevronLeft, Target, FileText, CheckCircle, UserPlus, ListChecks, Check } from "lucide-react";
 import { AlertModal } from "@/components/modals/AlertModal";
+import StudentExamsModal from "@/components/dashboard/StudentExamsModal";
+import { useStudentSubmittedExamIds } from "@/hooks/useStudentSubmittedExamIds";
 
 interface Student {
   id: string;
@@ -66,6 +68,12 @@ export default function AdminStudentsPage() {
   });
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
+  const [examsModalStudent, setExamsModalStudent] = useState<Student | null>(null);
+
+  const assignExamStepActive =
+    showAssignModal && assignStep === 3 && !!selectedStudent;
+  const { submittedExamIds, loading: submittedExamsLoading } =
+    useStudentSubmittedExamIds(selectedStudent?.id ?? null, assignExamStepActive);
 
   useEffect(() => {
     // Optimize: fetch both in parallel
@@ -607,6 +615,14 @@ export default function AdminStudentsPage() {
                     </td>
                     <td className="px-3 sm:px-4 py-3 text-sm">
                       <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setExamsModalStudent(student)}
+                          className="px-2 py-1 text-xs font-medium text-slate-700 bg-slate-100 rounded hover:bg-slate-200 flex items-center gap-1"
+                        >
+                          <ListChecks className="w-3 h-3" />
+                          Exams
+                        </button>
                         {student.approved ? (
                           <>
                             <button
@@ -642,6 +658,12 @@ export default function AdminStudentsPage() {
           </div>
         )}
       </div>
+
+      <StudentExamsModal
+        open={!!examsModalStudent}
+        onClose={() => setExamsModalStudent(null)}
+        student={examsModalStudent}
+      />
 
       {/* Assign Exam Modal */}
       {showAssignModal && selectedStudent && (
@@ -778,10 +800,17 @@ export default function AdminStudentsPage() {
               {assignStep === 3 && (
                 <div>
                   <h3 className="text-base font-medium text-gray-900 mb-1">Select exam</h3>
-                  <p className="text-sm text-gray-500 mb-5">
-                    {selectedCategoryData?.name}
-                    {selectedTrack && ` • ${selectedTrack}`}
-                  </p>
+                  <div className="mb-5">
+                    <p className="text-sm text-gray-500">
+                      {selectedCategoryData?.name}
+                      {selectedTrack && ` • ${selectedTrack}`}
+                    </p>
+                    {submittedExamsLoading && (
+                      <p className="text-xs text-gray-400 mt-1">
+                        Checking which exams this student already completed…
+                      </p>
+                    )}
+                  </div>
                   {filteredExams.length === 0 ? (
                     <div className="text-center py-16 rounded-xl bg-gray-50">
                       <FileText className="w-12 h-12 mx-auto mb-3 text-gray-300" />
@@ -789,26 +818,61 @@ export default function AdminStudentsPage() {
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      {filteredExams.map((exam) => (
-                        <button
-                          key={exam.id}
-                          onClick={() => handleExamSelect(exam.id)}
-                          className="w-full text-left p-4 rounded-xl border border-gray-200 bg-white hover:border-[#303380]/40 hover:bg-[#303380]/5 transition group"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3 flex-1 min-w-0">
-                              <div className="w-9 h-9 rounded-lg bg-gray-100 group-hover:bg-[#303380]/10 flex items-center justify-center flex-shrink-0 transition">
-                                <FileText className="w-4 h-4 text-gray-600 group-hover:text-[#303380]" />
+                      {filteredExams.map((exam) => {
+                        const alreadySubmitted = submittedExamIds.has(exam.id);
+                        return (
+                          <button
+                            key={exam.id}
+                            type="button"
+                            onClick={() => handleExamSelect(exam.id)}
+                            className={`w-full text-left p-4 rounded-xl border transition group ${
+                              alreadySubmitted
+                                ? "border-emerald-200 bg-emerald-50/90 hover:bg-emerald-50 hover:border-emerald-300"
+                                : "border-gray-200 bg-white hover:border-[#303380]/40 hover:bg-[#303380]/5"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-3 flex-1 min-w-0">
+                                <div
+                                  className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition ${
+                                    alreadySubmitted
+                                      ? "bg-emerald-100 group-hover:bg-emerald-100"
+                                      : "bg-gray-100 group-hover:bg-[#303380]/10"
+                                  }`}
+                                >
+                                  <FileText
+                                    className={`w-4 h-4 ${
+                                      alreadySubmitted
+                                        ? "text-emerald-700"
+                                        : "text-gray-600 group-hover:text-[#303380]"
+                                    }`}
+                                  />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-medium text-sm text-gray-900 truncate">{exam.title}</h4>
+                                  {exam.track && (
+                                    <p className="text-xs text-gray-500 mt-0.5">Level: {exam.track}</p>
+                                  )}
+                                  {alreadySubmitted && (
+                                    <p className="text-xs text-emerald-700/90 mt-1 font-medium">
+                                      Student already submitted this exam
+                                    </p>
+                                  )}
+                                </div>
                               </div>
-                              <div className="flex-1 min-w-0">
-                                <h4 className="font-medium text-sm text-gray-900 truncate">{exam.title}</h4>
-                                {exam.track && <p className="text-xs text-gray-500 mt-0.5">Level: {exam.track}</p>}
-                              </div>
+                              {alreadySubmitted ? (
+                                <Check
+                                  className="w-5 h-5 text-emerald-600 flex-shrink-0"
+                                  strokeWidth={2.5}
+                                  aria-hidden
+                                />
+                              ) : (
+                                <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[#303380] flex-shrink-0" />
+                              )}
                             </div>
-                            <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[#303380] flex-shrink-0" />
-                          </div>
-                        </button>
-                      ))}
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                 </div>

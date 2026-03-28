@@ -39,7 +39,7 @@ export async function GET(request: Request) {
       orderBy: {
         createdAt: "desc",
       },
-      take: 200,
+      take: 5000,
     });
 
     const students = rows.map((u) => ({
