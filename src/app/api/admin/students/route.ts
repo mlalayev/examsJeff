@@ -8,41 +8,49 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const approved = searchParams.get("approved");
 
-    const where: any = {
-      role: "STUDENT"
+    const where: {
+      role: "STUDENT";
+      approved?: boolean;
+    } = {
+      role: "STUDENT",
     };
 
     if (approved !== null) {
       where.approved = approved === "true";
     }
 
-    // OPTIMIZED: use select instead of include, add limit
-    const students = await prisma.user.findMany({
-      where: {
-        ...where,
-        // Hide CREATOR accounts from everyone (belt and suspenders - CREATOR shouldn't be STUDENT anyway)
-        role: { not: "CREATOR" }
-      },
+    const rows = await prisma.user.findMany({
+      where,
       select: {
         id: true,
-        name: true,
+        firstName: true,
+        lastName: true,
         email: true,
-        role: true,
         approved: true,
         branchId: true,
         createdAt: true,
         branch: {
           select: {
             id: true,
-            name: true
-          }
-        }
+            name: true,
+          },
+        },
       },
       orderBy: {
-        createdAt: "desc"
+        createdAt: "desc",
       },
-      take: 200, // Limit to 200 most recent students
+      take: 200,
     });
+
+    const students = rows.map((u) => ({
+      id: u.id,
+      name: [u.firstName, u.lastName].filter(Boolean).join(" ").trim() || null,
+      email: u.email,
+      approved: u.approved,
+      branchId: u.branchId,
+      createdAt: u.createdAt,
+      branch: u.branch,
+    }));
 
     return NextResponse.json({ students });
   } catch (error) {
