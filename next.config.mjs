@@ -20,42 +20,8 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  
-  // Webpack optimizations
-  webpack: (config, { isServer }) => {
-    if (!isServer) {
-      config.optimization = {
-        ...config.optimization,
-        moduleIds: 'deterministic',
-        runtimeChunk: 'single',
-        splitChunks: {
-          chunks: 'all',
-          cacheGroups: {
-            default: false,
-            vendors: false,
-            vendor: {
-              name: 'vendor',
-              chunks: 'all',
-              test: /node_modules/,
-              priority: 20,
-            },
-            common: {
-              name: 'common',
-              minChunks: 2,
-              chunks: 'all',
-              priority: 10,
-              reuseExistingChunk: true,
-              enforce: true,
-            },
-          },
-        },
-      };
-    }
-    return config;
-  },
+  // Turbopack config (empty to silence warning - Next.js 16 default)
+  turbopack: {},
 };
 
 export default nextConfig;
