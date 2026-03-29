@@ -84,14 +84,18 @@ export function QSpeakingRecording({
 
   // Request microphone permission early
   const requestMicrophonePermission = async () => {
-    if (permissionRequestedRef.current) return;
+    if (permissionRequestedRef.current && permissionGranted) {
+      // Already have permission
+      return true;
+    }
+    
     permissionRequestedRef.current = true;
 
     try {
       // Request permission and immediately release the stream
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       setPermissionGranted(true);
-      setError(null);
+      setError(null); // Clear any previous errors
       
       // Release the stream immediately - we'll request it again when recording
       stream.getTracks().forEach(track => track.stop());
@@ -358,7 +362,7 @@ export function QSpeakingRecording({
     // Auto-start recording flow after permission is granted
     if (status === "idle" && !value && !readOnly && !hasStartedRef.current && permissionGranted) {
       const timer = setTimeout(() => {
-        handleStart();
+        void handleStart();
       }, 500);
       return () => {
         clearTimeout(timer);
@@ -369,7 +373,8 @@ export function QSpeakingRecording({
         clearPhaseTimeout();
       };
     }
-  }, [permissionGranted]); // Trigger when permission is granted
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [permissionGranted, status, value, readOnly]); // Trigger when permission is granted
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -635,14 +640,15 @@ export function QSpeakingRecording({
             <div>
               <p className="text-sm text-red-800 mb-2">{error}</p>
               <button
-                onClick={() => {
+                onClick={async () => {
                   // Reset state
                   hasStartedRef.current = false;
                   permissionRequestedRef.current = false;
                   setError(null);
                   setStatus("idle");
+                  setPermissionGranted(false);
                   // Try again
-                  handleStart();
+                  await handleStart();
                 }}
                 className="text-sm font-medium text-red-700 underline hover:text-red-900"
               >
