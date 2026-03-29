@@ -31,6 +31,7 @@ import { IELTSSectionChangeModal } from "@/components/attempts/modals/IELTSSecti
 import { SpeakingIntroModal } from "@/components/attempts/modals/SpeakingIntroModal";
 import { SpeakingTimeUpModal } from "@/components/attempts/modals/SpeakingTimeUpModal";
 import { totalSecondsForSpeakingPart } from "@/lib/ielts-speaking-timers";
+import FormattedText from "@/components/FormattedText";
 import { Clock, Save, CheckCircle, Send, ChevronRight, X } from "lucide-react";
 
 interface Question {
@@ -1577,7 +1578,9 @@ export default function AttemptRunnerPage() {
 
                     {/* Passage text - part selected via sidebar */}
                     <div className="flex-1 min-h-0 overflow-y-auto p-6">
-                      <p className="text-slate-700 leading-relaxed whitespace-pre-line text-sm">{passageText}</p>
+                      <p className="text-slate-700 leading-relaxed whitespace-pre-line text-sm">
+                        <FormattedText text={typeof passageText === "string" ? passageText : String(passageText ?? "")} />
+                      </p>
                     </div>
                   </div>
                 </div>

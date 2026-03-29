@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import Sidebar from "@/components/dashboard/Sidebar";
 import { WritingAiFeedbackCard } from "@/components/attempts/WritingAiFeedbackCard";
+import FormattedText from "@/components/FormattedText";
 
 interface ResultsData {
   attemptId: string;
@@ -1295,10 +1296,14 @@ export default function AttemptResultsPage() {
                             <FileText className="w-4 h-4 text-gray-500" />
                             <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Reading Passage</span>
                           </div>
-                          <p className="text-sm text-gray-700 leading-relaxed italic whitespace-pre-line">
-                            {typeof q.prompt.passage === 'object' && q.prompt.passage !== null
-                              ? Object.values(q.prompt.passage).join('\n\n')
-                              : q.prompt.passage}
+                          <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
+                            <FormattedText
+                              text={
+                                typeof q.prompt.passage === "object" && q.prompt.passage !== null
+                                  ? Object.values(q.prompt.passage).join("\n\n")
+                                  : String(q.prompt.passage ?? "")
+                              }
+                            />
                           </p>
                         </div>
                       )}

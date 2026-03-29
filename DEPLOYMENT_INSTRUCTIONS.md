@@ -1,11 +1,25 @@
-# Deployment Instructions for 413 Upload Error Fix
+# Deployment Instructions for 413 Upload Error Fix + Audio 404 Fix
 
-## Problem
-When uploading audio files for IELTS listening sections, users get a "413 Request Entity Too Large" error. This happens because:
+## Problems Addressed
+
+### 1. 413 Request Entity Too Large
+When uploading audio files for IELTS listening sections, users get a "413 Request Entity Too Large" error.
+
+### 2. 404 Not Found for Audio Files
+Audio files upload successfully but return 404 errors when trying to play them, even though the files exist on the server at `/root/examsJeff/public/audio/`.
+
+## Root Causes
+
+### Problem 1 (413 Error):
 1. Nginx has a default body size limit
 2. Next.js has a default body parser limit
 
-## Solution Applied
+### Problem 2 (404 Error):
+- Nginx was proxying `/audio/` requests to Next.js backend
+- Next.js couldn't properly serve the static files
+- Files exist but weren't accessible via the web
+
+## Solutions Applied
 
 ### Changes Made
 
@@ -18,10 +32,15 @@ When uploading audio files for IELTS listening sections, users get a "413 Reques
 - Added `serverActions.bodySizeLimit: '50mb'` for server actions
 
 **3. Nginx Configuration** (`nginx-production.conf`):
-- Explicitly set `client_max_body_size 50M` for upload endpoint
-- Added `client_body_buffer_size 1M`
-- Disabled proxy buffering for streaming large files
-- Extended timeouts for upload operations
+- Set `client_max_body_size 50M` explicitly for `/api/admin/upload`
+- Added `client_body_buffer_size 1M` for better memory management
+- Disabled `proxy_request_buffering` and `proxy_buffering` to stream large files
+- Extended all timeout values (60-90 seconds)
+- **[NEW FIX] Changed `/audio/` location to serve files directly from filesystem** (`alias /root/examsJeff/public/audio/`) instead of proxying to Next.js
+- **[NEW FIX] Added `/images/` location to serve image files directly from filesystem** (`alias /root/examsJeff/public/images/`)
+- Added proper MIME types for audio files (mp3, wav, ogg, m4a, etc.)
+- Enabled range requests for audio seeking (allows scrubbing through audio)
+- Added dedicated audio access/error logs for debugging
 
 **4. Client-Side Validation** (Added to both create and edit pages):
 - Check file size before upload (50MB limit)
@@ -81,7 +100,7 @@ pm2 logs aimentor --lines 50
 sudo cp /etc/nginx/sites-available/aimentor /etc/nginx/sites-available/aimentor.backup
 
 # Copy new config
-sudo cp /path/to/aimentor/nginx-production.conf /etc/nginx/sites-available/aimentor
+sudo cp /path/to/examsJeff/nginx-production.conf /etc/nginx/sites-available/examsJeff
 
 # Test configuration
 sudo nginx -t
@@ -158,6 +177,49 @@ To test locally before deploying:
    ls -la /path/to/aimentor/.next/
    pm2 logs aimentor --lines 100
    ```
+
+### If Audio Files Return 404 Error:
+
+1. **Verify files exist on server:**
+   ```bash
+   ls -la /root/examsJeff/public/audio/
+   ```
+   You should see your uploaded .mp3 files
+
+2. **Check Nginx audio location config:**
+   ```bash
+   grep -A 30 "location.*audio" /etc/nginx/sites-available/aimentor
+   ```
+   Should show `alias /root/examsJeff/public/audio/;`
+
+3. **Test audio file access directly:**
+   ```bash
+   curl -I https://exams.jeff.az/audio/YOUR_FILE.mp3
+   ```
+   Should return `200 OK` with `Content-Type: audio/mpeg`
+
+4. **Check file permissions:**
+   ```bash
+   ls -la /root/examsJeff/public/audio/
+   ```
+   Files should be readable by nginx user (www-data):
+   ```bash
+   sudo chown -R www-data:www-data /root/examsJeff/public/audio/
+   sudo chmod 755 /root/examsJeff/public/audio/
+   sudo chmod 644 /root/examsJeff/public/audio/*.mp3
+   ```
+
+5. **Check Nginx audio logs:**
+   ```bash
+   sudo tail -50 /var/log/nginx/audio_error.log
+   sudo tail -50 /var/log/nginx/audio_access.log
+   ```
+
+6. **Verify the path matches:**
+   - Upload API saves to: `/root/examsJeff/public/audio/`
+   - Database stores: `/audio/filename.mp3`
+   - Nginx serves from: `alias /root/examsJeff/public/audio/;`
+   - Browser requests: `https://exams.jeff.az/audio/filename.mp3`
 
 ### If File Uploads Are Slow:
 

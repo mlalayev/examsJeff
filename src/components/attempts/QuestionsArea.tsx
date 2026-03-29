@@ -8,6 +8,7 @@ import { QuestionCard } from "./QuestionCard";
 import { DndGapQuestion } from "./DndGapQuestion";
 import { IELTSListeningView } from "./IELTSListeningView";
 import { IELTSReadingView } from "./IELTSReadingView";
+import FormattedText from "@/components/FormattedText";
 import { IELTSWritingView } from "./IELTSWritingView";
 import { IELTSSpeakingView } from "./IELTSSpeakingView";
 import {
@@ -282,9 +283,13 @@ export const QuestionsArea = React.memo(function QuestionsArea({
             </h3>
             <div className="prose prose-sm max-w-none">
               <p className="text-slate-700 leading-relaxed whitespace-pre-line">
-                {typeof readingPassage === 'object' && readingPassage !== null
-                  ? (readingPassage as any)[`part${readingPart}`] || ""
-                  : readingPassage}
+                <FormattedText
+                  text={
+                    typeof readingPassage === "object" && readingPassage !== null
+                      ? (readingPassage as any)[`part${readingPart}`] || ""
+                      : String(readingPassage ?? "")
+                  }
+                />
               </p>
             </div>
           </div>
