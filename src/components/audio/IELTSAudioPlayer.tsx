@@ -145,7 +145,7 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({ src, classNa
   }
 
   return (
-    <div className={`flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm ${className}`}>
+    <div className={`flex flex-col gap-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm ${className}`}>
       <audio
         ref={audioRef}
         src={src}
@@ -206,28 +206,51 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({ src, classNa
         </div>
       </div>
 
-      {/* Progress Bar - Clickable and Draggable */}
-      <div className="flex items-center gap-3">
+      {/* Interactive Waveform-style Progress Bar */}
+      <div className="space-y-2">
         <div 
           ref={progressBarRef}
-          className="flex-1 h-2 rounded-full bg-gray-200 overflow-hidden cursor-pointer relative group"
+          className="relative h-20 rounded-lg bg-gradient-to-b from-gray-50 to-gray-100 overflow-hidden cursor-pointer group border border-gray-200 hover:border-[#303380] transition-colors"
           onClick={handleProgressClick}
           onMouseDown={handleMouseDown}
+          title="Audio üzərinə klikləyərək istədiyiniz yerə keçin"
         >
-          <div
-            className="h-full rounded-full bg-[#303380] transition-none relative"
-            style={{ width: `${progressPct}%` }}
-          >
-            {/* Draggable Handle */}
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white border-2 border-[#303380] rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing" />
+          {/* Waveform visualization */}
+          <div className="absolute inset-0 flex items-center justify-around px-1">
+            {Array.from({ length: 60 }).map((_, i) => {
+              const height = Math.sin(i * 0.5) * 30 + 40;
+              const isPast = (i / 60) * 100 <= progressPct;
+              return (
+                <div
+                  key={i}
+                  className={`w-0.5 rounded-full transition-colors ${
+                    isPast 
+                      ? 'bg-[#303380]' 
+                      : 'bg-gray-300'
+                  }`}
+                  style={{ height: `${height}%` }}
+                />
+              );
+            })}
           </div>
-        </div>
-      </div>
 
-      {/* Helper Text */}
-      <p className="text-xs text-gray-500 text-center">
-        Progress bar-ı klikləyərək və ya sürüşdürərək istədiyiniz yerə keçə bilərsiniz
-      </p>
+          {/* Current position indicator */}
+          <div 
+            className="absolute top-0 bottom-0 w-1 bg-[#303380] shadow-lg z-10"
+            style={{ left: `${progressPct}%` }}
+          >
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 bg-white border-2 border-[#303380] rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity" />
+          </div>
+
+          {/* Hover effect */}
+          <div className="absolute inset-0 bg-[#303380] opacity-0 group-hover:opacity-5 transition-opacity pointer-events-none" />
+        </div>
+
+        {/* Helper Text */}
+        <p className="text-xs text-gray-500 text-center">
+          Audio dalğalarının üzərinə klikləyərək və ya sürüşdürərək istədiyiniz yerə keçə bilərsiniz
+        </p>
+      </div>
     </div>
   );
 };
