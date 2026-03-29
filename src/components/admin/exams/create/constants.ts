@@ -88,10 +88,10 @@ export const IELTS_SECTION_INSTRUCTIONS: Record<SectionType, string> = {
 };
 
 export const IELTS_SECTION_ORDER: Record<SectionType, number> = {
-  READING: 0,    // Birinci - Reading
-  LISTENING: 1,  // İkinci - Listening
-  WRITING: 2,    // Üçüncü - Writing
-  SPEAKING: 3,   // Dördüncü - Speaking
+  LISTENING: 0,
+  READING: 1,
+  WRITING: 2,
+  SPEAKING: 3,
   GRAMMAR: 4,
   VOCABULARY: 5,
 };
