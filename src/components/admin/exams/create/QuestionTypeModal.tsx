@@ -2,16 +2,31 @@
 
 import { X } from "lucide-react";
 import type { QuestionType } from "./types";
-import { QUESTION_TYPE_LABELS, QUESTION_TYPE_GROUPS } from "./constants";
+import { QUESTION_TYPE_LABELS } from "./constants";
 
 interface QuestionTypeModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelect: (type: QuestionType) => void;
+  allowedGroups?: Record<string, QuestionType[]>;
 }
 
-export default function QuestionTypeModal({ isOpen, onClose, onSelect }: QuestionTypeModalProps) {
+export default function QuestionTypeModal({ 
+  isOpen, 
+  onClose, 
+  onSelect,
+  allowedGroups
+}: QuestionTypeModalProps) {
   if (!isOpen) return null;
+
+  const defaultGroups = {
+    "Variantlı sual": ["MCQ_SINGLE", "MCQ_MULTI", "TF", "TF_NG", "INLINE_SELECT"] as QuestionType[],
+    "Açıq sual": ["SHORT_TEXT", "ESSAY", "FILL_IN_BLANK"] as QuestionType[],
+    "Drag and Drop": ["ORDER_SENTENCE", "DND_GAP"] as QuestionType[],
+    "IELTS Speaking": ["SPEAKING_RECORDING"] as QuestionType[],
+  };
+
+  const groups = allowedGroups || defaultGroups;
 
   return (
     <div
@@ -33,7 +48,7 @@ export default function QuestionTypeModal({ isOpen, onClose, onSelect }: Questio
         </div>
 
         <div className="space-y-4 sm:space-y-6">
-          {Object.entries(QUESTION_TYPE_GROUPS).map(([groupName, types], groupIndex) => (
+          {Object.entries(groups).map(([groupName, types], groupIndex) => (
             <div key={groupName} className={groupIndex > 0 ? "pt-4 sm:pt-6 border-t-2 border-gray-300" : ""}>
               <h4 className="font-medium text-gray-900 mb-2 sm:mb-3 text-sm sm:text-base">{groupName}</h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

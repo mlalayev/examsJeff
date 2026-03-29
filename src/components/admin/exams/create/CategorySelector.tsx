@@ -18,6 +18,7 @@ export default function CategorySelector({ categories, onSelect }: CategorySelec
         >
           <div className="font-medium text-gray-900 mb-1">{category}</div>
           <div className="text-xs sm:text-sm text-gray-500">
+            {category === "IELTS" && "International English Language Testing System"}
             {category === "GENERAL_ENGLISH" && "Unit-based exams"}
             {category === "TOEFL" && "Test of English as a Foreign Language"}
             {category === "SAT" && "Scholastic Assessment Test"}

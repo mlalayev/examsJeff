@@ -15,11 +15,16 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({ src, classNa
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  console.log("🎧 IELTSAudioPlayer render:", { src, hasAudio: !!src });
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !src) return;
 
+    console.log("🎧 Loading audio:", src);
+    setError(null);
     setIsPlaying(false);
     setCurrentTime(0);
     setDuration(0);
@@ -30,16 +35,35 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({ src, classNa
         setCurrentTime(audio.currentTime);
       }
     };
-    const onLoadedMetadata = () => setDuration(audio.duration);
+    const onLoadedMetadata = () => {
+      console.log("🎧 Audio metadata loaded, duration:", audio.duration);
+      setDuration(audio.duration);
+    };
     const onEnded = () => setIsPlaying(false);
-    const onPlay = () => setIsPlaying(true);
-    const onPause = () => setIsPlaying(false);
+    const onPlay = () => {
+      console.log("🎧 Audio playing");
+      setIsPlaying(true);
+    };
+    const onPause = () => {
+      console.log("🎧 Audio paused");
+      setIsPlaying(false);
+    };
+    const onError = (e: Event) => {
+      console.error("🎧 Audio error:", e);
+      const audioElement = e.target as HTMLAudioElement;
+      const errorMsg = audioElement.error 
+        ? `Error ${audioElement.error.code}: ${audioElement.error.message}` 
+        : "Unknown audio error";
+      setError(errorMsg);
+      console.error("🎧 Audio error details:", errorMsg);
+    };
 
     audio.addEventListener("timeupdate", onTimeUpdate);
     audio.addEventListener("loadedmetadata", onLoadedMetadata);
     audio.addEventListener("ended", onEnded);
     audio.addEventListener("play", onPlay);
     audio.addEventListener("pause", onPause);
+    audio.addEventListener("error", onError);
 
     return () => {
       audio.removeEventListener("timeupdate", onTimeUpdate);
@@ -47,6 +71,7 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({ src, classNa
       audio.removeEventListener("ended", onEnded);
       audio.removeEventListener("play", onPlay);
       audio.removeEventListener("pause", onPause);
+      audio.removeEventListener("error", onError);
     };
   }, [src, isDragging]);
 
@@ -146,6 +171,12 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({ src, classNa
 
   return (
     <div className={`flex flex-col gap-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm ${className}`}>
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2">
+          <p className="text-xs text-red-700">Audio Error: {error}</p>
+          <p className="text-xs text-red-600 mt-1">Audio URL: {src}</p>
+        </div>
+      )}
       <audio
         ref={audioRef}
         src={src}
