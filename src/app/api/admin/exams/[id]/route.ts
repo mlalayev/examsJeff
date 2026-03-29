@@ -43,8 +43,10 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
+    console.log("[API] GET /api/admin/exams/" + id);
     await requireAdmin();
     
+    console.log("[API] Fetching exam from database:", id);
     const exam = await prisma.exam.findUnique({
       where: { id },
       include: {
@@ -73,19 +75,32 @@ export async function GET(
     });
     
     if (!exam) {
+      console.log("[API] Exam not found:", id);
       return NextResponse.json({ error: "Exam not found" }, { status: 404 });
     }
     
+    console.log("[API] Exam loaded successfully:", exam.title);
     return NextResponse.json({ exam });
     
   } catch (error) {
     if (error instanceof Error && error.message.includes("Forbidden")) {
+      console.error("[API] Admin access denied");
       return NextResponse.json({ error: "Admin access required" }, { status: 403 });
     }
     
-    console.error("Admin get exam error:", error);
+    console.error("[API] Admin get exam error:", error);
+    console.error("[API] Error details:", {
+      message: error instanceof Error ? error.message : "Unknown",
+      stack: error instanceof Error ? error.stack : undefined,
+      examId: id
+    });
+    
     return NextResponse.json(
-      { error: "An error occurred" },
+      { 
+        error: "An error occurred", 
+        details: error instanceof Error ? error.message : "Unknown error",
+        examId: id
+      },
       { status: 500 }
     );
   }

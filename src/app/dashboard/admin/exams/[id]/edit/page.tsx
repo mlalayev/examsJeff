@@ -85,9 +85,13 @@ export default function EditExamPage() {
   const fetchExam = async () => {
     setLoading(true);
     try {
+      console.log("Fetching exam:", examId);
       const res = await fetch(`/api/admin/exams/${examId}`);
+      console.log("Fetch response status:", res.status);
+      
       if (res.ok) {
         const data = await res.json();
+        console.log("Exam data loaded successfully");
         const exam = data.exam;
         
         setExamTitle(exam.title);
@@ -181,12 +185,26 @@ export default function EditExamPage() {
           setStep("sections");
         }
       } else {
-        showAlert("Failed to Load Exam", "Failed to load exam", "error");
+        const errorData = await res.json().catch(() => ({ error: "Unknown error" }));
+        console.error("Failed to load exam:", {
+          status: res.status,
+          statusText: res.statusText,
+          error: errorData
+        });
+        showAlert(
+          "Failed to Load Exam", 
+          `Failed to load exam: ${errorData.error || res.statusText} (Status: ${res.status})`, 
+          "error"
+        );
         router.push("/dashboard/admin/exams");
       }
     } catch (error) {
       console.error("Error fetching exam:", error);
-      showAlert("Failed to Load Exam", "Failed to load exam", "error");
+      showAlert(
+        "Failed to Load Exam", 
+        `Network error: ${error instanceof Error ? error.message : "Unknown error"}`, 
+        "error"
+      );
       router.push("/dashboard/admin/exams");
     } finally {
       setLoading(false);
