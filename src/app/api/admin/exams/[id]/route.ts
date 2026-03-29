@@ -5,7 +5,7 @@ import { z } from "zod";
 
 const questionSchema = z.object({
   id: z.string().optional(),
-  qtype: z.enum(["MCQ", "ORDER", "DND_MATCH", "TF", "TF_NG", "MCQ_SINGLE", "MCQ_MULTI", "SELECT", "GAP", "ORDER_SENTENCE", "DND_GAP", "SHORT_TEXT", "ESSAY", "INLINE_SELECT", "FILL_IN_BLANK"]),
+  qtype: z.enum(["MCQ", "ORDER", "DND_MATCH", "TF", "TF_NG", "MCQ_SINGLE", "MCQ_MULTI", "SELECT", "GAP", "ORDER_SENTENCE", "DND_GAP", "SHORT_TEXT", "ESSAY", "INLINE_SELECT", "FILL_IN_BLANK", "SPEAKING_RECORDING"]),
   order: z.number(),
   prompt: z.any(),
   options: z.any().optional(),
@@ -19,7 +19,7 @@ const sectionSchema = z.object({
   id: z.string().optional(),
   type: z.enum(["READING", "LISTENING", "WRITING", "SPEAKING", "GRAMMAR", "VOCABULARY"]),
   title: z.string(),
-  instruction: z.string(),
+  instruction: z.string().nullable().optional(),
   image: z.string().nullable().optional(), // Section image (IELTS Listening parts)
   durationMin: z.number(),
   order: z.number(),
@@ -316,8 +316,21 @@ export async function PATCH(
     
   } catch (error) {
     if (error instanceof z.ZodError) {
+      console.error("[API] PATCH validation error:", {
+        examId: id,
+        errors: error.errors,
+        formattedErrors: error.errors.map(e => ({
+          path: e.path.join('.'),
+          message: e.message,
+          code: e.code
+        }))
+      });
       return NextResponse.json(
-        { error: "Validation error", details: error.errors },
+        { 
+          error: "Validation error", 
+          details: error.errors,
+          formattedErrors: error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
+        },
         { status: 400 }
       );
     }

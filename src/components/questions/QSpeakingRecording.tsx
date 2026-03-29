@@ -358,14 +358,22 @@ export function QSpeakingRecording({
 
       const data = await response.json();
 
+      console.log("🎤 Transcription completed:", {
+        questionId: question.id,
+        transcribedText: data.text,
+        textLength: data.text?.length || 0
+      });
+
       if (onChange) {
         onChange(data.text || "");
+        console.log("🎤 onChange callback called with transcribed text");
       }
 
       setStatus("completed");
       
       if (onRecordingComplete) {
         onRecordingComplete();
+        console.log("🎤 onRecordingComplete callback called");
       }
     } catch (err) {
       console.error("Transcription error:", err);

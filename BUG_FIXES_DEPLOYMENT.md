@@ -2,13 +2,49 @@
 
 ## Issues Fixed
 
-### 1. ✅ IELTS Speaking - Next Button Enhancement
-**Problem**: İstifadəçi cavabını bitirdikdən sonra timer bitənə qədər gözləməli idi.
+### 1. ✅ Exam Edit Save - 400 Validation Error (FIXED)
+**Problem**: Sualları edit etdikdən sonra Save Changes düyməsinə basanda 400 Bad Request error alınırdı.
 
-**Solution**: Bu artıq həll olunmuşdur (user təsdiqləyib).
+**Root Cause**: 
+1. `SPEAKING_RECORDING` question type validation schema-da yox idi
+2. `instruction` field-i required idi, amma nullable olmalı idi
 
-### 2. ✅ Exam Edit - 500 Internal Server Error (FIXED)
-**Problem**: Edit düyməsinə basanda `GET /api/admin/exams/{id}` 500 error verir.
+**Solution**: 
+- `SPEAKING_RECORDING` qtype enum-a əlavə edildi
+- `instruction` field-i nullable/optional edildi
+- Enhanced validation error logging əlavə edildi
+
+**Files Changed**:
+1. `src/app/api/admin/exams/[id]/route.ts` - Fixed validation schema and error logging
+
+### 2. 🔧 IELTS Speaking - Next Button Debug (IN PROGRESS)
+**Problem**: İstifadəçi cavabını verdikdən sonra Next düyməsi aktiv olmur.
+
+**Solution**: Debug logging əlavə edildi:
+- Speaking component transcription tamamlandıqda log
+- Parent component answer state dəyişəndə log  
+- Next button disabled/enabled status log
+
+**Files Changed**:
+1. `src/components/questions/QSpeakingRecording.tsx` - Added transcription completion logs
+2. `src/app/attempts/[attemptId]/run/page.tsx` - Added Next button status logs
+
+**Testing After Deployment**:
+1. Start IELTS speaking exam
+2. Answer a speaking question
+3. Open browser console (F12)
+4. Check logs:
+   ```
+   🎤 Transcription completed: { questionId, transcribedText, textLength }
+   🎤 onChange callback called with transcribed text
+   🎤 onRecordingComplete callback called
+   🎤 Speaking Next Button Status: { questionId, answerValue, answered, speakingSecondsLeft, canGoNext }
+   ```
+5. If `canGoNext: false` but `answered: true`, there's a state sync issue
+6. If `canGoNext: true`, button should be enabled
+
+### 3. ✅ Exam Edit Load - 500 Internal Server Error (FIXED)
+**Problem**: Edit düyməsinə basanda exam yüklənmədi - `GET /api/admin/exams/{id}` 500 error verirdi.
 
 **Root Cause**: 
 ```
@@ -26,8 +62,8 @@ API route User model-dən `name` field-ini seçməyə çalışırdı, amma User 
 1. `src/app/api/admin/exams/[id]/route.ts` - Fixed User field names and added logging
 2. `src/app/dashboard/admin/exams/[id]/edit/page.tsx` - Enhanced client error handling
 
-### 3. ✅ Microphone Permission Policy Fix
-**Status**: Əvvəlki deployment-də həll edildi.
+### 4. ✅ Microphone Permission Policy Fix
+**Status**: Deployment gözləyir.
 
 ## Deployment Instructions
 
@@ -71,16 +107,17 @@ pm2 logs examsJeff
 
 ## Testing After Deployment
 
-### Test Exam Edit Error
+### Test Exam Edit - Should Work Now ✅
 
 1. Go to: https://exams.jeff.az/dashboard/admin/exams
 2. Click "Edit" button on any exam
-3. Check browser console (F12) for detailed logs:
+3. Exam should load successfully
+4. Check browser console (F12) - should see:
    - "Fetching exam: [examId]"
-   - "Fetch response status: [status]"
-   - If error: Detailed error message with status code
+   - "Fetch response status: 200"
+   - "Exam data loaded successfully"
 
-4. Check server logs:
+5. Check server logs (should see success):
 ```bash
 ssh root@exams.jeff.az
 pm2 logs examsJeff --lines 50 | grep "\[API\]"
@@ -93,37 +130,58 @@ Expected logs:
 [API] Exam loaded successfully: [Exam Title]
 ```
 
-If error:
+### What Was Wrong
+
+**Before:**
+```typescript
+createdBy: {
+  select: {
+    id: true,
+    name: true,      // ❌ Field doesn't exist!
+    email: true,
+  }
+}
 ```
-[API] Admin get exam error: [Error details]
-[API] Error details: { message: "...", stack: "...", examId: "..." }
+
+**After:**
+```typescript
+createdBy: {
+  select: {
+    id: true,
+    firstName: true,  // ✅ Correct field
+    lastName: true,   // ✅ Correct field
+    email: true,
+  }
+}
 ```
 
 ## Expected Outcomes
 
-### If Database Connection Issue:
+### ✅ Success (Most Likely):
+```
+Status 200: Exam loaded successfully
+```
+Edit page opens with all exam data.
+
+### If Still Issues (Unlikely):
+
+#### If Database Connection Issue:
 ```
 Error: Can't reach database server
 ```
 **Fix**: Check database connection in `.env` file
 
-### If Exam Not Found:
+#### If Exam Not Found:
 ```
 Status 404: Exam not found
 ```
 **Fix**: Exam ID might be invalid or deleted
 
-### If Auth Issue:
+#### If Auth Issue:
 ```
 Status 403: Admin access required
 ```
 **Fix**: Check user session and admin role
-
-### If Data Format Issue:
-```
-Status 500: Prisma validation error / JSON parse error
-```
-**Fix**: Check database schema and data integrity
 
 ## Rollback Plan
 

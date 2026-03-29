@@ -1329,7 +1329,18 @@ export default function AttemptRunnerPage() {
     if (!currentIeltsSpeakingQuestionId) return false;
     const ans = answers[currentSection.id]?.[currentIeltsSpeakingQuestionId];
     const answered = typeof ans === "string" && ans.trim().length > 0;
-    return speakingSecondsLeft === 0 || answered;
+    const canGoNext = speakingSecondsLeft === 0 || answered;
+    
+    // Debug log
+    console.log("🎤 Speaking Next Button Status:", {
+      questionId: currentIeltsSpeakingQuestionId,
+      answerValue: ans,
+      answered,
+      speakingSecondsLeft,
+      canGoNext
+    });
+    
+    return canGoNext;
   }, [
     data?.examCategory,
     currentSection,
