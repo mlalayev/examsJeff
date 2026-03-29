@@ -5,7 +5,7 @@ import { requireAdminOrBranchAdmin } from "@/lib/auth-utils";
 import { applyRateLimit } from "@/lib/rate-limiter-enhanced";
 import { validateFileUpload, createErrorResponse } from "@/lib/security";
 
-// Disable Next.js default body parser and set body size limit to 50MB
+// Configure route segment for large file uploads
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // 60 seconds timeout
@@ -26,7 +26,16 @@ export async function POST(request: NextRequest) {
     // Authentication check
     await requireAdminOrBranchAdmin();
     
-    const formData = await request.formData();
+    let formData;
+    try {
+      formData = await request.formData();
+    } catch (error) {
+      console.error("Failed to parse formData:", error);
+      return NextResponse.json({ 
+        error: "Failed to parse upload. File may be too large. Maximum size is 50MB for audio files." 
+      }, { status: 413 });
+    }
+    
     const file = formData.get("file") as File;
     const type = formData.get("type") as string;
     

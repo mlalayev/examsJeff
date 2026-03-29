@@ -14,6 +14,10 @@ const nextConfig = {
   // Experimental features for better performance
   experimental: {
     optimizePackageImports: ['lucide-react'],
+    // Increase body size limit for file uploads (50MB)
+    serverActions: {
+      bodySizeLimit: '50mb',
+    },
   },
   
   typescript: {

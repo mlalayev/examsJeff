@@ -393,11 +393,24 @@ export default function SectionCard({
                       const file = e.target.files?.[0];
                       if (!file) return;
 
+                      // Check file size (50MB = 52428800 bytes)
+                      const MAX_AUDIO_SIZE = 52428800; // 50MB
+                      if (file.size > MAX_AUDIO_SIZE) {
+                        showAlert(
+                          "File Too Large", 
+                          `Audio file is too large (${(file.size / 1024 / 1024).toFixed(2)}MB). Maximum size is 50MB.`, 
+                          "error"
+                        );
+                        e.target.value = ''; // Reset input
+                        return;
+                      }
+
                       const validAudioExtensions = ['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac', '.wma'];
                       const hasValidExtension = validAudioExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
 
                       if (!hasValidExtension) {
                         showAlert("Invalid Audio File", "Please upload a valid audio file (mp3, wav, ogg, m4a, aac, flac, wma)", "error");
+                        e.target.value = ''; // Reset input
                         return;
                       }
 
@@ -421,11 +434,16 @@ export default function SectionCard({
                           };
                           setEditingSection(updatedSection);
                         } else {
-                          showAlert("Failed to Upload Audio", "Failed to upload audio", "error");
+                          const errorData = await res.json().catch(() => ({ error: 'Unknown error' }));
+                          showAlert(
+                            "Failed to Upload Audio", 
+                            errorData.error || `Failed to upload audio (Status: ${res.status})`, 
+                            "error"
+                          );
                         }
                       } catch (error) {
                         console.error("Upload error:", error);
-                        showAlert("Failed to Upload Audio", "Failed to upload audio", "error");
+                        showAlert("Failed to Upload Audio", "Network error or file too large. Please try again.", "error");
                       } finally {
                         setUploadingAudio(false);
                       }

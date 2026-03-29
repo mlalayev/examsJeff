@@ -444,14 +444,21 @@ export const QuestionsArea = React.memo(function QuestionsArea({
                   : inPrep
                     ? "Preparation"
                     : "Recording";
+              const speakDur = speakingTotalSeconds - prepSec;
+              const speakHint =
+                speakDur % 60 === 0
+                  ? `${speakDur / 60} min`
+                  : speakDur >= 60
+                    ? `${Math.floor(speakDur / 60)} min ${speakDur % 60}s`
+                    : `${speakDur}s`;
               const phaseHint =
                 speakingPart === 1
                   ? inPrep
                     ? `${prepSec}s to think before the microphone turns on`
                     : "Answer the question — recording is on"
                   : inPrep
-                    ? `${prepSec}s to prepare — then you will speak for ${Math.floor((speakingTotalSeconds - prepSec) / 60)} min`
-                    : "Long turn — speak until time ends or tap Next";
+                    ? `${prepSec}s to prepare — then speak for ${speakHint}`
+                    : "Speak until time ends or tap Next";
 
               const fmt = (s: number) =>
                 `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;

@@ -2,10 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Mic, Clock, AlertCircle, Loader2 } from "lucide-react";
-import {
-  speakSecondsForSpeakingPart,
-  totalSecondsForSpeakingPart,
-} from "@/lib/ielts-speaking-timers";
+import { speakSecondsForSpeakingPart } from "@/lib/ielts-speaking-timers";
 
 interface QSpeakingRecordingProps {
   question: {
@@ -50,7 +47,6 @@ export function QSpeakingRecording({
   const recordingDuration = RECORDING_DURATIONS[part as keyof typeof RECORDING_DURATIONS] || 30;
   const hasPreparation = part === 2;
   const useParentTimer = typeof questionSecondsLeft === "number";
-  const questionTotalSeconds = totalSecondsForSpeakingPart(part);
   const speakCap = speakSecondsForSpeakingPart(part);
   const parentRecordingStartRef = useRef(false);
 
@@ -96,14 +92,6 @@ export function QSpeakingRecording({
     setTimeLeft(PREPARATION_DURATION);
     setError(null);
 
-    if (useParentTimer) {
-      phaseTimeoutRef.current = setTimeout(() => {
-        phaseTimeoutRef.current = null;
-        setTimeout(() => startReading(), 500);
-      }, PREPARATION_DURATION * 1000);
-      return;
-    }
-
     timerRef.current = setInterval(() => {
       const next = timeLeftRef.current - 1;
       timeLeftRef.current = next;
@@ -119,6 +107,8 @@ export function QSpeakingRecording({
   };
 
   const startReading = () => {
+    if (useParentTimer) return;
+
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
@@ -129,14 +119,6 @@ export function QSpeakingRecording({
     timeLeftRef.current = 3;
     setTimeLeft(3);
     setError(null);
-
-    if (useParentTimer) {
-      phaseTimeoutRef.current = setTimeout(() => {
-        phaseTimeoutRef.current = null;
-        setTimeout(() => startRecording(), 500);
-      }, 3000);
-      return;
-    }
 
     timerRef.current = setInterval(() => {
       const next = timeLeftRef.current - 1;
@@ -220,6 +202,7 @@ export function QSpeakingRecording({
       
       setError(errorMessage);
       setStatus("idle");
+      if (useParentTimer) parentRecordingStartRef.current = false;
     }
   };
 
@@ -242,6 +225,23 @@ export function QSpeakingRecording({
     if ((questionSecondsLeft ?? 1) > 0) return;
     stopRecording();
   }, [useParentTimer, questionSecondsLeft, status, stopRecording]);
+
+  useEffect(() => {
+    if (!useParentTimer) return;
+    if (!hasStartedRef.current) return;
+    if (status === "transcribing" || status === "completed") return;
+    const left = questionSecondsLeft ?? 0;
+    if (left > speakCap) {
+      parentRecordingStartRef.current = false;
+      return;
+    }
+    if (left <= 0) return;
+    if (parentRecordingStartRef.current) return;
+    parentRecordingStartRef.current = true;
+    void startRecording();
+    // startRecording is recreated each render; we only react to timer / status
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [questionSecondsLeft, useParentTimer, speakCap, status]);
 
   const transcribeAudio = async () => {
     setStatus("transcribing");
@@ -278,14 +278,20 @@ export function QSpeakingRecording({
       console.error("Transcription error:", err);
       setError(`Transcription failed: ${err instanceof Error ? err.message : "Unknown error"}`);
       setStatus("idle");
+      if (useParentTimer) parentRecordingStartRef.current = false;
     }
   };
 
   const handleStart = () => {
-    // Prevent double-start
     if (hasStartedRef.current) return;
     hasStartedRef.current = true;
-    
+
+    if (useParentTimer) {
+      setStatus("preparing");
+      setError(null);
+      return;
+    }
+
     if (hasPreparation) {
       startPreparation();
     } else {
@@ -317,8 +323,66 @@ export function QSpeakingRecording({
   };
 
   const formatSpeakingPrompt = (text: string): React.ReactNode => {
-    if (!text || typeof text !== "string") return "Speaking question";
-    const trimmed = text.trim();
+    if (!text || typeof text !== "string") {
+      return <p className="text-sm text-gray-500">Speaking question</p>;
+    }
+    const trimmed = text.replace(/\\n/g, "\n").trim();
+
+    if (/^\*\*/.test(trimmed)) {
+      const titleMatch = trimmed.match(/^\*\*(.+?)\*\*\s*([\s\S]*)$/);
+      if (titleMatch) {
+        const title = titleMatch[1].trim();
+        let tail = titleMatch[2].trim();
+        const nodes: React.ReactNode[] = [
+          <p key="title" className="text-base font-bold text-gray-900 leading-snug">
+            {title}
+          </p>,
+        ];
+
+        const grayPair = /^\[gray\]([\s\S]*?)\[gray\]/i;
+        let gp = tail.match(grayPair);
+        while (gp) {
+          nodes.push(
+            <p key={`g-${nodes.length}`} className="text-sm text-gray-500 leading-relaxed">
+              {gp[1].trim()}
+            </p>
+          );
+          tail = tail.slice(gp[0].length).trim();
+          gp = tail.match(grayPair);
+        }
+
+        const grayClose = tail.match(/^\[gray\]([\s\S]*?)\[\/gray\]/i);
+        if (grayClose) {
+          nodes.push(
+            <p key={`gc-${nodes.length}`} className="text-sm text-gray-500 leading-relaxed">
+              {grayClose[1].trim()}
+            </p>
+          );
+          tail = tail.slice(grayClose[0].length).trim();
+        }
+
+        const lines = tail
+          .split(/\n/)
+          .map((l) => l.trim())
+          .filter(Boolean);
+        if (lines.length > 0) {
+          nodes.push(
+            <ul
+              key="bullets"
+              className="list-disc space-y-1.5 pl-5 text-sm text-gray-800"
+            >
+              {lines.map((line, i) => (
+                <li key={i} className="pl-0.5">
+                  {line.replace(/^[-•\u2022]\s*/, "")}
+                </li>
+              ))}
+            </ul>
+          );
+        }
+
+        return <div className="space-y-3">{nodes}</div>;
+      }
+    }
 
     const sayIndex = trimmed.search(/\bYou should say\s*:/i);
     if (sayIndex === -1) {
@@ -370,22 +434,66 @@ export function QSpeakingRecording({
     );
   }
 
-  // Show recording status
   if (status !== "idle") {
-    const displaySeconds = useParentTimer
-      ? Math.max(0, questionSecondsLeft ?? 0)
-      : timeLeft;
-    const recordingBarPercent = useParentTimer
-      ? Math.max(
-          0,
-          Math.min(
-            100,
-            ((questionTotalSeconds - displaySeconds) / questionTotalSeconds) * 100
-          )
-        )
-      : Math.max(0, Math.min(100, ((recordingDuration - timeLeft) / recordingDuration) * 100));
-    const recordingBarColor =
-      useParentTimer && displaySeconds < 30 ? "#dc2626" : useParentTimer ? "#303380" : undefined;
+    if (useParentTimer) {
+      return (
+        <div className="space-y-4">
+          <div className="rounded-lg border border-gray-200 bg-white px-5 py-4">
+            {formatSpeakingPrompt(question.prompt?.text || "Speaking question")}
+          </div>
+
+          <div className="rounded-lg border border-slate-200 bg-gradient-to-r from-slate-50 to-white px-4 py-3 shadow-sm">
+            <div className="flex items-start gap-2.5">
+              {status === "preparing" && (
+                <>
+                  <Clock className="w-4 h-4 shrink-0 text-slate-600 mt-0.5" />
+                  <span className="text-sm text-slate-700 leading-snug">
+                    {part === 1
+                      ? "Thinking time — when the bar below reaches the dot, your microphone will turn on."
+                      : "Preparation time — you may take notes. Recording starts at the dot on the bar below."}
+                  </span>
+                </>
+              )}
+              {status === "recording" && (
+                <>
+                  <Mic className="w-4 h-4 shrink-0 text-red-600 animate-pulse mt-0.5" />
+                  <span className="text-sm font-medium text-red-800 leading-snug">
+                    Recording — speak clearly. The timer below shows time remaining for this question.
+                  </span>
+                </>
+              )}
+              {status === "transcribing" && (
+                <>
+                  <Loader2 className="w-4 h-4 shrink-0 text-[#303380] animate-spin mt-0.5" />
+                  <span className="text-sm font-medium text-[#303380]">Converting speech to text…</span>
+                </>
+              )}
+              {status === "reading" && (
+                <>
+                  <Clock className="w-4 h-4 shrink-0 text-blue-600 mt-0.5" />
+                  <span className="text-sm text-blue-800">Get ready…</span>
+                </>
+              )}
+            </div>
+          </div>
+
+          {error && (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-5 py-4">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                <p className="text-sm text-red-800">{error}</p>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    const displaySeconds = timeLeft;
+    const recordingBarPercent = Math.max(
+      0,
+      Math.min(100, ((recordingDuration - timeLeft) / recordingDuration) * 100)
+    );
 
     return (
       <div className="space-y-4">
@@ -426,31 +534,13 @@ export function QSpeakingRecording({
             )}
           </div>
           {status === "recording" && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className="h-full transition-all duration-1000 ease-linear"
-                    style={{
-                      width: `${recordingBarPercent}%`,
-                      backgroundColor: recordingBarColor ?? "#ef4444",
-                    }}
-                  />
-                </div>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className="h-full transition-all duration-1000 ease-linear bg-red-500"
+                  style={{ width: `${recordingBarPercent}%` }}
+                />
               </div>
-              {onSkipToNext && (
-                <div className="flex justify-end">
-                  <button
-                    onClick={() => {
-                      stopRecording();
-                      onSkipToNext();
-                    }}
-                    className="px-4 py-2 text-sm font-medium text-white bg-[#303380] rounded-lg hover:bg-[#252760] transition-colors"
-                  >
-                    Next Question →
-                  </button>
-                </div>
-              )}
             </div>
           )}
         </div>
@@ -474,10 +564,12 @@ export function QSpeakingRecording({
         {formatSpeakingPrompt(question.prompt?.text || "Speaking question")}
       </div>
 
-      <div className="rounded-lg border border-[#303380] bg-[#303380]/5 px-5 py-4">
+      <div className="rounded-lg border border-slate-200 bg-slate-50/90 px-5 py-4">
         <div className="flex items-center justify-center gap-2">
-          <Clock className="w-5 h-5 text-[#303380] animate-pulse" />
-          <span className="text-sm font-medium text-[#303380]">Starting recording...</span>
+          <Clock className="w-5 h-5 text-slate-500 animate-pulse" />
+          <span className="text-sm font-medium text-slate-600">
+            {useParentTimer ? "Loading — use the timer below when it appears." : "Starting recording…"}
+          </span>
         </div>
       </div>
 
