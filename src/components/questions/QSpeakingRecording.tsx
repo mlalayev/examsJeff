@@ -53,6 +53,7 @@ export function QSpeakingRecording({
   const [status, setStatus] = useState<"idle" | "preparing" | "reading" | "recording" | "transcribing" | "completed">("idle");
   const [timeLeft, setTimeLeft] = useState(hasPreparation ? PREPARATION_DURATION : recordingDuration);
   const [error, setError] = useState<string | null>(null);
+  const [permissionGranted, setPermissionGranted] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -60,6 +61,7 @@ export function QSpeakingRecording({
   const phaseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const hasStartedRef = useRef<boolean>(false); // Prevent double-start in StrictMode
+  const permissionRequestedRef = useRef<boolean>(false);
   /** Decrement source of truth — avoids Strict Mode double-invoking `setState(prev => prev - 1)` and skipping 2s per tick */
   const timeLeftRef = useRef(hasPreparation ? PREPARATION_DURATION : recordingDuration);
 
@@ -79,6 +81,42 @@ export function QSpeakingRecording({
       }
     };
   }, []);
+
+  // Request microphone permission early
+  const requestMicrophonePermission = async () => {
+    if (permissionRequestedRef.current) return;
+    permissionRequestedRef.current = true;
+
+    try {
+      // Request permission and immediately release the stream
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      setPermissionGranted(true);
+      setError(null);
+      
+      // Release the stream immediately - we'll request it again when recording
+      stream.getTracks().forEach(track => track.stop());
+      
+      return true;
+    } catch (err: any) {
+      console.error("Microphone permission error:", err);
+      
+      let errorMessage = "Microphone access denied. ";
+      
+      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+        errorMessage += "Please allow microphone access in your browser settings and refresh the page.";
+      } else if (err.name === "NotFoundError") {
+        errorMessage += "No microphone found. Please connect a microphone and refresh the page.";
+      } else if (err.name === "NotReadableError") {
+        errorMessage += "Microphone is being used by another application. Please close other apps and refresh.";
+      } else {
+        errorMessage += "Please check your browser settings and refresh the page.";
+      }
+      
+      setError(errorMessage);
+      setPermissionGranted(false);
+      return false;
+    }
+  };
 
   const startPreparation = async () => {
     if (timerRef.current) {
@@ -144,6 +182,7 @@ export function QSpeakingRecording({
 
       setError(null);
 
+      // Request fresh stream for recording
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
@@ -186,22 +225,24 @@ export function QSpeakingRecording({
       }
 
     } catch (err: any) {
-      console.error("Microphone access error:", err);
+      console.error("Recording start error:", err);
       
-      let errorMessage = "Microphone access denied. ";
+      let errorMessage = "Failed to start recording. ";
       
       if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
-        errorMessage += "Please allow microphone access in your browser settings.";
+        errorMessage += "Please allow microphone access in your browser settings and refresh the page.";
       } else if (err.name === "NotFoundError") {
-        errorMessage += "No microphone found. Please connect a microphone.";
+        errorMessage += "No microphone found. Please connect a microphone and refresh the page.";
       } else if (err.name === "NotReadableError") {
-        errorMessage += "Microphone is being used by another application.";
+        errorMessage += "Microphone is being used by another application. Please close other apps and try again.";
       } else {
-        errorMessage += "Please check your browser settings.";
+        errorMessage += err.message || "Please check your microphone and try again.";
       }
       
       setError(errorMessage);
       setStatus("idle");
+      hasStartedRef.current = false;
+      permissionRequestedRef.current = false;
       if (useParentTimer) parentRecordingStartRef.current = false;
     }
   };
@@ -282,8 +323,15 @@ export function QSpeakingRecording({
     }
   };
 
-  const handleStart = () => {
+  const handleStart = async () => {
     if (hasStartedRef.current) return;
+
+    // Request microphone permission first
+    const hasPermission = await requestMicrophonePermission();
+    if (!hasPermission) {
+      return; // Error is already set by requestMicrophonePermission
+    }
+
     hasStartedRef.current = true;
 
     if (useParentTimer) {
@@ -299,9 +347,16 @@ export function QSpeakingRecording({
     }
   };
 
+  // Request permission immediately on mount (non-blocking)
   useEffect(() => {
-    // Auto-start recording when component mounts
-    if (status === "idle" && !value && !readOnly && !hasStartedRef.current) {
+    if (!readOnly && !value) {
+      requestMicrophonePermission();
+    }
+  }, []); // Run once on mount
+
+  useEffect(() => {
+    // Auto-start recording flow after permission is granted
+    if (status === "idle" && !value && !readOnly && !hasStartedRef.current && permissionGranted) {
       const timer = setTimeout(() => {
         handleStart();
       }, 500);
@@ -314,7 +369,7 @@ export function QSpeakingRecording({
         clearPhaseTimeout();
       };
     }
-  }, []); // Empty deps - only run once on mount
+  }, [permissionGranted]); // Trigger when permission is granted
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -580,7 +635,15 @@ export function QSpeakingRecording({
             <div>
               <p className="text-sm text-red-800 mb-2">{error}</p>
               <button
-                onClick={handleStart}
+                onClick={() => {
+                  // Reset state
+                  hasStartedRef.current = false;
+                  permissionRequestedRef.current = false;
+                  setError(null);
+                  setStatus("idle");
+                  // Try again
+                  handleStart();
+                }}
                 className="text-sm font-medium text-red-700 underline hover:text-red-900"
               >
                 Try Again
