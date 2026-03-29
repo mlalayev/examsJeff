@@ -1,7 +1,11 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Mic, Square, Clock, AlertCircle, Loader2 } from "lucide-react";
+import { Mic, Clock, AlertCircle, Loader2 } from "lucide-react";
+import {
+  speakSecondsForSpeakingPart,
+  totalSecondsForSpeakingPart,
+} from "@/lib/ielts-speaking-timers";
 
 interface QSpeakingRecordingProps {
   question: {
@@ -18,27 +22,18 @@ interface QSpeakingRecordingProps {
   speakingPart?: number;
   onRecordingComplete?: () => void;
   autoStart?: boolean;
-  /** When set (IELTS attempt run page), timer UI matches the footer "Time for this question" — single source of truth */
+  /** When set (IELTS attempt run page), one shared countdown: prep/think + speaking */
   questionSecondsLeft?: number;
-  /** Callback to skip to next question early */
-  onSkipToNext?: () => void;
 }
 
-// Timer durations based on part
+// Recording segment only (prep is driven by parent countdown when `questionSecondsLeft` is set)
 const RECORDING_DURATIONS = {
-  1: 50,   // Part 1: 50 seconds (was 34, +16 more)
-  2: 120,  // Part 2: 2 minutes (120 seconds) speaking (was 180, now 60s prep + 120s speaking = 180 total)
-  3: 90,   // Part 3: 1 minute 30 seconds (90 seconds, was 60, +30 more)
+  1: 50,
+  2: 120,
+  3: 80,
 };
 
-const PREPARATION_DURATION = 60; // Part 2 only: 1 minute prep
-
-/** Must match `run/page.tsx` + QuestionsArea footer totals */
-function questionTotalSecondsForPart(part: number): number {
-  if (part === 1) return 50;
-  if (part === 2) return 120;
-  return 90;
-}
+const PREPARATION_DURATION = 60; // Part 2 internal prep when not using parent timer
 
 export function QSpeakingRecording({
   question,
@@ -50,13 +45,14 @@ export function QSpeakingRecording({
   onRecordingComplete,
   autoStart = false,
   questionSecondsLeft,
-  onSkipToNext,
 }: QSpeakingRecordingProps) {
   const part = speakingPart || question.prompt.part || 1;
   const recordingDuration = RECORDING_DURATIONS[part as keyof typeof RECORDING_DURATIONS] || 30;
   const hasPreparation = part === 2;
   const useParentTimer = typeof questionSecondsLeft === "number";
-  const questionTotalSeconds = questionTotalSecondsForPart(part);
+  const questionTotalSeconds = totalSecondsForSpeakingPart(part);
+  const speakCap = speakSecondsForSpeakingPart(part);
+  const parentRecordingStartRef = useRef(false);
 
   const [status, setStatus] = useState<"idle" | "preparing" | "reading" | "recording" | "transcribing" | "completed">("idle");
   const [timeLeft, setTimeLeft] = useState(hasPreparation ? PREPARATION_DURATION : recordingDuration);

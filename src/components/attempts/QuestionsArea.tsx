@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo } from "react";
+import { ChevronRight } from "lucide-react";
 import AudioPlayer from "@/components/audio/AudioPlayer";
 import QDndGroup from "@/components/questions/QDndGroup";
 import { QuestionCard } from "./QuestionCard";
@@ -9,6 +10,12 @@ import { IELTSListeningView } from "./IELTSListeningView";
 import { IELTSReadingView } from "./IELTSReadingView";
 import { IELTSWritingView } from "./IELTSWritingView";
 import { IELTSSpeakingView } from "./IELTSSpeakingView";
+import {
+  totalSecondsForSpeakingPart,
+  prepSecondsForSpeakingPart,
+  recordingMarkerPercent,
+  isSpeakingPrepPhase,
+} from "@/lib/ielts-speaking-timers";
 
 interface Question {
   id: string;
@@ -69,6 +76,9 @@ interface QuestionsAreaProps {
   speakingCurrentQuestionIndex?: number;
   /** Seconds left for current speaking question (for progress bar inside card) */
   speakingSecondsLeft?: number;
+  /** IELTS Speaking: advance to next cue card question */
+  onIELTSSpeakingNext?: () => void;
+  ieltsSpeakingCanGoNext?: boolean;
   onTimeExpired?: () => void; // Callback for timer expiration
   attemptId?: string; // For localStorage timer
   onReadingTimerStateChange?: (state: { timeRemaining: number; isExpired: boolean; formatTime: (s: number) => string; getTimeColor: () => string } | null) => void; // IELTS Reading timer for sidebar
@@ -104,6 +114,8 @@ export const QuestionsArea = React.memo(function QuestionsArea({
   onSpeakingPartChange,
   speakingCurrentQuestionIndex = 0,
   speakingSecondsLeft,
+  onIELTSSpeakingNext,
+  ieltsSpeakingCanGoNext,
   onTimeExpired,
   attemptId,
   onReadingTimerStateChange,
@@ -409,36 +421,92 @@ export const QuestionsArea = React.memo(function QuestionsArea({
                 );
               }
 
-              // IELTS Speaking: progress bar inside card when we have time left for this question
               const isSpeakingWithBar =
                 section.type === "SPEAKING" &&
                 examCategory === "IELTS" &&
                 q.qtype === "SPEAKING_RECORDING" &&
                 typeof speakingSecondsLeft === "number" &&
                 speakingSecondsLeft >= 0;
-              const speakingTotalSeconds =
-                speakingPart === 1 ? 50 : speakingPart === 2 ? 120 : 90;
-              const barPercent = isSpeakingWithBar
-                ? Math.max(0, Math.min(100, (speakingSecondsLeft! / speakingTotalSeconds) * 100))
-                : 0;
+              const speakingTotalSeconds = totalSecondsForSpeakingPart(speakingPart);
+              const elapsed = Math.max(0, speakingTotalSeconds - speakingSecondsLeft!);
+              const fillPercent = Math.min(
+                100,
+                (elapsed / Math.max(1, speakingTotalSeconds)) * 100
+              );
+              const markerPct = recordingMarkerPercent(speakingPart);
+              const inPrep = isSpeakingPrepPhase(speakingPart, speakingSecondsLeft!);
+              const prepSec = prepSecondsForSpeakingPart(speakingPart);
+              const phaseTitle =
+                speakingPart === 1
+                  ? inPrep
+                    ? "Thinking time"
+                    : "Recording"
+                  : inPrep
+                    ? "Preparation"
+                    : "Recording";
+              const phaseHint =
+                speakingPart === 1
+                  ? inPrep
+                    ? `${prepSec}s to think before the microphone turns on`
+                    : "Answer the question — recording is on"
+                  : inPrep
+                    ? `${prepSec}s to prepare — then you will speak for ${Math.floor((speakingTotalSeconds - prepSec) / 60)} min`
+                    : "Long turn — speak until time ends or tap Next";
+
+              const fmt = (s: number) =>
+                `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
+
               const speakingFooterSlot =
                 isSpeakingWithBar ? (
-                  <div className="pt-3 border-t border-slate-100">
-                    <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
+                  <div className="pt-4 border-t border-slate-100 space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                          {phaseTitle}
+                        </p>
+                        <p className="text-xs text-slate-600 mt-0.5">{phaseHint}</p>
+                      </div>
                       <div
-                        className="h-full rounded-full transition-all duration-1000 ease-linear"
-                        style={{
-                          width: `${barPercent}%`,
-                          backgroundColor: speakingSecondsLeft! < 30 ? "#dc2626" : "#303380",
-                        }}
-                      />
+                        className="tabular-nums text-2xl font-bold tracking-tight"
+                        style={{ color: "#303380" }}
+                      >
+                        {fmt(speakingSecondsLeft!)}
+                      </div>
                     </div>
-                    {speakingSecondsLeft! > 0 && (
-                      <p className="text-xs text-gray-500 mt-1.5 text-right tabular-nums">
-                        Time for this question: {Math.floor(speakingSecondsLeft! / 60)}:
-                        {(speakingSecondsLeft! % 60).toString().padStart(2, "0")}
-                      </p>
-                    )}
+
+                    <div className="flex items-center gap-3">
+                      <div className="relative min-h-10 flex-1 flex items-center">
+                        <div className="absolute inset-x-0 top-1/2 h-2.5 -translate-y-1/2 rounded-full bg-slate-200/90 shadow-inner" />
+                        <div
+                          className="absolute left-0 top-1/2 h-2.5 -translate-y-1/2 rounded-full transition-all duration-1000 ease-linear"
+                          style={{
+                            width: `${fillPercent}%`,
+                            background: inPrep
+                              ? "linear-gradient(90deg,#64748b,#475569)"
+                              : "linear-gradient(90deg,#303380,#5b5fb8)",
+                          }}
+                        />
+                        <div
+                          className="absolute top-1/2 z-10 flex h-4 w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-violet-600 shadow-md ring-2 ring-violet-200/80"
+                          style={{ left: `${markerPct}%` }}
+                          title="Recording starts here"
+                          aria-hidden
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => onIELTSSpeakingNext?.()}
+                        disabled={!ieltsSpeakingCanGoNext}
+                        className="inline-flex shrink-0 items-center gap-1 rounded-lg px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition disabled:cursor-not-allowed disabled:opacity-40"
+                        style={{ backgroundColor: "#303380" }}
+                      >
+                        Next
+                        <ChevronRight className="h-4 w-4" aria-hidden />
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-slate-400">
+                      Dot marks when recording begins. Use Next when you are finished or time is up.
+                    </p>
                   </div>
                 ) : undefined;
 

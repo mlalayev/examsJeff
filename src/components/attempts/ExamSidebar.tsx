@@ -322,7 +322,6 @@ export const ExamSidebar = React.memo(function ExamSidebar({
                     );
                   })}
                 </div>
-                {renderTimer()}
               </>
             )}
           </div>

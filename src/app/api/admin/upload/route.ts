@@ -5,6 +5,11 @@ import { requireAdminOrBranchAdmin } from "@/lib/auth-utils";
 import { applyRateLimit } from "@/lib/rate-limiter-enhanced";
 import { validateFileUpload, createErrorResponse } from "@/lib/security";
 
+// Disable Next.js default body parser and set body size limit to 50MB
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // 60 seconds timeout
+
 // Maximum file sizes from environment
 const MAX_AUDIO_SIZE = parseInt(process.env.MAX_AUDIO_FILE_SIZE_BYTES || "52428800"); // 50MB
 const MAX_IMAGE_SIZE = parseInt(process.env.MAX_IMAGE_FILE_SIZE_BYTES || "5242880"); // 5MB

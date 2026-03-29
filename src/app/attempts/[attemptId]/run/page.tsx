@@ -30,6 +30,7 @@ import { ResumeNotification } from "@/components/attempts/ResumeNotification";
 import { IELTSSectionChangeModal } from "@/components/attempts/modals/IELTSSectionChangeModal";
 import { SpeakingIntroModal } from "@/components/attempts/modals/SpeakingIntroModal";
 import { SpeakingTimeUpModal } from "@/components/attempts/modals/SpeakingTimeUpModal";
+import { totalSecondsForSpeakingPart } from "@/lib/ielts-speaking-timers";
 import { Clock, Save, CheckCircle, Send, ChevronRight, X } from "lucide-react";
 
 interface Question {
@@ -97,7 +98,9 @@ export default function AttemptRunnerPage() {
   const [writingPart, setWritingPart] = useState(1); // For IELTS Writing part selection
   const [speakingPart, setSpeakingPart] = useState(1); // For IELTS Speaking part selection
   const [speakingCurrentQuestionIndex, setSpeakingCurrentQuestionIndex] = useState(0); // Which question within part (auto-advance)
-  const [speakingSecondsLeft, setSpeakingSecondsLeft] = useState(50); // Countdown for current question view (50 / 120 / 90)
+  const [speakingSecondsLeft, setSpeakingSecondsLeft] = useState(() =>
+    totalSecondsForSpeakingPart(1)
+  );
   const [viewingImage, setViewingImage] = useState<string | null>(null); // Image viewer
   const [viewingPassage, setViewingPassage] = useState(false); // Reading passage panel
   const [speakingIntroDismissed, setSpeakingIntroDismissed] = useState(false); // show intro modal when on Speaking until user clicks Okay
@@ -229,8 +232,7 @@ export default function AttemptRunnerPage() {
         setSpeakingCurrentQuestionIndex(restored.speakingCurrentQuestionIndex);
       }
       if (restored.speakingPart != null && restored.speakingCurrentQuestionIndex != null) {
-        const total = restored.speakingPart === 1 ? 50 : restored.speakingPart === 2 ? 120 : 90;
-        setSpeakingSecondsLeft(total);
+        setSpeakingSecondsLeft(totalSecondsForSpeakingPart(restored.speakingPart));
       }
 
       // Show notification
@@ -472,8 +474,7 @@ export default function AttemptRunnerPage() {
             if (speakingSection && savedSectionId === speakingSection.id && savedSpeakingPart != null && savedSpeakingQuestionIndex != null) {
               setSpeakingPart(savedSpeakingPart);
               setSpeakingCurrentQuestionIndex(savedSpeakingQuestionIndex);
-              const total = savedSpeakingPart === 1 ? 50 : savedSpeakingPart === 2 ? 120 : 90;
-              setSpeakingSecondsLeft(total);
+              setSpeakingSecondsLeft(totalSecondsForSpeakingPart(savedSpeakingPart));
             }
           } else {
             // Fall back: first non-completed section in IELTS order
@@ -848,45 +849,6 @@ export default function AttemptRunnerPage() {
                  ? speakingSecondsLeft
                  : undefined
              }
-             onSkipToNext={
-               sectionType === "SPEAKING" && data?.examCategory === "IELTS"
-                 ? () => {
-                     const sec = data?.sections?.find((s: { id: string }) => s.id === activeSection);
-                     const q = sec?.questions;
-                     if (!q?.length) return;
-                     const part1 = q
-                       .filter((x: { prompt?: { part?: number } }) => (x.prompt?.part ?? 1) === 1)
-                       .sort((a: { order: number }, b: { order: number }) => a.order - b.order);
-                     const part2 = q
-                       .filter((x: { prompt?: { part?: number } }) => (x.prompt?.part ?? 1) === 2)
-                       .sort((a: { order: number }, b: { order: number }) => a.order - b.order);
-                     const part3 = q
-                       .filter((x: { prompt?: { part?: number } }) => (x.prompt?.part ?? 1) === 3)
-                       .sort((a: { order: number }, b: { order: number }) => a.order - b.order);
-                     const part = speakingPart;
-                     const idx = speakingCurrentQuestionIndex;
-                     const partQuestions = part === 1 ? part1 : part === 2 ? part2 : part3;
-                     const totalForPart = part === 1 ? 50 : part === 2 ? 120 : 90;
-
-                     if (idx + 1 < partQuestions.length) {
-                       setSpeakingCurrentQuestionIndex(idx + 1);
-                       setSpeakingSecondsLeft(totalForPart);
-                     } else if (part === 1 && part2.length > 0) {
-                       setSpeakingPart(2);
-                       setSpeakingCurrentQuestionIndex(0);
-                       setSpeakingSecondsLeft(120);
-                     } else if (part === 1 && part3.length > 0) {
-                       setSpeakingPart(3);
-                       setSpeakingCurrentQuestionIndex(0);
-                       setSpeakingSecondsLeft(90);
-                     } else if (part === 2 && part3.length > 0) {
-                       setSpeakingPart(3);
-                       setSpeakingCurrentQuestionIndex(0);
-                       setSpeakingSecondsLeft(90);
-                     }
-                   }
-                 : undefined
-             }
            />
          );
        default:
@@ -897,7 +859,15 @@ export default function AttemptRunnerPage() {
     );
   }
     },
-    [attemptId, speakingPart, speakingSecondsLeft, data?.examCategory, data?.sections, activeSection, speakingCurrentQuestionIndex]
+    [
+      attemptId,
+      speakingPart,
+      speakingSecondsLeft,
+      data?.examCategory,
+      data?.sections,
+      activeSection,
+      speakingCurrentQuestionIndex,
+    ]
   );
 
   const getShortSectionTitle = useCallback((title: string) => {
@@ -1310,7 +1280,6 @@ export default function AttemptRunnerPage() {
     });
   }, [currentSection, activeSection, answers, data?.examCategory]);
 
-  // IELTS Speaking: auto-advance one question at a time (Part 1: 35s, Part 2: 3min, Part 3: 65s)
   const speakingPartQuestions = useMemo(() => {
     if (!currentSection?.questions || currentSection.type !== "SPEAKING") return { part1: [], part2: [], part3: [] };
     const q = currentSection.questions;
@@ -1321,51 +1290,80 @@ export default function AttemptRunnerPage() {
     };
   }, [currentSection]);
 
-  const speakingPartRef = useRef(speakingPart);
-  const speakingCurrentQuestionIndexRef = useRef(speakingCurrentQuestionIndex);
-  speakingPartRef.current = speakingPart;
-  speakingCurrentQuestionIndexRef.current = speakingCurrentQuestionIndex;
+  const advanceIeltsSpeakingQuestion = useCallback(() => {
+    const { part1, part2, part3 } = speakingPartQuestions;
+    const part = speakingPart;
+    const idx = speakingCurrentQuestionIndex;
+    const partQuestions = part === 1 ? part1 : part === 2 ? part2 : part3;
+
+    if (idx + 1 < partQuestions.length) {
+      setSpeakingCurrentQuestionIndex(idx + 1);
+      return;
+    }
+    if (part === 1 && part2.length > 0) {
+      setSpeakingPart(2);
+      setSpeakingCurrentQuestionIndex(0);
+      return;
+    }
+    if (part === 1 && part3.length > 0) {
+      setSpeakingPart(3);
+      setSpeakingCurrentQuestionIndex(0);
+      return;
+    }
+    if (part === 2 && part3.length > 0) {
+      setSpeakingPart(3);
+      setSpeakingCurrentQuestionIndex(0);
+    }
+  }, [speakingPart, speakingCurrentQuestionIndex, speakingPartQuestions]);
+
+  const currentIeltsSpeakingQuestionId = useMemo(() => {
+    if (!currentSection || currentSection.type !== "SPEAKING") return null;
+    const { part1, part2, part3 } = speakingPartQuestions;
+    const list = speakingPart === 1 ? part1 : speakingPart === 2 ? part2 : part3;
+    return list[speakingCurrentQuestionIndex]?.id ?? null;
+  }, [currentSection, speakingPartQuestions, speakingPart, speakingCurrentQuestionIndex]);
+
+  const ieltsSpeakingCanGoNext = useMemo(() => {
+    if (data?.examCategory !== "IELTS" || !currentSection || currentSection.type !== "SPEAKING") return false;
+    if (!currentIeltsSpeakingQuestionId) return false;
+    const ans = answers[currentSection.id]?.[currentIeltsSpeakingQuestionId];
+    const answered = typeof ans === "string" && ans.trim().length > 0;
+    return speakingSecondsLeft === 0 || answered;
+  }, [
+    data?.examCategory,
+    currentSection,
+    currentIeltsSpeakingQuestionId,
+    answers,
+    speakingSecondsLeft,
+  ]);
+
+  const handleIELTSSpeakingNext = useCallback(() => {
+    if (!ieltsSpeakingCanGoNext) return;
+    advanceIeltsSpeakingQuestion();
+  }, [ieltsSpeakingCanGoNext, advanceIeltsSpeakingQuestion]);
+
+  useEffect(() => {
+    if (data?.examCategory !== "IELTS") return;
+    if (!currentSection || currentSection.type !== "SPEAKING") return;
+    if (!speakingIntroDismissed) return;
+    setSpeakingSecondsLeft(totalSecondsForSpeakingPart(speakingPart));
+  }, [
+    speakingPart,
+    speakingCurrentQuestionIndex,
+    currentSection?.id,
+    currentSection?.type,
+    data?.examCategory,
+    speakingIntroDismissed,
+  ]);
 
   useEffect(() => {
     if (currentSection?.type !== "SPEAKING" || !speakingIntroDismissed || !data?.examCategory || data.examCategory !== "IELTS") return;
-    const { part1, part2, part3 } = speakingPartQuestions;
 
     const interval = setInterval(() => {
-      setSpeakingSecondsLeft((prev) => {
-        if (prev <= 1) {
-          const part = speakingPartRef.current;
-          const idx = speakingCurrentQuestionIndexRef.current;
-          const partQuestions = part === 1 ? part1 : part === 2 ? part2 : part3;
-          const totalForPart = part === 1 ? 50 : part === 2 ? 120 : 90;
-
-          if (idx + 1 < partQuestions.length) {
-            setSpeakingCurrentQuestionIndex(idx + 1);
-            return totalForPart;
-          }
-          if (part === 1) {
-            if (part2.length > 0) {
-              setSpeakingPart(2);
-              setSpeakingCurrentQuestionIndex(0);
-              return 120;
-            }
-            if (part3.length > 0) {
-              setSpeakingPart(3);
-              setSpeakingCurrentQuestionIndex(0);
-              return 90;
-            }
-          }
-          if (part === 2 && part3.length > 0) {
-            setSpeakingPart(3);
-            setSpeakingCurrentQuestionIndex(0);
-            return 90;
-          }
-          return 0;
-        }
-        return prev - 1;
-      });
+      setSpeakingSecondsLeft((prev) => (prev <= 0 ? 0 : prev - 1));
     }, 1000);
     return () => clearInterval(interval);
-  }, [currentSection, speakingIntroDismissed, data?.examCategory, speakingPartQuestions]);
+  }, [currentSection?.type, currentSection?.id, speakingIntroDismissed, data?.examCategory]);
 
   // Exam security: block right-click, F12/dev tools shortcuts, text selection (all exam types)
   useEffect(() => {
@@ -1520,10 +1518,19 @@ export default function AttemptRunnerPage() {
                   onSpeakingPartChange={setSpeakingPart}
                   speakingCurrentQuestionIndex={currentSection.type === "SPEAKING" && data.examCategory === "IELTS" && speakingIntroDismissed ? speakingCurrentQuestionIndex : undefined}
                   speakingSecondsLeft={currentSection.type === "SPEAKING" && data.examCategory === "IELTS" && speakingIntroDismissed ? speakingSecondsLeft : undefined}
+                  onIELTSSpeakingNext={
+                    currentSection.type === "SPEAKING" && data.examCategory === "IELTS" && speakingIntroDismissed
+                      ? handleIELTSSpeakingNext
+                      : undefined
+                  }
+                  ieltsSpeakingCanGoNext={
+                    currentSection.type === "SPEAKING" && data.examCategory === "IELTS" && speakingIntroDismissed
+                      ? ieltsSpeakingCanGoNext
+                      : undefined
+                  }
                   onReadingTimerStateChange={setIeltsTimerState}
                   onListeningTimerStateChange={setIeltsTimerState}
                   onWritingTimerStateChange={setIeltsTimerState}
-                  onSpeakingTimerStateChange={setIeltsTimerState}
                 />
               );
 
