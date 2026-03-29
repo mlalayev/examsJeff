@@ -7,16 +7,24 @@
 
 **Solution**: Bu artıq həll olunmuşdur (user təsdiqləyib).
 
-### 2. 🔧 Exam Edit - 500 Internal Server Error
+### 2. ✅ Exam Edit - 500 Internal Server Error (FIXED)
 **Problem**: Edit düyməsinə basanda `GET /api/admin/exams/{id}` 500 error verir.
 
-**Solution**: Enhanced error logging əlavə edildi:
-- Client-side: Daha ətraflı error messages və console logs
-- Server-side: Detailed error logging with stack traces
+**Root Cause**: 
+```
+Unknown field `name` for select statement on model `User`
+```
+
+API route User model-dən `name` field-ini seçməyə çalışırdı, amma User schema-da `name` field yoxdur. Əvəzinə `firstName` və `lastName` var.
+
+**Solution**: 
+- `name` → `firstName` və `lastName` ilə əvəz edildi
+- GET və PATCH metodlarında düzəldildi
+- Enhanced error logging əlavə edildi
 
 **Files Changed**:
-1. `src/app/dashboard/admin/exams/[id]/edit/page.tsx` - Enhanced client error handling
-2. `src/app/api/admin/exams/[id]/route.ts` - Enhanced server error logging
+1. `src/app/api/admin/exams/[id]/route.ts` - Fixed User field names and added logging
+2. `src/app/dashboard/admin/exams/[id]/edit/page.tsx` - Enhanced client error handling
 
 ### 3. ✅ Microphone Permission Policy Fix
 **Status**: Əvvəlki deployment-də həll edildi.

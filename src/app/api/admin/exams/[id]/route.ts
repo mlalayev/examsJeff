@@ -53,7 +53,8 @@ export async function GET(
         createdBy: {
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
           }
         },
@@ -270,7 +271,8 @@ export async function PATCH(
             createdBy: {
               select: {
                 id: true,
-                name: true,
+                firstName: true,
+                lastName: true,
                 email: true,
               },
             },
@@ -301,7 +303,8 @@ export async function PATCH(
           createdBy: {
             select: {
               id: true,
-              name: true,
+              firstName: true,
+              lastName: true,
               email: true,
             }
           }
