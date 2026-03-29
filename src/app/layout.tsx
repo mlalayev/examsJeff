@@ -9,6 +9,9 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'JEFF Exams Portal - IELTS, TOEFL & SAT Mock Exams',
   description: 'Practice IELTS, TOEFL and SAT with AI-powered feedback and teacher grading',
+  other: {
+    'permissions-policy': 'camera=(), microphone=(), geolocation=()',
+  },
 }
 
 export default function RootLayout({
