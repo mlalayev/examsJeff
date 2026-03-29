@@ -54,6 +54,7 @@ export function QSpeakingRecording({
   const [timeLeft, setTimeLeft] = useState(hasPreparation ? PREPARATION_DURATION : recordingDuration);
   const [error, setError] = useState<string | null>(null);
   const [permissionGranted, setPermissionGranted] = useState(false);
+  const [isCheckingPermission, setIsCheckingPermission] = useState(true);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -81,6 +82,53 @@ export function QSpeakingRecording({
       }
     };
   }, []);
+
+  // Check existing microphone permission on mount
+  useEffect(() => {
+    const checkPermission = async () => {
+      if (typeof navigator === 'undefined' || !navigator.permissions) {
+        setIsCheckingPermission(false);
+        return;
+      }
+
+      try {
+        // Check if permission API is available
+        const permissionStatus = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+        
+        if (permissionStatus.state === 'granted') {
+          setPermissionGranted(true);
+          setError(null);
+          permissionRequestedRef.current = true;
+        } else if (permissionStatus.state === 'denied') {
+          setError("Microphone access denied. Please allow microphone access in your browser settings and refresh the page.");
+          setPermissionGranted(false);
+        }
+        
+        // Listen for permission changes
+        permissionStatus.onchange = () => {
+          if (permissionStatus.state === 'granted') {
+            setPermissionGranted(true);
+            setError(null);
+            permissionRequestedRef.current = true;
+          } else if (permissionStatus.state === 'denied') {
+            setError("Microphone access denied. Please allow microphone access in your browser settings and refresh the page.");
+            setPermissionGranted(false);
+          }
+        };
+      } catch (err) {
+        // Permission API not supported or failed, try getUserMedia
+        console.log("Permission API not available, will request via getUserMedia");
+      }
+      
+      setIsCheckingPermission(false);
+    };
+
+    if (!readOnly && !value) {
+      checkPermission();
+    } else {
+      setIsCheckingPermission(false);
+    }
+  }, [readOnly, value]);
 
   // Request microphone permission early
   const requestMicrophonePermission = async () => {
@@ -330,10 +378,13 @@ export function QSpeakingRecording({
   const handleStart = async () => {
     if (hasStartedRef.current) return;
 
-    // Request microphone permission first
-    const hasPermission = await requestMicrophonePermission();
-    if (!hasPermission) {
-      return; // Error is already set by requestMicrophonePermission
+    // If we already have permission, skip the request
+    if (!permissionGranted) {
+      // Request microphone permission first
+      const hasPermission = await requestMicrophonePermission();
+      if (!hasPermission) {
+        return; // Error is already set by requestMicrophonePermission
+      }
     }
 
     hasStartedRef.current = true;
@@ -351,12 +402,12 @@ export function QSpeakingRecording({
     }
   };
 
-  // Request permission immediately on mount (non-blocking)
+  // Request permission immediately on mount (non-blocking) - only if not already checked
   useEffect(() => {
-    if (!readOnly && !value) {
+    if (!readOnly && !value && !isCheckingPermission && !permissionGranted) {
       requestMicrophonePermission();
     }
-  }, []); // Run once on mount
+  }, [isCheckingPermission]); // Run after permission check completes
 
   useEffect(() => {
     // Auto-start recording flow after permission is granted
@@ -624,14 +675,21 @@ export function QSpeakingRecording({
         {formatSpeakingPrompt(question.prompt?.text || "Speaking question")}
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-slate-50/90 px-5 py-4">
-        <div className="flex items-center justify-center gap-2">
-          <Clock className="w-5 h-5 text-slate-500 animate-pulse" />
-          <span className="text-sm font-medium text-slate-600">
-            {useParentTimer ? "Loading — use the timer below when it appears." : "Starting recording…"}
-          </span>
+      {!error && (
+        <div className="rounded-lg border border-slate-200 bg-slate-50/90 px-5 py-4">
+          <div className="flex items-center justify-center gap-2">
+            <Clock className="w-5 h-5 text-slate-500 animate-pulse" />
+            <span className="text-sm font-medium text-slate-600">
+              {isCheckingPermission 
+                ? "Checking microphone access..." 
+                : useParentTimer 
+                  ? "Loading — use the timer below when it appears." 
+                  : "Starting recording…"
+              }
+            </span>
+          </div>
         </div>
-      </div>
+      )}
 
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-5 py-4">
@@ -647,6 +705,7 @@ export function QSpeakingRecording({
                   setError(null);
                   setStatus("idle");
                   setPermissionGranted(false);
+                  setIsCheckingPermission(false);
                   // Try again
                   await handleStart();
                 }}
