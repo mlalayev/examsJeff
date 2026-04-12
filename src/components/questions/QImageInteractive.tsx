@@ -199,22 +199,17 @@ export function QImageInteractive({
         {interactionType === "multiple" && " You can select multiple answers."}
       </div>
 
-      {/* Interactive Image */}
-      <div className="bg-white border-2 border-gray-300 rounded-lg overflow-hidden w-full">
-        <div className="relative w-full">
+      {/* Interactive Image — shrink-wrap so % hotspots match pixels; avoid w-full+max-height stretch */}
+      <div className="bg-white border-2 border-gray-300 rounded-lg overflow-hidden w-full flex justify-center p-2 sm:p-3">
+        <div className="relative inline-block max-w-full align-top">
           <img
             src={imageUrl}
             alt="Interactive Question"
-            className="w-full h-auto"
-            style={{ display: "block", maxHeight: "85vh" }}
+            className="block h-auto max-h-[85vh] w-auto max-w-full object-contain select-none"
             draggable={false}
-            onError={(e) => {
-              console.error("Failed to load interactive image:", imageUrl);
-              console.error("Original path:", backgroundImage);
+            onError={() => {
+              console.error("Failed to load interactive image:", imageUrl, "original:", backgroundImage);
               setImageError(true);
-            }}
-            onLoad={() => {
-              console.log("Interactive image loaded successfully:", imageUrl);
             }}
           />
           
