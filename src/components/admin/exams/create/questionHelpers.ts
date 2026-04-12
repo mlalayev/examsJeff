@@ -29,6 +29,12 @@ export const getDefaultPrompt = (qtype: QuestionType): any => {
         text: "Enter the speaking question here",
         part: 1 // Part 1, 2, or 3
       };
+    case "IMAGE_INTERACTIVE":
+      return {
+        text: "Click on the correct area(s) in the image",
+        backgroundImage: "",
+        interactionType: "single" // "single" or "multiple"
+      };
     default:
       return { text: "" };
   }
@@ -43,6 +49,10 @@ export const getDefaultOptions = (qtype: QuestionType): any => {
       return { choices: ["Option 1", "Option 2", "Option 3"] };
     case "DND_GAP":
       return { bank: [] };
+    case "IMAGE_INTERACTIVE":
+      return { 
+        hotspots: [] // Array of { id, x, y, width, height, label, isCorrect }
+      };
     default:
       return undefined;
   }
@@ -71,6 +81,8 @@ export const getDefaultAnswerKey = (qtype: QuestionType): any => {
       return { blanks: ["answer1", "answer2"] }; // Array of correct answers for each blank
     case "SPEAKING_RECORDING":
       return null; // No answer key for speaking (manual grading)
+    case "IMAGE_INTERACTIVE":
+      return { correctHotspotIds: [] }; // Array of correct hotspot IDs
     default:
       return {};
   }

@@ -199,6 +199,46 @@ export default function QuestionPreview({ question }: QuestionPreviewProps) {
           </div>
         )}
 
+        {/* Image Interactive */}
+        {question.qtype === "IMAGE_INTERACTIVE" && (
+          <div className="mt-4 space-y-3">
+            {question.prompt?.backgroundImage && (
+              <div className="rounded-lg border border-gray-200 bg-white p-4">
+                <div className="relative inline-block">
+                  <img
+                    src={question.prompt.backgroundImage}
+                    alt="Interactive Question"
+                    className="max-w-full h-auto rounded"
+                    style={{ maxHeight: "400px" }}
+                  />
+                  {(question.options?.hotspots || []).map((hotspot: any, idx: number) => (
+                    <div
+                      key={hotspot.id}
+                      className="absolute border-2 border-blue-400 bg-blue-100/40 cursor-pointer transition-all hover:bg-blue-200/60"
+                      style={{
+                        left: `${hotspot.x}%`,
+                        top: `${hotspot.y}%`,
+                        width: `${hotspot.width}%`,
+                        height: `${hotspot.height}%`,
+                      }}
+                      title={hotspot.label}
+                    >
+                      <div className="absolute -top-6 left-0 text-xs font-medium px-2 py-1 rounded bg-blue-500 text-white whitespace-nowrap">
+                        {hotspot.label}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 text-xs text-gray-500 bg-blue-50 p-2 rounded border border-blue-200">
+                  <strong>Interaction Type:</strong> {question.prompt?.interactionType === "single" ? "Single Selection" : "Multiple Selection"}
+                  <br />
+                  Students will click on the correct area(s) in the image.
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
       </div>
 
       <p className="text-xs text-gray-500 mt-2 italic">

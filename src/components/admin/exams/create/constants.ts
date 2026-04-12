@@ -13,12 +13,14 @@ export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   ESSAY: "Essay",
   FILL_IN_BLANK: "Fill in the Blank",
   SPEAKING_RECORDING: "Speaking Recording (IELTS)",
+  IMAGE_INTERACTIVE: "Interactive Image Question",
 };
 
 export const QUESTION_TYPE_GROUPS = {
   "Variantlı sual": ["MCQ_SINGLE", "MCQ_MULTI", "TF", "TF_NG", "INLINE_SELECT"],
   "Açıq sual": ["SHORT_TEXT", "ESSAY", "FILL_IN_BLANK"],
   "Drag and Drop": ["ORDER_SENTENCE", "DND_GAP"],
+  "Interactive": ["IMAGE_INTERACTIVE"],
   "IELTS Speaking": ["SPEAKING_RECORDING"],
 };
 

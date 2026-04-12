@@ -533,6 +533,15 @@ export default function AttemptResultsPage() {
       case "SHORT_TEXT":
       case "ESSAY":
         return answer || "No answer";
+      case "IMAGE_INTERACTIVE":
+        if (typeof answer === "object" && answer !== null && Array.isArray(answer.selectedHotspotIds)) {
+          const selectedLabels = answer.selectedHotspotIds.map((id: string) => {
+            const hotspot = options?.hotspots?.find((h: any) => h.id === id);
+            return hotspot ? hotspot.label : id;
+          });
+          return selectedLabels.length > 0 ? selectedLabels.join(", ") : "No answer";
+        }
+        return "No answer";
       default:
         return JSON.stringify(answer);
     }

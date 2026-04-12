@@ -132,6 +132,21 @@ export function scoreQuestion(qtype: QuestionType, studentAnswer: any, answerKey
         return normalizeText(v) === normalizeText(correctBlanks[i]);
       }) ? 1 : 0;
     }
+    case "IMAGE_INTERACTIVE": {
+      // Value format: { selectedHotspotIds: ["hotspot-1", "hotspot-2"] }
+      // answerKey format: { correctHotspotIds: ["hotspot-1", "hotspot-2"] }
+      const correctIds = answerKey?.correctHotspotIds || [];
+      if (!studentAnswer || typeof studentAnswer !== "object" || !Array.isArray(studentAnswer.selectedHotspotIds)) return 0;
+      
+      const selectedIds = studentAnswer.selectedHotspotIds || [];
+      
+      // Set equality: check if selected IDs match correct IDs (order doesn't matter)
+      const sortedSelected = [...selectedIds].sort();
+      const sortedCorrect = [...correctIds].sort();
+      
+      if (sortedSelected.length !== sortedCorrect.length) return 0;
+      return sortedSelected.every((id, i) => id === sortedCorrect[i]) ? 1 : 0;
+    }
     // Essay requires manual grading (no autoscore)
     case "ESSAY":
     default:

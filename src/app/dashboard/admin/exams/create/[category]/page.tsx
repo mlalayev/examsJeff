@@ -1147,6 +1147,338 @@ export default function CreateExamPage() {
                       </p>
                     </div>
                   </div>
+                ) : editingQuestion.qtype === "IMAGE_INTERACTIVE" ? (
+                  <div className="space-y-3">
+                    {/* Question Text */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                        Question Text *
+                      </label>
+                      <textarea
+                        value={editingQuestion.prompt?.text || ""}
+                        onChange={(e) => {
+                          setEditingQuestion({
+                            ...editingQuestion,
+                            prompt: { ...editingQuestion.prompt, text: e.target.value },
+                          });
+                        }}
+                        placeholder="Enter the question text (e.g., 'Click on the correct body part', 'Select all items in the living room')"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
+                        rows={2}
+                      />
+                    </div>
+
+                    {/* Interaction Type */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                        Interaction Type *
+                      </label>
+                      <select
+                        value={editingQuestion.prompt?.interactionType || "single"}
+                        onChange={(e) => {
+                          setEditingQuestion({
+                            ...editingQuestion,
+                            prompt: { ...editingQuestion.prompt, interactionType: e.target.value },
+                          });
+                        }}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
+                      >
+                        <option value="single">Single Selection (Only one correct answer)</option>
+                        <option value="multiple">Multiple Selection (Multiple correct answers)</option>
+                      </select>
+                    </div>
+
+                    {/* Background Image Upload */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                        Background Image *
+                      </label>
+                      {editingQuestion.prompt?.backgroundImage && (
+                        <div className="mb-2 relative inline-block">
+                          <img
+                            src={editingQuestion.prompt.backgroundImage}
+                            alt="Background"
+                            className="max-w-full h-auto max-h-64 rounded border border-gray-200"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingQuestion({
+                                ...editingQuestion,
+                                prompt: { ...editingQuestion.prompt, backgroundImage: "" },
+                                options: { hotspots: [] },
+                                answerKey: { correctHotspotIds: [] },
+                              });
+                            }}
+                            className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      )}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+
+                          setUploadingImage(true);
+                          try {
+                            const formData = new FormData();
+                            formData.append("file", file);
+                            formData.append("type", "image");
+
+                            const res = await fetch("/api/admin/upload", {
+                              method: "POST",
+                              body: formData,
+                            });
+
+                            if (res.ok) {
+                              const data = await res.json();
+                              setEditingQuestion({
+                                ...editingQuestion,
+                                prompt: { ...editingQuestion.prompt, backgroundImage: data.path },
+                              });
+                            } else {
+                              modals.showAlert("Failed to Upload Image", "Failed to upload background image", "error");
+                            }
+                          } catch (error) {
+                            console.error("Upload error:", error);
+                            modals.showAlert("Failed to Upload Image", "Failed to upload background image", "error");
+                          } finally {
+                            setUploadingImage(false);
+                          }
+                        }}
+                        disabled={uploadingImage}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 disabled:opacity-50 bg-white"
+                      />
+                      {uploadingImage && (
+                        <p className="text-xs text-gray-500 mt-1">Uploading image...</p>
+                      )}
+                      <p className="text-xs text-gray-500 mt-1">
+                        Upload an image where students will click/select areas. This will be the background.
+                      </p>
+                    </div>
+
+                    {/* Hotspot Editor */}
+                    {editingQuestion.prompt?.backgroundImage && (
+                      <div className="pt-3 border-t border-gray-200">
+                        <label className="block text-xs font-medium text-gray-600 mb-2">
+                          Clickable Areas (Hotspots)
+                        </label>
+                        <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
+                          {/* Interactive Image Editor */}
+                          <div className="relative inline-block bg-white border-2 border-gray-300 rounded-md overflow-hidden mb-3">
+                            <img
+                              src={editingQuestion.prompt.backgroundImage}
+                              alt="Interactive"
+                              className="max-w-full h-auto"
+                              style={{ maxHeight: "500px" }}
+                              draggable={false}
+                            />
+                            {/* Render hotspots */}
+                            {(editingQuestion.options?.hotspots || []).map((hotspot: any, idx: number) => (
+                              <div
+                                key={hotspot.id}
+                                className="absolute border-2 cursor-pointer transition-all"
+                                style={{
+                                  left: `${hotspot.x}%`,
+                                  top: `${hotspot.y}%`,
+                                  width: `${hotspot.width}%`,
+                                  height: `${hotspot.height}%`,
+                                  borderColor: hotspot.isCorrect ? "#10B981" : "#EF4444",
+                                  backgroundColor: hotspot.isCorrect ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)",
+                                }}
+                              >
+                                <div className="absolute -top-6 left-0 text-xs font-medium px-2 py-1 rounded" style={{
+                                  backgroundColor: hotspot.isCorrect ? "#10B981" : "#EF4444",
+                                  color: "white",
+                                }}>
+                                  {hotspot.label}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Add Hotspot Button */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newHotspot = {
+                                id: `hotspot-${Date.now()}`,
+                                x: 10,
+                                y: 10,
+                                width: 20,
+                                height: 15,
+                                label: `Area ${(editingQuestion.options?.hotspots || []).length + 1}`,
+                                isCorrect: false,
+                              };
+                              setEditingQuestion({
+                                ...editingQuestion,
+                                options: {
+                                  ...editingQuestion.options,
+                                  hotspots: [...(editingQuestion.options?.hotspots || []), newHotspot],
+                                },
+                              });
+                            }}
+                            className="w-full px-3 py-2 border border-dashed border-gray-300 rounded-md text-gray-600 hover:border-gray-400 hover:bg-gray-100 text-sm flex items-center justify-center gap-2"
+                          >
+                            <Plus className="w-4 h-4" />
+                            Add Clickable Area
+                          </button>
+
+                          {/* Hotspots List */}
+                          {(editingQuestion.options?.hotspots || []).length > 0 && (
+                            <div className="mt-4 space-y-2">
+                              <p className="text-xs font-medium text-gray-700 mb-2">Configure Areas:</p>
+                              {(editingQuestion.options?.hotspots || []).map((hotspot: any, idx: number) => (
+                                <div key={hotspot.id} className="bg-white p-3 rounded border border-gray-200 space-y-2">
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="text"
+                                      value={hotspot.label}
+                                      onChange={(e) => {
+                                        const newHotspots = [...(editingQuestion.options?.hotspots || [])];
+                                        newHotspots[idx] = { ...hotspot, label: e.target.value };
+                                        setEditingQuestion({
+                                          ...editingQuestion,
+                                          options: { ...editingQuestion.options, hotspots: newHotspots },
+                                        });
+                                      }}
+                                      placeholder="Area label"
+                                      className="flex-1 px-2 py-1 border border-gray-200 rounded text-xs"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const newHotspots = [...(editingQuestion.options?.hotspots || [])];
+                                        newHotspots.splice(idx, 1);
+                                        setEditingQuestion({
+                                          ...editingQuestion,
+                                          options: { ...editingQuestion.options, hotspots: newHotspots },
+                                          answerKey: {
+                                            correctHotspotIds: (editingQuestion.answerKey?.correctHotspotIds || []).filter((id: string) => id !== hotspot.id),
+                                          },
+                                        });
+                                      }}
+                                      className="px-2 py-1 text-red-600 hover:bg-red-50 rounded text-xs"
+                                    >
+                                      <X className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                      <label className="text-xs text-gray-500">X Position (%)</label>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        max="100"
+                                        value={hotspot.x}
+                                        onChange={(e) => {
+                                          const newHotspots = [...(editingQuestion.options?.hotspots || [])];
+                                          newHotspots[idx] = { ...hotspot, x: parseFloat(e.target.value) || 0 };
+                                          setEditingQuestion({
+                                            ...editingQuestion,
+                                            options: { ...editingQuestion.options, hotspots: newHotspots },
+                                          });
+                                        }}
+                                        className="w-full px-2 py-1 border border-gray-200 rounded text-xs"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="text-xs text-gray-500">Y Position (%)</label>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        max="100"
+                                        value={hotspot.y}
+                                        onChange={(e) => {
+                                          const newHotspots = [...(editingQuestion.options?.hotspots || [])];
+                                          newHotspots[idx] = { ...hotspot, y: parseFloat(e.target.value) || 0 };
+                                          setEditingQuestion({
+                                            ...editingQuestion,
+                                            options: { ...editingQuestion.options, hotspots: newHotspots },
+                                          });
+                                        }}
+                                        className="w-full px-2 py-1 border border-gray-200 rounded text-xs"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="text-xs text-gray-500">Width (%)</label>
+                                      <input
+                                        type="number"
+                                        min="1"
+                                        max="100"
+                                        value={hotspot.width}
+                                        onChange={(e) => {
+                                          const newHotspots = [...(editingQuestion.options?.hotspots || [])];
+                                          newHotspots[idx] = { ...hotspot, width: parseFloat(e.target.value) || 1 };
+                                          setEditingQuestion({
+                                            ...editingQuestion,
+                                            options: { ...editingQuestion.options, hotspots: newHotspots },
+                                          });
+                                        }}
+                                        className="w-full px-2 py-1 border border-gray-200 rounded text-xs"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="text-xs text-gray-500">Height (%)</label>
+                                      <input
+                                        type="number"
+                                        min="1"
+                                        max="100"
+                                        value={hotspot.height}
+                                        onChange={(e) => {
+                                          const newHotspots = [...(editingQuestion.options?.hotspots || [])];
+                                          newHotspots[idx] = { ...hotspot, height: parseFloat(e.target.value) || 1 };
+                                          setEditingQuestion({
+                                            ...editingQuestion,
+                                            options: { ...editingQuestion.options, hotspots: newHotspots },
+                                          });
+                                        }}
+                                        className="w-full px-2 py-1 border border-gray-200 rounded text-xs"
+                                      />
+                                    </div>
+                                  </div>
+                                  <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={(editingQuestion.answerKey?.correctHotspotIds || []).includes(hotspot.id)}
+                                      onChange={(e) => {
+                                        let correctIds = [...(editingQuestion.answerKey?.correctHotspotIds || [])];
+                                        if (e.target.checked) {
+                                          if (editingQuestion.prompt?.interactionType === "single") {
+                                            correctIds = [hotspot.id];
+                                          } else {
+                                            correctIds.push(hotspot.id);
+                                          }
+                                        } else {
+                                          correctIds = correctIds.filter((id: string) => id !== hotspot.id);
+                                        }
+                                        const newHotspots = [...(editingQuestion.options?.hotspots || [])];
+                                        newHotspots[idx] = { ...hotspot, isCorrect: e.target.checked };
+                                        setEditingQuestion({
+                                          ...editingQuestion,
+                                          options: { ...editingQuestion.options, hotspots: newHotspots },
+                                          answerKey: { correctHotspotIds: correctIds },
+                                        });
+                                      }}
+                                      className="w-4 h-4"
+                                    />
+                                    <span className="text-xs font-medium text-gray-700">Mark as Correct Answer</span>
+                                  </label>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2">
+                          Add clickable areas on the image. Configure position (X, Y) and size (Width, Height) as percentages. Mark correct answer(s).
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <>
                     <textarea
@@ -1409,6 +1741,31 @@ export default function CreateExamPage() {
                         </div>
                         <p className="text-xs text-gray-500 mt-2">
                           Answer key: {JSON.stringify(editingQuestion.prompt.tokens.map((_: any, idx: number) => idx))}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {editingQuestion.qtype === "IMAGE_INTERACTIVE" && (
+                  <div className="space-y-2 p-3 bg-white border border-gray-200 rounded-md">
+                    {(editingQuestion.answerKey?.correctHotspotIds || []).length === 0 ? (
+                      <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded border border-amber-200">
+                        Please mark at least one area as the correct answer in the configuration above.
+                      </p>
+                    ) : (
+                      <div>
+                        <p className="text-xs font-medium text-gray-700 mb-2">Correct Answer(s):</p>
+                        <div className="flex flex-wrap gap-2">
+                          {(editingQuestion.options?.hotspots || [])
+                            .filter((h: any) => (editingQuestion.answerKey?.correctHotspotIds || []).includes(h.id))
+                            .map((hotspot: any) => (
+                              <span key={hotspot.id} className="px-2 py-1 bg-green-50 text-green-700 rounded text-xs font-medium border border-green-200">
+                                {hotspot.label}
+                              </span>
+                            ))}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2">
+                          Interaction Type: {editingQuestion.prompt?.interactionType === "single" ? "Single Selection" : "Multiple Selection"}
                         </p>
                       </div>
                     )}

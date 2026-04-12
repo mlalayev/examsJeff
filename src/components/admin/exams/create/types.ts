@@ -11,7 +11,8 @@ export type QuestionType =
   | "ESSAY"
   | "INLINE_SELECT"
   | "FILL_IN_BLANK"
-  | "SPEAKING_RECORDING";
+  | "SPEAKING_RECORDING"
+  | "IMAGE_INTERACTIVE";
 
 export interface Section {
   id: string;

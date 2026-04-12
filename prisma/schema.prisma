@@ -594,6 +594,7 @@ enum QuestionType {
   TF_NG
   FILL_IN_BLANK
   SPEAKING_RECORDING
+  IMAGE_INTERACTIVE
 }
 
 enum PaymentStatus {
