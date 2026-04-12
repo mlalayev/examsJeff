@@ -79,12 +79,19 @@ export async function POST(request: NextRequest) {
     // Write file
     await writeFile(filePath, buffer);
     
-    // Return public path
+    // Return API path that will definitely work
+    // Use /api/images/[filename] route instead of /images/[filename]
+    const apiPath = `/api/images/${filename}`;
     const publicPath = `/${uploadDir.replace('public/', '')}/${filename}`;
+    
+    console.log("File saved to:", filePath);
+    console.log("API path:", apiPath);
+    console.log("Public path:", publicPath);
     
     return NextResponse.json({ 
       success: true,
-      path: publicPath,
+      path: apiPath, // Use API route for reliable serving
+      publicPath: publicPath, // Keep public path as fallback
       filename: filename 
     });
     

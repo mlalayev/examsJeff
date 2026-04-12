@@ -644,17 +644,40 @@ export default function CreateExamPage() {
               if (res.ok) {
                 const data = await res.json();
                 console.log("Image uploaded successfully:", data);
+                console.log("Current location:", window.location.origin);
+                
+                // Always use the current origin for images to ensure they load correctly
+                // This handles both development (localhost) and production
+                const imageUrl = `${window.location.origin}${data.path}`;
+                
+                console.log("Full Image URL:", imageUrl);
+                
+                // Test if the image is accessible
+                try {
+                  const testResponse = await fetch(imageUrl, { method: 'HEAD' });
+                  console.log("Image accessibility test:", testResponse.status, testResponse.statusText);
+                  if (!testResponse.ok) {
+                    console.error("Image uploaded but not accessible at:", imageUrl);
+                    modals.showAlert(
+                      "Image Upload Warning", 
+                      "Image was uploaded but may not be immediately accessible. This might be a server configuration issue. Path: " + data.path,
+                      "warning"
+                    );
+                  }
+                } catch (testError) {
+                  console.error("Failed to test image accessibility:", testError);
+                }
                 
                 // Handle different image upload scenarios
                 if (editingQuestion.qtype === "IMAGE_INTERACTIVE") {
                   setEditingQuestion({
                     ...editingQuestion,
-                    prompt: { ...editingQuestion.prompt, backgroundImage: data.path },
+                    prompt: { ...editingQuestion.prompt, backgroundImage: imageUrl },
                   });
                 } else {
                   setEditingQuestion({
                     ...editingQuestion,
-                    image: data.path,
+                    image: imageUrl,
                   });
                 }
               } else {
