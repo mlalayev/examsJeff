@@ -534,12 +534,79 @@ export default function AttemptResultsPage() {
       case "ESSAY":
         return answer || "No answer";
       case "IMAGE_INTERACTIVE":
-        if (typeof answer === "object" && answer !== null && Array.isArray(answer.selectedHotspotIds)) {
-          const selectedLabels = answer.selectedHotspotIds.map((id: string) => {
-            const hotspot = options?.hotspots?.find((h: any) => h.id === id);
-            return hotspot ? hotspot.label : id;
-          });
-          return selectedLabels.length > 0 ? selectedLabels.join(", ") : "No answer";
+        // For IMAGE_INTERACTIVE, the "answer" parameter could be either:
+        // 1. Student answer (with selectedElementIds, inputValues, etc.)
+        // 2. Correct answer key (with correctElementIds/correctHotspotIds)
+        
+        if (typeof answer === "object" && answer !== null) {
+          const parts: string[] = [];
+          const elements = options?.elements || options?.hotspots || [];
+          
+          // Check if this is an answer key (has correctElementIds or correctHotspotIds)
+          const isAnswerKey = "correctElementIds" in answer || "correctHotspotIds" in answer;
+          
+          if (isAnswerKey) {
+            // Display correct answer format
+            const correctIds = answer.correctElementIds || answer.correctHotspotIds || [];
+            
+            // Show correct clickable elements
+            if (correctIds.length > 0) {
+              const correctLabels = correctIds.map((id: string) => {
+                const element = elements.find((e: any) => e.id === id);
+                return element ? element.label : id;
+              });
+              parts.push(correctLabels.join(", "));
+            }
+            
+            // Show correct answers for input elements
+            const inputElements = elements.filter((e: any) => e.type === "input" && e.correctAnswer);
+            if (inputElements.length > 0) {
+              const inputAnswers = inputElements.map((e: any) => 
+                `${e.label}: "${e.correctAnswer}"`
+              );
+              parts.push(...inputAnswers);
+            }
+            
+            return parts.length > 0 ? parts.join(" | ") : "No correct answer defined";
+          }
+          
+          // Otherwise, display student answer format (existing logic)
+          const allSelectedIds: string[] = [];
+          const selectedElements = answer.selectedElementIds || answer.selectedHotspotIds || [];
+          if (Array.isArray(selectedElements)) {
+            allSelectedIds.push(...selectedElements);
+          }
+          
+          if (answer.radioSelections && typeof answer.radioSelections === "object") {
+            const radioIds = Object.values(answer.radioSelections).filter(id => typeof id === "string");
+            allSelectedIds.push(...radioIds);
+          }
+          
+          if (answer.checkboxSelections && Array.isArray(answer.checkboxSelections)) {
+            allSelectedIds.push(...answer.checkboxSelections);
+          }
+          
+          if (allSelectedIds.length > 0) {
+            const selectedLabels = allSelectedIds.map((id: string) => {
+              const element = elements.find((e: any) => e.id === id);
+              return element ? element.label : id;
+            });
+            parts.push(selectedLabels.join(", "));
+          }
+          
+          if (answer.inputValues && typeof answer.inputValues === "object") {
+            const inputAnswers = Object.entries(answer.inputValues)
+              .map(([elementId, value]) => {
+                const element = elements.find((e: any) => e.id === elementId);
+                const label = element?.label || elementId;
+                return `${label}: "${value}"`;
+              });
+            if (inputAnswers.length > 0) {
+              parts.push(...inputAnswers);
+            }
+          }
+          
+          return parts.length > 0 ? parts.join(" | ") : "No answer";
         }
         return "No answer";
       default:
@@ -1523,6 +1590,10 @@ export default function AttemptResultsPage() {
                             <p className="text-sm font-semibold text-gray-900">
                               {(() => {
                                 if (q.qtype === "FILL_IN_BLANK") {
+                                  return formatAnswer(q.qtype, q.correctAnswer, q.options);
+                                }
+                                if (q.qtype === "IMAGE_INTERACTIVE") {
+                                  // For IMAGE_INTERACTIVE, format the correct answer specially
                                   return formatAnswer(q.qtype, q.correctAnswer, q.options);
                                 }
                                 const correctValue = q.correctAnswer?.value ?? 

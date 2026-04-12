@@ -133,19 +133,76 @@ export function scoreQuestion(qtype: QuestionType, studentAnswer: any, answerKey
       }) ? 1 : 0;
     }
     case "IMAGE_INTERACTIVE": {
-      // Value format: { selectedHotspotIds: ["hotspot-1", "hotspot-2"] }
-      // answerKey format: { correctHotspotIds: ["hotspot-1", "hotspot-2"] }
-      const correctIds = answerKey?.correctHotspotIds || [];
-      if (!studentAnswer || typeof studentAnswer !== "object" || !Array.isArray(studentAnswer.selectedHotspotIds)) return 0;
+      // New format supports multiple element types:
+      // - Clickable elements (hotspots, radio buttons, checkboxes)
+      // - Text input elements
       
-      const selectedIds = studentAnswer.selectedHotspotIds || [];
+      // Student answer format:
+      // {
+      //   selectedElementIds?: string[],        // For hotspots
+      //   selectedHotspotIds?: string[],        // Backward compatibility
+      //   inputValues?: { [elementId]: string }, // For text inputs
+      //   radioSelections?: { [groupName]: elementId }, // For radio buttons
+      //   checkboxSelections?: string[]         // For checkboxes
+      // }
       
-      // Set equality: check if selected IDs match correct IDs (order doesn't matter)
-      const sortedSelected = [...selectedIds].sort();
-      const sortedCorrect = [...correctIds].sort();
+      // Answer key format:
+      // {
+      //   correctElementIds?: string[],   // Correct clickable element IDs
+      //   correctHotspotIds?: string[],   // Backward compatibility
+      // }
       
-      if (sortedSelected.length !== sortedCorrect.length) return 0;
-      return sortedSelected.every((id, i) => id === sortedCorrect[i]) ? 1 : 0;
+      if (!studentAnswer || typeof studentAnswer !== "object") return 0;
+      if (!answerKey || typeof answerKey !== "object") return 0;
+      
+      let totalCorrect = 0;
+      let totalQuestions = 0;
+      
+      // 1. Check clickable elements (hotspots, radio buttons, checkboxes)
+      const correctIds = answerKey.correctElementIds || answerKey.correctHotspotIds || [];
+      
+      if (correctIds.length > 0) {
+        totalQuestions++;
+        
+        // Collect all selected element IDs from different sources
+        const allSelectedIds: string[] = [];
+        
+        // From selectedElementIds or selectedHotspotIds (backward compatibility)
+        const selectedElements = studentAnswer.selectedElementIds || studentAnswer.selectedHotspotIds || [];
+        allSelectedIds.push(...selectedElements);
+        
+        // From radio selections (groupName -> elementId)
+        if (studentAnswer.radioSelections) {
+          const radioIds = Object.values(studentAnswer.radioSelections).filter(id => typeof id === "string");
+          allSelectedIds.push(...radioIds);
+        }
+        
+        // From checkbox selections
+        if (studentAnswer.checkboxSelections && Array.isArray(studentAnswer.checkboxSelections)) {
+          allSelectedIds.push(...studentAnswer.checkboxSelections);
+        }
+        
+        // Check if selected IDs match correct IDs (order doesn't matter)
+        const sortedSelected = [...new Set(allSelectedIds)].sort();
+        const sortedCorrect = [...correctIds].sort();
+        
+        if (sortedSelected.length === sortedCorrect.length && 
+            sortedSelected.every((id, i) => id === sortedCorrect[i])) {
+          totalCorrect++;
+        }
+      }
+      
+      // 2. Check text input elements
+      // Need to get the question's elements to validate input answers
+      // This requires access to question.options.elements
+      // For now, we'll need to pass the full question to scoreQuestion
+      // or handle this in the submission endpoint
+      
+      // If there are no questions to check, return 0
+      if (totalQuestions === 0) return 0;
+      
+      // Return 1 if all parts are correct, 0 otherwise
+      return totalCorrect === totalQuestions ? 1 : 0;
     }
     // Essay requires manual grading (no autoscore)
     case "ESSAY":
@@ -181,4 +238,85 @@ export function calculateSectionScore(questions: Array<{ maxScore: number; isCor
 export function calculatePercentage(raw: number, max: number): number | null {
   if (max === 0) return null;
   return Math.round((raw / max) * 100);
+}
+
+/**
+ * Score IMAGE_INTERACTIVE question with access to full question data
+ * This allows validation of text input elements
+ */
+export function scoreImageInteractiveQuestion(
+  studentAnswer: any,
+  answerKey: any,
+  questionOptions: any
+): number {
+  if (!studentAnswer || typeof studentAnswer !== "object") return 0;
+  if (!answerKey || typeof answerKey !== "object") return 0;
+  
+  let totalCorrect = 0;
+  let totalElements = 0;
+  
+  // Get elements from question options (supports both new and old format)
+  const elements = questionOptions?.elements || questionOptions?.hotspots || [];
+  
+  // 1. Check clickable elements (hotspots, radio buttons, checkboxes)
+  const clickableElements = elements.filter((e: any) => 
+    !e.type || e.type === "hotspot" || e.type === "radio" || e.type === "checkbox"
+  );
+  
+  if (clickableElements.length > 0) {
+    const correctIds = answerKey.correctElementIds || answerKey.correctHotspotIds || [];
+    
+    if (correctIds.length > 0) {
+      totalElements++;
+      
+      // Collect all selected element IDs from different sources
+      const allSelectedIds: string[] = [];
+      
+      // From selectedElementIds or selectedHotspotIds (backward compatibility)
+      const selectedElements = studentAnswer.selectedElementIds || studentAnswer.selectedHotspotIds || [];
+      allSelectedIds.push(...selectedElements);
+      
+      // From radio selections (groupName -> elementId)
+      if (studentAnswer.radioSelections) {
+        const radioIds = Object.values(studentAnswer.radioSelections).filter(id => typeof id === "string");
+        allSelectedIds.push(...radioIds);
+      }
+      
+      // From checkbox selections
+      if (studentAnswer.checkboxSelections && Array.isArray(studentAnswer.checkboxSelections)) {
+        allSelectedIds.push(...studentAnswer.checkboxSelections);
+      }
+      
+      // Check if selected IDs match correct IDs (order doesn't matter)
+      const sortedSelected = [...new Set(allSelectedIds)].sort();
+      const sortedCorrect = [...correctIds].sort();
+      
+      if (sortedSelected.length === sortedCorrect.length && 
+          sortedSelected.every((id, i) => id === sortedCorrect[i])) {
+        totalCorrect++;
+      }
+    }
+  }
+  
+  // 2. Check text input elements
+  const inputElements = elements.filter((e: any) => e.type === "input");
+  
+  for (const element of inputElements) {
+    if (!element.correctAnswer) continue; // Skip inputs without correct answers
+    
+    totalElements++;
+    const studentInput = studentAnswer.inputValues?.[element.id] || "";
+    
+    // Case-insensitive comparison with normalization
+    if (normalizeText(studentInput) === normalizeText(element.correctAnswer)) {
+      totalCorrect++;
+    }
+  }
+  
+  // If there are no elements to check, return 0
+  if (totalElements === 0) return 0;
+  
+  // Return 1 if all elements are correct, 0 otherwise
+  // For partial credit, you could return totalCorrect / totalElements
+  return totalCorrect === totalElements ? 1 : 0;
 }

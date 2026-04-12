@@ -362,49 +362,6 @@ export function QImageInteractive({
           })}
         </div>
       </div>
-
-      {/* Summary of selections */}
-      <div className="text-sm space-y-2">
-        {/* Hotspot selections */}
-        {(() => {
-          const selectedIds = currentValue.selectedElementIds || currentValue.selectedHotspotIds || [];
-          const selectedHotspots = elements.filter(e => 
-            (!e.type || e.type === "hotspot") && selectedIds.includes(e.id)
-          );
-          return selectedHotspots.length > 0 ? (
-            <div>
-              <p className="text-gray-600 mb-1"><strong>Selected:</strong></p>
-              <div className="flex flex-wrap gap-2">
-                {selectedHotspots.map((element) => (
-                  <span 
-                    key={element.id} 
-                    className="px-3 py-1 text-xs font-medium rounded-full text-white"
-                    style={{ backgroundColor: "#303380" }}
-                  >
-                    {element.label}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ) : null;
-        })()}
-
-        {/* Input values */}
-        {Object.keys(currentValue.inputValues || {}).length > 0 && (
-          <div>
-            <p className="text-gray-600 mb-1"><strong>Your answers:</strong></p>
-            <div className="space-y-1 text-xs">
-              {elements
-                .filter(e => e.type === "input" && currentValue.inputValues?.[e.id])
-                .map((element) => (
-                  <div key={element.id}>
-                    <span className="font-medium">{element.label}:</span> {currentValue.inputValues?.[element.id]}
-                  </div>
-                ))}
-            </div>
-          </div>
-        )}
-      </div>
     </div>
   );
 }

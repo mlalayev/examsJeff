@@ -140,7 +140,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
             }
 
             const answer = sectionAnswers[q.id];
-            const correct = scoreQuestion(qtype, answer, q.answerKey);
+            
+            // Use specialized scoring for IMAGE_INTERACTIVE to handle text inputs
+            let correct = 0;
+            if (qtype === "IMAGE_INTERACTIVE") {
+              const { scoreImageInteractiveQuestion } = await import("@/lib/scoring");
+              correct = scoreImageInteractiveQuestion(answer, q.answerKey, q.options);
+            } else {
+              correct = scoreQuestion(qtype, answer, q.answerKey);
+            }
             
             
             // Each question's maxScore may be >1; scale with correct (0/1)
