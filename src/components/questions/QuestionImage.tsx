@@ -15,8 +15,7 @@ export function QuestionImage({ imageUrl, alt = "Question diagram", onClick }: Q
         src={imageUrl}
         alt={alt}
         onClick={onClick}
-        className="h-auto max-h-96 mx-auto rounded border border-gray-300 cursor-pointer hover:opacity-90 transition-opacity"
-        style={{ width: "90%", minWidth: "90%" }}
+        className="h-auto w-full max-h-[min(80vh,52rem)] object-contain mx-auto rounded border border-gray-300 cursor-pointer hover:opacity-90 transition-opacity"
         loading="lazy"
       />
     </div>

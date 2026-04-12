@@ -100,7 +100,7 @@ export function QFillInBlank({
       {/* Image */}
       {(question.image || question.prompt.imageUrl) && (
         <div className="mb-4 rounded-lg overflow-hidden border border-gray-200">
-          <div className="relative w-full flex justify-center" style={{ minHeight: "200px" }}>
+          <div className="relative w-full flex justify-center min-h-[240px]">
             <img
               src={question.image || question.prompt.imageUrl || ""}
               alt="Question image"
@@ -108,8 +108,7 @@ export function QFillInBlank({
                 const imageUrl = question.image || question.prompt.imageUrl;
                 if (imageUrl) onImageClick?.(imageUrl);
               }}
-              className="h-auto object-contain cursor-pointer hover:opacity-90 transition-opacity"
-              style={{ width: "90%", minWidth: "90%", maxHeight: "400px" }}
+              className="h-auto w-full max-h-[min(80vh,52rem)] object-contain cursor-pointer hover:opacity-90 transition-opacity"
             />
           </div>
         </div>

@@ -824,8 +824,7 @@ export default function AttemptRunnerPage() {
                    src={q.prompt.imageUrl}
                    alt="Question diagram"
                    onClick={() => setViewingImage(q.prompt.imageUrl)}
-                   className="h-auto max-h-96 mx-auto rounded border border-gray-300 cursor-pointer hover:opacity-90 transition-opacity"
-                   style={{ width: "90%", minWidth: "90%" }}
+                   className="h-auto w-full max-h-[min(80vh,52rem)] object-contain mx-auto rounded border border-gray-300 cursor-pointer hover:opacity-90 transition-opacity"
                  />
                </div>
              )}
@@ -1617,7 +1616,7 @@ export default function AttemptRunnerPage() {
           {/* Panel on the right - has pointer-events so you can scroll the image and use close */}
           <div
             className="fixed top-0 h-full bg-white shadow-2xl z-[101] flex flex-col pointer-events-auto"
-            style={{ right: 0, width: "500px", maxWidth: "100vw" }}
+            style={{ right: 0, width: "min(96vw, 72rem)", maxWidth: "100vw" }}
           >
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
               <h3 className="font-medium text-gray-900">Image Viewer</h3>

@@ -66,7 +66,7 @@ export function QMcqSingle({ question, value, onChange, readOnly, onImageClick }
                     src={choiceImage}
                     alt={`Option ${idx + 1}`}
                     className="rounded border border-gray-300"
-                    style={{ width: "90%", minWidth: "90%", maxHeight: "200px", objectFit: "contain" }}
+                    style={{ width: "100%", maxHeight: "min(50vh, 360px)", objectFit: "contain" }}
                   />
                 </div>
               )}
