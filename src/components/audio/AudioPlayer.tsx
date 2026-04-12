@@ -7,13 +7,49 @@ interface AudioPlayerProps {
 }
 
 const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, className = "" }) => {
-  if (!src) {
+  // Normalize audio URL - convert old paths to new API paths
+  const normalizeAudioUrl = (audioPath: string | null | undefined): string | null => {
+    if (!audioPath) return null;
+    
+    // If already a full URL or base64, return as-is
+    if (audioPath.startsWith("http://") || audioPath.startsWith("https://") || audioPath.startsWith("data:")) {
+      return audioPath;
+    }
+    
+    // Convert old /audio/ paths to /api/audio/ for reliable serving
+    if (audioPath.startsWith("/audio/")) {
+      const filename = audioPath.replace("/audio/", "");
+      return `/api/audio/${filename}`;
+    }
+    
+    // If it's /api/images/ (wrong path for audio), fix it
+    if (audioPath.startsWith("/api/images/")) {
+      const filename = audioPath.replace("/api/images/", "");
+      // Check if it's actually an audio file
+      if (filename.match(/\.(mp3|wav|ogg|m4a|aac|flac|wma|webm)$/i)) {
+        return `/api/audio/${filename}`;
+      }
+    }
+    
+    // If already /api/audio/, return as-is
+    if (audioPath.startsWith("/api/audio/")) {
+      return audioPath;
+    }
+    
+    // Fallback
+    return audioPath;
+  };
+
+  const normalizedSrc = normalizeAudioUrl(src);
+
+  if (!normalizedSrc) {
     return (
       <div className={`bg-white rounded-lg border p-4 w-full ${className}`}>
         <p className="text-gray-500 text-center">No audio available</p>
       </div>
     );
   }
+  
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -22,7 +58,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, className = "" }) => {
 
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio || !src) return;
+    if (!audio || !normalizedSrc) return;
 
     // Reset player when src changes
     setIsPlaying(false);
@@ -43,7 +79,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, className = "" }) => {
       audio.removeEventListener('loadedmetadata', updateDuration);
       audio.removeEventListener('ended', handleEnded);
     };
-  }, [src]);
+  }, [normalizedSrc]);
 
   const togglePlayPause = () => {
     const audio = audioRef.current;
@@ -125,7 +161,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, className = "" }) => {
           box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
       `}</style>
-      <audio ref={audioRef} src={src} preload="metadata" />
+      <audio ref={audioRef} src={normalizedSrc} preload="metadata" />
       
       {/* Seek Bar - Moved to top */}
       <div className="mb-4">

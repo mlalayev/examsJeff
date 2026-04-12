@@ -17,13 +17,48 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({ src, classNa
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  console.log("🎧 IELTSAudioPlayer render:", { src, hasAudio: !!src });
+  // Normalize audio URL - convert old paths to new API paths
+  const normalizeAudioUrl = (audioPath: string | null | undefined): string | null => {
+    if (!audioPath) return null;
+    
+    // If already a full URL or base64, return as-is
+    if (audioPath.startsWith("http://") || audioPath.startsWith("https://") || audioPath.startsWith("data:")) {
+      return audioPath;
+    }
+    
+    // Convert old /audio/ paths to /api/audio/ for reliable serving
+    if (audioPath.startsWith("/audio/")) {
+      const filename = audioPath.replace("/audio/", "");
+      return `/api/audio/${filename}`;
+    }
+    
+    // If it's /api/images/ (wrong path for audio), fix it
+    if (audioPath.startsWith("/api/images/")) {
+      const filename = audioPath.replace("/api/images/", "");
+      // Check if it's actually an audio file
+      if (filename.match(/\.(mp3|wav|ogg|m4a|aac|flac|wma|webm)$/i)) {
+        return `/api/audio/${filename}`;
+      }
+    }
+    
+    // If already /api/audio/, return as-is
+    if (audioPath.startsWith("/api/audio/")) {
+      return audioPath;
+    }
+    
+    // Fallback: assume it's relative and prepend /api/audio/
+    return audioPath;
+  };
+
+  const normalizedSrc = normalizeAudioUrl(src);
+
+  console.log("🎧 IELTSAudioPlayer render:", { originalSrc: src, normalizedSrc, hasAudio: !!normalizedSrc });
 
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio || !src) return;
+    if (!audio || !normalizedSrc) return;
 
-    console.log("🎧 Loading audio:", src);
+    console.log("🎧 Loading audio:", normalizedSrc);
     setError(null);
     setIsPlaying(false);
     setCurrentTime(0);
@@ -73,7 +108,7 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({ src, classNa
       audio.removeEventListener("pause", onPause);
       audio.removeEventListener("error", onError);
     };
-  }, [src, isDragging]);
+  }, [normalizedSrc, isDragging]);
 
   const handlePlayPause = () => {
     const audio = audioRef.current;
@@ -174,12 +209,13 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({ src, classNa
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2">
           <p className="text-xs text-red-700">Audio Error: {error}</p>
-          <p className="text-xs text-red-600 mt-1">Audio URL: {src}</p>
+          <p className="text-xs text-red-600 mt-1">Original URL: {src}</p>
+          <p className="text-xs text-red-600">Normalized URL: {normalizedSrc}</p>
         </div>
       )}
       <audio
         ref={audioRef}
-        src={src}
+        src={normalizedSrc || undefined}
         preload="metadata"
       />
 

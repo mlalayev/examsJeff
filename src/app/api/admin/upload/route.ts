@@ -80,8 +80,8 @@ export async function POST(request: NextRequest) {
     await writeFile(filePath, buffer);
     
     // Return API path that will definitely work
-    // Use /api/images/[filename] route instead of /images/[filename]
-    const apiPath = `/api/images/${filename}`;
+    // Use /api/images/[filename] or /api/audio/[filename] route instead of /images/ or /audio/
+    const apiPath = type === "audio" ? `/api/audio/${filename}` : `/api/images/${filename}`;
     const publicPath = `/${uploadDir.replace('public/', '')}/${filename}`;
     
     console.log("File saved to:", filePath);
