@@ -168,7 +168,7 @@ export async function GET(
 
     const role = (user as any).role;
     const isOwner = booking.studentId === user.id;
-    const isTeacher = role === "TEACHER" || role === "ADMIN" || role === "BRANCH_ADMIN" || role === "BOSS";
+    const isTeacher = role === "TEACHER" || role === "ADMIN" || role === "BRANCH_ADMIN" || role === "BOSS" || role === "BRANCH_BOSS" || role === "CREATOR";
 
     // Authorization check
     if (!isOwner && !isTeacher) {
