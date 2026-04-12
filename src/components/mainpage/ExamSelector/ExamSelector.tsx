@@ -5,12 +5,12 @@ import { BookOpen, ArrowRight, ExternalLink } from 'lucide-react';
 
 export default function ExamSelector() {
   const exams = [
-    { name: 'IELTS', badge: '4 sections', desc: 'IELTS — 4 sections, automatic evaluation', tryLink: '/reading', learnLink: '/reading' },
-    { name: 'TOEFL', badge: '4 sections', desc: 'TOEFL — 4 sections, automatic evaluation', tryLink: '/toefl', learnLink: '/toefl' },
-    { name: 'SAT', badge: 'Math + Reading', desc: 'SAT — Math and Reading sections with real-time timer', tryLink: '/sat', learnLink: '/sat' },
-    { name: 'Duolingo', badge: 'Adaptive', desc: 'Duolingo English Test — adaptive format with all question types', tryLink: '/duolingo', learnLink: '/duolingo' },
+    { name: 'IELTS', badge: '4 sections', desc: 'IELTS — 4 sections, automatic evaluation', tryLink: '/dashboard/catalog', learnLink: '/dashboard/catalog', tryText: 'Browse Exams' },
+    { name: 'TOEFL', badge: '4 sections', desc: 'TOEFL — 4 sections, automatic evaluation', tryLink: '/dashboard/catalog', learnLink: '/dashboard/catalog', tryText: 'Browse Exams' },
+    { name: 'SAT', badge: 'Math + Reading', desc: 'SAT — Math and Reading sections with real-time timer', tryLink: '/dashboard/catalog', learnLink: '/dashboard/catalog', tryText: 'Browse Exams' },
+    { name: 'Duolingo', badge: 'Adaptive', desc: 'Duolingo English Test — adaptive format with all question types', tryLink: '/dashboard/catalog', learnLink: '/dashboard/catalog', tryText: 'Browse Exams' },
     { name: 'General English', badge: 'A1-C2', desc: 'General English — Unit-based exams from A1 to C2 levels', tryLink: '/dashboard/catalog', learnLink: '/dashboard/catalog', tryText: 'Browse Units' },
-    { name: 'Math', badge: 'Algebra + Geometry', desc: 'Math — Algebra, Geometry, and advanced mathematics topics', tryLink: '/math', learnLink: '/math' },
+    { name: 'Math', badge: 'Algebra + Geometry', desc: 'Math — Algebra, Geometry, and advanced mathematics topics', tryLink: '/dashboard/catalog', learnLink: '/dashboard/catalog', tryText: 'Browse Exams' },
   ];
 
   return (

@@ -40,6 +40,7 @@ export function QImageInteractive({
   const elements = (question.options?.elements || question.options?.hotspots || []) as InteractiveElement[];
   
   const [hoveredElementId, setHoveredElementId] = useState<string | null>(null);
+  const [imageError, setImageError] = useState(false);
 
   // Initialize value object
   const currentValue: ImageInteractiveValue = value || {
@@ -48,6 +49,35 @@ export function QImageInteractive({
     radioSelections: {},
     checkboxSelections: [],
   };
+
+  // Normalize image URL - handle both base64 and server paths
+  const getImageUrl = (imagePath: string | undefined): string => {
+    if (!imagePath) return "";
+    
+    // If it's already a base64 data URL, return as-is
+    if (imagePath.startsWith("data:")) {
+      return imagePath;
+    }
+    
+    // If it's already a full URL (http/https), return as-is
+    if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
+      return imagePath;
+    }
+    
+    // If it starts with /api/images/ or /images/, make it absolute
+    if (imagePath.startsWith("/")) {
+      // Check if we're in browser environment
+      if (typeof window !== 'undefined') {
+        return `${window.location.origin}${imagePath}`;
+      }
+      return imagePath;
+    }
+    
+    // Fallback: treat as relative path
+    return imagePath;
+  };
+
+  const imageUrl = getImageUrl(backgroundImage);
 
   const handleHotspotClick = (element: InteractiveElement) => {
     if (readOnly) return;
@@ -150,6 +180,16 @@ export function QImageInteractive({
     );
   }
 
+  if (imageError) {
+    return (
+      <div className="text-sm text-red-600 p-4 bg-red-50 rounded-lg border border-red-200">
+        <p className="font-medium mb-2">Failed to load image</p>
+        <p className="text-xs text-red-500">Image path: {backgroundImage}</p>
+        <p className="text-xs text-red-500 mt-1">Attempted URL: {imageUrl}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {/* Instructions */}
@@ -163,11 +203,19 @@ export function QImageInteractive({
       <div className="bg-white border-2 border-gray-300 rounded-lg overflow-hidden inline-block max-w-full">
         <div className="relative inline-block">
           <img
-            src={backgroundImage}
+            src={imageUrl}
             alt="Interactive Question"
             className="max-w-full h-auto"
             style={{ maxHeight: "600px", display: "block" }}
             draggable={false}
+            onError={(e) => {
+              console.error("Failed to load interactive image:", imageUrl);
+              console.error("Original path:", backgroundImage);
+              setImageError(true);
+            }}
+            onLoad={() => {
+              console.log("Interactive image loaded successfully:", imageUrl);
+            }}
           />
           
           {/* Render interactive elements */}

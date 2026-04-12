@@ -218,22 +218,6 @@ export default function Navbar() {
                           <LayoutDashboard className="w-4 h-4" />
                           Dashboard
                         </Link>
-                        <Link
-                          href="/profile"
-                          className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                          onClick={() => setShowProfileDropdown(false)}
-                        >
-                          <User className="w-4 h-4" />
-                          Profile
-                        </Link>
-                        <Link
-                          href="/settings"
-                          className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                          onClick={() => setShowProfileDropdown(false)}
-                        >
-                          <Settings className="w-4 h-4" />
-                          Settings
-                        </Link>
                       </div>
 
                       <div className="border-t border-gray-200 py-1">
