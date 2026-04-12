@@ -17,24 +17,24 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({ src, classNa
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Normalize audio URL - convert old paths to new API paths
-  const normalizeAudioUrl = (audioPath: string | null | undefined): string | null => {
-    if (!audioPath) return null;
+  // Normalize audio URL - memoized to prevent infinite re-renders
+  const normalizedSrc = React.useMemo(() => {
+    if (!src) return null;
     
     // If already a full URL or base64, return as-is
-    if (audioPath.startsWith("http://") || audioPath.startsWith("https://") || audioPath.startsWith("data:")) {
-      return audioPath;
+    if (src.startsWith("http://") || src.startsWith("https://") || src.startsWith("data:")) {
+      return src;
     }
     
     // Convert old /audio/ paths to /api/audio/ for reliable serving
-    if (audioPath.startsWith("/audio/")) {
-      const filename = audioPath.replace("/audio/", "");
+    if (src.startsWith("/audio/")) {
+      const filename = src.replace("/audio/", "");
       return `/api/audio/${filename}`;
     }
     
     // If it's /api/images/ (wrong path for audio), fix it
-    if (audioPath.startsWith("/api/images/")) {
-      const filename = audioPath.replace("/api/images/", "");
+    if (src.startsWith("/api/images/")) {
+      const filename = src.replace("/api/images/", "");
       // Check if it's actually an audio file
       if (filename.match(/\.(mp3|wav|ogg|m4a|aac|flac|wma|webm)$/i)) {
         return `/api/audio/${filename}`;
@@ -42,23 +42,18 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({ src, classNa
     }
     
     // If already /api/audio/, return as-is
-    if (audioPath.startsWith("/api/audio/")) {
-      return audioPath;
+    if (src.startsWith("/api/audio/")) {
+      return src;
     }
     
-    // Fallback: assume it's relative and prepend /api/audio/
-    return audioPath;
-  };
-
-  const normalizedSrc = normalizeAudioUrl(src);
-
-  console.log("🎧 IELTSAudioPlayer render:", { originalSrc: src, normalizedSrc, hasAudio: !!normalizedSrc });
+    // Fallback
+    return src;
+  }, [src]);
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !normalizedSrc) return;
 
-    console.log("🎧 Loading audio:", normalizedSrc);
     setError(null);
     setIsPlaying(false);
     setCurrentTime(0);
@@ -71,26 +66,22 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({ src, classNa
       }
     };
     const onLoadedMetadata = () => {
-      console.log("🎧 Audio metadata loaded, duration:", audio.duration);
       setDuration(audio.duration);
     };
     const onEnded = () => setIsPlaying(false);
     const onPlay = () => {
-      console.log("🎧 Audio playing");
       setIsPlaying(true);
     };
     const onPause = () => {
-      console.log("🎧 Audio paused");
       setIsPlaying(false);
     };
     const onError = (e: Event) => {
-      console.error("🎧 Audio error:", e);
       const audioElement = e.target as HTMLAudioElement;
       const errorMsg = audioElement.error 
         ? `Error ${audioElement.error.code}: ${audioElement.error.message}` 
         : "Unknown audio error";
       setError(errorMsg);
-      console.error("🎧 Audio error details:", errorMsg);
+      console.error("🎧 Audio error:", errorMsg, "URL:", normalizedSrc);
     };
 
     audio.addEventListener("timeupdate", onTimeUpdate);

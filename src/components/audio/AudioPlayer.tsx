@@ -7,24 +7,24 @@ interface AudioPlayerProps {
 }
 
 const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, className = "" }) => {
-  // Normalize audio URL - convert old paths to new API paths
-  const normalizeAudioUrl = (audioPath: string | null | undefined): string | null => {
-    if (!audioPath) return null;
+  // Normalize audio URL - memoized to prevent infinite re-renders
+  const normalizedSrc = React.useMemo(() => {
+    if (!src) return null;
     
     // If already a full URL or base64, return as-is
-    if (audioPath.startsWith("http://") || audioPath.startsWith("https://") || audioPath.startsWith("data:")) {
-      return audioPath;
+    if (src.startsWith("http://") || src.startsWith("https://") || src.startsWith("data:")) {
+      return src;
     }
     
     // Convert old /audio/ paths to /api/audio/ for reliable serving
-    if (audioPath.startsWith("/audio/")) {
-      const filename = audioPath.replace("/audio/", "");
+    if (src.startsWith("/audio/")) {
+      const filename = src.replace("/audio/", "");
       return `/api/audio/${filename}`;
     }
     
     // If it's /api/images/ (wrong path for audio), fix it
-    if (audioPath.startsWith("/api/images/")) {
-      const filename = audioPath.replace("/api/images/", "");
+    if (src.startsWith("/api/images/")) {
+      const filename = src.replace("/api/images/", "");
       // Check if it's actually an audio file
       if (filename.match(/\.(mp3|wav|ogg|m4a|aac|flac|wma|webm)$/i)) {
         return `/api/audio/${filename}`;
@@ -32,15 +32,13 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, className = "" }) => {
     }
     
     // If already /api/audio/, return as-is
-    if (audioPath.startsWith("/api/audio/")) {
-      return audioPath;
+    if (src.startsWith("/api/audio/")) {
+      return src;
     }
     
     // Fallback
-    return audioPath;
-  };
-
-  const normalizedSrc = normalizeAudioUrl(src);
+    return src;
+  }, [src]);
 
   if (!normalizedSrc) {
     return (
