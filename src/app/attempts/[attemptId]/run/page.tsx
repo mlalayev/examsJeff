@@ -32,6 +32,7 @@ import { IELTSSectionChangeModal } from "@/components/attempts/modals/IELTSSecti
 import { SpeakingIntroModal } from "@/components/attempts/modals/SpeakingIntroModal";
 import { SpeakingTimeUpModal } from "@/components/attempts/modals/SpeakingTimeUpModal";
 import { totalSecondsForSpeakingPart } from "@/lib/ielts-speaking-timers";
+import { countWords } from "@/lib/get-writing-task-texts";
 import FormattedText from "@/components/FormattedText";
 import { Clock, Save, CheckCircle, Send, ChevronRight, X } from "lucide-react";
 
@@ -820,7 +821,10 @@ export default function AttemptRunnerPage() {
         case "GAP": // Legacy support - treat as SHORT_TEXT
        case "SHORT_TEXT":
          return <QOpenText {...props} />;
-       case "ESSAY":
+       case "ESSAY": {
+         const essayText = typeof value === "string" ? value : "";
+         const words = countWords(essayText);
+         const chars = essayText.length;
          return (
            <div className="space-y-3">
              {/* Question Image */}
@@ -835,14 +839,21 @@ export default function AttemptRunnerPage() {
                </div>
              )}
              <textarea
-               value={value || ""}
+               value={essayText}
                onChange={(e) => onChange(e.target.value)}
                disabled={readOnly}
                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-400 min-h-[200px] disabled:bg-gray-50 resize-y"
                placeholder="Write your essay here..."
              />
+             <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-600 px-0.5">
+               <span className="font-medium text-gray-800">
+                 {words} {words === 1 ? "word" : "words"}
+               </span>
+               <span className="text-gray-500">{chars} characters</span>
+             </div>
            </div>
          );
+       }
        case "FILL_IN_BLANK":
          return <QFillInBlank {...props} />;
        case "SPEAKING_RECORDING":
