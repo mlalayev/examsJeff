@@ -341,6 +341,12 @@ export default function AttemptRunnerPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to load");
       
+      // If attempt is already submitted, redirect to results page
+      if (json.status === "SUBMITTED" || json.status === "COMPLETED") {
+        router.push(`/attempts/${attemptId}/results`);
+        return;
+      }
+      
       setData(json);
       
       // Load answers from localStorage first (if exists)
