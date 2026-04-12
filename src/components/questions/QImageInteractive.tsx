@@ -4,7 +4,27 @@ import { BaseQuestionProps } from "./types";
 import { useState } from "react";
 
 export interface ImageInteractiveValue {
-  selectedHotspotIds: string[];
+  selectedHotspotIds?: string[]; // Backward compatibility
+  selectedElementIds?: string[];
+  inputValues?: Record<string, string>; // element.id -> user's typed answer
+  radioSelections?: Record<string, string>; // groupName -> selected element.id
+  checkboxSelections?: string[]; // Array of selected checkbox element IDs
+}
+
+type ElementType = "hotspot" | "input" | "radio" | "checkbox";
+
+interface InteractiveElement {
+  id: string;
+  type?: ElementType;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  label: string;
+  isCorrect?: boolean;
+  correctAnswer?: string;
+  placeholder?: string;
+  groupName?: string;
 }
 
 export function QImageInteractive({ 
@@ -15,29 +35,111 @@ export function QImageInteractive({
 }: BaseQuestionProps<ImageInteractiveValue>) {
   const backgroundImage = question.prompt?.backgroundImage;
   const interactionType = question.prompt?.interactionType || "single";
-  const hotspots = question.options?.hotspots || [];
-  const [hoveredHotspotId, setHoveredHotspotId] = useState<string | null>(null);
+  
+  // Support both old format (hotspots) and new format (elements)
+  const elements = (question.options?.elements || question.options?.hotspots || []) as InteractiveElement[];
+  
+  const [hoveredElementId, setHoveredElementId] = useState<string | null>(null);
 
-  const selectedIds = value?.selectedHotspotIds || [];
+  // Initialize value object
+  const currentValue: ImageInteractiveValue = value || {
+    selectedElementIds: [],
+    inputValues: {},
+    radioSelections: {},
+    checkboxSelections: [],
+  };
 
-  const handleHotspotClick = (hotspotId: string) => {
+  const handleHotspotClick = (element: InteractiveElement) => {
     if (readOnly) return;
 
+    const selectedIds = currentValue.selectedElementIds || currentValue.selectedHotspotIds || [];
     let newSelectedIds: string[];
     
     if (interactionType === "single") {
-      // Single selection: replace selection
-      newSelectedIds = [hotspotId];
+      newSelectedIds = [element.id];
     } else {
-      // Multiple selection: toggle selection
-      if (selectedIds.includes(hotspotId)) {
-        newSelectedIds = selectedIds.filter((id: string) => id !== hotspotId);
+      if (selectedIds.includes(element.id)) {
+        newSelectedIds = selectedIds.filter((id: string) => id !== element.id);
       } else {
-        newSelectedIds = [...selectedIds, hotspotId];
+        newSelectedIds = [...selectedIds, element.id];
       }
     }
 
-    onChange({ selectedHotspotIds: newSelectedIds });
+    onChange({
+      ...currentValue,
+      selectedElementIds: newSelectedIds,
+      selectedHotspotIds: newSelectedIds, // Backward compatibility
+    });
+  };
+
+  const handleRadioClick = (element: InteractiveElement) => {
+    if (readOnly || !element.groupName) return;
+
+    const radioSelections = { ...currentValue.radioSelections };
+    radioSelections[element.groupName] = element.id;
+
+    onChange({
+      ...currentValue,
+      radioSelections,
+    });
+  };
+
+  const handleCheckboxClick = (element: InteractiveElement) => {
+    if (readOnly) return;
+
+    const checkboxSelections = currentValue.checkboxSelections || [];
+    let newSelections: string[];
+
+    if (checkboxSelections.includes(element.id)) {
+      newSelections = checkboxSelections.filter((id: string) => id !== element.id);
+    } else {
+      newSelections = [...checkboxSelections, element.id];
+    }
+
+    onChange({
+      ...currentValue,
+      checkboxSelections: newSelections,
+    });
+  };
+
+  const handleInputChange = (element: InteractiveElement, inputValue: string) => {
+    if (readOnly) return;
+
+    const inputValues = { ...currentValue.inputValues };
+    inputValues[element.id] = inputValue;
+
+    onChange({
+      ...currentValue,
+      inputValues,
+    });
+  };
+
+  const getElementColor = (element: InteractiveElement) => {
+    const type = element.type || "hotspot";
+    
+    if (type === "input") return { border: "#3B82F6", bg: "rgba(59, 130, 246, 0.15)" };
+    if (type === "radio") return { border: "#8B5CF6", bg: "rgba(139, 92, 246, 0.15)" };
+    if (type === "checkbox") return { border: "#EC4899", bg: "rgba(236, 72, 153, 0.15)" };
+    
+    // Hotspot
+    return { border: "#303380", bg: "rgba(48, 51, 128, 0.15)" };
+  };
+
+  const isElementSelected = (element: InteractiveElement): boolean => {
+    const type = element.type || "hotspot";
+    
+    if (type === "hotspot") {
+      const selectedIds = currentValue.selectedElementIds || currentValue.selectedHotspotIds || [];
+      return selectedIds.includes(element.id);
+    }
+    if (type === "radio" && element.groupName) {
+      return currentValue.radioSelections?.[element.groupName] === element.id;
+    }
+    if (type === "checkbox") {
+      return currentValue.checkboxSelections?.includes(element.id) || false;
+    }
+    
+    return false;
   };
 
   if (!backgroundImage) {
@@ -52,9 +154,9 @@ export function QImageInteractive({
     <div className="space-y-4">
       {/* Instructions */}
       <div className="text-xs text-gray-600 bg-blue-50 p-3 rounded-lg border border-blue-200">
-        <strong>Instructions:</strong> {interactionType === "single" 
-          ? "Click on the correct area in the image." 
-          : "Click on all correct areas in the image."}
+        <strong>Instructions:</strong> Interact with the elements on the image below. 
+        {interactionType === "single" && " Select one correct answer."}
+        {interactionType === "multiple" && " You can select multiple answers."}
       </div>
 
       {/* Interactive Image */}
@@ -67,57 +169,127 @@ export function QImageInteractive({
             style={{ maxHeight: "600px", display: "block" }}
             draggable={false}
           />
-          {/* Render hotspots */}
-          {hotspots.map((hotspot: any) => {
-            const isSelected = selectedIds.includes(hotspot.id);
-            const isHovered = hoveredHotspotId === hotspot.id;
+          
+          {/* Render interactive elements */}
+          {elements.map((element: InteractiveElement) => {
+            const type = element.type || "hotspot";
+            const isSelected = isElementSelected(element);
+            const isHovered = hoveredElementId === element.id;
+            const colors = getElementColor(element);
 
             return (
               <div
-                key={hotspot.id}
-                className="absolute cursor-pointer transition-all"
+                key={element.id}
+                className="absolute transition-all"
                 style={{
-                  left: `${hotspot.x}%`,
-                  top: `${hotspot.y}%`,
-                  width: `${hotspot.width}%`,
-                  height: `${hotspot.height}%`,
-                  border: isSelected 
-                    ? "3px solid #303380" 
-                    : isHovered 
-                      ? "2px solid #5b5fb8" 
-                      : "2px solid rgba(48, 51, 128, 0.3)",
-                  backgroundColor: isSelected 
-                    ? "rgba(48, 51, 128, 0.3)" 
-                    : isHovered 
-                      ? "rgba(48, 51, 128, 0.15)" 
-                      : "rgba(48, 51, 128, 0.05)",
-                  pointerEvents: readOnly ? "none" : "auto",
+                  left: `${element.x}%`,
+                  top: `${element.y}%`,
+                  width: `${element.width}%`,
+                  height: `${element.height}%`,
+                  pointerEvents: type === "input" || readOnly ? "auto" : "auto",
                 }}
-                onClick={() => handleHotspotClick(hotspot.id)}
-                onMouseEnter={() => setHoveredHotspotId(hotspot.id)}
-                onMouseLeave={() => setHoveredHotspotId(null)}
-                title={hotspot.label}
+                onMouseEnter={() => setHoveredElementId(element.id)}
+                onMouseLeave={() => setHoveredElementId(null)}
               >
-                {/* Label badge */}
-                <div
-                  className="absolute -top-6 left-0 text-xs font-medium px-2 py-1 rounded whitespace-nowrap shadow-sm"
-                  style={{
-                    backgroundColor: isSelected ? "#303380" : isHovered ? "#5b5fb8" : "#6366f1",
-                    color: "white",
-                  }}
-                >
-                  {hotspot.label}
-                </div>
+                {/* Hotspot */}
+                {type === "hotspot" && (
+                  <div
+                    className="w-full h-full cursor-pointer"
+                    style={{
+                      border: isSelected 
+                        ? "3px solid #303380" 
+                        : isHovered 
+                          ? `2px solid ${colors.border}` 
+                          : `2px solid ${colors.border}80`,
+                      backgroundColor: isSelected 
+                        ? "rgba(48, 51, 128, 0.3)" 
+                        : isHovered 
+                          ? "rgba(48, 51, 128, 0.15)" 
+                          : colors.bg,
+                    }}
+                    onClick={() => handleHotspotClick(element)}
+                  >
+                    {isSelected && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div 
+                          className="w-8 h-8 rounded-full flex items-center justify-center shadow-lg"
+                          style={{ backgroundColor: "#303380" }}
+                        >
+                          <svg 
+                            className="w-5 h-5 text-white" 
+                            fill="none" 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round" 
+                            strokeWidth="3" 
+                            viewBox="0 0 24 24" 
+                            stroke="currentColor"
+                          >
+                            <path d="M5 13l4 4L19 7"></path>
+                          </svg>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
-                {/* Selection indicator */}
-                {isSelected && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div 
-                      className="w-8 h-8 rounded-full flex items-center justify-center shadow-lg"
-                      style={{ backgroundColor: "#303380" }}
-                    >
+                {/* Text Input */}
+                {type === "input" && (
+                  <input
+                    type="text"
+                    value={currentValue.inputValues?.[element.id] || ""}
+                    onChange={(e) => handleInputChange(element, e.target.value)}
+                    placeholder={element.placeholder || "Type here..."}
+                    disabled={readOnly}
+                    className="w-full h-full px-2 py-1 text-xs border-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                    style={{
+                      borderColor: colors.border,
+                      backgroundColor: "white",
+                    }}
+                  />
+                )}
+
+                {/* Radio Button */}
+                {type === "radio" && (
+                  <div
+                    className="w-full h-full cursor-pointer flex items-center justify-center"
+                    style={{
+                      border: isSelected 
+                        ? `3px solid ${colors.border}` 
+                        : `2px solid ${colors.border}`,
+                      backgroundColor: isSelected 
+                        ? colors.bg 
+                        : "transparent",
+                      borderRadius: "50%",
+                    }}
+                    onClick={() => handleRadioClick(element)}
+                  >
+                    {isSelected && (
+                      <div 
+                        className="w-1/2 h-1/2 rounded-full"
+                        style={{ backgroundColor: colors.border }}
+                      ></div>
+                    )}
+                  </div>
+                )}
+
+                {/* Checkbox */}
+                {type === "checkbox" && (
+                  <div
+                    className="w-full h-full cursor-pointer flex items-center justify-center"
+                    style={{
+                      border: isSelected 
+                        ? `3px solid ${colors.border}` 
+                        : `2px solid ${colors.border}`,
+                      backgroundColor: isSelected 
+                        ? colors.border 
+                        : "white",
+                      borderRadius: "4px",
+                    }}
+                    onClick={() => handleCheckboxClick(element)}
+                  >
+                    {isSelected && (
                       <svg 
-                        className="w-5 h-5 text-white" 
+                        className="w-4/5 h-4/5 text-white" 
                         fill="none" 
                         strokeLinecap="round" 
                         strokeLinejoin="round" 
@@ -127,37 +299,69 @@ export function QImageInteractive({
                       >
                         <path d="M5 13l4 4L19 7"></path>
                       </svg>
-                    </div>
+                    )}
                   </div>
                 )}
+
+                {/* Label badge */}
+                <div
+                  className="absolute -top-6 left-0 text-xs font-medium px-2 py-1 rounded whitespace-nowrap shadow-sm"
+                  style={{
+                    backgroundColor: isSelected || isHovered ? colors.border : `${colors.border}CC`,
+                    color: "white",
+                    display: type === "input" ? "none" : "block",
+                  }}
+                >
+                  {element.label}
+                </div>
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* Selected areas summary */}
-      {selectedIds.length > 0 && (
-        <div className="text-sm">
-          <p className="text-gray-600 mb-2">
-            <strong>Selected:</strong>
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {selectedIds.map((id: string) => {
-              const hotspot = hotspots.find((h: any) => h.id === id);
-              return hotspot ? (
-                <span 
-                  key={id} 
-                  className="px-3 py-1 text-xs font-medium rounded-full text-white"
-                  style={{ backgroundColor: "#303380" }}
-                >
-                  {hotspot.label}
-                </span>
-              ) : null;
-            })}
+      {/* Summary of selections */}
+      <div className="text-sm space-y-2">
+        {/* Hotspot selections */}
+        {(() => {
+          const selectedIds = currentValue.selectedElementIds || currentValue.selectedHotspotIds || [];
+          const selectedHotspots = elements.filter(e => 
+            (!e.type || e.type === "hotspot") && selectedIds.includes(e.id)
+          );
+          return selectedHotspots.length > 0 ? (
+            <div>
+              <p className="text-gray-600 mb-1"><strong>Selected:</strong></p>
+              <div className="flex flex-wrap gap-2">
+                {selectedHotspots.map((element) => (
+                  <span 
+                    key={element.id} 
+                    className="px-3 py-1 text-xs font-medium rounded-full text-white"
+                    style={{ backgroundColor: "#303380" }}
+                  >
+                    {element.label}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null;
+        })()}
+
+        {/* Input values */}
+        {Object.keys(currentValue.inputValues || {}).length > 0 && (
+          <div>
+            <p className="text-gray-600 mb-1"><strong>Your answers:</strong></p>
+            <div className="space-y-1 text-xs">
+              {elements
+                .filter(e => e.type === "input" && currentValue.inputValues?.[e.id])
+                .map((element) => (
+                  <div key={element.id}>
+                    <span className="font-medium">{element.label}:</span> {currentValue.inputValues?.[element.id]}
+                  </div>
+                ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

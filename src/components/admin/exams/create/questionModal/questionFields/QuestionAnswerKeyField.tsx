@@ -126,29 +126,68 @@ export function QuestionAnswerKeyField({
         );
 
       case "IMAGE_INTERACTIVE":
+        const elements = question.options?.elements || question.options?.hotspots || [];
+        const correctIds = question.answerKey?.correctElementIds || question.answerKey?.correctHotspotIds || [];
+        
+        if (elements.length === 0) {
+          return (
+            <div className="space-y-2 p-3 bg-white border border-gray-200 rounded-md">
+              <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded border border-amber-200">
+                Please add interactive elements to the image.
+              </p>
+            </div>
+          );
+        }
+
+        const inputElements = elements.filter((e: any) => e.type === "input");
+        const clickableElements = elements.filter((e: any) => !e.type || e.type === "hotspot" || e.type === "radio" || e.type === "checkbox");
+        
         return (
           <div className="space-y-2 p-3 bg-white border border-gray-200 rounded-md">
-            {(question.answerKey?.correctHotspotIds || []).length === 0 ? (
-              <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded border border-amber-200">
-                Please mark at least one area as the correct answer in the configuration above.
-              </p>
-            ) : (
-              <div>
-                <p className="text-xs font-medium text-gray-700 mb-2">Correct Answer(s):</p>
-                <div className="flex flex-wrap gap-2">
-                  {(question.options?.hotspots || [])
-                    .filter((h: any) => (question.answerKey?.correctHotspotIds || []).includes(h.id))
-                    .map((hotspot: any) => (
-                      <span key={hotspot.id} className="px-2 py-1 bg-green-50 text-green-700 rounded text-xs font-medium border border-green-200">
-                        {hotspot.label}
-                      </span>
-                    ))}
-                </div>
-                <p className="text-xs text-gray-500 mt-2">
-                  Interaction Type: {question.prompt?.interactionType === "single" ? "Single Selection" : "Multiple Selection"}
-                </p>
+            {clickableElements.length > 0 && (
+              <div className="mb-3">
+                <p className="text-xs font-medium text-gray-700 mb-2">Correct Clickable Elements:</p>
+                {correctIds.length === 0 ? (
+                  <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded border border-amber-200">
+                    Please mark at least one clickable element as correct.
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {elements
+                      .filter((e: any) => correctIds.includes(e.id))
+                      .map((element: any) => (
+                        <span key={element.id} className="px-2 py-1 bg-green-50 text-green-700 rounded text-xs font-medium border border-green-200">
+                          {element.type === "input" ? "📝" : element.type === "radio" ? "🔘" : element.type === "checkbox" ? "☑️" : "🎯"} {element.label}
+                        </span>
+                      ))}
+                  </div>
+                )}
               </div>
             )}
+            
+            {inputElements.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-gray-700 mb-2">Text Input Answers:</p>
+                <div className="space-y-1">
+                  {inputElements.map((element: any) => (
+                    <div key={element.id} className="text-xs">
+                      <span className="font-medium text-gray-600">{element.label}:</span>{" "}
+                      {element.correctAnswer ? (
+                        <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded font-medium">
+                          {element.correctAnswer}
+                        </span>
+                      ) : (
+                        <span className="text-amber-600">No answer set</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            <p className="text-xs text-gray-500 mt-2">
+              Interaction Type: {question.prompt?.interactionType === "single" ? "Single Selection" : "Multiple Selection"}
+            </p>
           </div>
         );
 

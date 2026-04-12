@@ -121,24 +121,49 @@ export function validateImageInteractiveQuestion(question: any): ValidationResul
     };
   }
 
-  if (!question.options?.hotspots || question.options.hotspots.length === 0) {
+  // Support both new format (elements) and old format (hotspots)
+  const elements = question.options?.elements || question.options?.hotspots || [];
+  
+  if (elements.length === 0) {
     return {
       valid: false,
       error: {
         title: "Validation Error",
-        message: "Please add at least one clickable area (hotspot)",
+        message: "Please add at least one interactive element (hotspot, input, radio button, or checkbox)",
       },
     };
   }
 
-  if (!question.answerKey?.correctHotspotIds || question.answerKey.correctHotspotIds.length === 0) {
+  // Check if input fields have correct answers
+  const inputElements = elements.filter((e: any) => e.type === "input");
+  const inputsWithoutAnswer = inputElements.filter((e: any) => !e.correctAnswer || !e.correctAnswer.trim());
+  
+  if (inputsWithoutAnswer.length > 0) {
     return {
       valid: false,
       error: {
         title: "Validation Error",
-        message: "Please mark at least one area as the correct answer",
+        message: "All text input fields must have a correct answer defined",
       },
     };
+  }
+
+  // Check if clickable elements (hotspot, radio, checkbox) have at least one correct answer
+  const clickableElements = elements.filter((e: any) => !e.type || e.type === "hotspot" || e.type === "radio" || e.type === "checkbox");
+  
+  if (clickableElements.length > 0) {
+    const correctElementIds = question.answerKey?.correctElementIds || question.answerKey?.correctHotspotIds || [];
+    const hasCorrectAnswer = clickableElements.some((e: any) => correctElementIds.includes(e.id));
+    
+    if (!hasCorrectAnswer) {
+      return {
+        valid: false,
+        error: {
+          title: "Validation Error",
+          message: "Please mark at least one clickable element as the correct answer",
+        },
+      };
+    }
   }
 
   return { valid: true };
