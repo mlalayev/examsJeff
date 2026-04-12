@@ -5,17 +5,23 @@ import { existsSync } from "fs";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { filename: string } }
+  context: { params: Promise<{ filename: string }> }
 ) {
   try {
+    // Await params in Next.js 15+
+    const params = await context.params;
     const filename = params.filename;
     
+    console.log("Serving image:", filename);
+    
     // Security: prevent directory traversal
-    if (filename.includes("..") || filename.includes("/") || filename.includes("\\")) {
+    if (!filename || filename.includes("..") || filename.includes("/") || filename.includes("\\")) {
+      console.error("Invalid filename:", filename);
       return new NextResponse("Invalid filename", { status: 400 });
     }
     
     const filePath = join(process.cwd(), "public", "images", filename);
+    console.log("File path:", filePath);
     
     // Check if file exists
     if (!existsSync(filePath)) {
@@ -25,6 +31,7 @@ export async function GET(
     
     // Read and serve the file
     const fileBuffer = await readFile(filePath);
+    console.log("File read successfully, size:", fileBuffer.length);
     
     // Determine content type based on extension
     const ext = filename.split('.').pop()?.toLowerCase();
@@ -45,6 +52,6 @@ export async function GET(
     });
   } catch (error) {
     console.error("Error serving image:", error);
-    return new NextResponse("Internal server error", { status: 500 });
+    return new NextResponse(`Internal server error: ${error instanceof Error ? error.message : String(error)}`, { status: 500 });
   }
 }

@@ -177,6 +177,22 @@ export default function CreateExamPage() {
         : editingQuestion.prompt,
     };
 
+    // Replace base64 images with server paths before saving
+    if (questionToSave.prompt && '_serverPath' in questionToSave.prompt) {
+      const serverPath = (questionToSave.prompt as any)._serverPath;
+      questionToSave.prompt = {
+        ...questionToSave.prompt,
+        backgroundImage: serverPath,
+        _serverPath: undefined
+      };
+      delete (questionToSave.prompt as any)._serverPath;
+    }
+    
+    if (questionToSave.image && '_serverPath' in questionToSave) {
+      questionToSave.image = (questionToSave as any)._serverPath;
+      delete (questionToSave as any)._serverPath;
+    }
+
     if (questionToSave.prompt && 'rawText' in questionToSave.prompt) {
       delete (questionToSave.prompt as any).rawText;
     }
@@ -632,6 +648,13 @@ export default function CreateExamPage() {
           onImageUpload={async (file) => {
             setUploadingImage(true);
             try {
+              // Create a temporary base64 preview for immediate display
+              const reader = new FileReader();
+              const base64Promise = new Promise<string>((resolve) => {
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.readAsDataURL(file);
+              });
+              
               const formData = new FormData();
               formData.append("file", file);
               formData.append("type", "image");
@@ -646,38 +669,64 @@ export default function CreateExamPage() {
                 console.log("Image uploaded successfully:", data);
                 console.log("Current location:", window.location.origin);
                 
-                // Always use the current origin for images to ensure they load correctly
-                // This handles both development (localhost) and production
-                const imageUrl = `${window.location.origin}${data.path}`;
+                // Get base64 preview for immediate display
+                const base64Image = await base64Promise;
                 
-                console.log("Full Image URL:", imageUrl);
+                // Try both API path and public path
+                const apiImageUrl = `${window.location.origin}${data.path}`;
+                const publicImageUrl = `${window.location.origin}${data.publicPath}`;
                 
-                // Test if the image is accessible
+                console.log("API Image URL:", apiImageUrl);
+                console.log("Public Image URL:", publicImageUrl);
+                console.log("Using base64 for immediate preview");
+                
+                // Use base64 for immediate display, will be replaced with server URL when saved
+                let displayUrl = base64Image;
+                
+                // Test which server URL works for future reference
                 try {
-                  const testResponse = await fetch(imageUrl, { method: 'HEAD' });
-                  console.log("Image accessibility test:", testResponse.status, testResponse.statusText);
-                  if (!testResponse.ok) {
-                    console.error("Image uploaded but not accessible at:", imageUrl);
-                    modals.showAlert(
-                      "Image Upload Warning", 
-                      "Image was uploaded but may not be immediately accessible. This might be a server configuration issue. Path: " + data.path,
-                      "warning"
-                    );
+                  const testPublicResponse = await fetch(publicImageUrl, { method: 'HEAD' });
+                  console.log("Public path test:", testPublicResponse.status);
+                  
+                  if (testPublicResponse.ok) {
+                    displayUrl = publicImageUrl;
+                    console.log("Public path works, using it");
+                  } else {
+                    const testApiResponse = await fetch(apiImageUrl, { method: 'HEAD' });
+                    console.log("API path test:", testApiResponse.status);
+                    if (testApiResponse.ok) {
+                      displayUrl = apiImageUrl;
+                      console.log("API path works, using it");
+                    } else {
+                      console.warn("Neither path accessible yet, using base64 preview");
+                      modals.showAlert(
+                        "Image Preview",
+                        "Image uploaded! Using temporary preview. The image will be properly stored when you save the exam.",
+                        "info"
+                      );
+                    }
                   }
                 } catch (testError) {
                   console.error("Failed to test image accessibility:", testError);
                 }
                 
-                // Handle different image upload scenarios
+                console.log("Display URL:", displayUrl.substring(0, 50) + "...");
+                
+                // Store both the server path (for saving) and display URL (for preview)
                 if (editingQuestion.qtype === "IMAGE_INTERACTIVE") {
                   setEditingQuestion({
                     ...editingQuestion,
-                    prompt: { ...editingQuestion.prompt, backgroundImage: imageUrl },
+                    prompt: { 
+                      ...editingQuestion.prompt, 
+                      backgroundImage: displayUrl,
+                      _serverPath: data.publicPath // Store server path for saving
+                    },
                   });
                 } else {
                   setEditingQuestion({
                     ...editingQuestion,
-                    image: imageUrl,
+                    image: displayUrl,
+                    _serverPath: data.publicPath // Store server path for saving
                   });
                 }
               } else {
