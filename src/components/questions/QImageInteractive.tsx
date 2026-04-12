@@ -200,13 +200,13 @@ export function QImageInteractive({
       </div>
 
       {/* Interactive Image */}
-      <div className="bg-white border-2 border-gray-300 rounded-lg overflow-hidden inline-block max-w-full">
-        <div className="relative inline-block">
+      <div className="bg-white border-2 border-gray-300 rounded-lg overflow-hidden w-full">
+        <div className="relative w-full">
           <img
             src={imageUrl}
             alt="Interactive Question"
-            className="max-w-full h-auto"
-            style={{ maxHeight: "min(85vh, 56rem)", display: "block" }}
+            className="w-full h-auto"
+            style={{ display: "block", maxHeight: "85vh" }}
             draggable={false}
             onError={(e) => {
               console.error("Failed to load interactive image:", imageUrl);
