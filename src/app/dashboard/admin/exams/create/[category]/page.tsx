@@ -19,7 +19,7 @@ import {
   QUESTION_TYPE_LABELS
 } from "@/components/admin/exams/create/constants";
 import { slugToCategory } from "@/lib/exam-category-utils";
-import { useIELTSParts, filterQuestionsByPart, getIELTSPartLabel, calculateIELTSGlobalQuestionNumber } from "@/components/admin/exams/create/ieltsHelpers";
+import { useIELTSParts } from "@/components/admin/exams/create/ieltsHelpers";
 import { createIELTSSections } from "@/components/admin/exams/create/ieltsInitializer";
 import IELTSPartSelector from "@/components/admin/exams/create/IELTSPartSelector";
 import IELTSSectionContent from "@/components/admin/exams/create/IELTSSectionContent";
@@ -28,12 +28,11 @@ import QuestionsList from "@/components/admin/exams/create/QuestionsList";
 import { getGroupedQuestionTypes, type QuestionTypeContext } from "@/components/admin/exams/create/questionTypeRules";
 import { createQuestionDraft } from "@/components/admin/exams/create/addQuestionFlow";
 import { useBuilderModals } from "@/components/admin/exams/create/useBuilderModals";
-import { validateExamInfo, validateFillInBlankText, canDeleteSection, canAddSection } from "@/components/admin/exams/create/examValidation";
+import { validateExamInfo, canDeleteSection, canAddSection } from "@/components/admin/exams/create/examValidation";
 import { buildExamPayload } from "@/components/admin/exams/create/examSerializer";
 import {
   splitFillInBlankQuestions,
   updateQuestionsInSection,
-  deleteQuestionFromSection,
   type QuestionOperationContext
 } from "@/components/admin/exams/create/questionOperations";
 import { createNewSection, deleteSectionFromList, updateSectionInList } from "@/components/admin/exams/create/sectionOperations";
