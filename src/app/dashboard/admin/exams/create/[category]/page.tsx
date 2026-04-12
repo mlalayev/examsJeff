@@ -2,21 +2,18 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, Save, X, BookOpen, Plus, Edit, Info, Image, Volume2, PenTool, Mic } from "lucide-react";
-import TextFormattingPreview from "@/components/TextFormattingPreview";
-import QuestionPreview from "@/components/QuestionPreview";
-import ImageUpload from "@/components/ImageUpload";
+import { ArrowLeft, Save, Plus } from "lucide-react";
 import ExamInfoForm from "@/components/admin/exams/create/ExamInfoForm";
 import SectionsList from "@/components/admin/exams/create/SectionsList";
 import QuestionTypeModal from "@/components/admin/exams/create/QuestionTypeModal";
 import { DeleteQuestionModal } from "@/components/modals/DeleteQuestionModal";
 import { DeleteSectionModal } from "@/components/modals/DeleteSectionModal";
 import { AlertModal } from "@/components/modals/AlertModal";
+import { QuestionEditModal } from "@/components/admin/exams/create/questionModal/QuestionEditModal";
 import type { ExamCategory, SectionType, QuestionType, Section, Question } from "@/components/admin/exams/create/types";
 import {
   ALLOWED_SECTIONS_BY_CATEGORY,
   getSectionLabel,
-  QUESTION_TYPE_LABELS
 } from "@/components/admin/exams/create/constants";
 import { slugToCategory } from "@/lib/exam-category-utils";
 import { useIELTSParts } from "@/components/admin/exams/create/ieltsHelpers";
@@ -25,7 +22,7 @@ import IELTSPartSelector from "@/components/admin/exams/create/IELTSPartSelector
 import IELTSSectionContent from "@/components/admin/exams/create/IELTSSectionContent";
 import GenericSectionContent from "@/components/admin/exams/create/GenericSectionContent";
 import QuestionsList from "@/components/admin/exams/create/QuestionsList";
-import { getGroupedQuestionTypes, type QuestionTypeContext } from "@/components/admin/exams/create/questionTypeRules";
+import { getGroupedQuestionTypes } from "@/components/admin/exams/create/questionTypeRules";
 import { createQuestionDraft } from "@/components/admin/exams/create/addQuestionFlow";
 import { useBuilderModals } from "@/components/admin/exams/create/useBuilderModals";
 import { validateExamInfo, canDeleteSection, canAddSection } from "@/components/admin/exams/create/examValidation";
@@ -55,12 +52,10 @@ export default function CreateExamPage() {
   const [selectedSectionType, setSelectedSectionType] = useState<SectionType | "">("");
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
-  const [uploadingQuestionImage, setUploadingQuestionImage] = useState(false);
 
   const ieltsParts = useIELTSParts();
-
   const modals = useBuilderModals();
-  // Initialize category from URL params and set up sections
+
   useEffect(() => {
     const category = slugToCategory(categorySlug);
 
@@ -175,20 +170,18 @@ export default function CreateExamPage() {
       return;
     }
 
-    // Remove rawText from prompt before saving (it's only for display)
     const questionToSave = {
       ...editingQuestion,
       prompt: editingQuestion.prompt?.rawText !== undefined
         ? { ...editingQuestion.prompt, rawText: undefined }
         : editingQuestion.prompt,
     };
-    // Clean up undefined rawText
+
     if (questionToSave.prompt && 'rawText' in questionToSave.prompt) {
       delete (questionToSave.prompt as any).rawText;
     }
 
     const updatedSections = sections.map((s: Section) => {
-      // If current section is a subsection, update inside parent
       if (currentSection?.isSubsection && s.subsections) {
         return {
           ...s,
@@ -204,7 +197,7 @@ export default function CreateExamPage() {
           ),
         };
       }
-      // Regular section
+
       return s.id === currentSection?.id
         ? {
           ...s,
@@ -214,9 +207,9 @@ export default function CreateExamPage() {
         }
         : s;
     });
+
     setSections(updatedSections);
 
-    // Update currentSection
     const findCurrentSection = (sections: Section[]): Section | null => {
       if (!currentSection) return null;
       for (const s of sections) {
@@ -228,12 +221,12 @@ export default function CreateExamPage() {
       }
       return null;
     };
+
     setCurrentSection(findCurrentSection(updatedSections));
     setEditingQuestion(null);
   };
 
   const editQuestion = (question: Question) => {
-    // If it's ORDER_SENTENCE and has tokens, set rawText for display
     const questionToEdit = { ...question };
     if (question.qtype === "ORDER_SENTENCE" && Array.isArray(question.prompt?.tokens)) {
       questionToEdit.prompt = {
@@ -250,7 +243,6 @@ export default function CreateExamPage() {
       return;
     }
 
-    // Find the question to get its text and number
     let questionToDelete: Question | null = null;
     let questionNumber = 0;
 
@@ -273,8 +265,6 @@ export default function CreateExamPage() {
           : "Question")
       : undefined;
 
-    console.log("Opening delete modal for question:", { questionId, questionNumber, questionText });
-
     modals.showDeleteQuestionModal(questionId, questionText, questionNumber);
   };
 
@@ -283,7 +273,6 @@ export default function CreateExamPage() {
 
     const questionId = modals.deleteQuestionModal.questionId;
     const updatedSections = sections.map((s: Section) => {
-      // If current section is a subsection
       if (currentSection?.isSubsection && s.subsections) {
         return {
           ...s,
@@ -294,14 +283,14 @@ export default function CreateExamPage() {
           ),
         };
       }
-      // Regular section
+
       return s.id === currentSection?.id
         ? { ...s, questions: s.questions.filter((q: Question) => q.id !== questionId) }
         : s;
     });
+
     setSections(updatedSections);
 
-    // Update currentSection
     const findCurrentSection = (sections: Section[]): Section | null => {
       if (!currentSection) return null;
       for (const s of sections) {
@@ -313,6 +302,7 @@ export default function CreateExamPage() {
       }
       return null;
     };
+
     setCurrentSection(findCurrentSection(updatedSections));
     modals.closeDeleteQuestionModal();
   };
@@ -391,17 +381,14 @@ export default function CreateExamPage() {
     return (
       <div className="p-4 sm:p-6 lg:p-8">
         <div className="mb-8 sm:mb-12">
-          {/* Back Button Skeleton */}
           <div className="flex items-center gap-2 mb-4">
             <div className="h-4 w-4 bg-gray-400 rounded animate-pulse"></div>
             <div className="h-4 bg-gray-400 rounded w-16 animate-pulse"></div>
           </div>
-          {/* Header Skeleton */}
           <div className="h-8 bg-gray-400 rounded w-48 mb-2 animate-pulse"></div>
           <div className="h-5 bg-gray-400 rounded w-64 animate-pulse"></div>
         </div>
 
-        {/* Content Skeleton */}
         <div className="grid grid-cols-1 gap-4">
           {[1, 2].map((i) => (
             <div key={i} className="p-4 sm:p-6 border border-gray-200 rounded-md">
@@ -634,1172 +621,56 @@ export default function CreateExamPage() {
         }
       />
 
-      {/* Section Edit Modal removed - now using inline edit in SectionCard */}
-
-      {/* Question Edit Modal */}
+      {/* Question Edit Modal - NOW USING COMPONENT */}
       {editingQuestion && (
-        <div
-          className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 p-4"
-          onClick={() => setEditingQuestion(null)}
-        >
-          <div
-            className="bg-white border border-gray-200 rounded-md p-4 sm:p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base sm:text-lg font-medium text-gray-900">
-                {editingQuestion.id.startsWith("q-") && currentSection?.questions.find((q: Question) => q.id === editingQuestion.id)
-                  ? "Edit Question"
-                  : "Add Question"}
-              </h3>
-              <button
-                onClick={() => setEditingQuestion(null)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="w-4 h-4 sm:w-5 sm:h-5" />
-              </button>
-            </div>
+        <QuestionEditModal
+          question={editingQuestion}
+          onClose={() => setEditingQuestion(null)}
+          onSave={saveQuestion}
+          onChange={setEditingQuestion}
+          uploadingImage={uploadingImage}
+          onImageUpload={async (file) => {
+            setUploadingImage(true);
+            try {
+              const formData = new FormData();
+              formData.append("file", file);
+              formData.append("type", "image");
 
-            <div className="space-y-0">
-              {/* Question Type */}
-              <div className="p-4 bg-gray-50 border-2 border-gray-300 rounded-t-md">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Question Type
-                </label>
-                <div className="px-3 py-2 bg-white border border-gray-200 rounded-md text-sm text-gray-600">
-                  {QUESTION_TYPE_LABELS[editingQuestion.qtype]}
-                </div>
-              </div>
+              const res = await fetch("/api/admin/upload", {
+                method: "POST",
+                body: formData,
+              });
 
-              {/* Image Upload (for all question types) */}
-              <div className="p-4 bg-gray-50 border-l-2 border-r-2 border-b-2 border-gray-300">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Question Image <span className="text-gray-500 font-normal">(Optional)</span>
-                </label>
-                <div className="space-y-2">
-                  {editingQuestion.image && (
-                    <div className="p-3 bg-white border border-gray-200 rounded-md">
-                      <img
-                        src={editingQuestion.image}
-                        alt="Question"
-                        className="max-w-full h-auto max-h-48 rounded border border-gray-200"
-                      />
-                      <p className="text-xs text-gray-500 mt-2">{editingQuestion.image}</p>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingQuestion({
-                            ...editingQuestion,
-                            image: undefined,
-                          });
-                        }}
-                        className="mt-2 text-xs text-red-600 hover:text-red-700 font-medium"
-                      >
-                        Remove Image
-                      </button>
-                    </div>
-                  )}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-
-                      setUploadingImage(true);
-                      try {
-                        const formData = new FormData();
-                        formData.append("file", file);
-                        formData.append("type", "image");
-
-                        const res = await fetch("/api/admin/upload", {
-                          method: "POST",
-                          body: formData,
-                        });
-
-                        if (res.ok) {
-                          const data = await res.json();
-                          setEditingQuestion({
-                            ...editingQuestion,
-                            image: data.path,
-                          });
-                        } else {
-                          modals.showAlert("Failed to Upload Image", "Failed to upload image", "error");
-                        }
-                      } catch (error) {
-                        console.error("Upload error:", error);
-                        modals.showAlert("Failed to Upload Image", "Failed to upload image", "error");
-                      } finally {
-                        setUploadingImage(false);
-                      }
-                    }}
-                    disabled={uploadingImage}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 disabled:opacity-50 bg-white"
-                  />
-                  {uploadingImage && (
-                    <p className="text-xs text-gray-500">Uploading image...</p>
-                  )}
-                  <p className="text-xs text-gray-500">
-                    Upload diagrams, charts, or any visual content for your question
-                  </p>
-                </div>
-              </div>
-
-              {/* Prompt */}
-              <div className="p-4 bg-gray-50 border-l-2 border-r-2 border-b-2 border-gray-300">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Question Text / Prompt *
-                </label>
-                {editingQuestion.qtype === "ORDER_SENTENCE" ? (
-                  <div className="space-y-2">
-                    <textarea
-                      value={editingQuestion.prompt?.rawText !== undefined
-                        ? editingQuestion.prompt.rawText
-                        : (Array.isArray(editingQuestion.prompt?.tokens) ? editingQuestion.prompt.tokens.join("\n") : "")}
-                      onChange={(e) => {
-                        // Store the raw text value to allow Enter key to work
-                        const rawText = e.target.value;
-                        // Split by newlines and filter out empty lines for storage
-                        const tokens = rawText.split("\n").filter((line) => line.trim() !== "");
-                        setEditingQuestion({
-                          ...editingQuestion,
-                          prompt: {
-                            tokens,
-                            rawText // Store raw text for display
-                          },
-                          answerKey: { order: tokens.map((_, idx) => idx) },
-                        });
-                      }}
-                      placeholder="Enter tokens (one per line)"
-                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white resize-y"
-                      rows={5}
-                    />
-                    <p className="text-xs text-gray-500">Enter tokens one per line. They will be shuffled for students.</p>
-                  </div>
-                ) : editingQuestion.qtype === "SHORT_TEXT" ? (
-                  <div className="space-y-3">
-                    <textarea
-                      value={editingQuestion.prompt?.text || ""}
-                      onChange={(e) => {
-                        setEditingQuestion({
-                          ...editingQuestion,
-                          prompt: { ...editingQuestion.prompt, text: e.target.value },
-                        });
-                      }}
-                      placeholder="Enter the question text (e.g., 'What is the capital of France?')"
-                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
-                      rows={3}
-                    />
-                    <div className="pt-3 border-t border-gray-200">
-                      <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                        Correct Answers (one per line, case-insensitive)
-                      </label>
-                      <textarea
-                        value={Array.isArray(editingQuestion.answerKey?.answers) ? editingQuestion.answerKey.answers.join("\n") : ""}
-                        onChange={(e) => {
-                          const answers = e.target.value.split("\n");
-                          setEditingQuestion({
-                            ...editingQuestion,
-                            answerKey: { answers },
-                          });
-                        }}
-                        placeholder="Enter possible correct answers (one per line)&#10;answer1&#10;answer2&#10;answer3"
-                        className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
-                        rows={4}
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Students can enter any of these answers (case-insensitive matching).
-                      </p>
-                    </div>
-                  </div>
-                ) : editingQuestion.qtype === "ESSAY" ? (
-                  <div className="space-y-3">
-                    <textarea
-                      value={editingQuestion.prompt?.text || ""}
-                      onChange={(e) => {
-                        setEditingQuestion({
-                          ...editingQuestion,
-                          prompt: { ...editingQuestion.prompt, text: e.target.value },
-                        });
-                      }}
-                      placeholder="Enter the essay prompt (e.g., 'Write an essay about the importance of education...')"
-                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
-                      rows={4}
-                    />
-                    <div className="pt-3 border-t border-gray-200 bg-yellow-50 p-3 rounded-md">
-                      <p className="text-xs text-yellow-800">
-                        <strong>Note:</strong> Essays require manual grading. No auto-scoring will be applied.
-                      </p>
-                    </div>
-                  </div>
-                ) : editingQuestion.qtype === "FILL_IN_BLANK" ? (
-                  <div className="space-y-3">
-                    {/* Question Title/Name */}
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                        Question Name (Optional)
-                      </label>
-                      <input
-                        type="text"
-                        value={editingQuestion.prompt?.title || ""}
-                        onChange={(e) => {
-                          setEditingQuestion({
-                            ...editingQuestion,
-                            prompt: {
-                              ...editingQuestion.prompt,
-                              title: e.target.value
-                            },
-                          });
-                        }}
-                        placeholder="e.g., Complete the form below"
-                        className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
-                      />
-                    </div>
-
-                    {/* Image Upload */}
-                    <ImageUpload
-                      label="Image (Optional)"
-                      value={editingQuestion.image || ""}
-                      onChange={(url) => {
-                        setEditingQuestion({
-                          ...editingQuestion,
-                          image: url,
-                        });
-                      }}
-                    />
-
-                    {/* Instructions/What to do */}
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                        Instructions (What to do)
-                      </label>
-                      <textarea
-                        value={editingQuestion.prompt?.instructions || ""}
-                        onChange={(e) => {
-                          setEditingQuestion({
-                            ...editingQuestion,
-                            prompt: { ...editingQuestion.prompt, instructions: e.target.value },
-                          });
-                        }}
-                        placeholder="Fill in the blanks with appropriate words"
-                        className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
-                        rows={2}
-                      />
-                    </div>
-
-                    {/* Text with [input] placeholders */}
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                        Text with blanks (use [input] for each blank)
-                      </label>
-                      <textarea
-                        value={editingQuestion.prompt?.text || ""}
-                        onChange={(e) => {
-                          const text = e.target.value;
-                          // Count [input] occurrences
-                          const inputCount = (text.match(/\[input\]/gi) || []).length;
-
-                          // Initialize answer key with existing values or empty strings
-                          const currentBlanks = Array.isArray(editingQuestion.answerKey?.blanks)
-                            ? editingQuestion.answerKey.blanks
-                            : [];
-                          const newBlanks = Array(inputCount).fill("").map((_, idx) => currentBlanks[idx] || "");
-
-                          setEditingQuestion({
-                            ...editingQuestion,
-                            prompt: { ...editingQuestion.prompt, text },
-                            answerKey: { blanks: newBlanks },
-                          });
-                        }}
-                        placeholder="Example:&#10;Hi, my name is [input] and I am [input] years old.&#10;Nice to [input] you!&#10;I am glad to [input] you here."
-                        className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white resize-y"
-                        rows={6}
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Use [input] where you want students to fill in answers. Each [input] will be a separate question.
-                      </p>
-                    </div>
-
-                    {/* Answer inputs for each blank */}
-                    {(editingQuestion.prompt?.text || "").match(/\[input\]/gi)?.length > 0 && (
-                      <div className="pt-3 border-t border-gray-200">
-                        <label className="block text-xs font-medium text-gray-600 mb-2">
-                          Correct Answers (one per blank)
-                        </label>
-                        <div className="space-y-2">
-                          {Array.from({ length: (editingQuestion.prompt?.text || "").match(/\[input\]/gi)?.length || 0 }).map((_, idx) => (
-                            <div key={idx} className="flex items-center gap-2">
-                              <span className="text-xs text-gray-500 w-20">Blank {idx + 1}:</span>
-                              <input
-                                type="text"
-                                value={Array.isArray(editingQuestion.answerKey?.blanks)
-                                  ? editingQuestion.answerKey.blanks[idx] || ""
-                                  : ""}
-                                onChange={(e) => {
-                                  const blanks = [...(editingQuestion.answerKey?.blanks || [])];
-                                  blanks[idx] = e.target.value;
-                                  setEditingQuestion({
-                                    ...editingQuestion,
-                                    answerKey: { blanks },
-                                  });
-                                }}
-                                placeholder={`Answer for blank ${idx + 1}`}
-                                className="flex-1 px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
-                              />
-                            </div>
-                          ))}
-                        </div>
-                        <p className="text-xs text-gray-500 mt-2">
-                          Total blanks: {(editingQuestion.prompt?.text || "").match(/\[input\]/gi)?.length || 0}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                ) : editingQuestion.qtype === "DND_GAP" ? (
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                        Sentences (one per line, use ___ or ________ for each blank)
-                      </label>
-                      <textarea
-                        value={editingQuestion.prompt?.textWithBlanks || ""}
-                        onChange={(e) => {
-                          const textWithBlanks = e.target.value;
-                          // Split by newlines to get sentences
-                          const sentences = textWithBlanks.split('\n').filter(line => line.trim());
-
-                          // Count total blanks across all sentences
-                          let totalBlanks = 0;
-                          sentences.forEach(sentence => {
-                            const blanksInSentence = sentence.split(/___+|________+/).length - 1;
-                            totalBlanks += blanksInSentence;
-                          });
-
-                          // Initialize blanks array with existing values or empty strings
-                          const currentBlanks = Array.isArray(editingQuestion.answerKey?.blanks)
-                            ? editingQuestion.answerKey.blanks
-                            : [];
-                          const newBlanks = Array(totalBlanks).fill("").map((_, idx) => currentBlanks[idx] || "");
-
-                          // Auto-generate word bank from answers
-                          const wordBank = newBlanks.filter(b => b.trim() !== "");
-
-                          setEditingQuestion({
-                            ...editingQuestion,
-                            prompt: { textWithBlanks: textWithBlanks },
-                            answerKey: { blanks: newBlanks },
-                            options: { bank: wordBank }, // Auto-generate word bank from answers
-                          });
-                        }}
-                        placeholder="I ___ running.&#10;She ___ to school every day.&#10;___ this day, ___ the weekend I want to go cinema."
-                        className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white resize-y"
-                        rows={5}
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Enter one sentence per line. Each sentence can have multiple ___ blanks.
-                      </p>
-                    </div>
-
-                    {/* Show answer inputs for each blank in each sentence */}
-                    {(editingQuestion.prompt?.textWithBlanks || "").split('\n').filter((line: string) => line.trim()).length > 0 && (
-                      <div className="pt-3 border-t border-gray-200">
-                        <label className="block text-xs font-medium text-gray-600 mb-2">
-                          Correct Answers (one per blank)
-                        </label>
-                        <div className="space-y-3">
-                          {(() => {
-                            const sentences = (editingQuestion.prompt?.textWithBlanks || "")
-                              .split('\n')
-                              .filter((line: string) => line.trim());
-
-                            let blankIndex = 0;
-                            return sentences.map((sentence: string, sentenceIdx: number) => {
-                              const blanksInSentence = sentence.split(/___+|________+/).length - 1;
-                              const sentenceStartBlank = blankIndex;
-                              const blanksForThisSentence = [];
-
-                              for (let i = 0; i < blanksInSentence; i++) {
-                                blanksForThisSentence.push(blankIndex);
-                                blankIndex++;
-                              }
-
-                              return (
-                                <div key={sentenceIdx} className="bg-gray-50 p-3 rounded-lg space-y-2">
-                                  <div className="flex items-start gap-2">
-                                    <div className="flex-shrink-0 w-6 h-6 rounded bg-white flex items-center justify-center text-xs font-medium text-gray-700 mt-1">
-                                      {sentenceIdx + 1}
-                                    </div>
-                                    <div className="flex-1 text-xs text-gray-700 bg-white p-2 rounded">
-                                      {sentence.trim()}
-                                    </div>
-                                  </div>
-                                  {blanksForThisSentence.map((globalBlankIdx, localBlankIdx) => (
-                                    <div key={globalBlankIdx} className="flex items-center gap-2 ml-8">
-                                      <span className="text-xs text-gray-500 w-20">Blank {localBlankIdx + 1}:</span>
-                                      <input
-                                        type="text"
-                                        value={Array.isArray(editingQuestion.answerKey?.blanks)
-                                          ? editingQuestion.answerKey.blanks[globalBlankIdx] || ""
-                                          : ""}
-                                        onChange={(e) => {
-                                          const blanks = [...(editingQuestion.answerKey?.blanks || [])];
-                                          blanks[globalBlankIdx] = e.target.value;
-                                          // Auto-generate word bank from all answers
-                                          const wordBank = blanks.filter(b => b && b.trim() !== "");
-
-                                          setEditingQuestion({
-                                            ...editingQuestion,
-                                            answerKey: { blanks },
-                                            options: { bank: wordBank }, // Auto-generate word bank
-                                          });
-                                        }}
-                                        placeholder={`Answer for blank ${localBlankIdx + 1}`}
-                                        className="flex-1 px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
-                                      />
-                                    </div>
-                                  ))}
-                                </div>
-                              );
-                            });
-                          })()}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : editingQuestion.qtype === "INLINE_SELECT" ? (
-                  <div className="space-y-2">
-                    <textarea
-                      value={editingQuestion.prompt?.text || ""}
-                      onChange={(e) => {
-                        setEditingQuestion({
-                          ...editingQuestion,
-                          prompt: { ...editingQuestion.prompt, text: e.target.value },
-                        });
-                      }}
-                      placeholder="Enter the question text (use ___ for inline dropdown, or leave without ___ for dropdown at the end)"
-                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
-                      rows={3}
-                    />
-                    <div className="text-xs text-gray-500 bg-blue-50 p-2 rounded border border-blue-200">
-                      <strong>Tip:</strong> Use ___ (3 underscores) where you want the dropdown to appear inline.
-                      If you don't use ___, the dropdown will appear at the end of the sentence.
-                      <br />
-                      <strong>Examples:</strong>
-                      <br />
-                      • "I ___ to school every day." → dropdown appears inline
-                      <br />
-                      • "What is the capital of France?" → dropdown appears at the end
-                    </div>
-                  </div>
-                ) : editingQuestion.qtype === "SPEAKING_RECORDING" ? (
-                  <div className="space-y-3">
-                    {/* Speaking Part Selection */}
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                        Speaking Part *
-                      </label>
-                      <select
-                        value={editingQuestion.prompt?.part || 1}
-                        onChange={(e) => {
-                          setEditingQuestion({
-                            ...editingQuestion,
-                            prompt: { ...editingQuestion.prompt, part: parseInt(e.target.value) },
-                          });
-                        }}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
-                      >
-                        <option value={1}>Part 1 (3s reading + 30s recording)</option>
-                        <option value={2}>Part 2 (1min prep + 3s reading + 2min recording)</option>
-                        <option value={3}>Part 3 (3s reading + 1min recording)</option>
-                      </select>
-                    </div>
-
-                    {/* Question Text */}
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                        Question Text *
-                      </label>
-                      <textarea
-                        value={editingQuestion.prompt?.text || ""}
-                        onChange={(e) => {
-                          setEditingQuestion({
-                            ...editingQuestion,
-                            prompt: { ...editingQuestion.prompt, text: e.target.value },
-                          });
-                        }}
-                        placeholder="Enter the speaking question (e.g., 'What is your name?', 'Describe a place you like to visit.', etc.)"
-                        className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
-                        rows={4}
-                      />
-                    </div>
-
-                    <div className="pt-3 border-t border-gray-200 bg-blue-50 p-3 rounded-md">
-                      <p className="text-xs text-blue-800 space-y-1">
-                        <strong>Note:</strong>
-                        <br />
-                        • Students get 3 seconds to read the question
-                        <br />
-                        {editingQuestion.prompt?.part === 2 && "• Part 2: 1 minute preparation → 3 seconds reading → 2 minutes recording"}
-                        {editingQuestion.prompt?.part === 1 && "• Part 1: 3 seconds reading → 30 seconds recording"}
-                        {editingQuestion.prompt?.part === 3 && "• Part 3: 3 seconds reading → 1 minute recording"}
-                        <br />
-                        • Recording starts and stops automatically (students cannot control it)
-                      </p>
-                    </div>
-                  </div>
-                ) : editingQuestion.qtype === "IMAGE_INTERACTIVE" ? (
-                  <div className="space-y-3">
-                    {/* Question Text */}
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                        Question Text *
-                      </label>
-                      <textarea
-                        value={editingQuestion.prompt?.text || ""}
-                        onChange={(e) => {
-                          setEditingQuestion({
-                            ...editingQuestion,
-                            prompt: { ...editingQuestion.prompt, text: e.target.value },
-                          });
-                        }}
-                        placeholder="Enter the question text (e.g., 'Click on the correct body part', 'Select all items in the living room')"
-                        className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
-                        rows={2}
-                      />
-                    </div>
-
-                    {/* Interaction Type */}
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                        Interaction Type *
-                      </label>
-                      <select
-                        value={editingQuestion.prompt?.interactionType || "single"}
-                        onChange={(e) => {
-                          setEditingQuestion({
-                            ...editingQuestion,
-                            prompt: { ...editingQuestion.prompt, interactionType: e.target.value },
-                          });
-                        }}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
-                      >
-                        <option value="single">Single Selection (Only one correct answer)</option>
-                        <option value="multiple">Multiple Selection (Multiple correct answers)</option>
-                      </select>
-                    </div>
-
-                    {/* Background Image Upload */}
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                        Background Image *
-                      </label>
-                      {editingQuestion.prompt?.backgroundImage && (
-                        <div className="mb-2 relative inline-block">
-                          <img
-                            src={editingQuestion.prompt.backgroundImage}
-                            alt="Background"
-                            className="max-w-full h-auto max-h-64 rounded border border-gray-200"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingQuestion({
-                                ...editingQuestion,
-                                prompt: { ...editingQuestion.prompt, backgroundImage: "" },
-                                options: { hotspots: [] },
-                                answerKey: { correctHotspotIds: [] },
-                              });
-                            }}
-                            className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      )}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-
-                          setUploadingImage(true);
-                          try {
-                            const formData = new FormData();
-                            formData.append("file", file);
-                            formData.append("type", "image");
-
-                            const res = await fetch("/api/admin/upload", {
-                              method: "POST",
-                              body: formData,
-                            });
-
-                            if (res.ok) {
-                              const data = await res.json();
-                              setEditingQuestion({
-                                ...editingQuestion,
-                                prompt: { ...editingQuestion.prompt, backgroundImage: data.path },
-                              });
-                            } else {
-                              modals.showAlert("Failed to Upload Image", "Failed to upload background image", "error");
-                            }
-                          } catch (error) {
-                            console.error("Upload error:", error);
-                            modals.showAlert("Failed to Upload Image", "Failed to upload background image", "error");
-                          } finally {
-                            setUploadingImage(false);
-                          }
-                        }}
-                        disabled={uploadingImage}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 disabled:opacity-50 bg-white"
-                      />
-                      {uploadingImage && (
-                        <p className="text-xs text-gray-500 mt-1">Uploading image...</p>
-                      )}
-                      <p className="text-xs text-gray-500 mt-1">
-                        Upload an image where students will click/select areas. This will be the background.
-                      </p>
-                    </div>
-
-                    {/* Hotspot Editor */}
-                    {editingQuestion.prompt?.backgroundImage && (
-                      <div className="pt-3 border-t border-gray-200">
-                        <label className="block text-xs font-medium text-gray-600 mb-2">
-                          Clickable Areas (Hotspots)
-                        </label>
-                        <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
-                          {/* Interactive Image Editor */}
-                          <div className="relative inline-block bg-white border-2 border-gray-300 rounded-md overflow-hidden mb-3">
-                            <img
-                              src={editingQuestion.prompt.backgroundImage}
-                              alt="Interactive"
-                              className="max-w-full h-auto"
-                              style={{ maxHeight: "500px" }}
-                              draggable={false}
-                            />
-                            {/* Render hotspots */}
-                            {(editingQuestion.options?.hotspots || []).map((hotspot: any, idx: number) => (
-                              <div
-                                key={hotspot.id}
-                                className="absolute border-2 cursor-pointer transition-all"
-                                style={{
-                                  left: `${hotspot.x}%`,
-                                  top: `${hotspot.y}%`,
-                                  width: `${hotspot.width}%`,
-                                  height: `${hotspot.height}%`,
-                                  borderColor: hotspot.isCorrect ? "#10B981" : "#EF4444",
-                                  backgroundColor: hotspot.isCorrect ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)",
-                                }}
-                              >
-                                <div className="absolute -top-6 left-0 text-xs font-medium px-2 py-1 rounded" style={{
-                                  backgroundColor: hotspot.isCorrect ? "#10B981" : "#EF4444",
-                                  color: "white",
-                                }}>
-                                  {hotspot.label}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-
-                          {/* Add Hotspot Button */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const newHotspot = {
-                                id: `hotspot-${Date.now()}`,
-                                x: 10,
-                                y: 10,
-                                width: 20,
-                                height: 15,
-                                label: `Area ${(editingQuestion.options?.hotspots || []).length + 1}`,
-                                isCorrect: false,
-                              };
-                              setEditingQuestion({
-                                ...editingQuestion,
-                                options: {
-                                  ...editingQuestion.options,
-                                  hotspots: [...(editingQuestion.options?.hotspots || []), newHotspot],
-                                },
-                              });
-                            }}
-                            className="w-full px-3 py-2 border border-dashed border-gray-300 rounded-md text-gray-600 hover:border-gray-400 hover:bg-gray-100 text-sm flex items-center justify-center gap-2"
-                          >
-                            <Plus className="w-4 h-4" />
-                            Add Clickable Area
-                          </button>
-
-                          {/* Hotspots List */}
-                          {(editingQuestion.options?.hotspots || []).length > 0 && (
-                            <div className="mt-4 space-y-2">
-                              <p className="text-xs font-medium text-gray-700 mb-2">Configure Areas:</p>
-                              {(editingQuestion.options?.hotspots || []).map((hotspot: any, idx: number) => (
-                                <div key={hotspot.id} className="bg-white p-3 rounded border border-gray-200 space-y-2">
-                                  <div className="flex items-center gap-2">
-                                    <input
-                                      type="text"
-                                      value={hotspot.label}
-                                      onChange={(e) => {
-                                        const newHotspots = [...(editingQuestion.options?.hotspots || [])];
-                                        newHotspots[idx] = { ...hotspot, label: e.target.value };
-                                        setEditingQuestion({
-                                          ...editingQuestion,
-                                          options: { ...editingQuestion.options, hotspots: newHotspots },
-                                        });
-                                      }}
-                                      placeholder="Area label"
-                                      className="flex-1 px-2 py-1 border border-gray-200 rounded text-xs"
-                                    />
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        const newHotspots = [...(editingQuestion.options?.hotspots || [])];
-                                        newHotspots.splice(idx, 1);
-                                        setEditingQuestion({
-                                          ...editingQuestion,
-                                          options: { ...editingQuestion.options, hotspots: newHotspots },
-                                          answerKey: {
-                                            correctHotspotIds: (editingQuestion.answerKey?.correctHotspotIds || []).filter((id: string) => id !== hotspot.id),
-                                          },
-                                        });
-                                      }}
-                                      className="px-2 py-1 text-red-600 hover:bg-red-50 rounded text-xs"
-                                    >
-                                      <X className="w-3 h-3" />
-                                    </button>
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-2">
-                                    <div>
-                                      <label className="text-xs text-gray-500">X Position (%)</label>
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        max="100"
-                                        value={hotspot.x}
-                                        onChange={(e) => {
-                                          const newHotspots = [...(editingQuestion.options?.hotspots || [])];
-                                          newHotspots[idx] = { ...hotspot, x: parseFloat(e.target.value) || 0 };
-                                          setEditingQuestion({
-                                            ...editingQuestion,
-                                            options: { ...editingQuestion.options, hotspots: newHotspots },
-                                          });
-                                        }}
-                                        className="w-full px-2 py-1 border border-gray-200 rounded text-xs"
-                                      />
-                                    </div>
-                                    <div>
-                                      <label className="text-xs text-gray-500">Y Position (%)</label>
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        max="100"
-                                        value={hotspot.y}
-                                        onChange={(e) => {
-                                          const newHotspots = [...(editingQuestion.options?.hotspots || [])];
-                                          newHotspots[idx] = { ...hotspot, y: parseFloat(e.target.value) || 0 };
-                                          setEditingQuestion({
-                                            ...editingQuestion,
-                                            options: { ...editingQuestion.options, hotspots: newHotspots },
-                                          });
-                                        }}
-                                        className="w-full px-2 py-1 border border-gray-200 rounded text-xs"
-                                      />
-                                    </div>
-                                    <div>
-                                      <label className="text-xs text-gray-500">Width (%)</label>
-                                      <input
-                                        type="number"
-                                        min="1"
-                                        max="100"
-                                        value={hotspot.width}
-                                        onChange={(e) => {
-                                          const newHotspots = [...(editingQuestion.options?.hotspots || [])];
-                                          newHotspots[idx] = { ...hotspot, width: parseFloat(e.target.value) || 1 };
-                                          setEditingQuestion({
-                                            ...editingQuestion,
-                                            options: { ...editingQuestion.options, hotspots: newHotspots },
-                                          });
-                                        }}
-                                        className="w-full px-2 py-1 border border-gray-200 rounded text-xs"
-                                      />
-                                    </div>
-                                    <div>
-                                      <label className="text-xs text-gray-500">Height (%)</label>
-                                      <input
-                                        type="number"
-                                        min="1"
-                                        max="100"
-                                        value={hotspot.height}
-                                        onChange={(e) => {
-                                          const newHotspots = [...(editingQuestion.options?.hotspots || [])];
-                                          newHotspots[idx] = { ...hotspot, height: parseFloat(e.target.value) || 1 };
-                                          setEditingQuestion({
-                                            ...editingQuestion,
-                                            options: { ...editingQuestion.options, hotspots: newHotspots },
-                                          });
-                                        }}
-                                        className="w-full px-2 py-1 border border-gray-200 rounded text-xs"
-                                      />
-                                    </div>
-                                  </div>
-                                  <label className="flex items-center gap-2 cursor-pointer">
-                                    <input
-                                      type="checkbox"
-                                      checked={(editingQuestion.answerKey?.correctHotspotIds || []).includes(hotspot.id)}
-                                      onChange={(e) => {
-                                        let correctIds = [...(editingQuestion.answerKey?.correctHotspotIds || [])];
-                                        if (e.target.checked) {
-                                          if (editingQuestion.prompt?.interactionType === "single") {
-                                            correctIds = [hotspot.id];
-                                          } else {
-                                            correctIds.push(hotspot.id);
-                                          }
-                                        } else {
-                                          correctIds = correctIds.filter((id: string) => id !== hotspot.id);
-                                        }
-                                        const newHotspots = [...(editingQuestion.options?.hotspots || [])];
-                                        newHotspots[idx] = { ...hotspot, isCorrect: e.target.checked };
-                                        setEditingQuestion({
-                                          ...editingQuestion,
-                                          options: { ...editingQuestion.options, hotspots: newHotspots },
-                                          answerKey: { correctHotspotIds: correctIds },
-                                        });
-                                      }}
-                                      className="w-4 h-4"
-                                    />
-                                    <span className="text-xs font-medium text-gray-700">Mark as Correct Answer</span>
-                                  </label>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        <p className="text-xs text-gray-500 mt-2">
-                          Add clickable areas on the image. Configure position (X, Y) and size (Width, Height) as percentages. Mark correct answer(s).
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <>
-                    <textarea
-                      value={editingQuestion.prompt?.text || ""}
-                      onChange={(e) => {
-                        setEditingQuestion({
-                          ...editingQuestion,
-                          prompt: { ...editingQuestion.prompt, text: e.target.value },
-                        });
-                      }}
-                      placeholder="Enter the question text"
-                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
-                      rows={3}
-                    />
-                    <div className="mt-2 text-xs text-gray-700 bg-yellow-50 p-2 rounded border border-yellow-200 flex items-center gap-2">
-                      <Info className="w-4 h-4 text-yellow-600 flex-shrink-0" />
-                      <span>
-                        <strong>Text Formatting:</strong> **bold** | __underline__ | ~~strikethrough~~ | &&italic&&
-                      </span>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Options (for MCQ, INLINE_SELECT, etc.) */}
-              {(editingQuestion.qtype === "MCQ_SINGLE" ||
-                editingQuestion.qtype === "MCQ_MULTI" ||
-                editingQuestion.qtype === "INLINE_SELECT") && (
-                  <div className="p-4 bg-gray-50 border-l-2 border-r-2 border-b-2 border-gray-300">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Options
-                    </label>
-                    <div className="space-y-3">
-                      {(editingQuestion.options?.choices || []).map((opt: string, idx: number) => (
-                        <div key={idx} className="space-y-2">
-                          <div className="flex gap-2">
-                            <input
-                              type="text"
-                              value={opt}
-                              onChange={(e) => {
-                                const newOptions = [...(editingQuestion.options?.choices || [])];
-                                newOptions[idx] = e.target.value;
-                                setEditingQuestion({
-                                  ...editingQuestion,
-                                  options: {
-                                    ...editingQuestion.options,
-                                    choices: newOptions,
-                                  },
-                                });
-                              }}
-                              className="flex-1 px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
-                              placeholder={`Option ${idx + 1}`}
-                            />
-                            <label className="cursor-pointer">
-                              <input
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={async (e) => {
-                                  const file = e.target.files?.[0];
-                                  if (!file) return;
-
-                                  const formData = new FormData();
-                                  formData.append("file", file);
-
-                                  try {
-                                    const res = await fetch("/api/upload", {
-                                      method: "POST",
-                                      body: formData,
-                                    });
-                                    const data = await res.json();
-
-                                    if (data.url) {
-                                      const newOptionsImages = [...(editingQuestion.options?.choiceImages || [])];
-                                      newOptionsImages[idx] = data.url;
-                                      setEditingQuestion({
-                                        ...editingQuestion,
-                                        options: {
-                                          ...editingQuestion.options,
-                                          choiceImages: newOptionsImages,
-                                        },
-                                      });
-                                    }
-                                  } catch (error) {
-                                    console.error("Upload error:", error);
-                                    modals.showAlert("Failed to Upload Image", "Failed to upload image", "error");
-                                  }
-                                }}
-                              />
-                              <div className="px-2 py-2 text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors">
-                                <Image className="w-3 h-3 sm:w-4 sm:h-4" />
-                              </div>
-                            </label>
-                            <button
-                              onClick={() => {
-                                const newOptions = [...(editingQuestion.options?.choices || [])];
-                                newOptions.splice(idx, 1);
-                                const newImages = [...(editingQuestion.options?.choiceImages || [])];
-                                newImages.splice(idx, 1);
-                                setEditingQuestion({
-                                  ...editingQuestion,
-                                  options: {
-                                    ...editingQuestion.options,
-                                    choices: newOptions,
-                                    choiceImages: newImages,
-                                  },
-                                });
-                              }}
-                              className="px-2 py-2 text-red-700 bg-red-50 hover:bg-red-100 rounded-md"
-                            >
-                              <X className="w-3 h-3 sm:w-4 sm:h-4" />
-                            </button>
-                          </div>
-                          {editingQuestion.options?.choiceImages?.[idx] && (
-                            <div className="relative inline-block">
-                              <img
-                                src={editingQuestion.options.choiceImages[idx]}
-                                alt={`Option ${idx + 1}`}
-                                className="h-20 w-auto rounded border border-gray-200"
-                              />
-                              <button
-                                onClick={() => {
-                                  const newImages = [...(editingQuestion.options?.choiceImages || [])];
-                                  newImages[idx] = undefined;
-                                  setEditingQuestion({
-                                    ...editingQuestion,
-                                    options: {
-                                      ...editingQuestion.options,
-                                      choiceImages: newImages,
-                                    },
-                                  });
-                                }}
-                                className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 text-xs"
-                              >
-                                ×
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                      <button
-                        onClick={() => {
-                          const newOptions = [...(editingQuestion.options?.choices || []), ""];
-                          setEditingQuestion({
-                            ...editingQuestion,
-                            options: {
-                              ...editingQuestion.options,
-                              choices: newOptions,
-                            },
-                          });
-                        }}
-                        className="w-full px-3 py-2 border border-dashed border-gray-300 rounded-md text-gray-600 hover:border-gray-400 hover:bg-gray-50 text-sm"
-                      >
-                        <Plus className="w-3 h-3 sm:w-4 sm:h-4 inline mr-2" />
-                        Add Option
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-              {/* Answer Key */}
-              <div className="p-4 bg-gray-50 border-l-2 border-r-2 border-b-2 border-gray-300 rounded-b-md">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Correct Answer *
-                </label>
-                {editingQuestion.qtype === "TF" && (
-                  <select
-                    value={editingQuestion.answerKey?.value ? "true" : "false"}
-                    onChange={(e) => {
-                      setEditingQuestion({
-                        ...editingQuestion,
-                        answerKey: { value: e.target.value === "true" },
-                      });
-                    }}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
-                  >
-                    <option value="true">True</option>
-                    <option value="false">False</option>
-                  </select>
-                )}
-                {(editingQuestion.qtype === "MCQ_SINGLE" ||
-                  editingQuestion.qtype === "INLINE_SELECT") && (
-                    <select
-                      value={editingQuestion.answerKey?.index ?? 0}
-                      onChange={(e) => {
-                        setEditingQuestion({
-                          ...editingQuestion,
-                          answerKey: { index: parseInt(e.target.value) },
-                        });
-                      }}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
-                    >
-                      {(editingQuestion.options?.choices || []).map((opt: string, idx: number) => (
-                        <option key={idx} value={idx}>
-                          {opt || `Option ${idx + 1}`}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                {editingQuestion.qtype === "MCQ_MULTI" && (
-                  <div className="space-y-2 p-3 bg-white border border-gray-200 rounded-md">
-                    {(editingQuestion.options?.choices || []).map((opt: string, idx: number) => (
-                      <label key={idx} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={(editingQuestion.answerKey?.indices || []).includes(idx)}
-                          onChange={(e) => {
-                            const indices = [...(editingQuestion.answerKey?.indices || [])];
-                            if (e.target.checked) {
-                              indices.push(idx);
-                            } else {
-                              const pos = indices.indexOf(idx);
-                              if (pos > -1) indices.splice(pos, 1);
-                            }
-                            setEditingQuestion({
-                              ...editingQuestion,
-                              answerKey: { indices: indices.sort() },
-                            });
-                          }}
-                          className="w-4 h-4"
-                        />
-                        <span className="text-sm">{opt || `Option ${idx + 1}`}</span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-                {editingQuestion.qtype === "DND_GAP" && (
-                  <div className="space-y-2 p-3 bg-white border border-gray-200 rounded-md">
-                    <p className="text-xs text-gray-500 mb-2">
-                      Word Bank will be automatically generated from the correct answers above.
-                    </p>
-                    {Array.isArray(editingQuestion.options?.bank) && editingQuestion.options.bank.length > 0 && (
-                      <div className="mt-3">
-                        <p className="text-xs font-medium text-gray-700 mb-2">Auto-generated Word Bank:</p>
-                        <div className="flex flex-wrap gap-2">
-                          {editingQuestion.options.bank.map((word: string, idx: number) => (
-                            <span key={idx} className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-medium">
-                              {word}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-                {editingQuestion.qtype === "ORDER_SENTENCE" && (
-                  <div className="space-y-2 p-3 bg-white border border-gray-200 rounded-md">
-                    <p className="text-xs sm:text-sm text-gray-500">
-                      The correct order is determined by the token order. Students will see them shuffled.
-                    </p>
-                    {Array.isArray(editingQuestion.prompt?.tokens) && editingQuestion.prompt.tokens.length > 0 && (
-                      <div className="p-3 bg-gray-50 border border-gray-200 rounded-md">
-                        <p className="text-xs font-medium text-gray-700 mb-2">Current order (correct answer):</p>
-                        <div className="flex flex-wrap gap-2">
-                          {editingQuestion.prompt.tokens.map((token: string, idx: number) => (
-                            <span key={idx} className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
-                              {idx + 1}. {token}
-                            </span>
-                          ))}
-                        </div>
-                        <p className="text-xs text-gray-500 mt-2">
-                          Answer key: {JSON.stringify(editingQuestion.prompt.tokens.map((_: any, idx: number) => idx))}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-                {editingQuestion.qtype === "IMAGE_INTERACTIVE" && (
-                  <div className="space-y-2 p-3 bg-white border border-gray-200 rounded-md">
-                    {(editingQuestion.answerKey?.correctHotspotIds || []).length === 0 ? (
-                      <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded border border-amber-200">
-                        Please mark at least one area as the correct answer in the configuration above.
-                      </p>
-                    ) : (
-                      <div>
-                        <p className="text-xs font-medium text-gray-700 mb-2">Correct Answer(s):</p>
-                        <div className="flex flex-wrap gap-2">
-                          {(editingQuestion.options?.hotspots || [])
-                            .filter((h: any) => (editingQuestion.answerKey?.correctHotspotIds || []).includes(h.id))
-                            .map((hotspot: any) => (
-                              <span key={hotspot.id} className="px-2 py-1 bg-green-50 text-green-700 rounded text-xs font-medium border border-green-200">
-                                {hotspot.label}
-                              </span>
-                            ))}
-                        </div>
-                        <p className="text-xs text-gray-500 mt-2">
-                          Interaction Type: {editingQuestion.prompt?.interactionType === "single" ? "Single Selection" : "Multiple Selection"}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Question Preview */}
-            <QuestionPreview question={editingQuestion} />
-
-            <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 mt-4 sm:mt-6 pt-4 border-t border-gray-200">
-              <button
-                onClick={() => setEditingQuestion(null)}
-                className="px-3 sm:px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={saveQuestion}
-                className="px-3 sm:px-4 py-2 text-sm font-medium text-white rounded-md"
-                style={{ backgroundColor: "#303380" }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = "#252a6b";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "#303380";
-                }}
-              >
-                Save Question
-              </button>
-            </div>
-          </div>
-        </div>
+              if (res.ok) {
+                const data = await res.json();
+                console.log("Image uploaded successfully:", data);
+                
+                // Handle different image upload scenarios
+                if (editingQuestion.qtype === "IMAGE_INTERACTIVE") {
+                  setEditingQuestion({
+                    ...editingQuestion,
+                    prompt: { ...editingQuestion.prompt, backgroundImage: data.path },
+                  });
+                } else {
+                  setEditingQuestion({
+                    ...editingQuestion,
+                    image: data.path,
+                  });
+                }
+              } else {
+                const errorData = await res.json();
+                console.error("Upload failed:", errorData);
+                modals.showAlert("Failed to Upload Image", errorData.error || "Failed to upload image", "error");
+              }
+            } catch (error) {
+              console.error("Upload error:", error);
+              modals.showAlert("Failed to Upload Image", error instanceof Error ? error.message : "Failed to upload image", "error");
+            } finally {
+              setUploadingImage(false);
+            }
+          }}
+          showAlert={modals.showAlert}
+        />
       )}
 
       {/* Save Button */}
@@ -1862,4 +733,3 @@ export default function CreateExamPage() {
     </div>
   );
 }
-

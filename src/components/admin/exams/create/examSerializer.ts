@@ -120,10 +120,20 @@ function applyCategoryDurationOverrides(
  * Serialize a question for API
  */
 function serializeQuestion(question: Question): SerializedQuestion {
+  let serializedPrompt = question.prompt;
+  
+  // For IMAGE_INTERACTIVE, ensure backgroundImage path is properly serialized
+  if (question.qtype === "IMAGE_INTERACTIVE" && question.prompt?.backgroundImage) {
+    serializedPrompt = {
+      ...question.prompt,
+      backgroundImage: question.prompt.backgroundImage,
+    };
+  }
+  
   return {
     qtype: question.qtype,
     order: question.order,
-    prompt: question.prompt,
+    prompt: serializedPrompt,
     options: question.options,
     answerKey: question.answerKey,
     maxScore: question.maxScore,

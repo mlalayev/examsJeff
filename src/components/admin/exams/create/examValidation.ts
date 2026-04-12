@@ -96,3 +96,50 @@ export function canDeleteSection(category: ExamCategory): boolean {
 export function canAddSection(category: ExamCategory): boolean {
   return category !== "IELTS";
 }
+
+/**
+ * Validate IMAGE_INTERACTIVE question has required fields
+ */
+export function validateImageInteractiveQuestion(question: any): ValidationResult {
+  if (!question.prompt?.text || !question.prompt.text.trim()) {
+    return {
+      valid: false,
+      error: {
+        title: "Validation Error",
+        message: "Please enter question text",
+      },
+    };
+  }
+
+  if (!question.prompt?.backgroundImage) {
+    return {
+      valid: false,
+      error: {
+        title: "Validation Error",
+        message: "Please upload a background image",
+      },
+    };
+  }
+
+  if (!question.options?.hotspots || question.options.hotspots.length === 0) {
+    return {
+      valid: false,
+      error: {
+        title: "Validation Error",
+        message: "Please add at least one clickable area (hotspot)",
+      },
+    };
+  }
+
+  if (!question.answerKey?.correctHotspotIds || question.answerKey.correctHotspotIds.length === 0) {
+    return {
+      valid: false,
+      error: {
+        title: "Validation Error",
+        message: "Please mark at least one area as the correct answer",
+      },
+    };
+  }
+
+  return { valid: true };
+}
