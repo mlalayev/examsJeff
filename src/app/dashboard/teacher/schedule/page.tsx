@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Calendar, Plus, Trash2, Clock, BookOpen, Save, AlertCircle } from "lucide-react";
+import { Calendar, Plus, Trash2, Clock, BookOpen, Save, AlertCircle, Pencil } from "lucide-react";
 import { useSession } from "next-auth/react";
 
 type Lesson = {
@@ -19,7 +19,7 @@ type Schedule = {
 };
 
 export default function TeacherSchedulePage() {
-  const { data: session } = useSession();
+  useSession();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<"odd" | "even">("odd");
@@ -126,7 +126,7 @@ export default function TeacherSchedulePage() {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+      <div className="p-4 sm:p-6 lg:p-8">
         <div className="animate-pulse">
           <div className="h-8 bg-gray-300 rounded w-48 mb-4"></div>
           <div className="h-4 bg-gray-300 rounded w-64 mb-8"></div>
@@ -140,62 +140,67 @@ export default function TeacherSchedulePage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <Calendar className="w-8 h-8 text-purple-600" />
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">My Schedule</h1>
+    <div className="p-4 sm:p-6 lg:p-8">
+      {/* Minimal Header */}
+      <div className="mb-8 sm:mb-12">
+        <div className="flex items-center gap-2">
+          <Calendar className="h-5 w-5 text-slate-500" />
+          <h1 className="text-xl sm:text-2xl font-medium text-gray-900">Schedule</h1>
         </div>
-        <p className="text-gray-600">Manage your lessons for odd and even days</p>
+        <p className="text-gray-500 mt-1 text-sm sm:text-base">
+          Manage your lessons for odd/even days.
+        </p>
       </div>
 
       {/* Alert */}
       {alert.show && (
         <div
-          className={`mb-6 p-4 rounded-lg flex items-center gap-3 ${
+          className={`mb-6 rounded-lg border px-4 py-3 flex items-start gap-3 text-sm ${
             alert.type === "success"
-              ? "bg-green-50 text-green-800 border border-green-200"
-              : "bg-red-50 text-red-800 border border-red-200"
+              ? "bg-emerald-50/60 text-emerald-900 border-emerald-200"
+              : "bg-rose-50/60 text-rose-900 border-rose-200"
           }`}
         >
-          <AlertCircle className="w-5 h-5" />
-          <span>{alert.message}</span>
+          <AlertCircle className="w-4 h-4 mt-0.5" />
+          <span className="leading-relaxed">{alert.message}</span>
         </div>
       )}
 
-      {/* Tab Switcher */}
-      <div className="bg-white rounded-lg border border-gray-200 mb-6">
-        <div className="flex border-b border-gray-200">
+      {/* Compact Stats + Segmented Control */}
+      <div className="flex flex-col gap-4 mb-6">
+        <div className="flex flex-wrap items-center gap-4 sm:gap-8 text-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-gray-500">Odd days:</span>
+            <span className="font-medium">{schedule.oddDays.length}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-gray-500">Even days:</span>
+            <span className="font-medium">{schedule.evenDays.length}</span>
+          </div>
+        </div>
+
+        <div className="inline-flex w-full max-w-sm rounded-lg border border-gray-200 bg-white p-1">
           <button
+            type="button"
             onClick={() => setActiveTab("odd")}
-            className={`flex-1 px-6 py-4 text-sm font-medium transition ${
+            className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition ${
               activeTab === "odd"
-                ? "text-purple-600 border-b-2 border-purple-600 bg-purple-50"
-                : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                ? "bg-[#303380] text-white shadow-sm"
+                : "text-gray-700 hover:bg-gray-50"
             }`}
           >
-            <div className="flex items-center justify-center gap-2">
-              <span>Odd Days</span>
-              <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs">
-                {schedule.oddDays.length}
-              </span>
-            </div>
+            Odd days
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab("even")}
-            className={`flex-1 px-6 py-4 text-sm font-medium transition ${
+            className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition ${
               activeTab === "even"
-                ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
-                : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                ? "bg-[#303380] text-white shadow-sm"
+                : "text-gray-700 hover:bg-gray-50"
             }`}
           >
-            <div className="flex items-center justify-center gap-2">
-              <span>Even Days</span>
-              <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs">
-                {schedule.evenDays.length}
-              </span>
-            </div>
+            Even days
           </button>
         </div>
       </div>
@@ -207,60 +212,61 @@ export default function TeacherSchedulePage() {
             setEditingLesson(null);
             setShowAddModal(true);
           }}
-          className="flex items-center justify-center gap-2 px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+          className="flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-white shadow-sm transition"
+          style={{ backgroundColor: "#303380" }}
         >
-          <Plus className="w-5 h-5" />
-          Add Lesson to {activeTab === "odd" ? "Odd" : "Even"} Days
+          <Plus className="w-4 h-4" />
+          Add lesson
         </button>
         <button
           onClick={saveSchedule}
           disabled={saving}
-          className="flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-900 shadow-sm transition hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <Save className="w-5 h-5" />
-          {saving ? "Saving..." : "Save Schedule"}
+          <Save className="w-4 h-4 text-slate-600" />
+          {saving ? "Saving…" : "Save"}
         </button>
       </div>
 
       {/* Lessons List */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden">
         {sortedLessons(schedule[activeTab === "odd" ? "oddDays" : "evenDays"]).length === 0 ? (
           <div className="text-center py-16">
-            <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              No lessons scheduled for {activeTab === "odd" ? "odd" : "even"} days
+            <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-base font-medium text-gray-900 mb-1">
+              No lessons yet
             </h3>
-            <p className="text-gray-600 mb-4">
-              Click "Add Lesson" to create your first lesson for {activeTab === "odd" ? "odd" : "even"} days
+            <p className="text-sm text-gray-500">
+              Add a lesson to start building your {activeTab === "odd" ? "odd-day" : "even-day"} schedule.
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-200">
+          <div className="divide-y divide-slate-100">
             {sortedLessons(schedule[activeTab === "odd" ? "oddDays" : "evenDays"]).map((lesson) => (
               <div
                 key={lesson.id}
-                className="p-4 hover:bg-gray-50 transition"
+                className="p-4 sm:p-5 hover:bg-slate-50/60 transition"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg font-semibold text-gray-900">{lesson.subject}</h3>
-                      <div className="flex items-center gap-1 text-sm text-gray-600">
+                      <h3 className="text-base font-semibold text-gray-900">{lesson.subject}</h3>
+                      <div className="flex items-center gap-1 text-xs text-gray-500 tabular-nums">
                         <Clock className="w-4 h-4" />
                         <span>
                           {lesson.startTime} - {lesson.endTime}
                         </span>
                       </div>
                     </div>
-                    <div className="flex flex-wrap gap-3 text-sm text-gray-600">
+                    <div className="flex flex-wrap gap-2 text-xs text-gray-600">
                       {lesson.class && (
-                        <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded">
-                          Class: {lesson.class}
+                        <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2 py-1">
+                          Class: <span className="ml-1 font-medium text-gray-900">{lesson.class}</span>
                         </span>
                       )}
                       {lesson.room && (
-                        <span className="px-2 py-1 bg-green-100 text-green-700 rounded">
-                          Room: {lesson.room}
+                        <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2 py-1">
+                          Room: <span className="ml-1 font-medium text-gray-900">{lesson.room}</span>
                         </span>
                       )}
                     </div>
@@ -271,29 +277,17 @@ export default function TeacherSchedulePage() {
                         setEditingLesson(lesson);
                         setShowAddModal(true);
                       }}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded transition"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50"
                       title="Edit lesson"
                     >
-                      <svg
-                        className="w-5 h-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                        />
-                      </svg>
+                      <Pencil className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => deleteLesson(lesson.id)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded transition"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-rose-700 shadow-sm transition hover:bg-rose-50"
                       title="Delete lesson"
                     >
-                      <Trash2 className="w-5 h-5" />
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
@@ -356,11 +350,14 @@ function LessonModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-md w-full p-6">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">
-          {lesson ? "Edit Lesson" : `Add Lesson to ${dayType === "odd" ? "Odd" : "Even"} Days`}
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-xl border border-slate-200">
+        <h2 className="text-lg font-semibold text-gray-900 mb-1">
+          {lesson ? "Edit lesson" : "Add lesson"}
         </h2>
+        <p className="text-sm text-gray-500 mb-4">
+          {dayType === "odd" ? "Odd days" : "Even days"}
+        </p>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -370,7 +367,7 @@ function LessonModal({
               type="text"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#303380]/30 focus:border-[#303380] outline-none"
               placeholder="e.g., Mathematics, English"
               required
             />
@@ -385,7 +382,7 @@ function LessonModal({
                 type="time"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#303380]/30 focus:border-[#303380] outline-none"
                 required
               />
             </div>
@@ -397,7 +394,7 @@ function LessonModal({
                 type="time"
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#303380]/30 focus:border-[#303380] outline-none"
                 required
               />
             </div>
@@ -409,7 +406,7 @@ function LessonModal({
               type="text"
               value={classInfo}
               onChange={(e) => setClassInfo(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#303380]/30 focus:border-[#303380] outline-none"
               placeholder="e.g., 10-A, Grade 9"
             />
           </div>
@@ -420,7 +417,7 @@ function LessonModal({
               type="text"
               value={room}
               onChange={(e) => setRoom(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#303380]/30 focus:border-[#303380] outline-none"
               placeholder="e.g., Room 101, Lab 2"
             />
           </div>
@@ -429,15 +426,16 @@ function LessonModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition text-sm font-medium"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+              className="flex-1 px-4 py-2 text-white rounded-lg transition text-sm font-medium shadow-sm"
+              style={{ backgroundColor: "#303380" }}
             >
-              {lesson ? "Update" : "Add"} Lesson
+              {lesson ? "Update" : "Add"}
             </button>
           </div>
         </form>
