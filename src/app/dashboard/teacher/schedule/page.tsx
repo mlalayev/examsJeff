@@ -1,16 +1,21 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Calendar, Plus, Trash2, Clock, BookOpen, Save, AlertCircle, Pencil } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Calendar, Plus, Trash2, Clock, BookOpen, AlertCircle, Pencil, Users, DollarSign, X } from "lucide-react";
 import { useSession } from "next-auth/react";
+
+type Student = {
+  id: string;
+  firstName: string;
+  lastName: string;
+};
 
 type Lesson = {
   id: string;
-  subject: string;
-  startTime: string;
-  endTime: string;
-  room?: string;
-  class?: string;
+  className: string;
+  timeSlot: string;
+  students: Student[];
+  hourlyRate: number;
 };
 
 type Schedule = {
@@ -18,10 +23,26 @@ type Schedule = {
   evenDays: Lesson[];
 };
 
+const TIME_SLOTS = [
+  "07:00 - 08:00",
+  "08:00 - 09:00",
+  "09:00 - 10:00",
+  "10:00 - 11:00",
+  "11:00 - 12:00",
+  "12:00 - 13:00",
+  "13:00 - 14:00",
+  "14:00 - 15:00",
+  "15:00 - 16:00",
+  "16:00 - 17:00",
+  "17:00 - 18:00",
+  "18:00 - 19:00",
+  "19:00 - 20:00",
+  "20:00 - 21:00",
+];
+
 export default function TeacherSchedulePage() {
   useSession();
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<"odd" | "even">("odd");
   const [schedule, setSchedule] = useState<Schedule>({
     oddDays: [],
@@ -37,6 +58,18 @@ export default function TeacherSchedulePage() {
 
   useEffect(() => {
     loadSchedule();
+  }, []);
+
+  const autoSaveSchedule = useCallback(async (newSchedule: Schedule) => {
+    try {
+      await fetch("/api/teacher/schedule", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ schedule: newSchedule }),
+      });
+    } catch (error) {
+      console.error("Auto-save failed:", error);
+    }
   }, []);
 
   const loadSchedule = async () => {
@@ -56,30 +89,9 @@ export default function TeacherSchedulePage() {
     }
   };
 
-  const saveSchedule = async () => {
-    setSaving(true);
-    try {
-      const res = await fetch("/api/teacher/schedule", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ schedule }),
-      });
-
-      if (res.ok) {
-        showAlert("Schedule saved successfully!", "success");
-      } else {
-        showAlert("Failed to save schedule", "error");
-      }
-    } catch (error) {
-      showAlert("Failed to save schedule", "error");
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const showAlert = (message: string, type: "success" | "error") => {
     setAlert({ show: true, message, type });
-    setTimeout(() => setAlert({ show: false, message: "", type: "success" }), 3000);
+    setTimeout(() => setAlert({ show: false, message: "", type: "success" }), 2000);
   };
 
   const addLesson = (lesson: Omit<Lesson, "id">) => {
@@ -88,40 +100,60 @@ export default function TeacherSchedulePage() {
       id: `lesson-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     };
 
-    setSchedule((prev) => ({
-      ...prev,
+    const newSchedule = {
+      ...schedule,
       [activeTab === "odd" ? "oddDays" : "evenDays"]: [
-        ...prev[activeTab === "odd" ? "oddDays" : "evenDays"],
+        ...schedule[activeTab === "odd" ? "oddDays" : "evenDays"],
         newLesson,
       ],
-    }));
+    };
 
+    setSchedule(newSchedule);
+    autoSaveSchedule(newSchedule);
     setShowAddModal(false);
     setEditingLesson(null);
+    showAlert("Lesson added", "success");
   };
 
   const updateLesson = (lessonId: string, updatedLesson: Omit<Lesson, "id">) => {
     const dayType = activeTab === "odd" ? "oddDays" : "evenDays";
-    setSchedule((prev) => ({
-      ...prev,
-      [dayType]: prev[dayType].map((lesson) =>
+    const newSchedule = {
+      ...schedule,
+      [dayType]: schedule[dayType].map((lesson) =>
         lesson.id === lessonId ? { ...updatedLesson, id: lessonId } : lesson
       ),
-    }));
+    };
+    
+    setSchedule(newSchedule);
+    autoSaveSchedule(newSchedule);
     setShowAddModal(false);
     setEditingLesson(null);
+    showAlert("Lesson updated", "success");
   };
 
   const deleteLesson = (lessonId: string) => {
     const dayType = activeTab === "odd" ? "oddDays" : "evenDays";
-    setSchedule((prev) => ({
-      ...prev,
-      [dayType]: prev[dayType].filter((lesson) => lesson.id !== lessonId),
-    }));
+    const newSchedule = {
+      ...schedule,
+      [dayType]: schedule[dayType].filter((lesson) => lesson.id !== lessonId),
+    };
+    
+    setSchedule(newSchedule);
+    autoSaveSchedule(newSchedule);
+    showAlert("Lesson deleted", "success");
   };
 
   const sortedLessons = (lessons: Lesson[]) => {
-    return [...lessons].sort((a, b) => a.startTime.localeCompare(b.startTime));
+    return [...lessons].sort((a, b) => {
+      const aTime = a.timeSlot.split(" - ")[0];
+      const bTime = b.timeSlot.split(" - ")[0];
+      return aTime.localeCompare(bTime);
+    });
+  };
+
+  const calculateTotalEarnings = (dayType: "odd" | "even") => {
+    const lessons = schedule[dayType === "odd" ? "oddDays" : "evenDays"];
+    return lessons.reduce((total, lesson) => total + lesson.hourlyRate, 0);
   };
 
   if (loading) {
@@ -141,134 +173,136 @@ export default function TeacherSchedulePage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
-      {/* Minimal Header */}
-      <div className="mb-8 sm:mb-12">
-        <div className="flex items-center gap-2">
-          <Calendar className="h-5 w-5 text-slate-500" />
-          <h1 className="text-xl sm:text-2xl font-medium text-gray-900">Schedule</h1>
+      {/* Header */}
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-2">
+          <Calendar className="w-8 h-8 text-purple-600" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">My Schedule</h1>
         </div>
-        <p className="text-gray-500 mt-1 text-sm sm:text-base">
-          Manage your lessons for odd/even days.
-        </p>
+        <p className="text-gray-600">Manage your classes for odd and even days</p>
       </div>
 
       {/* Alert */}
       {alert.show && (
         <div
-          className={`mb-6 rounded-lg border px-4 py-3 flex items-start gap-3 text-sm ${
+          className={`mb-6 p-4 rounded-lg flex items-center gap-3 ${
             alert.type === "success"
-              ? "bg-emerald-50/60 text-emerald-900 border-emerald-200"
-              : "bg-rose-50/60 text-rose-900 border-rose-200"
+              ? "bg-green-50 text-green-800 border border-green-200"
+              : "bg-red-50 text-red-800 border border-red-200"
           }`}
         >
-          <AlertCircle className="w-4 h-4 mt-0.5" />
-          <span className="leading-relaxed">{alert.message}</span>
+          <AlertCircle className="w-5 h-5" />
+          <span>{alert.message}</span>
         </div>
       )}
 
-      {/* Compact Stats + Segmented Control */}
-      <div className="flex flex-col gap-4 mb-6">
-        <div className="flex flex-wrap items-center gap-4 sm:gap-8 text-sm">
-          <div className="flex items-center gap-2">
-            <span className="text-gray-500">Odd days:</span>
-            <span className="font-medium">{schedule.oddDays.length}</span>
+      {/* Earnings Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-6 border border-purple-200">
+          <div className="flex items-center gap-3 mb-2">
+            <DollarSign className="w-6 h-6 text-purple-700" />
+            <h3 className="text-lg font-semibold text-purple-900">Odd Days Earnings</h3>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-gray-500">Even days:</span>
-            <span className="font-medium">{schedule.evenDays.length}</span>
-          </div>
+          <p className="text-3xl font-bold text-purple-700">${calculateTotalEarnings("odd").toFixed(2)}</p>
+          <p className="text-sm text-purple-600 mt-1">{schedule.oddDays.length} classes</p>
         </div>
+        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-6 border border-blue-200">
+          <div className="flex items-center gap-3 mb-2">
+            <DollarSign className="w-6 h-6 text-blue-700" />
+            <h3 className="text-lg font-semibold text-blue-900">Even Days Earnings</h3>
+          </div>
+          <p className="text-3xl font-bold text-blue-700">${calculateTotalEarnings("even").toFixed(2)}</p>
+          <p className="text-sm text-blue-600 mt-1">{schedule.evenDays.length} classes</p>
+        </div>
+      </div>
 
-        <div className="inline-flex w-full max-w-sm rounded-lg border border-gray-200 bg-white p-1">
+      {/* Tab Switcher */}
+      <div className="bg-white rounded-lg border border-gray-200 mb-6">
+        <div className="flex border-b border-gray-200">
           <button
-            type="button"
             onClick={() => setActiveTab("odd")}
-            className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition ${
+            className={`flex-1 px-6 py-4 text-sm font-medium transition ${
               activeTab === "odd"
-                ? "bg-[#303380] text-white shadow-sm"
-                : "text-gray-700 hover:bg-gray-50"
+                ? "text-purple-600 border-b-2 border-purple-600 bg-purple-50"
+                : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
             }`}
           >
-            Odd days
+            <div className="flex items-center justify-center gap-2">
+              <span>Odd Days</span>
+              <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs">
+                {schedule.oddDays.length}
+              </span>
+            </div>
           </button>
           <button
-            type="button"
             onClick={() => setActiveTab("even")}
-            className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition ${
+            className={`flex-1 px-6 py-4 text-sm font-medium transition ${
               activeTab === "even"
-                ? "bg-[#303380] text-white shadow-sm"
-                : "text-gray-700 hover:bg-gray-50"
+                ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
+                : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
             }`}
           >
-            Even days
+            <div className="flex items-center justify-center gap-2">
+              <span>Even Days</span>
+              <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs">
+                {schedule.evenDays.length}
+              </span>
+            </div>
           </button>
         </div>
       </div>
 
-      {/* Actions */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
+      {/* Add Button */}
+      <div className="mb-6">
         <button
           onClick={() => {
             setEditingLesson(null);
             setShowAddModal(true);
           }}
-          className="flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-white shadow-sm transition"
-          style={{ backgroundColor: "#303380" }}
+          className="flex items-center justify-center gap-2 px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
         >
-          <Plus className="w-4 h-4" />
-          Add lesson
-        </button>
-        <button
-          onClick={saveSchedule}
-          disabled={saving}
-          className="flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-900 shadow-sm transition hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <Save className="w-4 h-4 text-slate-600" />
-          {saving ? "Saving…" : "Save"}
+          <Plus className="w-5 h-5" />
+          Add Class to {activeTab === "odd" ? "Odd" : "Even"} Days
         </button>
       </div>
 
       {/* Lessons List */}
-      <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         {sortedLessons(schedule[activeTab === "odd" ? "oddDays" : "evenDays"]).length === 0 ? (
           <div className="text-center py-16">
-            <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-base font-medium text-gray-900 mb-1">
-              No lessons yet
+            <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              No classes scheduled for {activeTab === "odd" ? "odd" : "even"} days
             </h3>
-            <p className="text-sm text-gray-500">
-              Add a lesson to start building your {activeTab === "odd" ? "odd-day" : "even-day"} schedule.
+            <p className="text-gray-600 mb-4">
+              Click "Add Class" to create your first class for {activeTab === "odd" ? "odd" : "even"} days
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-gray-200">
             {sortedLessons(schedule[activeTab === "odd" ? "oddDays" : "evenDays"]).map((lesson) => (
               <div
                 key={lesson.id}
-                className="p-4 sm:p-5 hover:bg-slate-50/60 transition"
+                className="p-6 hover:bg-gray-50 transition"
               >
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start justify-between gap-4 mb-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-base font-semibold text-gray-900">{lesson.subject}</h3>
-                      <div className="flex items-center gap-1 text-xs text-gray-500 tabular-nums">
+                      <h3 className="text-xl font-bold text-gray-900">{lesson.className}</h3>
+                      <div className="flex items-center gap-1.5 text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
                         <Clock className="w-4 h-4" />
-                        <span>
-                          {lesson.startTime} - {lesson.endTime}
-                        </span>
+                        <span>{lesson.timeSlot}</span>
                       </div>
                     </div>
-                    <div className="flex flex-wrap gap-2 text-xs text-gray-600">
-                      {lesson.class && (
-                        <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2 py-1">
-                          Class: <span className="ml-1 font-medium text-gray-900">{lesson.class}</span>
-                        </span>
-                      )}
-                      {lesson.room && (
-                        <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2 py-1">
-                          Room: <span className="ml-1 font-medium text-gray-900">{lesson.room}</span>
-                        </span>
-                      )}
+                    <div className="flex items-center gap-4 text-sm">
+                      <div className="flex items-center gap-1.5 text-gray-700">
+                        <Users className="w-4 h-4" />
+                        <span className="font-medium">{lesson.students.length} students</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-green-700 bg-green-50 px-2.5 py-1 rounded-md">
+                        <DollarSign className="w-4 h-4" />
+                        <span className="font-semibold">${lesson.hourlyRate.toFixed(2)}/hr</span>
+                      </div>
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -277,20 +311,37 @@ export default function TeacherSchedulePage() {
                         setEditingLesson(lesson);
                         setShowAddModal(true);
                       }}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50"
-                      title="Edit lesson"
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded transition"
+                      title="Edit class"
                     >
-                      <Pencil className="w-4 h-4" />
+                      <Pencil className="w-5 h-5" />
                     </button>
                     <button
                       onClick={() => deleteLesson(lesson.id)}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-rose-700 shadow-sm transition hover:bg-rose-50"
-                      title="Delete lesson"
+                      className="p-2 text-red-600 hover:bg-red-50 rounded transition"
+                      title="Delete class"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-5 h-5" />
                     </button>
                   </div>
                 </div>
+
+                {/* Students List */}
+                {lesson.students.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-gray-100">
+                    <h4 className="text-sm font-semibold text-gray-700 mb-2">Students:</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {lesson.students.map((student) => (
+                        <span
+                          key={student.id}
+                          className="px-3 py-1.5 bg-purple-50 text-purple-700 rounded-full text-sm font-medium"
+                        >
+                          {student.firstName} {student.lastName}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -330,112 +381,213 @@ function LessonModal({
   onSave: (lesson: Omit<Lesson, "id">) => void;
   dayType: "odd" | "even";
 }) {
-  const [subject, setSubject] = useState(lesson?.subject || "");
-  const [startTime, setStartTime] = useState(lesson?.startTime || "");
-  const [endTime, setEndTime] = useState(lesson?.endTime || "");
-  const [room, setRoom] = useState(lesson?.room || "");
-  const [classInfo, setClassInfo] = useState(lesson?.class || "");
+  const [className, setClassName] = useState(lesson?.className || "");
+  const [timeSlot, setTimeSlot] = useState(lesson?.timeSlot || "");
+  const [hourlyRate, setHourlyRate] = useState(lesson?.hourlyRate.toString() || "");
+  const [students, setStudents] = useState<Student[]>(lesson?.students || []);
+  const [showStudentForm, setShowStudentForm] = useState(false);
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+
+  const addStudent = () => {
+    if (!firstName.trim() || !lastName.trim()) return;
+
+    const newStudent: Student = {
+      id: `student-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+    };
+
+    setStudents([...students, newStudent]);
+    setFirstName("");
+    setLastName("");
+    setShowStudentForm(false);
+  };
+
+  const removeStudent = (studentId: string) => {
+    setStudents(students.filter((s) => s.id !== studentId));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!subject || !startTime || !endTime) return;
+    if (!className || !timeSlot || !hourlyRate) return;
 
     onSave({
-      subject,
-      startTime,
-      endTime,
-      room: room || undefined,
-      class: classInfo || undefined,
+      className,
+      timeSlot,
+      hourlyRate: parseFloat(hourlyRate),
+      students,
     });
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-xl border border-slate-200">
-        <h2 className="text-lg font-semibold text-gray-900 mb-1">
-          {lesson ? "Edit lesson" : "Add lesson"}
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-white rounded-lg max-w-2xl w-full p-6 my-8">
+        <h2 className="text-xl font-bold text-gray-900 mb-4">
+          {lesson ? "Edit Class" : `Add Class to ${dayType === "odd" ? "Odd" : "Even"} Days`}
         </h2>
-        <p className="text-sm text-gray-500 mb-4">
-          {dayType === "odd" ? "Odd days" : "Even days"}
-        </p>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Class Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Subject / Lesson Name *
+              Class Name *
             </label>
             <input
               type="text"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#303380]/30 focus:border-[#303380] outline-none"
-              placeholder="e.g., Mathematics, English"
+              value={className}
+              onChange={(e) => setClassName(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              placeholder="e.g., Mathematics 10A, English Beginners"
               required
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Start Time *
-              </label>
-              <input
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#303380]/30 focus:border-[#303380] outline-none"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                End Time *
-              </label>
-              <input
-                type="time"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#303380]/30 focus:border-[#303380] outline-none"
-                required
-              />
-            </div>
+          {/* Time Slot */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Time Slot (1 hour) *
+            </label>
+            <select
+              value={timeSlot}
+              onChange={(e) => setTimeSlot(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              required
+            >
+              <option value="">Select a time slot</option>
+              {TIME_SLOTS.map((slot) => (
+                <option key={slot} value={slot}>
+                  {slot}
+                </option>
+              ))}
+            </select>
           </div>
 
+          {/* Hourly Rate */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Class</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Hourly Rate ($) *
+            </label>
             <input
-              type="text"
-              value={classInfo}
-              onChange={(e) => setClassInfo(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#303380]/30 focus:border-[#303380] outline-none"
-              placeholder="e.g., 10-A, Grade 9"
+              type="number"
+              step="0.01"
+              min="0"
+              value={hourlyRate}
+              onChange={(e) => setHourlyRate(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              placeholder="e.g., 50.00"
+              required
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Room</label>
-            <input
-              type="text"
-              value={room}
-              onChange={(e) => setRoom(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#303380]/30 focus:border-[#303380] outline-none"
-              placeholder="e.g., Room 101, Lab 2"
-            />
+          {/* Students Section */}
+          <div className="border-t border-gray-200 pt-4">
+            <div className="flex items-center justify-between mb-3">
+              <label className="block text-sm font-medium text-gray-700">
+                Students ({students.length})
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowStudentForm(!showStudentForm)}
+                className="text-sm text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1"
+              >
+                <Plus className="w-4 h-4" />
+                Add Student
+              </button>
+            </div>
+
+            {/* Add Student Form */}
+            {showStudentForm && (
+              <div className="bg-purple-50 p-4 rounded-lg mb-3 space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      First Name
+                    </label>
+                    <input
+                      type="text"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      placeholder="John"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Last Name
+                    </label>
+                    <input
+                      type="text"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      placeholder="Doe"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={addStudent}
+                    disabled={!firstName.trim() || !lastName.trim()}
+                    className="px-3 py-1.5 bg-purple-600 text-white rounded-md text-sm hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Add
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowStudentForm(false);
+                      setFirstName("");
+                      setLastName("");
+                    }}
+                    className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-300"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Students List */}
+            {students.length > 0 ? (
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {students.map((student) => (
+                  <div
+                    key={student.id}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                  >
+                    <span className="text-sm font-medium text-gray-900">
+                      {student.firstName} {student.lastName}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeStudent(student.id)}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 italic">No students added yet</p>
+            )}
           </div>
 
+          {/* Form Actions */}
           <div className="flex gap-3 pt-4">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition text-sm font-medium"
+              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-2 text-white rounded-lg transition text-sm font-medium shadow-sm"
-              style={{ backgroundColor: "#303380" }}
+              className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
             >
-              {lesson ? "Update" : "Add"}
+              {lesson ? "Update Class" : "Add Class"}
             </button>
           </div>
         </form>
