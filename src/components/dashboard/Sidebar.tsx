@@ -185,6 +185,12 @@ export default function Sidebar() {
         color: "from-purple-500 to-purple-600",
       },
       {
+        label: "Schedule",
+        href: "/dashboard/teacher/schedule",
+        icon: Calendar,
+        color: "from-pink-500 to-pink-600",
+      },
+      {
         label: "Reports",
         href: "/dashboard/teacher/reports",
         icon: BarChart3,
@@ -205,14 +211,6 @@ export default function Sidebar() {
         href: "/dashboard/teacher/grading",
         icon: CheckCircle,
         color: "from-orange-500 to-orange-600",
-        disabled: true,
-        comingSoon: true,
-      },
-      {
-        label: "Schedule",
-        href: "/dashboard/teacher/schedule",
-        icon: Calendar,
-        color: "from-pink-500 to-pink-600",
         disabled: true,
         comingSoon: true,
       },
