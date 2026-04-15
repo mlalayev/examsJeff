@@ -481,74 +481,101 @@ function SimpleDayModal({
   onEdit: (lesson: Lesson) => void;
   onDelete: (lessonId: string) => void;
 }) {
-  const accent = dayType === "odd" ? "purple" : "blue";
-  const header =
-    dayType === "odd"
-      ? "bg-gradient-to-r from-purple-500 to-purple-600"
-      : "bg-gradient-to-r from-blue-500 to-blue-600";
-  const addBtn = dayType === "odd" ? "bg-purple-600 hover:bg-purple-700" : "bg-blue-600 hover:bg-blue-700";
-  const border = dayType === "odd" ? "border-purple-200" : "border-blue-200";
+  const ACCENT = "#303380";
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-      <div className="w-full max-w-4xl bg-white rounded-xl overflow-hidden max-h-[90vh] flex flex-col">
-        <div className={`${header} text-white p-5 flex items-center justify-between`}>
-          <div>
-            <div className="text-xl font-bold">{dayType === "odd" ? "Odd days" : "Even days"}</div>
-            <div className="text-sm opacity-90">
-              {dayType === "odd" ? "Applies to 1, 3, 5, 7..." : "Applies to 2, 4, 6, 8..."}
+    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[1px] flex items-center justify-center p-4">
+      <div className="w-full max-w-4xl bg-white rounded-xl overflow-hidden max-h-[90vh] flex flex-col shadow-xl border border-slate-200">
+        <div className="px-5 py-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: ACCENT }} aria-hidden />
+              <div className="text-lg font-semibold text-gray-900">
+                {dayType === "odd" ? "Odd days" : "Even days"}
+              </div>
+            </div>
+            <div className="text-sm text-gray-500 mt-0.5">
+              {dayType === "odd" ? "Applies to 1, 3, 5, 7…" : "Applies to 2, 4, 6, 8…"}
             </div>
           </div>
-          <button type="button" onClick={onClose} className="p-2 hover:bg-white/20 rounded-lg transition">
-            <X className="w-6 h-6" />
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50"
+            aria-label="Close"
+          >
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         <div className="p-5 overflow-y-auto">
-          <div className="flex items-center justify-between gap-3 mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
             <div className="text-sm text-gray-600">
-              Lessons: <span className="font-semibold text-gray-900">{lessons.length}</span>
+              Lessons:{" "}
+              <span className="font-semibold text-gray-900 tabular-nums">{lessons.length}</span>
             </div>
-            <button type="button" onClick={onAdd} className={`inline-flex items-center gap-2 px-4 py-2.5 text-white rounded-lg transition shadow-sm ${addBtn}`}>
-              <Plus className="w-4 h-4" />
-              Add lesson
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onAdd}
+                className="inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-white shadow-sm transition"
+                style={{ backgroundColor: ACCENT }}
+              >
+                <Plus className="w-4 h-4" />
+                Add lesson
+              </button>
+            </div>
           </div>
 
           {lessons.length === 0 ? (
-            <div className="text-center py-14 bg-gray-50 rounded-lg border border-gray-200">
+            <div className="text-center py-14 bg-slate-50/60 rounded-xl border border-slate-200">
               <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
               <div className="text-base font-semibold text-gray-900 mb-1">No lessons yet</div>
-              <div className="text-sm text-gray-600">Add a lesson with students for {dayType} days.</div>
+              <div className="text-sm text-gray-500">
+                Add a lesson to start building your {dayType === "odd" ? "odd-day" : "even-day"} schedule.
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {lessons.map((lesson) => (
-                <div key={lesson.id} className={`bg-white border-2 ${border} rounded-lg p-4`}>
+                <div
+                  key={lesson.id}
+                  className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow"
+                >
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <div className="min-w-0">
-                      <div className="font-bold text-gray-900 truncate">{lesson.className}</div>
-                      <div className="mt-1 flex items-center gap-2 text-sm text-gray-600">
+                      <div className="font-semibold text-gray-900 truncate">{lesson.className}</div>
+                      <div className="mt-1 flex items-center gap-2 text-xs text-gray-500 tabular-nums">
                         <Clock className="w-4 h-4" />
                         <span>{lesson.timeSlot}</span>
                       </div>
-                      <div className="mt-2 inline-flex items-center gap-2 text-sm text-green-700 bg-green-50 px-2 py-1 rounded-md">
+                      <div className="mt-2 inline-flex items-center gap-2 text-xs text-emerald-800 bg-emerald-50 px-2 py-1 rounded-md border border-emerald-100">
                         <DollarSign className="w-4 h-4" />
                         <span className="font-semibold">${Number(lesson.hourlyRate || 0).toFixed(2)}/hr</span>
                       </div>
                     </div>
                     <div className="flex gap-1">
-                      <button type="button" onClick={() => onEdit(lesson)} className="p-2 text-blue-600 hover:bg-blue-50 rounded transition">
+                      <button
+                        type="button"
+                        onClick={() => onEdit(lesson)}
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50"
+                        title="Edit"
+                      >
                         <Pencil className="w-4 h-4" />
                       </button>
-                      <button type="button" onClick={() => onDelete(lesson.id)} className="p-2 text-red-600 hover:bg-red-50 rounded transition">
+                      <button
+                        type="button"
+                        onClick={() => onDelete(lesson.id)}
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-rose-700 shadow-sm transition hover:bg-rose-50"
+                        title="Delete"
+                      >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
 
                   {lesson.students && lesson.students.length > 0 ? (
-                    <div className="pt-3 border-t border-gray-100">
+                    <div className="pt-3 border-t border-slate-100">
                       <div className="text-xs font-semibold text-gray-700 mb-2">
                         {lesson.students.length} students
                       </div>
@@ -556,9 +583,7 @@ function SimpleDayModal({
                         {lesson.students.map((s) => (
                           <span
                             key={s.id}
-                            className={`px-2 py-1 text-xs rounded-full ${
-                              accent === "purple" ? "bg-purple-50 text-purple-700" : "bg-blue-50 text-blue-700"
-                            }`}
+                            className="px-2 py-1 text-xs rounded-full bg-slate-100 text-slate-700"
                           >
                             {s.firstName} {s.lastName}
                           </span>
@@ -566,7 +591,7 @@ function SimpleDayModal({
                       </div>
                     </div>
                   ) : (
-                    <div className="pt-3 border-t border-gray-100 text-sm text-gray-600">
+                    <div className="pt-3 border-t border-slate-100 text-sm text-gray-500">
                       No students yet.
                     </div>
                   )}
@@ -591,6 +616,7 @@ function LessonModal({
   onSave: (lesson: Omit<Lesson, "id">) => void;
   dayType: "odd" | "even";
 }) {
+  const ACCENT = "#303380";
   const [className, setClassName] = useState(lesson?.className || "");
   const [timeSlot, setTimeSlot] = useState(lesson?.timeSlot || "");
   const [hourlyRate, setHourlyRate] = useState(lesson?.hourlyRate.toString() || "");
@@ -631,12 +657,31 @@ function LessonModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-lg max-w-2xl w-full p-6 my-8">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">
-          {lesson ? "Edit Class" : `Add Class to ${dayType === "odd" ? "Odd" : "Even"} Days`}
-        </h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-white rounded-xl max-w-2xl w-full my-8 shadow-xl border border-slate-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: ACCENT }} aria-hidden />
+              <h2 className="text-lg font-semibold text-gray-900">
+                {lesson ? "Edit lesson" : "Add lesson"}
+              </h2>
+            </div>
+            <p className="text-sm text-gray-500 mt-0.5">
+              {dayType === "odd" ? "Odd days" : "Even days"} • 1-hour slot
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50"
+            aria-label="Close"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Class Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -646,7 +691,7 @@ function LessonModal({
               type="text"
               value={className}
               onChange={(e) => setClassName(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#303380]/30 focus:border-[#303380] outline-none"
               placeholder="e.g., Mathematics 10A, English Beginners"
               required
             />
@@ -660,7 +705,7 @@ function LessonModal({
             <select
               value={timeSlot}
               onChange={(e) => setTimeSlot(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#303380]/30 focus:border-[#303380] outline-none bg-white"
               required
             >
               <option value="">Select a time slot</option>
@@ -683,14 +728,14 @@ function LessonModal({
               min="0"
               value={hourlyRate}
               onChange={(e) => setHourlyRate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#303380]/30 focus:border-[#303380] outline-none"
               placeholder="e.g., 50.00"
               required
             />
           </div>
 
           {/* Students Section */}
-          <div className="border-t border-gray-200 pt-4">
+          <div className="border-t border-slate-200 pt-4">
             <div className="flex items-center justify-between mb-3">
               <label className="block text-sm font-medium text-gray-700">
                 Students ({students.length})
@@ -698,7 +743,7 @@ function LessonModal({
               <button
                 type="button"
                 onClick={() => setShowStudentForm(!showStudentForm)}
-                className="text-sm text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1"
+                className="text-sm font-medium flex items-center gap-1 text-[#303380] hover:opacity-90"
               >
                 <Plus className="w-4 h-4" />
                 Add Student
@@ -707,7 +752,7 @@ function LessonModal({
 
             {/* Add Student Form */}
             {showStudentForm && (
-              <div className="bg-purple-50 p-4 rounded-lg mb-3 space-y-3">
+              <div className="bg-slate-50/80 border border-slate-200 p-4 rounded-xl mb-3 space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -717,7 +762,7 @@ function LessonModal({
                       type="text"
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#303380]/30 focus:border-[#303380] outline-none bg-white"
                       placeholder="John"
                     />
                   </div>
@@ -729,7 +774,7 @@ function LessonModal({
                       type="text"
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#303380]/30 focus:border-[#303380] outline-none bg-white"
                       placeholder="Doe"
                     />
                   </div>
@@ -739,7 +784,8 @@ function LessonModal({
                     type="button"
                     onClick={addStudent}
                     disabled={!firstName.trim() || !lastName.trim()}
-                    className="px-3 py-1.5 bg-purple-600 text-white rounded-md text-sm hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-3 py-1.5 text-white rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                    style={{ backgroundColor: ACCENT }}
                   >
                     Add
                   </button>
@@ -750,7 +796,7 @@ function LessonModal({
                       setFirstName("");
                       setLastName("");
                     }}
-                    className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-300"
+                    className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-md text-sm hover:bg-slate-50 shadow-sm"
                   >
                     Cancel
                   </button>
@@ -764,7 +810,7 @@ function LessonModal({
                 {students.map((student) => (
                   <div
                     key={student.id}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                    className="flex items-center justify-between p-3 bg-slate-50/70 border border-slate-200 rounded-xl"
                   >
                     <span className="text-sm font-medium text-gray-900">
                       {student.firstName} {student.lastName}
@@ -772,7 +818,8 @@ function LessonModal({
                     <button
                       type="button"
                       onClick={() => removeStudent(student.id)}
-                      className="text-red-600 hover:text-red-700"
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-rose-700 shadow-sm transition hover:bg-rose-50"
+                      title="Remove"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -780,7 +827,7 @@ function LessonModal({
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-gray-500 italic">No students added yet</p>
+              <p className="text-sm text-gray-500">No students added yet.</p>
             )}
           </div>
 
@@ -789,15 +836,16 @@ function LessonModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition text-sm font-medium"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+              className="flex-1 px-4 py-2 text-white rounded-lg transition text-sm font-medium shadow-sm"
+              style={{ backgroundColor: ACCENT }}
             >
-              {lesson ? "Update Class" : "Add Class"}
+              {lesson ? "Update lesson" : "Add lesson"}
             </button>
           </div>
         </form>
