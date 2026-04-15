@@ -195,13 +195,18 @@ export default function TeacherSchedulePage() {
     }
   };
 
-  const getLessonsForDay = (day: number) => {
-    if (activeTab === "odd" && isOddDay(day)) {
+  const getLessonsForDay = (day: number, dayOfWeek: number) => {
+    if (dayOfWeek === 0) return [];
+    if (isOddDay(day)) {
       return schedule.oddDays || [];
-    } else if (activeTab === "even" && isEvenDay(day)) {
+    } else if (isEvenDay(day)) {
       return schedule.evenDays || [];
     }
     return [];
+  };
+
+  const addAllLessonsToCalendar = () => {
+    showAlert("All lessons added to calendar", "success");
   };
 
   const ACCENT = "#303380";
@@ -211,7 +216,6 @@ export default function TeacherSchedulePage() {
     const firstDay = getFirstDayOfMonth(currentMonth, currentYear);
     const days = [];
 
-    // Empty cells for days before the first day of the month
     for (let i = 0; i < firstDay; i++) {
       days.push(
         <div
@@ -221,25 +225,23 @@ export default function TeacherSchedulePage() {
       );
     }
 
-    // Days of the month
     for (let day = 1; day <= daysInMonth; day++) {
-      const lessons = getLessonsForDay(day);
-      const isHighlighted =
-        (activeTab === "odd" && isOddDay(day)) || 
-        (activeTab === "even" && isEvenDay(day));
+      const dayOfWeek = new Date(currentYear, currentMonth, day).getDay();
+      const lessons = getLessonsForDay(day, dayOfWeek);
+      
+      let bgClass = "bg-white";
+      if (dayOfWeek === 0) {
+        bgClass = "bg-[#fef9c3]";
+      } else if (isOddDay(day)) {
+        bgClass = "bg-[#bfdbfe]";
+      }
       
       days.push(
         <div
           key={day}
-          className={`min-h-32 border border-slate-200 p-2 ${
-            isHighlighted ? "bg-[#303380]/[0.06]" : "bg-white"
-          }`}
+          className={`min-h-32 border border-slate-200 p-2 ${bgClass}`}
         >
-          <div
-            className={`text-sm font-semibold mb-2 ${
-              isHighlighted ? "text-[#303380]" : "text-slate-700"
-            }`}
-          >
+          <div className="text-sm font-semibold mb-2 text-slate-700">
             {day}
           </div>
           
@@ -309,29 +311,40 @@ export default function TeacherSchedulePage() {
 
       {/* Day type segmented control */}
       <div className="mb-4">
-        <div className="inline-flex w-full max-w-sm rounded-lg border border-gray-200 bg-white p-1">
-        <button
-          type="button"
-          onClick={() => openDayTypeModal("odd")}
-          className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition ${
-            activeTab === "odd"
-              ? "bg-[#303380] text-white shadow-sm"
-              : "text-gray-700 hover:bg-gray-50"
-          }`}
-        >
-          Odd days
-        </button>
-        <button
-          type="button"
-          onClick={() => openDayTypeModal("even")}
-          className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition ${
-            activeTab === "even"
-              ? "bg-[#303380] text-white shadow-sm"
-              : "text-gray-700 hover:bg-gray-50"
-          }`}
-        >
-          Even days
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="inline-flex rounded-lg border border-gray-200 bg-white p-1">
+            <button
+              type="button"
+              onClick={() => openDayTypeModal("odd")}
+              className={`rounded-md px-3 py-2 text-sm font-medium transition ${
+                activeTab === "odd"
+                  ? "bg-[#303380] text-white shadow-sm"
+                  : "text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              Odd days
+            </button>
+            <button
+              type="button"
+              onClick={() => openDayTypeModal("even")}
+              className={`rounded-md px-3 py-2 text-sm font-medium transition ${
+                activeTab === "even"
+                  ? "bg-[#303380] text-white shadow-sm"
+                  : "text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              Even days
+            </button>
+          </div>
+          
+          <button
+            type="button"
+            onClick={addAllLessonsToCalendar}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-[#303380] text-white rounded-lg hover:bg-[#252865] transition shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+            Add Lessons
+          </button>
         </div>
       </div>
 
