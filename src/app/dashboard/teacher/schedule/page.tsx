@@ -204,6 +204,8 @@ export default function TeacherSchedulePage() {
     return [];
   };
 
+  const ACCENT = "#303380";
+
   const renderCalendar = () => {
     const daysInMonth = getDaysInMonth(currentMonth, currentYear);
     const firstDay = getFirstDayOfMonth(currentMonth, currentYear);
@@ -212,35 +214,32 @@ export default function TeacherSchedulePage() {
     // Empty cells for days before the first day of the month
     for (let i = 0; i < firstDay; i++) {
       days.push(
-        <div key={`empty-${i}`} className="min-h-32 bg-gray-50 border border-gray-200"></div>
+        <div
+          key={`empty-${i}`}
+          className="min-h-32 bg-slate-50/60 border border-slate-200"
+        />
       );
     }
 
     // Days of the month
     for (let day = 1; day <= daysInMonth; day++) {
       const lessons = getLessonsForDay(day);
-      const isHighlighted = 
+      const isHighlighted =
         (activeTab === "odd" && isOddDay(day)) || 
         (activeTab === "even" && isEvenDay(day));
       
       days.push(
         <div
           key={day}
-          className={`min-h-32 border border-gray-200 p-2 ${
-            isHighlighted
-              ? activeTab === "odd"
-                ? "bg-purple-50 border-purple-300"
-                : "bg-blue-50 border-blue-300"
-              : "bg-white"
+          className={`min-h-32 border border-slate-200 p-2 ${
+            isHighlighted ? "bg-[#303380]/[0.06]" : "bg-white"
           }`}
         >
-          <div className={`text-sm font-semibold mb-2 ${
-            isHighlighted
-              ? activeTab === "odd"
-                ? "text-purple-700"
-                : "text-blue-700"
-              : "text-gray-700"
-          }`}>
+          <div
+            className={`text-sm font-semibold mb-2 ${
+              isHighlighted ? "text-[#303380]" : "text-slate-700"
+            }`}
+          >
             {day}
           </div>
           
@@ -249,14 +248,10 @@ export default function TeacherSchedulePage() {
               {lessons.map((lesson) => (
                 <div
                   key={lesson.id}
-                  className={`text-xs p-1.5 rounded ${
-                    activeTab === "odd"
-                      ? "bg-purple-100 text-purple-900"
-                      : "bg-blue-100 text-blue-900"
-                  }`}
+                  className="text-xs p-1.5 rounded border border-slate-200 bg-white/70 text-slate-800"
                 >
                   <div className="font-semibold truncate">{lesson.className}</div>
-                  <div className="flex items-center gap-1 text-[10px] opacity-80">
+                  <div className="flex items-center gap-1 text-[10px] text-slate-500 tabular-nums">
                     <Clock className="w-3 h-3" />
                     {lesson.timeSlot}
                   </div>
@@ -285,38 +280,43 @@ export default function TeacherSchedulePage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-2">
-          <CalendarIcon className="w-8 h-8 text-purple-600" />
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">My Schedule</h1>
+      {/* Minimal Header */}
+      <div className="mb-8 sm:mb-12">
+        <div className="flex items-center gap-2">
+          <CalendarIcon className="h-5 w-5 text-slate-500" />
+          <h1 className="text-xl sm:text-2xl font-medium text-gray-900">
+            Schedule
+          </h1>
         </div>
-        <p className="text-gray-600">Choose odd/even days and manage lessons for this month.</p>
+        <p className="text-gray-500 mt-1 text-sm sm:text-base">
+          Pick odd/even days and manage lessons for this month.
+        </p>
       </div>
 
       {/* Alert */}
       {alert.show && (
         <div
-          className={`mb-6 p-4 rounded-lg flex items-center gap-3 ${
+          className={`mb-6 rounded-lg border px-4 py-3 flex items-start gap-3 text-sm ${
             alert.type === "success"
-              ? "bg-green-50 text-green-800 border border-green-200"
-              : "bg-red-50 text-red-800 border border-red-200"
+              ? "bg-emerald-50/60 text-emerald-900 border-emerald-200"
+              : "bg-rose-50/60 text-rose-900 border-rose-200"
           }`}
         >
-          <AlertCircle className="w-5 h-5" />
-          <span>{alert.message}</span>
+          <AlertCircle className="w-4 h-4 mt-0.5" />
+          <span className="leading-relaxed">{alert.message}</span>
         </div>
       )}
 
-      {/* Two buttons ABOVE calendar (open modal) */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-start gap-3 mb-4">
+      {/* Day type segmented control */}
+      <div className="mb-4">
+        <div className="inline-flex w-full max-w-sm rounded-lg border border-gray-200 bg-white p-1">
         <button
           type="button"
           onClick={() => openDayTypeModal("odd")}
-          className={`inline-flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-medium rounded-lg transition shadow-sm ${
+          className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition ${
             activeTab === "odd"
-              ? "bg-purple-600 text-white"
-              : "bg-white border border-gray-200 text-gray-800 hover:bg-gray-50"
+              ? "bg-[#303380] text-white shadow-sm"
+              : "text-gray-700 hover:bg-gray-50"
           }`}
         >
           Odd days
@@ -324,23 +324,24 @@ export default function TeacherSchedulePage() {
         <button
           type="button"
           onClick={() => openDayTypeModal("even")}
-          className={`inline-flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-medium rounded-lg transition shadow-sm ${
+          className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition ${
             activeTab === "even"
-              ? "bg-blue-600 text-white"
-              : "bg-white border border-gray-200 text-gray-800 hover:bg-gray-50"
+              ? "bg-[#303380] text-white shadow-sm"
+              : "text-gray-700 hover:bg-gray-50"
           }`}
         >
           Even days
         </button>
+        </div>
       </div>
 
       {/* Month Navigation */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
+      <div className="bg-white rounded-xl border border-slate-200/80 p-4 mb-4 shadow-sm">
         <div className="flex items-center justify-between">
           <button
             type="button"
             onClick={goToPreviousMonth}
-            className="p-2 hover:bg-gray-100 rounded-lg transition"
+            className="p-2 hover:bg-slate-100 rounded-lg transition"
           >
             <ChevronLeft className="w-6 h-6 text-gray-700" />
           </button>
@@ -349,7 +350,7 @@ export default function TeacherSchedulePage() {
             <select
               value={currentMonth}
               onChange={(e) => setCurrentMonth(Number(e.target.value))}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-lg font-semibold focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="px-3 py-2 border border-gray-200 rounded-lg text-base font-semibold focus:ring-2 focus:ring-[#303380]/30 focus:border-[#303380] outline-none bg-white"
             >
               {MONTHS.map((month, index) => (
                 <option key={month} value={index}>
@@ -361,7 +362,7 @@ export default function TeacherSchedulePage() {
             <select
               value={currentYear}
               onChange={(e) => setCurrentYear(Number(e.target.value))}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-lg font-semibold focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="px-3 py-2 border border-gray-200 rounded-lg text-base font-semibold focus:ring-2 focus:ring-[#303380]/30 focus:border-[#303380] outline-none bg-white"
             >
               {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 2 + i).map((year) => (
                 <option key={year} value={year}>
@@ -374,20 +375,20 @@ export default function TeacherSchedulePage() {
           <button
             type="button"
             onClick={goToNextMonth}
-            className="p-2 hover:bg-gray-100 rounded-lg transition"
+            className="p-2 hover:bg-slate-100 rounded-lg transition"
           >
             <ChevronRight className="w-6 h-6 text-gray-700" />
           </button>
         </div>
       </div>
 
-      {/* Calendar Grid (month days below buttons) */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <div className="grid grid-cols-7 bg-gray-50 border-b border-gray-200">
+      {/* Calendar Grid */}
+      <div className="bg-white rounded-xl border border-slate-200/80 overflow-hidden shadow-sm">
+        <div className="grid grid-cols-7 bg-slate-50/70 border-b border-slate-200">
           {WEEKDAYS.map((day) => (
             <div
               key={day}
-              className="p-3 text-center text-sm font-semibold text-gray-700 border-r border-gray-200 last:border-r-0"
+              className="p-3 text-center text-xs font-semibold text-slate-600 border-r border-slate-200 last:border-r-0 uppercase tracking-wide"
             >
               {day}
             </div>
