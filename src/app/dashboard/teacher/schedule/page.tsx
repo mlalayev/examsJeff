@@ -49,13 +49,15 @@ const MONTHS = [
 export default function TeacherSchedulePage() {
   useSession();
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"odd" | "even">("odd");
+  const [activeTab, setActiveTab] = useState<"odd" | "even" | null>(null);
   const [schedule, setSchedule] = useState<Schedule>({
     oddDays: [],
     evenDays: [],
   });
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  const [showDayTypeModal, setShowDayTypeModal] = useState(false);
+  const [modalDayType, setModalDayType] = useState<"odd" | "even" | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
   const [alert, setAlert] = useState<{ show: boolean; message: string; type: "success" | "error" }>({
@@ -102,7 +104,18 @@ export default function TeacherSchedulePage() {
     setTimeout(() => setAlert({ show: false, message: "", type: "success" }), 2000);
   };
 
-  const addLesson = (lesson: Omit<Lesson, "id">) => {
+  const openDayTypeModal = (dayType: "odd" | "even") => {
+    setModalDayType(dayType);
+    setActiveTab(dayType);
+    setShowDayTypeModal(true);
+  };
+
+  const closeDayTypeModal = () => {
+    setShowDayTypeModal(false);
+    setModalDayType(null);
+  };
+
+  const addLesson = (lesson: Omit<Lesson, "id">, dayType: "odd" | "even") => {
     const newLesson = {
       ...lesson,
       id: `lesson-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -110,8 +123,8 @@ export default function TeacherSchedulePage() {
 
     const newSchedule = {
       ...schedule,
-      [activeTab === "odd" ? "oddDays" : "evenDays"]: [
-        ...schedule[activeTab === "odd" ? "oddDays" : "evenDays"],
+      [dayType === "odd" ? "oddDays" : "evenDays"]: [
+        ...schedule[dayType === "odd" ? "oddDays" : "evenDays"],
         newLesson,
       ],
     };
@@ -120,14 +133,14 @@ export default function TeacherSchedulePage() {
     autoSaveSchedule(newSchedule);
     setShowAddModal(false);
     setEditingLesson(null);
-    showAlert("Lesson added to all " + (activeTab === "odd" ? "odd" : "even") + " days this month", "success");
+    showAlert("Lesson added to all " + (dayType === "odd" ? "odd" : "even") + " days", "success");
   };
 
-  const updateLesson = (lessonId: string, updatedLesson: Omit<Lesson, "id">) => {
-    const dayType = activeTab === "odd" ? "oddDays" : "evenDays";
+  const updateLesson = (lessonId: string, updatedLesson: Omit<Lesson, "id">, dayType: "odd" | "even") => {
+    const dayTypeKey = dayType === "odd" ? "oddDays" : "evenDays";
     const newSchedule = {
       ...schedule,
-      [dayType]: schedule[dayType].map((lesson) =>
+      [dayTypeKey]: schedule[dayTypeKey].map((lesson) =>
         lesson.id === lessonId ? { ...updatedLesson, id: lessonId } : lesson
       ),
     };
@@ -139,11 +152,11 @@ export default function TeacherSchedulePage() {
     showAlert("Lesson updated", "success");
   };
 
-  const deleteLesson = (lessonId: string) => {
-    const dayType = activeTab === "odd" ? "oddDays" : "evenDays";
+  const deleteLesson = (lessonId: string, dayType: "odd" | "even") => {
+    const dayTypeKey = dayType === "odd" ? "oddDays" : "evenDays";
     const newSchedule = {
       ...schedule,
-      [dayType]: schedule[dayType].filter((lesson) => lesson.id !== lessonId),
+      [dayTypeKey]: schedule[dayTypeKey].filter((lesson) => lesson.id !== lessonId),
     };
     
     setSchedule(newSchedule);
@@ -180,16 +193,16 @@ export default function TeacherSchedulePage() {
     }
   };
 
-  const getLessonsForDay = (day: number) => {
-    if (activeTab === "odd" && isOddDay(day)) {
+  const getLessonsForDay = (day: number, dayType: "odd" | "even") => {
+    if (dayType === "odd" && isOddDay(day)) {
       return schedule.oddDays;
-    } else if (activeTab === "even" && isEvenDay(day)) {
+    } else if (dayType === "even" && isEvenDay(day)) {
       return schedule.evenDays;
     }
     return [];
   };
 
-  const renderCalendar = () => {
+  const renderCalendar = (dayType: "odd" | "even") => {
     const daysInMonth = getDaysInMonth(currentMonth, currentYear);
     const firstDay = getFirstDayOfMonth(currentMonth, currentYear);
     const days = [];
@@ -203,17 +216,17 @@ export default function TeacherSchedulePage() {
 
     // Days of the month
     for (let day = 1; day <= daysInMonth; day++) {
-      const lessons = getLessonsForDay(day);
+      const lessons = getLessonsForDay(day, dayType);
       const isHighlighted = 
-        (activeTab === "odd" && isOddDay(day)) || 
-        (activeTab === "even" && isEvenDay(day));
+        (dayType === "odd" && isOddDay(day)) || 
+        (dayType === "even" && isEvenDay(day));
       
       days.push(
         <div
           key={day}
           className={`min-h-32 border border-gray-200 p-2 ${
             isHighlighted
-              ? activeTab === "odd"
+              ? dayType === "odd"
                 ? "bg-purple-50 border-purple-300"
                 : "bg-blue-50 border-blue-300"
               : "bg-white"
@@ -221,7 +234,7 @@ export default function TeacherSchedulePage() {
         >
           <div className={`text-sm font-semibold mb-2 ${
             isHighlighted
-              ? activeTab === "odd"
+              ? dayType === "odd"
                 ? "text-purple-700"
                 : "text-blue-700"
               : "text-gray-700"
@@ -235,7 +248,7 @@ export default function TeacherSchedulePage() {
                 <div
                   key={lesson.id}
                   className={`text-xs p-1.5 rounded ${
-                    activeTab === "odd"
+                    dayType === "odd"
                       ? "bg-purple-100 text-purple-900"
                       : "bg-blue-100 text-blue-900"
                   }`}
@@ -276,7 +289,7 @@ export default function TeacherSchedulePage() {
           <CalendarIcon className="w-8 h-8 text-purple-600" />
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">My Schedule</h1>
         </div>
-        <p className="text-gray-600">Manage your classes for odd and even days</p>
+        <p className="text-gray-600">Click Odd Days or Even Days to manage your classes</p>
       </div>
 
       {/* Alert */}
@@ -293,201 +306,77 @@ export default function TeacherSchedulePage() {
         </div>
       )}
 
-      {/* Odd/Even Days Toggle */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
-        <div className="inline-flex rounded-lg border border-gray-200 bg-white p-1">
-          <button
-            onClick={() => setActiveTab("odd")}
-            className={`px-6 py-2.5 text-sm font-medium rounded-md transition ${
-              activeTab === "odd"
-                ? "bg-purple-600 text-white shadow-sm"
-                : "text-gray-700 hover:bg-gray-50"
-            }`}
-          >
-            Odd Days
-          </button>
-          <button
-            onClick={() => setActiveTab("even")}
-            className={`px-6 py-2.5 text-sm font-medium rounded-md transition ${
-              activeTab === "even"
-                ? "bg-blue-600 text-white shadow-sm"
-                : "text-gray-700 hover:bg-gray-50"
-            }`}
-          >
-            Even Days
-          </button>
-        </div>
+      {/* Odd/Even Days Buttons */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        <button
+          onClick={() => openDayTypeModal("odd")}
+          className="group bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-xl p-8 shadow-lg transition-all transform hover:scale-[1.02]"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold">Odd Days</h2>
+            <CalendarIcon className="w-12 h-12 opacity-80" />
+          </div>
+          <p className="text-purple-100 mb-3">Days: 1, 3, 5, 7, 9, 11, 13...</p>
+          <div className="flex items-center gap-4 text-sm">
+            <div className="bg-purple-400/30 px-3 py-2 rounded-lg">
+              <span className="font-semibold">{schedule.oddDays.length}</span> lessons
+            </div>
+            <div className="bg-purple-400/30 px-3 py-2 rounded-lg">
+              <span className="font-semibold">
+                {schedule.oddDays.reduce((sum, lesson) => sum + lesson.students.length, 0)}
+              </span> students
+            </div>
+          </div>
+        </button>
 
         <button
-          onClick={() => {
-            setEditingLesson(null);
-            setShowAddModal(true);
-          }}
-          className={`flex items-center justify-center gap-2 px-5 py-2.5 text-white rounded-lg hover:opacity-90 transition shadow-sm ${
-            activeTab === "odd" ? "bg-purple-600" : "bg-blue-600"
-          }`}
+          onClick={() => openDayTypeModal("even")}
+          className="group bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl p-8 shadow-lg transition-all transform hover:scale-[1.02]"
         >
-          <Plus className="w-5 h-5" />
-          Add Lesson
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold">Even Days</h2>
+            <CalendarIcon className="w-12 h-12 opacity-80" />
+          </div>
+          <p className="text-blue-100 mb-3">Days: 2, 4, 6, 8, 10, 12, 14...</p>
+          <div className="flex items-center gap-4 text-sm">
+            <div className="bg-blue-400/30 px-3 py-2 rounded-lg">
+              <span className="font-semibold">{schedule.evenDays.length}</span> lessons
+            </div>
+            <div className="bg-blue-400/30 px-3 py-2 rounded-lg">
+              <span className="font-semibold">
+                {schedule.evenDays.reduce((sum, lesson) => sum + lesson.students.length, 0)}
+              </span> students
+            </div>
+          </div>
         </button>
       </div>
 
-      {/* Month Navigation */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
-        <div className="flex items-center justify-between">
-          <button
-            onClick={goToPreviousMonth}
-            className="p-2 hover:bg-gray-100 rounded-lg transition"
-          >
-            <ChevronLeft className="w-6 h-6 text-gray-700" />
-          </button>
-
-          <div className="flex items-center gap-4">
-            <select
-              value={currentMonth}
-              onChange={(e) => setCurrentMonth(Number(e.target.value))}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-lg font-semibold focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            >
-              {MONTHS.map((month, index) => (
-                <option key={month} value={index}>
-                  {month}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={currentYear}
-              onChange={(e) => setCurrentYear(Number(e.target.value))}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-lg font-semibold focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            >
-              {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 2 + i).map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <button
-            onClick={goToNextMonth}
-            className="p-2 hover:bg-gray-100 rounded-lg transition"
-          >
-            <ChevronRight className="w-6 h-6 text-gray-700" />
-          </button>
-        </div>
-      </div>
-
-      {/* Legend */}
-      <div className="mb-4 flex flex-wrap gap-4 text-sm">
-        <div className="flex items-center gap-2">
-          <div className={`w-4 h-4 rounded ${activeTab === "odd" ? "bg-purple-200" : "bg-blue-200"}`}></div>
-          <span className="text-gray-600">
-            {activeTab === "odd" ? "Odd days with lessons" : "Even days with lessons"}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded bg-white border border-gray-300"></div>
-          <span className="text-gray-600">
-            {activeTab === "odd" ? "Even days (no lessons)" : "Odd days (no lessons)"}
-          </span>
-        </div>
-      </div>
-
-      {/* Calendar Grid */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        {/* Weekday Headers */}
-        <div className="grid grid-cols-7 bg-gray-50 border-b border-gray-200">
-          {WEEKDAYS.map((day) => (
-            <div
-              key={day}
-              className="p-3 text-center text-sm font-semibold text-gray-700 border-r border-gray-200 last:border-r-0"
-            >
-              {day}
-            </div>
-          ))}
-        </div>
-
-        {/* Calendar Days */}
-        <div className="grid grid-cols-7">
-          {renderCalendar()}
-        </div>
-      </div>
-
-      {/* Lessons List Below Calendar */}
-      {schedule[activeTab === "odd" ? "oddDays" : "evenDays"].length > 0 && (
-        <div className="mt-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">
-            {activeTab === "odd" ? "Odd Days" : "Even Days"} Lessons
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {schedule[activeTab === "odd" ? "oddDays" : "evenDays"].map((lesson) => (
-              <div
-                key={lesson.id}
-                className={`bg-white rounded-lg border-2 p-4 ${
-                  activeTab === "odd" ? "border-purple-200" : "border-blue-200"
-                }`}
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    <h3 className="font-bold text-gray-900 mb-1">{lesson.className}</h3>
-                    <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-                      <Clock className="w-4 h-4" />
-                      <span>{lesson.timeSlot}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 px-2 py-1 rounded-md inline-flex">
-                      <DollarSign className="w-4 h-4" />
-                      <span className="font-semibold">${lesson.hourlyRate.toFixed(2)}/hr</span>
-                    </div>
-                  </div>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => {
-                        setEditingLesson(lesson);
-                        setShowAddModal(true);
-                      }}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded transition"
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => deleteLesson(lesson.id)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded transition"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {lesson.students.length > 0 && (
-                  <div className="pt-3 border-t border-gray-100">
-                    <div className="flex items-center gap-1 text-xs font-semibold text-gray-700 mb-2">
-                      <Users className="w-3 h-3" />
-                      <span>{lesson.students.length} Students:</span>
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {lesson.students.map((student) => (
-                        <span
-                          key={student.id}
-                          className={`px-2 py-1 text-xs rounded-full ${
-                            activeTab === "odd"
-                              ? "bg-purple-50 text-purple-700"
-                              : "bg-blue-50 text-blue-700"
-                          }`}
-                        >
-                          {student.firstName} {student.lastName}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
+      {/* Day Type Modal */}
+      {showDayTypeModal && modalDayType && (
+        <DayTypeModal
+          dayType={modalDayType}
+          schedule={schedule}
+          currentMonth={currentMonth}
+          currentYear={currentYear}
+          onClose={closeDayTypeModal}
+          onAddLesson={() => {
+            setShowAddModal(true);
+          }}
+          onEditLesson={(lesson) => {
+            setEditingLesson(lesson);
+            setShowAddModal(true);
+          }}
+          onDeleteLesson={(lessonId) => deleteLesson(lessonId, modalDayType)}
+          goToPreviousMonth={goToPreviousMonth}
+          goToNextMonth={goToNextMonth}
+          setCurrentMonth={setCurrentMonth}
+          setCurrentYear={setCurrentYear}
+          renderCalendar={renderCalendar}
+        />
       )}
 
-      {/* Add/Edit Modal */}
-      {showAddModal && (
+      {/* Add/Edit Lesson Modal */}
+      {showAddModal && modalDayType && (
         <LessonModal
           lesson={editingLesson}
           onClose={() => {
@@ -496,14 +385,230 @@ export default function TeacherSchedulePage() {
           }}
           onSave={(lesson) => {
             if (editingLesson) {
-              updateLesson(editingLesson.id, lesson);
+              updateLesson(editingLesson.id, lesson, modalDayType);
             } else {
-              addLesson(lesson);
+              addLesson(lesson, modalDayType);
             }
           }}
-          dayType={activeTab}
+          dayType={modalDayType}
         />
       )}
+    </div>
+  );
+}
+
+// Day Type Modal Component
+function DayTypeModal({
+  dayType,
+  schedule,
+  currentMonth,
+  currentYear,
+  onClose,
+  onAddLesson,
+  onEditLesson,
+  onDeleteLesson,
+  goToPreviousMonth,
+  goToNextMonth,
+  setCurrentMonth,
+  setCurrentYear,
+  renderCalendar,
+}: {
+  dayType: "odd" | "even";
+  schedule: Schedule;
+  currentMonth: number;
+  currentYear: number;
+  onClose: () => void;
+  onAddLesson: () => void;
+  onEditLesson: (lesson: Lesson) => void;
+  onDeleteLesson: (lessonId: string) => void;
+  goToPreviousMonth: () => void;
+  goToNextMonth: () => void;
+  setCurrentMonth: (month: number) => void;
+  setCurrentYear: (year: number) => void;
+  renderCalendar: (dayType: "odd" | "even") => React.ReactElement[];
+}) {
+  const lessons = schedule[dayType === "odd" ? "oddDays" : "evenDays"];
+  const colorClass = dayType === "odd" ? "purple" : "blue";
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-white rounded-xl max-w-7xl w-full my-8 max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className={`sticky top-0 bg-gradient-to-r ${dayType === "odd" ? "from-purple-500 to-purple-600" : "from-blue-500 to-blue-600"} text-white p-6 rounded-t-xl z-10`}>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold mb-1">{dayType === "odd" ? "Odd Days" : "Even Days"} Schedule</h2>
+              <p className="text-sm opacity-90">
+                Days: {dayType === "odd" ? "1, 3, 5, 7, 9, 11..." : "2, 4, 6, 8, 10, 12..."}
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-white/20 rounded-lg transition"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-6">
+          {/* Add Lesson Button */}
+          <div className="mb-6">
+            <button
+              onClick={onAddLesson}
+              className={`flex items-center justify-center gap-2 px-5 py-3 ${dayType === "odd" ? "bg-purple-600 hover:bg-purple-700" : "bg-blue-600 hover:bg-blue-700"} text-white rounded-lg transition shadow-sm w-full sm:w-auto`}
+            >
+              <Plus className="w-5 h-5" />
+              Add Lesson to {dayType === "odd" ? "Odd" : "Even"} Days
+            </button>
+          </div>
+
+          {/* Month Navigation */}
+          <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 mb-6">
+            <div className="flex items-center justify-between">
+              <button
+                onClick={goToPreviousMonth}
+                className="p-2 hover:bg-white rounded-lg transition"
+              >
+                <ChevronLeft className="w-6 h-6 text-gray-700" />
+              </button>
+
+              <div className="flex items-center gap-4">
+                <select
+                  value={currentMonth}
+                  onChange={(e) => setCurrentMonth(Number(e.target.value))}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-lg font-semibold focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+                >
+                  {MONTHS.map((month, index) => (
+                    <option key={month} value={index}>
+                      {month}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={currentYear}
+                  onChange={(e) => setCurrentYear(Number(e.target.value))}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-lg font-semibold focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+                >
+                  {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 2 + i).map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                onClick={goToNextMonth}
+                className="p-2 hover:bg-white rounded-lg transition"
+              >
+                <ChevronRight className="w-6 h-6 text-gray-700" />
+              </button>
+            </div>
+          </div>
+
+          {/* Calendar Grid */}
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
+            {/* Weekday Headers */}
+            <div className="grid grid-cols-7 bg-gray-50 border-b border-gray-200">
+              {WEEKDAYS.map((day) => (
+                <div
+                  key={day}
+                  className="p-3 text-center text-sm font-semibold text-gray-700 border-r border-gray-200 last:border-r-0"
+                >
+                  {day}
+                </div>
+              ))}
+            </div>
+
+            {/* Calendar Days */}
+            <div className="grid grid-cols-7">
+              {renderCalendar(dayType)}
+            </div>
+          </div>
+
+          {/* Lessons List */}
+          {lessons.length > 0 ? (
+            <div>
+              <h3 className="text-xl font-bold text-gray-900 mb-4">
+                All Lessons ({lessons.length})
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {lessons.map((lesson) => (
+                  <div
+                    key={lesson.id}
+                    className={`bg-white rounded-lg border-2 p-4 ${
+                      dayType === "odd" ? "border-purple-200" : "border-blue-200"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <h3 className="font-bold text-gray-900 mb-1">{lesson.className}</h3>
+                        <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
+                          <Clock className="w-4 h-4" />
+                          <span>{lesson.timeSlot}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 px-2 py-1 rounded-md inline-flex">
+                          <DollarSign className="w-4 h-4" />
+                          <span className="font-semibold">${lesson.hourlyRate.toFixed(2)}/hr</span>
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => onEditLesson(lesson)}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded transition"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => onDeleteLesson(lesson.id)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded transition"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {lesson.students.length > 0 && (
+                      <div className="pt-3 border-t border-gray-100">
+                        <div className="flex items-center gap-1 text-xs font-semibold text-gray-700 mb-2">
+                          <Users className="w-3 h-3" />
+                          <span>{lesson.students.length} Students:</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {lesson.students.map((student) => (
+                            <span
+                              key={student.id}
+                              className={`px-2 py-1 text-xs rounded-full ${
+                                dayType === "odd"
+                                  ? "bg-purple-50 text-purple-700"
+                                  : "bg-blue-50 text-blue-700"
+                              }`}
+                            >
+                              {student.firstName} {student.lastName}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-12 bg-gray-50 rounded-lg">
+              <CalendarIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                No lessons yet for {dayType === "odd" ? "odd" : "even"} days
+              </h3>
+              <p className="text-gray-600">
+                Click "Add Lesson" to create your first lesson
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
