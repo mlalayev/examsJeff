@@ -56,6 +56,12 @@ export default function TeacherSchedulePage() {
   });
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  const [slideState, setSlideState] = useState<{
+    isAnimating: boolean;
+    dir: "prev" | "next";
+    nextMonth: number;
+    nextYear: number;
+  } | null>(null);
   const [showDayTypeModal, setShowDayTypeModal] = useState(false);
   const [modalDayType, setModalDayType] = useState<"odd" | "even" | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -178,21 +184,17 @@ export default function TeacherSchedulePage() {
   const isEvenDay = (day: number) => day % 2 === 0;
 
   const goToPreviousMonth = () => {
-    if (currentMonth === 0) {
-      setCurrentMonth(11);
-      setCurrentYear(currentYear - 1);
-    } else {
-      setCurrentMonth(currentMonth - 1);
-    }
+    if (slideState?.isAnimating) return;
+    const nextMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+    const nextYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+    setSlideState({ isAnimating: true, dir: "prev", nextMonth, nextYear });
   };
 
   const goToNextMonth = () => {
-    if (currentMonth === 11) {
-      setCurrentMonth(0);
-      setCurrentYear(currentYear + 1);
-    } else {
-      setCurrentMonth(currentMonth + 1);
-    }
+    if (slideState?.isAnimating) return;
+    const nextMonth = currentMonth === 11 ? 0 : currentMonth + 1;
+    const nextYear = currentMonth === 11 ? currentYear + 1 : currentYear;
+    setSlideState({ isAnimating: true, dir: "next", nextMonth, nextYear });
   };
 
   const getLessonsForDay = (day: number, dayOfWeek: number) => {
@@ -211,22 +213,22 @@ export default function TeacherSchedulePage() {
 
   const ACCENT = "#303380";
 
-  const renderCalendar = () => {
-    const daysInMonth = getDaysInMonth(currentMonth, currentYear);
-    const firstDay = getFirstDayOfMonth(currentMonth, currentYear);
+  const renderCalendar = (month = currentMonth, year = currentYear) => {
+    const daysInMonth = getDaysInMonth(month, year);
+    const firstDay = getFirstDayOfMonth(month, year);
     const days = [];
 
     for (let i = 0; i < firstDay; i++) {
       days.push(
         <div
           key={`empty-${i}`}
-          className="min-h-32 bg-slate-50/60 border border-slate-200"
+          className="min-h-24 bg-slate-50/60 border border-slate-200"
         />
       );
     }
 
     for (let day = 1; day <= daysInMonth; day++) {
-      const dayOfWeek = new Date(currentYear, currentMonth, day).getDay();
+      const dayOfWeek = new Date(year, month, day).getDay();
       const lessons = getLessonsForDay(day, dayOfWeek);
       
       let bgClass = "bg-white";
@@ -239,9 +241,9 @@ export default function TeacherSchedulePage() {
       days.push(
         <div
           key={day}
-          className={`min-h-32 border border-slate-200 p-2 ${bgClass}`}
+          className={`min-h-24 border border-slate-200 p-1.5 ${bgClass}`}
         >
-          <div className="text-sm font-semibold mb-2 text-slate-700">
+          <div className="text-[11px] font-semibold mb-1.5 text-slate-700">
             {day}
           </div>
           
@@ -250,7 +252,7 @@ export default function TeacherSchedulePage() {
               {lessons.map((lesson) => (
                 <div
                   key={lesson.id}
-                  className="text-xs p-1.5 rounded border border-slate-200 bg-white/70 text-slate-800"
+                  className="text-[11px] p-1.5 rounded border border-slate-200 bg-white/70 text-slate-800"
                 >
                   <div className="font-semibold truncate">{lesson.className}</div>
                   <div className="flex items-center gap-1 text-[10px] text-slate-500 tabular-nums">
@@ -267,6 +269,8 @@ export default function TeacherSchedulePage() {
 
     return days;
   };
+
+  const getMonthLabel = (month: number, year: number) => `${MONTHS[month]} ${year}`;
 
   if (loading) {
     return (
@@ -349,7 +353,7 @@ export default function TeacherSchedulePage() {
       </div>
 
       {/* Month Navigation */}
-      <div className="bg-white rounded-xl border border-slate-200/80 p-4 mb-4 shadow-sm">
+      <div className="bg-white rounded-xl border border-slate-200/80 p-3 mb-3 shadow-sm">
         <div className="flex items-center justify-between">
           <button
             type="button"
@@ -359,30 +363,8 @@ export default function TeacherSchedulePage() {
             <ChevronLeft className="w-6 h-6 text-gray-700" />
           </button>
 
-          <div className="flex items-center gap-4">
-            <select
-              value={currentMonth}
-              onChange={(e) => setCurrentMonth(Number(e.target.value))}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-base font-semibold focus:ring-2 focus:ring-[#303380]/30 focus:border-[#303380] outline-none bg-white"
-            >
-              {MONTHS.map((month, index) => (
-                <option key={month} value={index}>
-                  {month}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={currentYear}
-              onChange={(e) => setCurrentYear(Number(e.target.value))}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-base font-semibold focus:ring-2 focus:ring-[#303380]/30 focus:border-[#303380] outline-none bg-white"
-            >
-              {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 2 + i).map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
+          <div className="text-base sm:text-lg font-semibold text-slate-900 tabular-nums select-none">
+            {getMonthLabel(currentMonth, currentYear)}
           </div>
 
           <button
@@ -401,14 +383,49 @@ export default function TeacherSchedulePage() {
           {WEEKDAYS.map((day) => (
             <div
               key={day}
-              className="p-3 text-center text-xs font-semibold text-slate-600 border-r border-slate-200 last:border-r-0 uppercase tracking-wide"
+              className="p-2 text-center text-[10px] font-semibold text-slate-600 border-r border-slate-200 last:border-r-0 uppercase tracking-wide"
             >
               {day}
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-7">
-          {renderCalendar()}
+        <div
+          className="relative overflow-hidden"
+          onTransitionEnd={() => {
+            if (!slideState?.isAnimating) return;
+            setCurrentMonth(slideState.nextMonth);
+            setCurrentYear(slideState.nextYear);
+            setSlideState(null);
+          }}
+        >
+          {slideState ? (
+            <div
+              className="flex w-[200%] will-change-transform"
+              style={{
+                transform: slideState.isAnimating ? (slideState.dir === "next" ? "translateX(-50%)" : "translateX(0%)") : "translateX(0%)",
+                transition: "transform 260ms ease",
+              }}
+              ref={(el) => {
+                if (!el) return;
+                // trigger transition after mount
+                requestAnimationFrame(() => {
+                  if (!slideState?.isAnimating) return;
+                  el.style.transform = slideState.dir === "next" ? "translateX(-50%)" : "translateX(50%)";
+                });
+              }}
+            >
+              {/* current month */}
+              <div className="w-1/2">
+                <div className="grid grid-cols-7">{renderCalendar(currentMonth, currentYear)}</div>
+              </div>
+              {/* next/prev month */}
+              <div className="w-1/2">
+                <div className="grid grid-cols-7">{renderCalendar(slideState.nextMonth, slideState.nextYear)}</div>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-7">{renderCalendar(currentMonth, currentYear)}</div>
+          )}
         </div>
       </div>
 
