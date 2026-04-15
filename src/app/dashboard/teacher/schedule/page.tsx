@@ -319,11 +319,11 @@ export default function TeacherSchedulePage() {
           <p className="text-purple-100 mb-3">Days: 1, 3, 5, 7, 9, 11, 13...</p>
           <div className="flex items-center gap-4 text-sm">
             <div className="bg-purple-400/30 px-3 py-2 rounded-lg">
-              <span className="font-semibold">{schedule.oddDays.length}</span> lessons
+              <span className="font-semibold">{schedule.oddDays?.length || 0}</span> lessons
             </div>
             <div className="bg-purple-400/30 px-3 py-2 rounded-lg">
               <span className="font-semibold">
-                {schedule.oddDays.reduce((sum, lesson) => sum + lesson.students.length, 0)}
+                {schedule.oddDays?.reduce((sum, lesson) => sum + (lesson.students?.length || 0), 0) || 0}
               </span> students
             </div>
           </div>
@@ -340,11 +340,11 @@ export default function TeacherSchedulePage() {
           <p className="text-blue-100 mb-3">Days: 2, 4, 6, 8, 10, 12, 14...</p>
           <div className="flex items-center gap-4 text-sm">
             <div className="bg-blue-400/30 px-3 py-2 rounded-lg">
-              <span className="font-semibold">{schedule.evenDays.length}</span> lessons
+              <span className="font-semibold">{schedule.evenDays?.length || 0}</span> lessons
             </div>
             <div className="bg-blue-400/30 px-3 py-2 rounded-lg">
               <span className="font-semibold">
-                {schedule.evenDays.reduce((sum, lesson) => sum + lesson.students.length, 0)}
+                {schedule.evenDays?.reduce((sum, lesson) => sum + (lesson.students?.length || 0), 0) || 0}
               </span> students
             </div>
           </div>
@@ -570,7 +570,7 @@ function DayTypeModal({
                       </div>
                     </div>
 
-                    {lesson.students.length > 0 && (
+                    {lesson.students && lesson.students.length > 0 && (
                       <div className="pt-3 border-t border-gray-100">
                         <div className="flex items-center gap-1 text-xs font-semibold text-gray-700 mb-2">
                           <Users className="w-3 h-3" />
