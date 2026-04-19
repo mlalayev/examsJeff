@@ -129,6 +129,9 @@ export default function AttemptRunnerPage() {
   const hasRestoredFromPersistence = useRef(false);
   const suppressImageViewerPersist = useRef(false);
   const isDraggingImageViewerResize = useRef(false);
+  const imageViewerSavedBodyUserSelectRef = useRef("");
+  const imageViewerSavedHtmlUserSelectRef = useRef("");
+  const imageViewerSelectStartBlockerRef = useRef<((e: Event) => void) | null>(null);
 
   // When entering IELTS Speaking section, show intro modal if not yet seen this attempt
   useEffect(() => {
@@ -157,10 +160,23 @@ export default function AttemptRunnerPage() {
     };
   }, []);
 
-  // Image viewer: draggable resize from left or right edge
+  // Image viewer: draggable resize from left or right edge (block text selection on page while dragging)
   useEffect(() => {
+    const endImageViewerResizeDrag = () => {
+      if (!isDraggingImageViewerResize.current) return;
+      isDraggingImageViewerResize.current = false;
+      document.body.style.userSelect = imageViewerSavedBodyUserSelectRef.current;
+      document.documentElement.style.userSelect = imageViewerSavedHtmlUserSelectRef.current;
+      const blocker = imageViewerSelectStartBlockerRef.current;
+      if (blocker) {
+        document.removeEventListener("selectstart", blocker, { capture: true });
+        imageViewerSelectStartBlockerRef.current = null;
+      }
+    };
+
     const onMouseMove = (e: MouseEvent) => {
       if (!isDraggingImageViewerResize.current) return;
+      e.preventDefault();
       let newWidth: number;
       if (imageViewerDock === "right") {
         newWidth = window.innerWidth - e.clientX;
@@ -171,13 +187,14 @@ export default function AttemptRunnerPage() {
       setImageViewerWidthPx(clamped);
     };
     const onMouseUp = () => {
-      isDraggingImageViewerResize.current = false;
+      endImageViewerResizeDrag();
     };
     document.addEventListener("mousemove", onMouseMove);
     document.addEventListener("mouseup", onMouseUp);
     return () => {
       document.removeEventListener("mousemove", onMouseMove);
       document.removeEventListener("mouseup", onMouseUp);
+      endImageViewerResizeDrag();
     };
   }, [imageViewerDock, imageViewerMaxW]);
 
@@ -1725,15 +1742,28 @@ export default function AttemptRunnerPage() {
             }`}
             style={{
               width: `${Math.min(imageViewerWidthPx, imageViewerMaxW)}px`,
-              userSelect: isDraggingImageViewerResize.current ? "none" : "auto",
             }}
           >
             {/* Drag resize handle on the inner edge */}
             <div
-              onMouseDown={() => {
+              onMouseDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 isDraggingImageViewerResize.current = true;
+                window.getSelection()?.removeAllRanges();
+                imageViewerSavedBodyUserSelectRef.current = document.body.style.userSelect;
+                imageViewerSavedHtmlUserSelectRef.current = document.documentElement.style.userSelect;
+                document.body.style.userSelect = "none";
+                document.documentElement.style.userSelect = "none";
+                const prevBlocker = imageViewerSelectStartBlockerRef.current;
+                if (prevBlocker) {
+                  document.removeEventListener("selectstart", prevBlocker);
+                }
+                const blocker = (ev: Event) => ev.preventDefault();
+                imageViewerSelectStartBlockerRef.current = blocker;
+                document.addEventListener("selectstart", blocker, { capture: true });
               }}
-              className="flex-shrink-0 w-2 flex items-center justify-center cursor-col-resize group hover:bg-[#303380]/10 transition-colors"
+              className="flex-shrink-0 w-2 flex select-none items-center justify-center cursor-col-resize group hover:bg-[#303380]/10 transition-colors"
               title="Drag to resize"
             >
               <div className="w-1 h-16 rounded-full bg-gray-300 group-hover:bg-[#303380] transition-colors duration-150" />
