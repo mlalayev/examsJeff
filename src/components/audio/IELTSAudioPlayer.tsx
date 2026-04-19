@@ -86,9 +86,8 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
     const audio = audioRef.current;
     if (!audio || !normalizedSrc) return;
 
-    // Check if we have a saved position BEFORE calling load()
+    // Check if we have a saved position BEFORE doing anything
     const storageKey = getAudioTimeStorageKey();
-    let hasSavedPosition = false;
     let savedTimeValue = 0;
     
     if (storageKey && typeof window !== "undefined") {
@@ -96,9 +95,8 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
       if (savedTime) {
         const time = parseFloat(savedTime);
         if (!isNaN(time) && time > 0) {
-          hasSavedPosition = true;
           savedTimeValue = time;
-          console.log(`🎧 Found saved position: ${time.toFixed(2)}s, will restore after load`);
+          console.log(`🎧 Found saved position: ${time.toFixed(2)}s`);
         }
       }
     }
@@ -110,13 +108,16 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
     setIsPlaying(false);
     setDuration(0);
     
-    // Set the audio source WITHOUT calling load() yet
-    if (audio.src !== normalizedSrc) {
-      audio.src = normalizedSrc;
-    }
+    // CRITICAL: Only call load() if the source has changed or is not set
+    const needsLoad = !audio.src || audio.src !== normalizedSrc;
     
-    // Load the audio
-    audio.load();
+    if (needsLoad) {
+      console.log(`🎧 Loading new audio source: ${normalizedSrc}`);
+      audio.src = normalizedSrc;
+      audio.load();
+    } else {
+      console.log(`🎧 Audio source unchanged, skipping load()`);
+    }
 
     const restoreSavedPosition = () => {
       if (hasLoadedSavedPositionRef.current) return;
@@ -249,25 +250,24 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
       const dur = audio.duration;
       setDuration(dur);
       console.log(`🎧 Audio metadata loaded, duration: ${dur.toFixed(2)}s`);
-      // Try to restore position
-      if (!hasLoadedSavedPositionRef.current) {
-        restoreSavedPosition();
-      }
+      // Don't restore immediately - wait for all load events
     };
 
     const onLoadedData = () => {
       console.log("🎧 Audio data loaded");
-      // Try to restore position if not already done
-      if (!hasLoadedSavedPositionRef.current) {
-        restoreSavedPosition();
-      }
+      // Don't restore here either
     };
 
     const onCanPlay = () => {
       console.log("🎧 Audio can play");
-      // Final attempt to restore position
+      // Restore position here - this is the final loading event
       if (!hasLoadedSavedPositionRef.current) {
-        restoreSavedPosition();
+        // Use setTimeout to ensure load() has completely finished
+        setTimeout(() => {
+          if (!hasLoadedSavedPositionRef.current) {
+            restoreSavedPosition();
+          }
+        }, 50);
       }
     };
 
