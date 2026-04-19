@@ -195,11 +195,12 @@ export function IELTSListeningView({
               <p className="text-sm text-gray-500">Listen to the audio, then answer the questions below.</p>
             </div>
           </div>
-          <IELTSAudioPlayer 
-            src={audioSource} 
-            className="w-full" 
+          <IELTSAudioPlayer
+            src={audioSource}
+            className="w-full"
             attemptId={attemptId}
             sectionId={section.id}
+            playOnly
           />
         </div>
       ) : (

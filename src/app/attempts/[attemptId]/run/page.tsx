@@ -34,7 +34,7 @@ import { SpeakingTimeUpModal } from "@/components/attempts/modals/SpeakingTimeUp
 import { totalSecondsForSpeakingPart } from "@/lib/ielts-speaking-timers";
 import { countWords } from "@/lib/get-writing-task-texts";
 import FormattedText from "@/components/FormattedText";
-import { Clock, Save, CheckCircle, Send, ChevronRight, X } from "lucide-react";
+import { Clock, Save, CheckCircle, Send, ChevronRight, X, PanelLeft, PanelRight } from "lucide-react";
 
 interface Question {
   id: string;
@@ -105,6 +105,9 @@ export default function AttemptRunnerPage() {
     totalSecondsForSpeakingPart(1)
   );
   const [viewingImage, setViewingImage] = useState<string | null>(null); // Image viewer
+  const [imageViewerDock, setImageViewerDock] = useState<"left" | "right">("right");
+  const [imageViewerWidthPx, setImageViewerWidthPx] = useState(350);
+  const [imageViewerMaxW, setImageViewerMaxW] = useState(1200);
   const [viewingPassage, setViewingPassage] = useState(false); // Reading passage panel
   const [speakingIntroDismissed, setSpeakingIntroDismissed] = useState(false); // show intro modal when on Speaking until user clicks Okay
   const [ieltsTimerState, setIeltsTimerState] = useState<{
@@ -124,6 +127,7 @@ export default function AttemptRunnerPage() {
 
   const autosaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const hasRestoredFromPersistence = useRef(false);
+  const suppressImageViewerPersist = useRef(false);
 
   // When entering IELTS Speaking section, show intro modal if not yet seen this attempt
   useEffect(() => {
@@ -151,6 +155,60 @@ export default function AttemptRunnerPage() {
       document.removeEventListener("mouseup", onMouseUp);
     };
   }, []);
+
+  // Image viewer: max width follows viewport
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const update = () => {
+      setImageViewerMaxW(Math.min(1200, Math.floor(window.innerWidth * 0.95)));
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
+  useEffect(() => {
+    setImageViewerWidthPx((w) => Math.min(w, imageViewerMaxW));
+  }, [imageViewerMaxW]);
+
+  // Image viewer: restore dock + width when opening (suppress persist until after apply)
+  useEffect(() => {
+    if (!viewingImage || typeof window === "undefined" || !attemptId) {
+      suppressImageViewerPersist.current = false;
+      return;
+    }
+    suppressImageViewerPersist.current = true;
+    try {
+      const raw = localStorage.getItem(`image_viewer_prefs_${attemptId}`);
+      if (raw) {
+        const p = JSON.parse(raw) as { dock?: string; width?: number };
+        if (p.dock === "left" || p.dock === "right") setImageViewerDock(p.dock);
+        if (typeof p.width === "number" && Number.isFinite(p.width)) {
+          setImageViewerWidthPx(Math.max(200, Math.min(1200, p.width)));
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+    const id = requestAnimationFrame(() => {
+      suppressImageViewerPersist.current = false;
+    });
+    return () => cancelAnimationFrame(id);
+  }, [viewingImage, attemptId]);
+
+  // Image viewer: persist preferences (not during hydration from localStorage)
+  useEffect(() => {
+    if (!viewingImage || typeof window === "undefined" || !attemptId) return;
+    if (suppressImageViewerPersist.current) return;
+    try {
+      localStorage.setItem(
+        `image_viewer_prefs_${attemptId}`,
+        JSON.stringify({ dock: imageViewerDock, width: imageViewerWidthPx })
+      );
+    } catch {
+      /* ignore */
+    }
+  }, [viewingImage, attemptId, imageViewerDock, imageViewerWidthPx]);
 
   // Helper functions for localStorage (defined before hook so they can be used in onRestore)
   const saveCompletedSectionsToStorageHelper = (completed: Set<string>) => {
@@ -1621,7 +1679,7 @@ export default function AttemptRunnerPage() {
               </div>
 
 
-      {/* Image Viewer - fixed on the RIGHT; backdrop does not block scroll */}
+      {/* Image Viewer - dock left/right, user-resizable width; backdrop does not block scroll */}
       {viewingImage && (
         <>
           {/* Backdrop - visual only; pointer-events: none so main content stays scrollable */}
@@ -1630,18 +1688,72 @@ export default function AttemptRunnerPage() {
             style={{ left: 0, right: 0, top: 0, bottom: 0 }}
             aria-hidden
           />
-          {/* Panel on the right - 350px wide; pointer-events so you can scroll the image and use close */}
           <div
-            className="fixed top-0 right-0 h-full w-[350px] max-w-full bg-white shadow-2xl z-[101] flex flex-col pointer-events-auto border-l border-gray-200"
+            className={`fixed top-0 h-full max-w-full bg-white shadow-2xl z-[101] flex flex-col pointer-events-auto ${
+              imageViewerDock === "right"
+                ? "right-0 border-l border-gray-200"
+                : "left-0 border-r border-gray-200"
+            }`}
+            style={{
+              width: `${Math.min(imageViewerWidthPx, imageViewerMaxW)}px`,
+            }}
           >
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <h3 className="font-medium text-gray-900">Image Viewer</h3>
-              <button
-                onClick={() => setViewingImage(null)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5 text-gray-600" />
-              </button>
+            <div className="shrink-0 border-b border-gray-200 p-3 space-y-3">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setImageViewerDock("left")}
+                  title="Dock panel on the left"
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-colors ${
+                    imageViewerDock === "left"
+                      ? "border-[#303380] bg-[#303380]/10 text-[#303380]"
+                      : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  <PanelLeft className="h-5 w-5" aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setImageViewerDock("right")}
+                  title="Dock panel on the right"
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-colors ${
+                    imageViewerDock === "right"
+                      ? "border-[#303380] bg-[#303380]/10 text-[#303380]"
+                      : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  <PanelRight className="h-5 w-5" aria-hidden />
+                </button>
+                <h3 className="min-w-0 flex-1 text-center text-sm font-medium text-gray-900 truncate px-1">
+                  Image Viewer
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setViewingImage(null)}
+                  className="shrink-0 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  title="Close"
+                >
+                  <X className="w-5 h-5 text-gray-600" />
+                </button>
+              </div>
+              <div className="flex items-center gap-2 px-0.5">
+                <label htmlFor="image-viewer-width" className="text-xs text-gray-500 whitespace-nowrap shrink-0">
+                  Width
+                </label>
+                <input
+                  id="image-viewer-width"
+                  type="range"
+                  min={200}
+                  max={imageViewerMaxW}
+                  step={10}
+                  value={Math.min(imageViewerWidthPx, imageViewerMaxW)}
+                  onChange={(e) => setImageViewerWidthPx(Number(e.target.value))}
+                  className="h-2 min-w-0 flex-1 cursor-pointer accent-[#303380]"
+                />
+                <span className="w-14 shrink-0 text-right text-xs tabular-nums text-gray-600">
+                  {Math.min(imageViewerWidthPx, imageViewerMaxW)}px
+                </span>
+              </div>
             </div>
             <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-gray-50 min-h-0">
               <img
