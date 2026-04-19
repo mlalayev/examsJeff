@@ -1630,10 +1630,9 @@ export default function AttemptRunnerPage() {
             style={{ left: 0, right: 0, top: 0, bottom: 0 }}
             aria-hidden
           />
-          {/* Panel on the right - has pointer-events so you can scroll the image and use close */}
+          {/* Panel on the right - 350px wide; pointer-events so you can scroll the image and use close */}
           <div
-            className="fixed top-0 h-full bg-white shadow-2xl z-[101] flex flex-col pointer-events-auto"
-            style={{ right: 0, width: "min(96vw, 72rem)", maxWidth: "100vw" }}
+            className="fixed top-0 right-0 h-full w-[350px] max-w-full bg-white shadow-2xl z-[101] flex flex-col pointer-events-auto border-l border-gray-200"
           >
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
               <h3 className="font-medium text-gray-900">Image Viewer</h3>

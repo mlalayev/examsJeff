@@ -21,10 +21,23 @@ function useSecureSessionCookie(req: NextRequest): boolean {
 async function getTokenFromRequest(req: NextRequest) {
   const secret = process.env.NEXTAUTH_SECRET;
   const preferSecure = useSecureSessionCookie(req);
+  
+  // Try preferred cookie scheme first
   let token = await getToken({ req, secret, secureCookie: preferSecure });
+  
+  // Fallback to opposite scheme if not found
   if (!token) {
     token = await getToken({ req, secret, secureCookie: !preferSecure });
   }
+  
+  // Additional debugging for production issues
+  if (!token && process.env.NODE_ENV === 'production') {
+    console.warn('[Auth] No token found for path:', req.nextUrl.pathname, 
+      'Protocol:', req.nextUrl.protocol,
+      'X-Forwarded-Proto:', req.headers.get("x-forwarded-proto"),
+      'Tried secure:', preferSecure);
+  }
+  
   return token;
 }
 
