@@ -128,6 +128,7 @@ export default function AttemptRunnerPage() {
   const autosaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const hasRestoredFromPersistence = useRef(false);
   const suppressImageViewerPersist = useRef(false);
+  const isDraggingImageViewerResize = useRef(false);
 
   // When entering IELTS Speaking section, show intro modal if not yet seen this attempt
   useEffect(() => {
@@ -155,6 +156,30 @@ export default function AttemptRunnerPage() {
       document.removeEventListener("mouseup", onMouseUp);
     };
   }, []);
+
+  // Image viewer: draggable resize from left or right edge
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      if (!isDraggingImageViewerResize.current) return;
+      let newWidth: number;
+      if (imageViewerDock === "right") {
+        newWidth = window.innerWidth - e.clientX;
+      } else {
+        newWidth = e.clientX;
+      }
+      const clamped = Math.max(200, Math.min(imageViewerMaxW, newWidth));
+      setImageViewerWidthPx(clamped);
+    };
+    const onMouseUp = () => {
+      isDraggingImageViewerResize.current = false;
+    };
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+    };
+  }, [imageViewerDock, imageViewerMaxW]);
 
   // Image viewer: max width follows viewport
   useEffect(() => {
@@ -1689,78 +1714,77 @@ export default function AttemptRunnerPage() {
             aria-hidden
           />
           <div
-            className={`fixed top-0 h-full max-w-full bg-white shadow-2xl z-[101] flex flex-col pointer-events-auto ${
+            className={`fixed top-0 h-full max-w-full bg-white shadow-2xl z-[101] flex pointer-events-auto ${
               imageViewerDock === "right"
-                ? "right-0 border-l border-gray-200"
-                : "left-0 border-r border-gray-200"
+                ? "right-0 border-l border-gray-200 flex-row"
+                : "left-0 border-r border-gray-200 flex-row-reverse"
             }`}
             style={{
               width: `${Math.min(imageViewerWidthPx, imageViewerMaxW)}px`,
+              userSelect: isDraggingImageViewerResize.current ? "none" : "auto",
             }}
           >
-            <div className="shrink-0 border-b border-gray-200 p-3 space-y-3">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setImageViewerDock("left")}
-                  title="Dock panel on the left"
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-colors ${
-                    imageViewerDock === "left"
-                      ? "border-[#303380] bg-[#303380]/10 text-[#303380]"
-                      : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
-                  }`}
-                >
-                  <PanelLeft className="h-5 w-5" aria-hidden />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setImageViewerDock("right")}
-                  title="Dock panel on the right"
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-colors ${
-                    imageViewerDock === "right"
-                      ? "border-[#303380] bg-[#303380]/10 text-[#303380]"
-                      : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
-                  }`}
-                >
-                  <PanelRight className="h-5 w-5" aria-hidden />
-                </button>
-                <h3 className="min-w-0 flex-1 text-center text-sm font-medium text-gray-900 truncate px-1">
-                  Image Viewer
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setViewingImage(null)}
-                  className="shrink-0 p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                  title="Close"
-                >
-                  <X className="w-5 h-5 text-gray-600" />
-                </button>
-              </div>
-              <div className="flex items-center gap-2 px-0.5">
-                <label htmlFor="image-viewer-width" className="text-xs text-gray-500 whitespace-nowrap shrink-0">
-                  Width
-                </label>
-                <input
-                  id="image-viewer-width"
-                  type="range"
-                  min={200}
-                  max={imageViewerMaxW}
-                  step={10}
-                  value={Math.min(imageViewerWidthPx, imageViewerMaxW)}
-                  onChange={(e) => setImageViewerWidthPx(Number(e.target.value))}
-                  className="h-2 min-w-0 flex-1 cursor-pointer accent-[#303380]"
-                />
-                <span className="w-14 shrink-0 text-right text-xs tabular-nums text-gray-600">
-                  {Math.min(imageViewerWidthPx, imageViewerMaxW)}px
-                </span>
-              </div>
+            {/* Drag resize handle on the inner edge */}
+            <div
+              onMouseDown={() => {
+                isDraggingImageViewerResize.current = true;
+              }}
+              className="flex-shrink-0 w-2 flex items-center justify-center cursor-col-resize group hover:bg-[#303380]/10 transition-colors"
+              title="Drag to resize"
+            >
+              <div className="w-1 h-16 rounded-full bg-gray-300 group-hover:bg-[#303380] transition-colors duration-150" />
             </div>
-            <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-gray-50 min-h-0">
-              <img
-                src={viewingImage}
-                alt="Viewing"
-                className="max-w-full h-auto object-contain"
-              />
+
+            <div className="flex-1 min-w-0 flex flex-col">
+              <div className="shrink-0 border-b border-gray-200 p-3">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setImageViewerDock("left")}
+                    title="Dock panel on the left"
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-colors ${
+                      imageViewerDock === "left"
+                        ? "border-[#303380] bg-[#303380]/10 text-[#303380]"
+                        : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                    }`}
+                  >
+                    <PanelLeft className="h-5 w-5" aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setImageViewerDock("right")}
+                    title="Dock panel on the right"
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-colors ${
+                      imageViewerDock === "right"
+                        ? "border-[#303380] bg-[#303380]/10 text-[#303380]"
+                        : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                    }`}
+                  >
+                    <PanelRight className="h-5 w-5" aria-hidden />
+                  </button>
+                  <h3 className="min-w-0 flex-1 text-center text-sm font-medium text-gray-900 truncate px-1">
+                    Image Viewer
+                  </h3>
+                  <span className="shrink-0 text-xs tabular-nums text-gray-500">
+                    {Math.min(imageViewerWidthPx, imageViewerMaxW)}px
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setViewingImage(null)}
+                    className="shrink-0 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    title="Close"
+                  >
+                    <X className="w-5 h-5 text-gray-600" />
+                  </button>
+                </div>
+              </div>
+              <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-gray-50 min-h-0">
+                <img
+                  src={viewingImage}
+                  alt="Viewing"
+                  className="max-w-full h-auto object-contain"
+                />
+              </div>
             </div>
           </div>
         </>

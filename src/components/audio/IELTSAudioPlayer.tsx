@@ -80,36 +80,18 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
     return src;
   }, [src]);
 
-  // Load saved audio position on mount
-  useEffect(() => {
-    if (typeof window === "undefined" || !attemptId || !sectionId) return;
-
-    const storageKey = getAudioTimeStorageKey();
-    if (!storageKey) return;
-
-    try {
-      const savedTime = localStorage.getItem(storageKey);
-      if (savedTime) {
-        const time = parseFloat(savedTime);
-        if (!isNaN(time) && time > 0) {
-          setCurrentTime(time);
-          console.log(`🎧 Loaded saved audio position: ${time.toFixed(2)}s`);
-        }
-      }
-    } catch (error) {
-      console.error("Failed to load saved audio position:", error);
-    }
-  }, [attemptId, sectionId]);
-
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !normalizedSrc) return;
 
     hasLoadedSavedPositionRef.current = false;
+    lastPersistedTimeRef.current = 0;
 
     setError(null);
     setIsPlaying(false);
     setDuration(0);
+    
+    // Load the audio
     audio.load();
 
     const restoreSavedPosition = () => {
@@ -124,41 +106,46 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
       try {
         const savedTime = localStorage.getItem(storageKey);
         if (!savedTime) {
+          console.log("🎧 No saved audio position found");
           hasLoadedSavedPositionRef.current = true;
           return;
         }
 
         const time = parseFloat(savedTime);
-        if (isNaN(time) || time < 0) {
+        if (isNaN(time) || time <= 0) {
+          console.log("🎧 Invalid saved time:", savedTime);
           hasLoadedSavedPositionRef.current = true;
           return;
         }
 
         const dur = audio.duration;
-        if (Number.isFinite(dur) && dur > 0) {
-          // If saved time is at the end, clear it
-          if (time >= dur - 0.5) {
-            localStorage.removeItem(storageKey);
-            hasLoadedSavedPositionRef.current = true;
-            return;
-          }
-          
-          // Restore position
-          if (time > 0 && time < dur) {
-            audio.currentTime = time;
-            setCurrentTime(time);
-            console.log(`🎧 Restored audio position: ${time.toFixed(2)}s / ${dur.toFixed(2)}s`);
-          }
+        console.log(`🎧 Attempting to restore position: ${time.toFixed(2)}s (duration: ${dur ? dur.toFixed(2) : 'unknown'}s)`);
+
+        // If saved time is at the end, clear it
+        if (Number.isFinite(dur) && dur > 0 && time >= dur - 0.5) {
+          localStorage.removeItem(storageKey);
+          console.log("🎧 Saved position is at end of audio, cleared");
+          hasLoadedSavedPositionRef.current = true;
+          return;
+        }
+        
+        // Restore position - try regardless of duration being ready
+        if (Number.isFinite(dur) && dur > 0 && time < dur) {
+          audio.currentTime = time;
+          setCurrentTime(time);
+          lastPersistedTimeRef.current = time;
+          console.log(`✅ Restored audio position: ${time.toFixed(2)}s / ${dur.toFixed(2)}s`);
+          hasLoadedSavedPositionRef.current = true;
         } else if (time > 0) {
           // Duration not ready yet, try anyway
           audio.currentTime = time;
           setCurrentTime(time);
-          console.log(`🎧 Restored audio position (no duration yet): ${time.toFixed(2)}s`);
+          lastPersistedTimeRef.current = time;
+          console.log(`✅ Restored audio position (no duration yet): ${time.toFixed(2)}s`);
+          hasLoadedSavedPositionRef.current = true;
         }
-        
-        hasLoadedSavedPositionRef.current = true;
       } catch (error) {
-        console.error("Failed to restore audio position:", error);
+        console.error("❌ Failed to restore audio position:", error);
         hasLoadedSavedPositionRef.current = true;
       }
     };
@@ -167,9 +154,15 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
       const storageKey = getAudioTimeStorageKey();
       if (!storageKey || typeof window === "undefined" || !audio) return;
       
+      // CRITICAL: Don't persist until we've loaded the saved position
+      // Otherwise we'll overwrite the saved position with 0
+      if (!hasLoadedSavedPositionRef.current) {
+        console.log("⏸️ Skipping persist - haven't loaded saved position yet");
+        return;
+      }
+      
       const currentTime = audio.currentTime;
-      // Only persist if we have a valid time and we've loaded the saved position
-      if (!hasLoadedSavedPositionRef.current || !isFinite(currentTime) || currentTime < 0) return;
+      if (!isFinite(currentTime) || currentTime < 0) return;
       
       // Only persist if the time has changed by at least 0.5 seconds
       if (Math.abs(currentTime - lastPersistedTimeRef.current) < 0.5) return;
@@ -177,6 +170,7 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
       try {
         localStorage.setItem(storageKey, currentTime.toString());
         lastPersistedTimeRef.current = currentTime;
+        console.log(`💾 Saved audio position: ${currentTime.toFixed(2)}s`);
       } catch (error) {
         console.error("Failed to persist audio time:", error);
       }
@@ -191,17 +185,29 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
     };
 
     const onLoadedMetadata = () => {
-      setDuration(audio.duration);
-      console.log(`🎧 Audio metadata loaded, duration: ${audio.duration.toFixed(2)}s`);
-      restoreSavedPosition();
+      const dur = audio.duration;
+      setDuration(dur);
+      console.log(`🎧 Audio metadata loaded, duration: ${dur.toFixed(2)}s`);
+      // Try to restore position
+      if (!hasLoadedSavedPositionRef.current) {
+        restoreSavedPosition();
+      }
     };
 
     const onLoadedData = () => {
-      restoreSavedPosition();
+      console.log("🎧 Audio data loaded");
+      // Try to restore position if not already done
+      if (!hasLoadedSavedPositionRef.current) {
+        restoreSavedPosition();
+      }
     };
 
     const onCanPlay = () => {
-      restoreSavedPosition();
+      console.log("🎧 Audio can play");
+      // Final attempt to restore position
+      if (!hasLoadedSavedPositionRef.current) {
+        restoreSavedPosition();
+      }
     };
 
     const onEnded = () => {
@@ -247,10 +253,13 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
     const onPageHide = () => {
       // Force persist on page hide/refresh
       const storageKey = getAudioTimeStorageKey();
-      if (storageKey && typeof window !== "undefined" && audio) {
+      if (storageKey && typeof window !== "undefined" && audio && hasLoadedSavedPositionRef.current) {
         try {
-          localStorage.setItem(storageKey, audio.currentTime.toString());
-          console.log(`🎧 Page hide: saved position ${audio.currentTime.toFixed(2)}s`);
+          const currentTime = audio.currentTime;
+          if (isFinite(currentTime) && currentTime > 0) {
+            localStorage.setItem(storageKey, currentTime.toString());
+            console.log(`💾 Page hide: saved position ${currentTime.toFixed(2)}s`);
+          }
         } catch {
           /* ignore */
         }
@@ -260,10 +269,13 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
     const onBeforeUnload = () => {
       // Force persist on page unload
       const storageKey = getAudioTimeStorageKey();
-      if (storageKey && typeof window !== "undefined" && audio) {
+      if (storageKey && typeof window !== "undefined" && audio && hasLoadedSavedPositionRef.current) {
         try {
-          localStorage.setItem(storageKey, audio.currentTime.toString());
-          console.log(`🎧 Before unload: saved position ${audio.currentTime.toFixed(2)}s`);
+          const currentTime = audio.currentTime;
+          if (isFinite(currentTime) && currentTime > 0) {
+            localStorage.setItem(storageKey, currentTime.toString());
+            console.log(`💾 Before unload: saved position ${currentTime.toFixed(2)}s`);
+          }
         } catch {
           /* ignore */
         }
@@ -287,7 +299,22 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
     }
 
     return () => {
-      persistCurrentTime();
+      // Force persist on cleanup
+      if (hasLoadedSavedPositionRef.current) {
+        const storageKey = getAudioTimeStorageKey();
+        if (storageKey && typeof window !== "undefined" && audio) {
+          try {
+            const currentTime = audio.currentTime;
+            if (isFinite(currentTime) && currentTime > 0) {
+              localStorage.setItem(storageKey, currentTime.toString());
+              console.log(`💾 Component cleanup: saved position ${currentTime.toFixed(2)}s`);
+            }
+          } catch {
+            /* ignore */
+          }
+        }
+      }
+      
       audio.removeEventListener("timeupdate", onTimeUpdate);
       audio.removeEventListener("loadedmetadata", onLoadedMetadata);
       audio.removeEventListener("loadeddata", onLoadedData);
