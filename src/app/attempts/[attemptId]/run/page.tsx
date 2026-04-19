@@ -364,6 +364,10 @@ export default function AttemptRunnerPage() {
         if (section.type === "LISTENING" && data.examCategory === "IELTS") {
           const ieltsTimerKey = `ielts_listening_timer_${attemptId}_${section.id}`;
           localStorage.removeItem(ieltsTimerKey);
+          
+          // Clear IELTS Listening audio time
+          const audioTimeKey = `audio_time_${attemptId}_${section.id}`;
+          localStorage.removeItem(audioTimeKey);
         }
         // Clear IELTS Reading timers
         if (section.type === "READING" && data.examCategory === "IELTS") {
