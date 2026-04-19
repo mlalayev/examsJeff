@@ -100,26 +100,28 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
       const storageKey = getAudioTimeStorageKey();
       if (!storageKey || typeof window === "undefined") {
         hasLoadedSavedPositionRef.current = true;
+        console.log("🎧 No storage key available");
         return;
       }
 
       try {
         const savedTime = localStorage.getItem(storageKey);
         if (!savedTime) {
-          console.log("🎧 No saved audio position found");
+          console.log("🎧 No saved audio position found - starting from beginning");
           hasLoadedSavedPositionRef.current = true;
           return;
         }
 
         const time = parseFloat(savedTime);
         if (isNaN(time) || time <= 0) {
-          console.log("🎧 Invalid saved time:", savedTime);
+          console.log(`🎧 Invalid or zero saved time (${savedTime}), clearing and starting from beginning`);
+          localStorage.removeItem(storageKey);
           hasLoadedSavedPositionRef.current = true;
           return;
         }
 
         const dur = audio.duration;
-        console.log(`🎧 Attempting to restore position: ${time.toFixed(2)}s (duration: ${dur ? dur.toFixed(2) : 'unknown'}s)`);
+        console.log(`🎧 Attempting to restore position: ${time.toFixed(2)}s (duration: ${dur && isFinite(dur) ? dur.toFixed(2) : 'unknown'}s)`);
 
         // If saved time is at the end, clear it
         if (Number.isFinite(dur) && dur > 0 && time >= dur - 0.5) {
@@ -162,7 +164,12 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
       }
       
       const currentTime = audio.currentTime;
-      if (!isFinite(currentTime) || currentTime < 0) return;
+      
+      // Don't save if time is 0 or invalid
+      if (!isFinite(currentTime) || currentTime <= 0) {
+        console.log(`⏸️ Skipping persist - invalid time: ${currentTime}`);
+        return;
+      }
       
       // Only persist if the time has changed by at least 0.5 seconds
       if (Math.abs(currentTime - lastPersistedTimeRef.current) < 0.5) return;
@@ -350,12 +357,13 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
     audio.currentTime = 0;
     setCurrentTime(0);
     
-    // Persist the restart
+    // Clear saved position on restart (don't save 0)
     const storageKey = getAudioTimeStorageKey();
     if (storageKey && typeof window !== "undefined") {
       try {
-        localStorage.setItem(storageKey, "0");
+        localStorage.removeItem(storageKey);
         lastPersistedTimeRef.current = 0;
+        console.log("🔄 Restarted audio, cleared saved position");
       } catch {
         /* ignore */
       }
@@ -368,14 +376,29 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
     const newTime = Math.max(0, audio.currentTime - 10);
     audio.currentTime = newTime;
     
-    // Persist immediately
-    const storageKey = getAudioTimeStorageKey();
-    if (storageKey && typeof window !== "undefined") {
-      try {
-        localStorage.setItem(storageKey, newTime.toString());
-        lastPersistedTimeRef.current = newTime;
-      } catch {
-        /* ignore */
+    // Only persist if greater than 0
+    if (newTime > 0) {
+      const storageKey = getAudioTimeStorageKey();
+      if (storageKey && typeof window !== "undefined") {
+        try {
+          localStorage.setItem(storageKey, newTime.toString());
+          lastPersistedTimeRef.current = newTime;
+          console.log(`💾 Skipped backward to: ${newTime.toFixed(2)}s`);
+        } catch {
+          /* ignore */
+        }
+      }
+    } else {
+      // If we skipped back to 0, clear the saved position
+      const storageKey = getAudioTimeStorageKey();
+      if (storageKey && typeof window !== "undefined") {
+        try {
+          localStorage.removeItem(storageKey);
+          lastPersistedTimeRef.current = 0;
+          console.log("🔄 Skipped to start, cleared saved position");
+        } catch {
+          /* ignore */
+        }
       }
     }
   };
@@ -387,13 +410,16 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
     audio.currentTime = newTime;
     
     // Persist immediately
-    const storageKey = getAudioTimeStorageKey();
-    if (storageKey && typeof window !== "undefined") {
-      try {
-        localStorage.setItem(storageKey, newTime.toString());
-        lastPersistedTimeRef.current = newTime;
-      } catch {
-        /* ignore */
+    if (newTime > 0) {
+      const storageKey = getAudioTimeStorageKey();
+      if (storageKey && typeof window !== "undefined") {
+        try {
+          localStorage.setItem(storageKey, newTime.toString());
+          lastPersistedTimeRef.current = newTime;
+          console.log(`💾 Skipped forward to: ${newTime.toFixed(2)}s`);
+        } catch {
+          /* ignore */
+        }
       }
     }
   };
@@ -410,14 +436,28 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
     audio.currentTime = newTime;
     setCurrentTime(newTime);
     
-    // Persist immediately when seeking
-    const storageKey = getAudioTimeStorageKey();
-    if (storageKey && typeof window !== "undefined") {
-      try {
-        localStorage.setItem(storageKey, newTime.toString());
-        lastPersistedTimeRef.current = newTime;
-      } catch {
-        /* ignore */
+    // Persist immediately when seeking (only if > 0)
+    if (newTime > 0) {
+      const storageKey = getAudioTimeStorageKey();
+      if (storageKey && typeof window !== "undefined") {
+        try {
+          localStorage.setItem(storageKey, newTime.toString());
+          lastPersistedTimeRef.current = newTime;
+          console.log(`💾 Seeked to: ${newTime.toFixed(2)}s`);
+        } catch {
+          /* ignore */
+        }
+      }
+    } else {
+      // If seeking to 0, clear saved position
+      const storageKey = getAudioTimeStorageKey();
+      if (storageKey && typeof window !== "undefined") {
+        try {
+          localStorage.removeItem(storageKey);
+          lastPersistedTimeRef.current = 0;
+        } catch {
+          /* ignore */
+        }
       }
     }
   };
