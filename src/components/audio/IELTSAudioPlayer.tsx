@@ -250,24 +250,29 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
       const dur = audio.duration;
       setDuration(dur);
       console.log(`🎧 Audio metadata loaded, duration: ${dur.toFixed(2)}s`);
-      // Don't restore immediately - wait for all load events
     };
 
     const onLoadedData = () => {
-      console.log("🎧 Audio data loaded");
-      // Don't restore here either
+      console.log("🎧 Audio data loaded - enough data buffered");
+      // Now we can safely restore position
+      if (!hasLoadedSavedPositionRef.current) {
+        restoreSavedPosition();
+      }
     };
 
     const onCanPlay = () => {
       console.log("🎧 Audio can play");
-      // Restore position here - this is the final loading event
+      // Backup restoration if loadeddata didn't fire
       if (!hasLoadedSavedPositionRef.current) {
-        // Use setTimeout to ensure load() has completely finished
-        setTimeout(() => {
-          if (!hasLoadedSavedPositionRef.current) {
-            restoreSavedPosition();
-          }
-        }, 50);
+        restoreSavedPosition();
+      }
+    };
+    
+    const onCanPlayThrough = () => {
+      console.log("🎧 Audio can play through (fully buffered)");
+      // Final restoration attempt
+      if (!hasLoadedSavedPositionRef.current) {
+        restoreSavedPosition();
       }
     };
 
@@ -350,6 +355,7 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
     audio.addEventListener("loadedmetadata", onLoadedMetadata);
     audio.addEventListener("loadeddata", onLoadedData);
     audio.addEventListener("canplay", onCanPlay);
+    audio.addEventListener("canplaythrough", onCanPlayThrough);
     audio.addEventListener("ended", onEnded);
     audio.addEventListener("play", onPlay);
     audio.addEventListener("pause", onPause);
@@ -383,6 +389,7 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
       audio.removeEventListener("loadedmetadata", onLoadedMetadata);
       audio.removeEventListener("loadeddata", onLoadedData);
       audio.removeEventListener("canplay", onCanPlay);
+      audio.removeEventListener("canplaythrough", onCanPlayThrough);
       audio.removeEventListener("ended", onEnded);
       audio.removeEventListener("play", onPlay);
       audio.removeEventListener("pause", onPause);
@@ -601,7 +608,7 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
       <audio
         ref={audioRef}
         src={normalizedSrc || undefined}
-        preload="metadata"
+        preload="auto"
       />
 
       {/* Controls Row */}
