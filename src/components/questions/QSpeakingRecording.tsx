@@ -18,6 +18,10 @@ interface QSpeakingRecordingProps {
   attemptId?: string;
   speakingPart?: number;
   onRecordingComplete?: () => void;
+  /** Fired when the mic capture has finished (before transcription). Enables “Next” early on IELTS run. */
+  onRecordingStopped?: () => void;
+  /** IELTS exam run: do not show transcribed text; softer “saving” copy instead of “speech to text”. */
+  ieltsExamSpeakingMinimalUi?: boolean;
   autoStart?: boolean;
   /** When set (IELTS attempt run page), one shared countdown: prep/think + speaking */
   questionSecondsLeft?: number;
@@ -40,6 +44,8 @@ export function QSpeakingRecording({
   attemptId,
   speakingPart,
   onRecordingComplete,
+  onRecordingStopped,
+  ieltsExamSpeakingMinimalUi = false,
   autoStart = false,
   questionSecondsLeft,
 }: QSpeakingRecordingProps) {
@@ -253,6 +259,7 @@ export function QSpeakingRecording({
       };
 
       mediaRecorder.onstop = async () => {
+        onRecordingStopped?.();
         await transcribeAudio();
       };
 
@@ -538,17 +545,23 @@ export function QSpeakingRecording({
     );
   };
 
-  // If completed with text answer - show question + answer
+  // If completed with text answer - show question + answer (or minimal confirmation for IELTS exam)
   if (value && value.trim()) {
     return (
       <div className="space-y-3">
         <div className="rounded-lg border border-gray-200 bg-white px-5 py-4">
           {formatSpeakingPrompt(question.prompt?.text || "Speaking question")}
         </div>
-        <div className="rounded-lg border border-green-200 bg-green-50 px-5 py-4">
-          <p className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-2">Your Answer (Transcribed):</p>
-          <p className="text-sm text-gray-800 whitespace-pre-line">{value}</p>
-        </div>
+        {ieltsExamSpeakingMinimalUi ? (
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-5 py-3">
+            <p className="text-sm font-medium text-emerald-900">Your response has been saved.</p>
+          </div>
+        ) : (
+          <div className="rounded-lg border border-green-200 bg-green-50 px-5 py-4">
+            <p className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-2">Your Answer (Transcribed):</p>
+            <p className="text-sm text-gray-800 whitespace-pre-line">{value}</p>
+          </div>
+        )}
       </div>
     );
   }
@@ -584,7 +597,9 @@ export function QSpeakingRecording({
               {status === "transcribing" && (
                 <>
                   <Loader2 className="w-4 h-4 shrink-0 text-[#303380] animate-spin mt-0.5" />
-                  <span className="text-sm font-medium text-[#303380]">Converting speech to text…</span>
+                  <span className="text-sm font-medium text-[#303380]">
+                    {ieltsExamSpeakingMinimalUi ? "Saving your response…" : "Converting speech to text…"}
+                  </span>
                 </>
               )}
               {status === "reading" && (
@@ -644,7 +659,9 @@ export function QSpeakingRecording({
               {status === "transcribing" && (
                 <>
                   <Loader2 className="w-5 h-5 text-[#303380] animate-spin" />
-                  <span className="text-sm font-medium text-[#303380]">Converting speech to text...</span>
+                  <span className="text-sm font-medium text-[#303380]">
+                    {ieltsExamSpeakingMinimalUi ? "Saving your response…" : "Converting speech to text..."}
+                  </span>
                 </>
               )}
             </div>
