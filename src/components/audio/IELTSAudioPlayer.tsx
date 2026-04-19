@@ -240,12 +240,34 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
     };
 
     const onSeeking = () => {
-      console.log(`🎧 Seeking to: ${audio.currentTime.toFixed(2)}s`);
+      const currentTime = audio.currentTime;
+      console.log(`🎧 Seeking to: ${currentTime.toFixed(2)}s`);
+      
+      // CRITICAL FIX: If we just restored a position and audio is seeking to 0, restore it again
+      if (hasLoadedSavedPositionRef.current && currentTime === 0 && lastPersistedTimeRef.current > 0) {
+        console.log(`⚠️ Prevented unwanted seek to 0, restoring to: ${lastPersistedTimeRef.current.toFixed(2)}s`);
+        // Use setTimeout to let the seek event complete first
+        setTimeout(() => {
+          if (audio.currentTime === 0) {
+            audio.currentTime = lastPersistedTimeRef.current;
+            setCurrentTime(lastPersistedTimeRef.current);
+          }
+        }, 0);
+      }
     };
 
     const onSeeked = () => {
-      console.log(`🎧 Seeked to: ${audio.currentTime.toFixed(2)}s`);
-      persistCurrentTime();
+      const currentTime = audio.currentTime;
+      console.log(`🎧 Seeked to: ${currentTime.toFixed(2)}s`);
+      
+      // CRITICAL FIX: If we ended up at 0 but should be elsewhere, restore it
+      if (hasLoadedSavedPositionRef.current && currentTime === 0 && lastPersistedTimeRef.current > 0) {
+        console.log(`⚠️ Correcting unwanted seek to 0, restoring to: ${lastPersistedTimeRef.current.toFixed(2)}s`);
+        audio.currentTime = lastPersistedTimeRef.current;
+        setCurrentTime(lastPersistedTimeRef.current);
+      } else {
+        persistCurrentTime();
+      }
     };
 
     const onError = (e: Event) => {
