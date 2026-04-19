@@ -6,9 +6,11 @@ import { Play, Pause, RotateCcw, SkipBack, SkipForward } from "lucide-react";
 interface IELTSAudioPlayerProps {
   src?: string | null;
   className?: string;
+  attemptId?: string; // For localStorage persistence
+  sectionId?: string; // For localStorage persistence
 }
 
-export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({ src, className = "" }) => {
+export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({ src, className = "", attemptId, sectionId }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -16,6 +18,12 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({ src, classNa
   const [duration, setDuration] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Get localStorage key for audio time
+  const getAudioTimeStorageKey = () => {
+    if (!attemptId || !sectionId) return null;
+    return `audio_time_${attemptId}_${sectionId}`;
+  };
 
   // Normalize audio URL - memoized to prevent infinite re-renders
   const normalizedSrc = React.useMemo(() => {
@@ -63,10 +71,27 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({ src, classNa
     const onTimeUpdate = () => {
       if (!isDragging) {
         setCurrentTime(audio.currentTime);
+        // Save current time to localStorage
+        const storageKey = getAudioTimeStorageKey();
+        if (storageKey && typeof window !== "undefined") {
+          localStorage.setItem(storageKey, audio.currentTime.toString());
+        }
       }
     };
     const onLoadedMetadata = () => {
       setDuration(audio.duration);
+      // Restore saved audio time on load
+      const storageKey = getAudioTimeStorageKey();
+      if (storageKey && typeof window !== "undefined") {
+        const savedTime = localStorage.getItem(storageKey);
+        if (savedTime) {
+          const time = parseFloat(savedTime);
+          if (!isNaN(time) && time > 0 && time < audio.duration) {
+            audio.currentTime = time;
+            setCurrentTime(time);
+          }
+        }
+      }
     };
     const onEnded = () => setIsPlaying(false);
     const onPlay = () => {
@@ -99,7 +124,7 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({ src, classNa
       audio.removeEventListener("pause", onPause);
       audio.removeEventListener("error", onError);
     };
-  }, [normalizedSrc, isDragging]);
+  }, [normalizedSrc, isDragging, attemptId, sectionId]);
 
   const handlePlayPause = () => {
     const audio = audioRef.current;
@@ -264,50 +289,27 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({ src, classNa
         </div>
       </div>
 
-      {/* Interactive Waveform-style Progress Bar */}
+      {/* Simple Progress Bar */}
       <div className="space-y-2">
         <div 
           ref={progressBarRef}
-          className="relative h-20 rounded-lg bg-gradient-to-b from-gray-50 to-gray-100 overflow-hidden cursor-pointer group border border-gray-200 hover:border-[#303380] transition-colors"
+          className="relative h-2 rounded-full bg-gray-200 overflow-hidden cursor-pointer group hover:h-3 transition-all"
           onClick={handleProgressClick}
           onMouseDown={handleMouseDown}
           title="Audio üzərinə klikləyərək istədiyiniz yerə keçin"
         >
-          {/* Waveform visualization */}
-          <div className="absolute inset-0 flex items-center justify-around px-1">
-            {Array.from({ length: 60 }).map((_, i) => {
-              const height = Math.sin(i * 0.5) * 30 + 40;
-              const isPast = (i / 60) * 100 <= progressPct;
-              return (
-                <div
-                  key={i}
-                  className={`w-0.5 rounded-full transition-colors ${
-                    isPast 
-                      ? 'bg-[#303380]' 
-                      : 'bg-gray-300'
-                  }`}
-                  style={{ height: `${height}%` }}
-                />
-              );
-            })}
-          </div>
-
+          {/* Progress fill */}
+          <div 
+            className="absolute top-0 left-0 bottom-0 bg-[#303380] transition-all"
+            style={{ width: `${progressPct}%` }}
+          />
+          
           {/* Current position indicator */}
           <div 
-            className="absolute top-0 bottom-0 w-1 bg-[#303380] shadow-lg z-10"
-            style={{ left: `${progressPct}%` }}
-          >
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 bg-white border-2 border-[#303380] rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity" />
-          </div>
-
-          {/* Hover effect */}
-          <div className="absolute inset-0 bg-[#303380] opacity-0 group-hover:opacity-5 transition-opacity pointer-events-none" />
+            className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white border-2 border-[#303380] rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+            style={{ left: `${progressPct}%`, transform: `translateX(-50%) translateY(-50%)` }}
+          />
         </div>
-
-        {/* Helper Text */}
-        <p className="text-xs text-gray-500 text-center">
-          Audio dalğalarının üzərinə klikləyərək və ya sürüşdürərək istədiyiniz yerə keçə bilərsiniz
-        </p>
       </div>
     </div>
   );
