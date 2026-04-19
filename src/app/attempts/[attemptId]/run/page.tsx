@@ -104,6 +104,7 @@ export default function AttemptRunnerPage() {
   const [speakingSecondsLeft, setSpeakingSecondsLeft] = useState(() =>
     totalSecondsForSpeakingPart(1)
   );
+  const [speakingRecordingCompleted, setSpeakingRecordingCompleted] = useState<Set<string>>(new Set()); // Track completed recordings by question ID
   const [viewingImage, setViewingImage] = useState<string | null>(null); // Image viewer
   const [imageViewerDock, setImageViewerDock] = useState<"left" | "right">("right");
   const [imageViewerWidthPx, setImageViewerWidthPx] = useState(350);
@@ -960,19 +961,23 @@ export default function AttemptRunnerPage() {
        }
        case "FILL_IN_BLANK":
          return <QFillInBlank {...props} />;
-       case "SPEAKING_RECORDING":
-         return (
-           <QSpeakingRecording
-             {...props}
-             attemptId={attemptId}
-             speakingPart={sectionType === "SPEAKING" ? speakingPart : undefined}
-             questionSecondsLeft={
-               sectionType === "SPEAKING" && data?.examCategory === "IELTS"
-                 ? speakingSecondsLeft
-                 : undefined
-             }
-           />
-         );
+      case "SPEAKING_RECORDING":
+        return (
+          <QSpeakingRecording
+            {...props}
+            attemptId={attemptId}
+            speakingPart={sectionType === "SPEAKING" ? speakingPart : undefined}
+            questionSecondsLeft={
+              sectionType === "SPEAKING" && data?.examCategory === "IELTS"
+                ? speakingSecondsLeft
+                : undefined
+            }
+            onRecordingComplete={() => {
+              console.log("🎤 Recording completed for question:", q.id);
+              setSpeakingRecordingCompleted(prev => new Set(prev).add(q.id));
+            }}
+          />
+        );
        case "IMAGE_INTERACTIVE":
          return <QImageInteractive {...props} />;
        default:
@@ -1450,16 +1455,18 @@ export default function AttemptRunnerPage() {
   const ieltsSpeakingCanGoNext = useMemo(() => {
     if (data?.examCategory !== "IELTS" || !currentSection || currentSection.type !== "SPEAKING") return false;
     if (!currentIeltsSpeakingQuestionId) return false;
-    const ans = answers[currentSection.id]?.[currentIeltsSpeakingQuestionId];
-    const answered = typeof ans === "string" && ans.trim().length > 0;
-    const canGoNext = speakingSecondsLeft === 0 || answered;
+    
+    // Check if recording is completed for this question
+    const recordingCompleted = speakingRecordingCompleted.has(currentIeltsSpeakingQuestionId);
+    const timeUp = speakingSecondsLeft === 0;
+    const canGoNext = timeUp || recordingCompleted;
     
     // Debug log
     console.log("🎤 Speaking Next Button Status:", {
       questionId: currentIeltsSpeakingQuestionId,
-      answerValue: ans,
-      answered,
+      recordingCompleted,
       speakingSecondsLeft,
+      timeUp,
       canGoNext
     });
     
@@ -1468,7 +1475,7 @@ export default function AttemptRunnerPage() {
     data?.examCategory,
     currentSection,
     currentIeltsSpeakingQuestionId,
-    answers,
+    speakingRecordingCompleted,
     speakingSecondsLeft,
   ]);
 
