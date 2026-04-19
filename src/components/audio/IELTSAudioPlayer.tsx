@@ -299,35 +299,57 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
       audio.pause();
     } else {
       // CRITICAL: Check localStorage and restore position BEFORE playing
+      console.log(`🎵 Play button pressed. hasChecked: ${hasCheckedSavedPositionRef.current}`);
+      
       if (!hasCheckedSavedPositionRef.current) {
         const storageKey = getAudioTimeStorageKey();
+        console.log(`🔑 Storage key: ${storageKey}`);
+        
         if (storageKey && typeof window !== "undefined") {
           try {
             const savedTime = localStorage.getItem(storageKey);
+            console.log(`📦 Retrieved from localStorage: ${savedTime}`);
+            
             if (savedTime) {
               const time = parseFloat(savedTime);
+              console.log(`⏱️ Parsed time: ${time}`);
+              
               if (!isNaN(time) && time > 0) {
                 const dur = audio.duration;
+                console.log(`🎧 Audio duration: ${dur}, time to restore: ${time}`);
+                
                 // Only restore if within valid range
                 if (Number.isFinite(dur) && dur > 0 && time < dur - 0.5) {
+                  console.log(`✅ Restoring to ${time.toFixed(2)}s`);
                   audio.currentTime = time;
                   setCurrentTime(time);
                   lastPersistedTimeRef.current = time;
                   console.log(`✅ Restored audio position on play: ${time.toFixed(2)}s / ${dur.toFixed(2)}s`);
                 } else if (time > 0 && (!Number.isFinite(dur) || dur === 0)) {
                   // Duration not ready yet, try anyway
+                  console.log(`✅ Restoring without duration check: ${time.toFixed(2)}s`);
                   audio.currentTime = time;
                   setCurrentTime(time);
                   lastPersistedTimeRef.current = time;
                   console.log(`✅ Restored audio position on play (no duration yet): ${time.toFixed(2)}s`);
+                } else {
+                  console.log(`⚠️ Time ${time} out of range or duration ${dur} invalid`);
                 }
+              } else {
+                console.log(`⚠️ Invalid time value: ${time}`);
               }
+            } else {
+              console.log(`ℹ️ No saved time found in localStorage`);
             }
           } catch (error) {
             console.error("❌ Failed to restore audio position on play:", error);
           }
+        } else {
+          console.log(`⚠️ No storage key or window undefined`);
         }
         hasCheckedSavedPositionRef.current = true;
+      } else {
+        console.log(`ℹ️ Already checked localStorage, not checking again`);
       }
       
       audio.play().catch((err) => console.error("Audio play error:", err));
