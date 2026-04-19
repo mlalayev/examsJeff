@@ -18,10 +18,6 @@ interface QSpeakingRecordingProps {
   attemptId?: string;
   speakingPart?: number;
   onRecordingComplete?: () => void;
-  /** Fired when the mic capture has finished (before transcription). Enables “Next” early on IELTS run. */
-  onRecordingStopped?: () => void;
-  /** IELTS exam run: do not show transcribed text; softer “saving” copy instead of “speech to text”. */
-  ieltsExamSpeakingMinimalUi?: boolean;
   autoStart?: boolean;
   /** When set (IELTS attempt run page), one shared countdown: prep/think + speaking */
   questionSecondsLeft?: number;
@@ -44,8 +40,6 @@ export function QSpeakingRecording({
   attemptId,
   speakingPart,
   onRecordingComplete,
-  onRecordingStopped,
-  ieltsExamSpeakingMinimalUi = false,
   autoStart = false,
   questionSecondsLeft,
 }: QSpeakingRecordingProps) {
@@ -259,7 +253,6 @@ export function QSpeakingRecording({
       };
 
       mediaRecorder.onstop = async () => {
-        onRecordingStopped?.();
         await transcribeAudio();
       };
 
@@ -371,12 +364,13 @@ export function QSpeakingRecording({
         textLength: data.text?.length || 0
       });
 
+      // Set status to completed FIRST, before calling onChange
+      setStatus("completed");
+
       if (onChange) {
         onChange(data.text || "");
         console.log("🎤 onChange callback called with transcribed text");
       }
-
-      setStatus("completed");
       
       if (onRecordingComplete) {
         onRecordingComplete();
@@ -545,23 +539,22 @@ export function QSpeakingRecording({
     );
   };
 
-  // If completed with text answer - show question + answer (or minimal confirmation for IELTS exam)
-  if (value && value.trim()) {
+  // If completed with text answer - DON'T show transcription (just show recording complete message)
+  // Transcription is saved but not displayed to the user
+  if (status === "completed" || (value && value.trim() && readOnly)) {
     return (
       <div className="space-y-3">
         <div className="rounded-lg border border-gray-200 bg-white px-5 py-4">
           {formatSpeakingPrompt(question.prompt?.text || "Speaking question")}
         </div>
-        {ieltsExamSpeakingMinimalUi ? (
-          <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-5 py-3">
-            <p className="text-sm font-medium text-emerald-900">Your response has been saved.</p>
+        <div className="rounded-lg border border-green-200 bg-green-50 px-5 py-4">
+          <div className="flex items-center gap-2">
+            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <p className="text-sm font-semibold text-green-700">Recording completed and saved</p>
           </div>
-        ) : (
-          <div className="rounded-lg border border-green-200 bg-green-50 px-5 py-4">
-            <p className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-2">Your Answer (Transcribed):</p>
-            <p className="text-sm text-gray-800 whitespace-pre-line">{value}</p>
-          </div>
-        )}
+        </div>
       </div>
     );
   }
@@ -597,9 +590,7 @@ export function QSpeakingRecording({
               {status === "transcribing" && (
                 <>
                   <Loader2 className="w-4 h-4 shrink-0 text-[#303380] animate-spin mt-0.5" />
-                  <span className="text-sm font-medium text-[#303380]">
-                    {ieltsExamSpeakingMinimalUi ? "Saving your response…" : "Converting speech to text…"}
-                  </span>
+                  <span className="text-sm font-medium text-[#303380]">Converting speech to text…</span>
                 </>
               )}
               {status === "reading" && (
@@ -659,9 +650,7 @@ export function QSpeakingRecording({
               {status === "transcribing" && (
                 <>
                   <Loader2 className="w-5 h-5 text-[#303380] animate-spin" />
-                  <span className="text-sm font-medium text-[#303380]">
-                    {ieltsExamSpeakingMinimalUi ? "Saving your response…" : "Converting speech to text..."}
-                  </span>
+                  <span className="text-sm font-medium text-[#303380]">Converting speech to text...</span>
                 </>
               )}
             </div>

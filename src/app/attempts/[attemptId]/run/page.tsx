@@ -104,8 +104,6 @@ export default function AttemptRunnerPage() {
   const [speakingSecondsLeft, setSpeakingSecondsLeft] = useState(() =>
     totalSecondsForSpeakingPart(1)
   );
-  /** IELTS Speaking: mic segment finished (before transcript); allows Next without waiting for transcription. */
-  const [ieltsSpeakingRecordingStopped, setIeltsSpeakingRecordingStopped] = useState(false);
   const [viewingImage, setViewingImage] = useState<string | null>(null); // Image viewer
   const [imageViewerDock, setImageViewerDock] = useState<"left" | "right">("right");
   const [imageViewerWidthPx, setImageViewerWidthPx] = useState(350);
@@ -973,14 +971,6 @@ export default function AttemptRunnerPage() {
                  ? speakingSecondsLeft
                  : undefined
              }
-             onRecordingStopped={
-               sectionType === "SPEAKING" && data?.examCategory === "IELTS"
-                 ? onIeltsSpeakingRecordingStopped
-                 : undefined
-             }
-             ieltsExamSpeakingMinimalUi={
-               !!(sectionType === "SPEAKING" && data?.examCategory === "IELTS")
-             }
            />
          );
        case "IMAGE_INTERACTIVE":
@@ -1001,7 +991,6 @@ export default function AttemptRunnerPage() {
       data?.sections,
       activeSection,
       speakingCurrentQuestionIndex,
-      onIeltsSpeakingRecordingStopped,
     ]
   );
 
@@ -1458,32 +1447,29 @@ export default function AttemptRunnerPage() {
     return list[speakingCurrentQuestionIndex]?.id ?? null;
   }, [currentSection, speakingPartQuestions, speakingPart, speakingCurrentQuestionIndex]);
 
-  useEffect(() => {
-    setIeltsSpeakingRecordingStopped(false);
-  }, [currentIeltsSpeakingQuestionId, speakingPart]);
-
-  const onIeltsSpeakingRecordingStopped = useCallback(() => {
-    setIeltsSpeakingRecordingStopped(true);
-  }, []);
-
   const ieltsSpeakingCanGoNext = useMemo(() => {
     if (data?.examCategory !== "IELTS" || !currentSection || currentSection.type !== "SPEAKING") return false;
     if (!currentIeltsSpeakingQuestionId) return false;
     const ans = answers[currentSection.id]?.[currentIeltsSpeakingQuestionId];
-    const answered =
-      (typeof ans === "string" && ans.trim().length > 0) ||
-      (typeof ans === "object" &&
-        ans !== null &&
-        typeof (ans as { transcript?: string }).transcript === "string" &&
-        (ans as { transcript: string }).transcript.trim().length > 0);
-    return speakingSecondsLeft === 0 || answered || ieltsSpeakingRecordingStopped;
+    const answered = typeof ans === "string" && ans.trim().length > 0;
+    const canGoNext = speakingSecondsLeft === 0 || answered;
+    
+    // Debug log
+    console.log("🎤 Speaking Next Button Status:", {
+      questionId: currentIeltsSpeakingQuestionId,
+      answerValue: ans,
+      answered,
+      speakingSecondsLeft,
+      canGoNext
+    });
+    
+    return canGoNext;
   }, [
     data?.examCategory,
     currentSection,
     currentIeltsSpeakingQuestionId,
     answers,
     speakingSecondsLeft,
-    ieltsSpeakingRecordingStopped,
   ]);
 
   const handleIELTSSpeakingNext = useCallback(() => {
