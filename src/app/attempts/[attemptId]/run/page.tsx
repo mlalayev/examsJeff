@@ -1453,36 +1453,20 @@ export default function AttemptRunnerPage() {
   }, [currentSection, speakingPartQuestions, speakingPart, speakingCurrentQuestionIndex]);
 
   const ieltsSpeakingCanGoNext = useMemo(() => {
+    // ALWAYS return true - Next button should always be enabled
     if (data?.examCategory !== "IELTS" || !currentSection || currentSection.type !== "SPEAKING") return false;
     if (!currentIeltsSpeakingQuestionId) return false;
-    
-    // Check if recording is completed for this question
-    const recordingCompleted = speakingRecordingCompleted.has(currentIeltsSpeakingQuestionId);
-    const timeUp = speakingSecondsLeft === 0;
-    const canGoNext = timeUp || recordingCompleted;
-    
-    // Debug log
-    console.log("🎤 Speaking Next Button Status:", {
-      questionId: currentIeltsSpeakingQuestionId,
-      recordingCompleted,
-      speakingSecondsLeft,
-      timeUp,
-      canGoNext
-    });
-    
-    return canGoNext;
+    return true; // Always enabled
   }, [
     data?.examCategory,
     currentSection,
     currentIeltsSpeakingQuestionId,
-    speakingRecordingCompleted,
-    speakingSecondsLeft,
   ]);
 
   const handleIELTSSpeakingNext = useCallback(() => {
-    if (!ieltsSpeakingCanGoNext) return;
+    // No check - always allow next
     advanceIeltsSpeakingQuestion();
-  }, [ieltsSpeakingCanGoNext, advanceIeltsSpeakingQuestion]);
+  }, [advanceIeltsSpeakingQuestion]);
 
   useEffect(() => {
     if (data?.examCategory !== "IELTS") return;
