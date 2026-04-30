@@ -24,6 +24,8 @@ function LoginPageContent() {
     setLoading(true);
 
     try {
+      const callbackUrl = searchParams.get("callbackUrl") || "/";
+      
       const result = await signIn("credentials", {
         email: formData.email,
         password: formData.password,
@@ -33,7 +35,8 @@ function LoginPageContent() {
       if (result?.error) {
         setError("Invalid email or password");
       } else {
-        router.push("/");
+        // Use the callbackUrl from query params or default to homepage
+        router.push(callbackUrl);
         router.refresh();
       }
     } catch (err) {

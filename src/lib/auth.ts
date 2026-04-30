@@ -61,11 +61,34 @@ export const authOptions: NextAuthOptions = {
     maxAge: 24 * 60 * 60, // 24 hours in seconds
     updateAge: 60 * 60, // Update session every hour
   },
+  useSecureCookies: process.env.NEXTAUTH_URL?.startsWith("https://") || process.env.NODE_ENV === 'production',
   cookies: {
     sessionToken: {
       name: process.env.NEXTAUTH_URL?.startsWith("https://")
         ? `__Secure-next-auth.session-token`
         : `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NEXTAUTH_URL?.startsWith("https://") || process.env.NODE_ENV === 'production',
+      },
+    },
+    callbackUrl: {
+      name: process.env.NEXTAUTH_URL?.startsWith("https://")
+        ? `__Secure-next-auth.callback-url`
+        : `next-auth.callback-url`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NEXTAUTH_URL?.startsWith("https://") || process.env.NODE_ENV === 'production',
+      },
+    },
+    csrfToken: {
+      name: process.env.NEXTAUTH_URL?.startsWith("https://")
+        ? `__Host-next-auth.csrf-token`
+        : `next-auth.csrf-token`,
       options: {
         httpOnly: true,
         sameSite: 'lax',
