@@ -6,7 +6,9 @@ import bcrypt from "bcryptjs";
 import { Adapter } from "next-auth/adapters";
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma) as Adapter,
+  // NOTE: PrismaAdapter is NOT compatible with CredentialsProvider
+  // Credentials use JWT sessions only, not database sessions
+  // adapter: PrismaAdapter(prisma) as Adapter,
   providers: [
     CredentialsProvider({
       name: "credentials",
