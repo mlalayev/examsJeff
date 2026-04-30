@@ -24,24 +24,24 @@ function LoginPageContent() {
     setLoading(true);
 
     try {
-      const callbackUrl = searchParams.get("callbackUrl") || "/";
+      const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
       
+      // Use redirect: true and callbackUrl to let NextAuth handle the redirect
+      // This ensures the session is properly set before navigation
       const result = await signIn("credentials", {
         email: formData.email,
         password: formData.password,
-        redirect: false,
+        callbackUrl: callbackUrl,
+        redirect: true, // Let NextAuth handle the redirect after successful login
       });
 
+      // This code will only run if redirect fails or there's an error
       if (result?.error) {
         setError("Invalid email or password");
-      } else {
-        // Use the callbackUrl from query params or default to homepage
-        router.push(callbackUrl);
-        router.refresh();
+        setLoading(false);
       }
     } catch (err) {
       setError("An error occurred during login");
-    } finally {
       setLoading(false);
     }
   };

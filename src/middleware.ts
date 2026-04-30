@@ -60,6 +60,13 @@ export default async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
 
   if (!token) {
+    // Log for debugging in production
+    if (process.env.NODE_ENV === 'production') {
+      console.log('[Middleware] No token found, redirecting to login:', {
+        path,
+        cookies: req.cookies.getAll().filter(c => c.name.includes('next-auth')).map(c => c.name),
+      });
+    }
     const url = new URL("/auth/login", req.url);
     url.searchParams.set("callbackUrl", `${path}${req.nextUrl.search}`);
     return NextResponse.redirect(url);

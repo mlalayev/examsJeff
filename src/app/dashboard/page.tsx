@@ -5,11 +5,17 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
 export default function DashboardPage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
 
   useEffect(() => {
-    if (!session?.user) {
+    // Don't redirect while session is loading
+    if (status === "loading") {
+      return;
+    }
+
+    // Only redirect if definitely not authenticated
+    if (status === "unauthenticated" || !session?.user) {
       router.push("/");
       return;
     }
@@ -36,10 +42,13 @@ export default function DashboardPage() {
       case "STUDENT":
         router.push("/dashboard/student/exams");
         break;
+      case "CREATOR":
+        router.push("/dashboard/creator");
+        break;
       default:
         router.push("/");
     }
-  }, [session, router]);
+  }, [session, status, router]);
 
   return (
     <div className="h-screen flex items-center justify-center">
