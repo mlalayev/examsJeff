@@ -21,11 +21,12 @@ export default function FormattedText({ text, className = "" }: FormattedTextPro
     if (segment.underline) classes.push("underline");
     if (segment.strikethrough) classes.push("line-through");
     if (segment.italic) classes.push("italic");
+    if (segment.gray) classes.push("text-slate-500");
     return classes.join(" ");
   };
 
   return (
-    <span className={className}>
+    <span className={`whitespace-pre-wrap ${className}`.trim()}>
       {segments.map((segment, idx) => (
         <span key={idx} className={getSegmentClassName(segment)}>
           {segment.text}

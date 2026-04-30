@@ -13,6 +13,7 @@ export interface FormattedSegment {
   underline: boolean;
   strikethrough: boolean;
   italic: boolean;
+  gray: boolean;
 }
 
 /**
@@ -22,12 +23,18 @@ export interface FormattedSegment {
 export function parseFormattedText(text: string): FormattedSegment[] {
   if (!text) return [];
 
+  // Normalize escaped sequences that may be stored literally
+  // Example: "\\n" should render as an actual line break.
+  text = text.replace(/\\n/g, "\n");
+
   // Define all formatting patterns with their markers
   const patterns = [
     { marker: "**", key: "bold" as const },
     { marker: "__", key: "underline" as const },
     { marker: "--", key: "strikethrough" as const },
     { marker: "~~", key: "italic" as const },
+    // Custom marker used in some IELTS prompts: [gray]muted text[gray]
+    { marker: "[gray]", key: "gray" as const },
   ];
 
   // Step 1: Find all marker positions and types
@@ -112,6 +119,7 @@ export function parseFormattedText(text: string): FormattedSegment[] {
         underline: false,
         strikethrough: false,
         italic: false,
+        gray: false,
       },
     ];
   }
@@ -122,6 +130,7 @@ export function parseFormattedText(text: string): FormattedSegment[] {
     underline: boolean;
     strikethrough: boolean;
     italic: boolean;
+    gray: boolean;
     isMarker: boolean;
   }
 
@@ -130,6 +139,7 @@ export function parseFormattedText(text: string): FormattedSegment[] {
     underline: false,
     strikethrough: false,
     italic: false,
+    gray: false,
     isMarker: false,
   }));
 
@@ -170,7 +180,8 @@ export function parseFormattedText(text: string): FormattedSegment[] {
       currentSegment.bold !== format.bold ||
       currentSegment.underline !== format.underline ||
       currentSegment.strikethrough !== format.strikethrough ||
-      currentSegment.italic !== format.italic;
+      currentSegment.italic !== format.italic ||
+      currentSegment.gray !== format.gray;
 
     if (needNewSegment) {
       if (currentSegment && currentSegment.text) {
@@ -182,6 +193,7 @@ export function parseFormattedText(text: string): FormattedSegment[] {
         underline: format.underline,
         strikethrough: format.strikethrough,
         italic: format.italic,
+        gray: format.gray,
       };
     } else {
       currentSegment!.text += text[i];
