@@ -173,6 +173,14 @@ export default function QHtmlCss({ question, value, onChange, readOnly }: QHtmlC
     const htmlCode = sanitizeHtmlCssMarkup(question.prompt?.htmlCode || "");
     const cssCode = question.prompt?.cssCode || "";
 
+    console.log('🟪 renderInteractiveHTML:', { 
+      hasPrompt: !!question.prompt,
+      promptKeys: question.prompt ? Object.keys(question.prompt) : [],
+      htmlCodeLength: htmlCode.length,
+      cssCodeLength: cssCode.length,
+      htmlCodePreview: htmlCode.substring(0, 200)
+    });
+
     const fullHtml = `
       <!DOCTYPE html>
       <html>
