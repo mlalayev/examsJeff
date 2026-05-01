@@ -64,7 +64,15 @@ export default function QHtmlCss({ question, value, onChange, readOnly }: QHtmlC
             if (element.type === 'checkbox') {
               answerValue = element.checked;
             } else if (element.type === 'radio') {
-              answerValue = element.value;
+              // For radio, collect all checked radios with this data-answer id
+              const allRadios = iframeDoc.querySelectorAll(`[data-answer="${answerId}"]`);
+              const checkedRadios: string[] = [];
+              allRadios.forEach((radio: any) => {
+                if (radio.checked) {
+                  checkedRadios.push(radio.value);
+                }
+              });
+              answerValue = checkedRadios.length === 1 ? checkedRadios[0] : checkedRadios;
             } else if (element.tagName === 'SELECT') {
               answerValue = element.value;
             } else {

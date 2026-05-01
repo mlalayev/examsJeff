@@ -115,8 +115,10 @@ export function PromptHtmlCss({ question, onChange }: PromptHtmlCssProps) {
             <li>Add interactive elements in your HTML: inputs, radio buttons, checkboxes, selects</li>
             <li>Use <code className="bg-blue-100 px-1 rounded">data-answer</code> attribute to mark elements that need answers</li>
             <li>Example: <code className="bg-blue-100 px-1 rounded">{`<input data-answer="name1" />`}</code></li>
+            <li><strong>For text inputs:</strong> You can add multiple acceptable answers (e.g., "60%", "60 percent")</li>
+            <li><strong>For radio buttons:</strong> You can select multiple correct options</li>
             <li>Students will interact with these elements during the exam</li>
-            <li>Define correct answers in the "Correct Answer" section below</li>
+            <li>Write clear instructions in "Question Instructions" field to guide students</li>
           </ul>
         </div>
       </div>
@@ -124,16 +126,16 @@ export function PromptHtmlCss({ question, onChange }: PromptHtmlCssProps) {
       {/* Question Text */}
       <div>
         <label className="block text-xs font-medium text-gray-700 mb-1.5">
-          Question Instructions *
+          Question Instructions * (Tell students what to do)
         </label>
         <textarea
           value={questionText}
           onChange={(e) => handleQuestionTextChange(e.target.value)}
-          placeholder="E.g., Create a button that is red with white text and rounded corners"
-          className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 min-h-[60px] resize-y"
+          placeholder="Example: Fill in the form below. For the age field, enter a number. For the question 'What is 60% as a decimal?', you can write 0.6 or 0.60 or 60%. Select the correct answer(s) for the multiple choice questions."
+          className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 min-h-[80px] resize-y"
         />
         <p className="text-xs text-gray-500 mt-1">
-          This instruction will be shown to students
+          ✅ Be specific: Tell students what format answers should be in, what to select, etc.
         </p>
       </div>
 

@@ -195,7 +195,7 @@ export function QuestionAnswerKeyField({
         // Parse HTML to find interactive elements with data-answer attribute
         const htmlCode = question.prompt?.htmlCode || "";
         const parser = new DOMParser();
-        let interactiveElements: Array<{id: string, type: string, label: string}> = [];
+        let interactiveElements: Array<{id: string, type: string, label: string, value?: string, name?: string}> = [];
         
         try {
           const doc = parser.parseFromString(htmlCode, 'text/html');
@@ -204,15 +204,33 @@ export function QuestionAnswerKeyField({
           elementsWithAnswer.forEach((el) => {
             const id = el.getAttribute('data-answer');
             const type = el.getAttribute('type') || el.tagName.toLowerCase();
+            const value = el.getAttribute('value') || '';
+            const name = el.getAttribute('name') || '';
             const label = el.getAttribute('placeholder') || el.textContent?.trim() || `Element ${id}`;
             
-            if (id && !interactiveElements.find(e => e.id === id)) {
-              interactiveElements.push({ id, type, label: label.substring(0, 50) });
+            if (id) {
+              interactiveElements.push({ id, type, label: label.substring(0, 50), value, name });
             }
           });
         } catch (e) {
           console.error('Error parsing HTML:', e);
         }
+
+        // Group radio buttons by data-answer id
+        const radioGroups: Record<string, Array<{value: string, label: string}>> = {};
+        interactiveElements.forEach(el => {
+          if (el.type === 'radio') {
+            if (!radioGroups[el.id]) {
+              radioGroups[el.id] = [];
+            }
+            radioGroups[el.id].push({ value: el.value, label: el.label });
+          }
+        });
+
+        // Get unique elements (for radios, just keep one entry per group)
+        const uniqueElements = interactiveElements.filter((el, index, self) => 
+          el.type !== 'radio' || index === self.findIndex(e => e.id === el.id)
+        );
 
         return (
           <div className="space-y-3 p-3 bg-white border border-gray-200 rounded-md">
@@ -221,12 +239,13 @@ export function QuestionAnswerKeyField({
                 <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
               </svg>
               <div className="text-xs text-blue-800">
-                <p className="font-medium mb-1">Set Correct Answers for Interactive Elements</p>
-                <p>For each element with <code className="bg-blue-100 px-1 rounded">data-answer</code> attribute, specify the correct answer below.</p>
+                <p className="font-medium mb-1">Set Correct Answers</p>
+                <p>• For text inputs: Add multiple acceptable answers (one per line)</p>
+                <p>• For radio buttons: Check the correct option(s)</p>
               </div>
             </div>
 
-            {interactiveElements.length === 0 ? (
+            {uniqueElements.length === 0 ? (
               <div className="bg-amber-50 border border-amber-200 rounded-md p-3">
                 <p className="text-xs text-amber-700">
                   <strong>No interactive elements found.</strong> Add <code className="bg-amber-100 px-1 rounded">data-answer="id"</code> to your HTML inputs, radios, checkboxes, or selects.
@@ -235,17 +254,21 @@ export function QuestionAnswerKeyField({
             ) : (
               <div className="space-y-3">
                 <p className="text-xs font-medium text-gray-700">
-                  Found {interactiveElements.length} interactive element(s):
+                  Found {uniqueElements.length} interactive element(s):
                 </p>
                 
-                {interactiveElements.map((element) => {
+                {uniqueElements.map((element) => {
                   const currentAnswers = question.answerKey?.interactiveAnswers || {};
-                  const currentValue = currentAnswers[element.id] || "";
                   
-                  return (
-                    <div key={element.id} className="border border-gray-200 rounded-md p-3 bg-gray-50">
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
+                  // For text inputs: array of possible answers
+                  if (element.type === 'text' || element.type === 'number' || element.type === 'email') {
+                    const currentValue = Array.isArray(currentAnswers[element.id]) 
+                      ? currentAnswers[element.id].join('\n') 
+                      : (currentAnswers[element.id] || "");
+                    
+                    return (
+                      <div key={element.id} className="border border-gray-200 rounded-md p-3 bg-gray-50">
+                        <div className="mb-2">
                           <p className="text-xs font-medium text-gray-900">
                             ID: <code className="bg-white px-2 py-0.5 rounded border border-gray-300">{element.id}</code>
                           </p>
@@ -253,44 +276,186 @@ export function QuestionAnswerKeyField({
                             Type: <span className="font-medium">{element.type}</span> • Label: {element.label}
                           </p>
                         </div>
-                      </div>
-                      
-                      <label className="block text-xs font-medium text-gray-700 mb-1 mt-2">
-                        Correct Answer:
-                      </label>
-                      <input
-                        type="text"
-                        value={currentValue}
-                        onChange={(e) => {
-                          onChange({
-                            ...question,
-                            answerKey: {
-                              ...question.answerKey,
-                              interactiveAnswers: {
-                                ...(question.answerKey?.interactiveAnswers || {}),
-                                [element.id]: e.target.value,
+                        
+                        <label className="block text-xs font-medium text-gray-700 mb-1 mt-2">
+                          Correct Answers (one per line):
+                        </label>
+                        <textarea
+                          value={currentValue}
+                          onChange={(e) => {
+                            const answers = e.target.value.split('\n').filter(a => a.trim());
+                            onChange({
+                              ...question,
+                              answerKey: {
+                                ...question.answerKey,
+                                interactiveAnswers: {
+                                  ...(question.answerKey?.interactiveAnswers || {}),
+                                  [element.id]: answers,
+                                },
                               },
-                            },
-                          });
-                        }}
-                        placeholder={`Enter correct answer for ${element.id}`}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-md text-xs focus:outline-none focus:border-gray-400 bg-white"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        {element.type === 'radio' && '• For radio: enter the value attribute of correct option'}
-                        {element.type === 'checkbox' && '• For checkbox: enter "true" if should be checked'}
-                        {element.type === 'select' && '• For select: enter the value of correct option'}
-                        {(element.type === 'text' || element.type === 'input') && '• For text input: enter the exact answer (case-sensitive)'}
-                      </p>
-                    </div>
-                  );
+                            });
+                          }}
+                          placeholder={`60 percent\n60%\nsixty percent`}
+                          rows={3}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-md text-xs font-mono focus:outline-none focus:border-gray-400 bg-white resize-y"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          ✅ Add multiple acceptable answers (e.g., "60%", "60 percent", "sixty percent")
+                        </p>
+                      </div>
+                    );
+                  }
+                  
+                  // For radio buttons: show all options with checkboxes
+                  if (element.type === 'radio' && radioGroups[element.id]) {
+                    const correctValues = Array.isArray(currentAnswers[element.id]) 
+                      ? currentAnswers[element.id] 
+                      : (currentAnswers[element.id] ? [currentAnswers[element.id]] : []);
+                    
+                    return (
+                      <div key={element.id} className="border border-gray-200 rounded-md p-3 bg-gray-50">
+                        <div className="mb-2">
+                          <p className="text-xs font-medium text-gray-900">
+                            ID: <code className="bg-white px-2 py-0.5 rounded border border-gray-300">{element.id}</code>
+                          </p>
+                          <p className="text-xs text-gray-600 mt-1">
+                            Type: <span className="font-medium">radio group</span> • {radioGroups[element.id].length} options
+                          </p>
+                        </div>
+                        
+                        <label className="block text-xs font-medium text-gray-700 mb-2 mt-2">
+                          Select Correct Answer(s):
+                        </label>
+                        <div className="space-y-2">
+                          {radioGroups[element.id].map((option, idx) => (
+                            <label key={idx} className="flex items-center gap-2 p-2 bg-white border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={correctValues.includes(option.value)}
+                                onChange={(e) => {
+                                  let newValues = [...correctValues];
+                                  if (e.target.checked) {
+                                    if (!newValues.includes(option.value)) {
+                                      newValues.push(option.value);
+                                    }
+                                  } else {
+                                    newValues = newValues.filter(v => v !== option.value);
+                                  }
+                                  
+                                  onChange({
+                                    ...question,
+                                    answerKey: {
+                                      ...question.answerKey,
+                                      interactiveAnswers: {
+                                        ...(question.answerKey?.interactiveAnswers || {}),
+                                        [element.id]: newValues,
+                                      },
+                                    },
+                                  });
+                                }}
+                                className="w-4 h-4"
+                              />
+                              <div className="flex-1">
+                                <span className="text-xs font-medium text-gray-800">{option.label}</span>
+                                <span className="text-xs text-gray-500 ml-2">(value: <code className="bg-gray-100 px-1 rounded">{option.value}</code>)</span>
+                              </div>
+                            </label>
+                          ))}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2">
+                          ✅ You can select multiple correct answers if needed
+                        </p>
+                      </div>
+                    );
+                  }
+                  
+                  // For checkboxes
+                  if (element.type === 'checkbox') {
+                    const currentValue = currentAnswers[element.id] || false;
+                    
+                    return (
+                      <div key={element.id} className="border border-gray-200 rounded-md p-3 bg-gray-50">
+                        <div className="mb-2">
+                          <p className="text-xs font-medium text-gray-900">
+                            ID: <code className="bg-white px-2 py-0.5 rounded border border-gray-300">{element.id}</code>
+                          </p>
+                          <p className="text-xs text-gray-600 mt-1">
+                            Type: <span className="font-medium">{element.type}</span> • Label: {element.label}
+                          </p>
+                        </div>
+                        
+                        <label className="flex items-center gap-2 p-2 bg-white border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={currentValue === true || currentValue === 'true'}
+                            onChange={(e) => {
+                              onChange({
+                                ...question,
+                                answerKey: {
+                                  ...question.answerKey,
+                                  interactiveAnswers: {
+                                    ...(question.answerKey?.interactiveAnswers || {}),
+                                    [element.id]: e.target.checked,
+                                  },
+                                },
+                              });
+                            }}
+                            className="w-4 h-4"
+                          />
+                          <span className="text-xs font-medium text-gray-800">Should be checked</span>
+                        </label>
+                      </div>
+                    );
+                  }
+                  
+                  // For select dropdowns
+                  if (element.type === 'select') {
+                    const currentValue = currentAnswers[element.id] || "";
+                    
+                    return (
+                      <div key={element.id} className="border border-gray-200 rounded-md p-3 bg-gray-50">
+                        <div className="mb-2">
+                          <p className="text-xs font-medium text-gray-900">
+                            ID: <code className="bg-white px-2 py-0.5 rounded border border-gray-300">{element.id}</code>
+                          </p>
+                          <p className="text-xs text-gray-600 mt-1">
+                            Type: <span className="font-medium">{element.type}</span> • Label: {element.label}
+                          </p>
+                        </div>
+                        
+                        <label className="block text-xs font-medium text-gray-700 mb-1 mt-2">
+                          Correct Answer:
+                        </label>
+                        <input
+                          type="text"
+                          value={currentValue}
+                          onChange={(e) => {
+                            onChange({
+                              ...question,
+                              answerKey: {
+                                ...question.answerKey,
+                                interactiveAnswers: {
+                                  ...(question.answerKey?.interactiveAnswers || {}),
+                                  [element.id]: e.target.value,
+                                },
+                              },
+                            });
+                          }}
+                          placeholder="Enter the value of correct option"
+                          className="w-full px-3 py-2 border border-gray-200 rounded-md text-xs focus:outline-none focus:border-gray-400 bg-white"
+                        />
+                      </div>
+                    );
+                  }
+                  
+                  return null;
                 })}
               </div>
             )}
 
             <div className="bg-gray-100 border border-gray-300 rounded-md p-2 mt-3">
               <p className="text-xs text-gray-700">
-                <strong>💡 Tip:</strong> Students' answers will be automatically compared with these correct answers during grading.
+                <strong>💡 Tip:</strong> For text inputs, student's answer will match if it equals ANY of your acceptable answers.
               </p>
             </div>
           </div>
