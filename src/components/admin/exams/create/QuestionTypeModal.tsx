@@ -23,6 +23,8 @@ export default function QuestionTypeModal({
     "Variantlı sual": ["MCQ_SINGLE", "MCQ_MULTI", "TF", "TF_NG", "INLINE_SELECT"] as QuestionType[],
     "Açıq sual": ["SHORT_TEXT", "ESSAY", "FILL_IN_BLANK"] as QuestionType[],
     "Drag and Drop": ["ORDER_SENTENCE", "DND_GAP"] as QuestionType[],
+    "Interactive": ["IMAGE_INTERACTIVE"] as QuestionType[],
+    "Kodlama": ["HTML_CSS"] as QuestionType[],
     "IELTS Speaking": ["SPEAKING_RECORDING"] as QuestionType[],
   };
 
