@@ -414,6 +414,40 @@ export default function AttemptRunnerPage() {
     localStorage.removeItem(persistenceKey);
   }, [attemptId, data, clearPersistence]);
 
+  const syncAllFromLocalStorage = useCallback(async () => {
+    if (typeof window === "undefined" || !data?.sections) return;
+    const storageKey = getLocalStorageKey(attemptId);
+    const raw = localStorage.getItem(storageKey);
+    let localAnswers: Record<string, Record<string, any>> = {};
+    if (raw) {
+      try {
+        localAnswers = JSON.parse(raw);
+      } catch {
+        localAnswers = {};
+      }
+    }
+
+    // Convert sectionId-keyed answers to sectionType-keyed payload
+    const sectionsPayload = data.sections.map((s) => ({
+      sectionType: s.type,
+      answers: localAnswers[s.id] || {},
+    }));
+
+    // Always include sectionStartTimes as well (best effort)
+    const res = await fetch(`/api/attempts/${attemptId}/save-bulk`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sections: sectionsPayload,
+        sectionStartTimes,
+      }),
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j?.error || "Bulk sync failed");
+    }
+  }, [attemptId, data?.sections, sectionStartTimes]);
+
   useEffect(() => {
     fetchAttempt();
   }, [attemptId]);
@@ -688,40 +722,6 @@ export default function AttemptRunnerPage() {
     },
     [attemptId, data?.sections]
   );
-
-  const syncAllFromLocalStorage = useCallback(async () => {
-    if (typeof window === "undefined" || !data?.sections) return;
-    const storageKey = getLocalStorageKey(attemptId);
-    const raw = localStorage.getItem(storageKey);
-    let localAnswers: Record<string, Record<string, any>> = {};
-    if (raw) {
-      try {
-        localAnswers = JSON.parse(raw);
-      } catch {
-        localAnswers = {};
-      }
-    }
-
-    // Convert sectionId-keyed answers to sectionType-keyed payload
-    const sectionsPayload = data.sections.map((s) => ({
-      sectionType: s.type,
-      answers: localAnswers[s.id] || {},
-    }));
-
-    // Always include sectionStartTimes as well (best effort)
-    const res = await fetch(`/api/attempts/${attemptId}/save-bulk`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        sections: sectionsPayload,
-        sectionStartTimes,
-      }),
-    });
-    if (!res.ok) {
-      const j = await res.json().catch(() => ({}));
-      throw new Error(j?.error || "Bulk sync failed");
-    }
-  }, [attemptId, data?.sections, sectionStartTimes]);
 
   const setAnswer = (sectionId: string, questionId: string, value: any) => {
     // Locked və ya completed section-larda dəyişiklik etmək olmaz
