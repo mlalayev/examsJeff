@@ -192,7 +192,124 @@ export function QuestionAnswerKeyField({
         );
 
       case "HTML_CSS":
-        // Parse HTML to find interactive elements with data-answer attribute
+        // Parse HTML to extract correct answers from attributes
+        const htmlCode = question.prompt?.htmlCode || "";
+        const parser = new DOMParser();
+        let answerSummary: Array<{id: string, type: string, correctAnswers: string[]}> = [];
+        
+        try {
+          const doc = parser.parseFromString(htmlCode, 'text/html');
+          
+          // Find text inputs with data-answer attribute
+          const textInputs = doc.querySelectorAll('input[type="text"][data-answer], input:not([type])[data-answer], textarea[data-answer]');
+          textInputs.forEach((el) => {
+            const answers = el.getAttribute('data-answer');
+            if (answers) {
+              const answerList = answers.split('|').map(a => a.trim()).filter(a => a);
+              answerSummary.push({
+                id: `Input: ${el.getAttribute('placeholder') || 'text field'}`,
+                type: 'text',
+                correctAnswers: answerList
+              });
+            }
+          });
+          
+          // Find radio buttons with data-correct="true"
+          const correctRadios = doc.querySelectorAll('input[type="radio"][data-correct="true"]');
+          const radioGroups: Record<string, string[]> = {};
+          correctRadios.forEach((el) => {
+            const name = el.getAttribute('name') || 'unnamed';
+            const value = el.getAttribute('value') || '';
+            const label = el.nextSibling?.textContent?.trim() || value;
+            if (!radioGroups[name]) {
+              radioGroups[name] = [];
+            }
+            radioGroups[name].push(label);
+          });
+          
+          Object.entries(radioGroups).forEach(([name, values]) => {
+            answerSummary.push({
+              id: `Radio group: ${name}`,
+              type: 'radio',
+              correctAnswers: values
+            });
+          });
+          
+          // Find checkboxes with data-answer="true"
+          const correctCheckboxes = doc.querySelectorAll('input[type="checkbox"][data-answer="true"]');
+          correctCheckboxes.forEach((el) => {
+            const label = el.nextSibling?.textContent?.trim() || el.getAttribute('value') || 'checkbox';
+            answerSummary.push({
+              id: `Checkbox: ${label}`,
+              type: 'checkbox',
+              correctAnswers: ['checked']
+            });
+          });
+          
+        } catch (e) {
+          console.error('Error parsing HTML:', e);
+        }
+
+        return (
+          <div className="space-y-3 p-3 bg-white border border-gray-200 rounded-md">
+            <div className="flex items-start gap-2 p-3 bg-green-50 border border-green-200 rounded-md">
+              <svg className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              <div className="text-xs text-green-800">
+                <p className="font-medium mb-1">✅ Correct Answers Auto-Detected from HTML</p>
+                <p>Answers are defined directly in your HTML using <code className="bg-green-100 px-1 rounded">data-answer</code> and <code className="bg-green-100 px-1 rounded">data-correct</code> attributes.</p>
+              </div>
+            </div>
+
+            {answerSummary.length === 0 ? (
+              <div className="bg-amber-50 border border-amber-200 rounded-md p-3">
+                <p className="text-xs text-amber-700">
+                  <strong>No correct answers found in HTML.</strong><br/>
+                  • For text inputs: Add <code className="bg-amber-100 px-1 rounded">data-answer="ans1 | ans2"</code><br/>
+                  • For radio buttons: Add <code className="bg-amber-100 px-1 rounded">data-correct="true"</code> to correct option(s)<br/>
+                  • For checkboxes: Add <code className="bg-amber-100 px-1 rounded">data-answer="true"</code> if should be checked
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-xs font-medium text-gray-700">
+                  Found {answerSummary.length} question(s) with correct answers:
+                </p>
+                
+                {answerSummary.map((item, idx) => (
+                  <div key={idx} className="border border-green-200 rounded-md p-3 bg-green-50">
+                    <p className="text-xs font-medium text-gray-900 mb-2">
+                      {item.id}
+                    </p>
+                    <div className="flex items-start gap-2">
+                      <span className="text-xs text-green-700 font-medium">Correct Answer(s):</span>
+                      <div className="flex-1">
+                        {item.correctAnswers.map((answer, i) => (
+                          <span key={i} className="inline-block px-2 py-0.5 bg-white border border-green-300 rounded text-xs font-medium text-green-800 mr-1 mb-1">
+                            {answer}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+              <p className="text-xs text-blue-700">
+                <strong>💡 How it works:</strong><br/>
+                • <strong>Text inputs:</strong> Use <code className="bg-blue-100 px-1 rounded">data-answer="answer1 | answer2 | answer3"</code> (separate with |)<br/>
+                • <strong>Radio buttons:</strong> Add <code className="bg-blue-100 px-1 rounded">data-correct="true"</code> to correct option(s)<br/>
+                • <strong>Checkboxes:</strong> Add <code className="bg-blue-100 px-1 rounded">data-answer="true"</code> if should be checked<br/>
+                • Student answers are automatically compared with these values
+              </p>
+            </div>
+          </div>
+        );
+
+      case "SHORT_TEXT":
         const htmlCode = question.prompt?.htmlCode || "";
         const parser = new DOMParser();
         let interactiveElements: Array<{id: string, type: string, label: string, value?: string, name?: string}> = [];

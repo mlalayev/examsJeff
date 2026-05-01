@@ -112,13 +112,12 @@ export function PromptHtmlCss({ question, onChange }: PromptHtmlCssProps) {
         <div className="text-xs text-blue-800">
           <p className="font-medium mb-1">HTML/CSS Interactive Question Instructions:</p>
           <ul className="list-disc list-inside space-y-0.5 ml-2">
-            <li>Add interactive elements in your HTML: inputs, radio buttons, checkboxes, selects</li>
-            <li>Use <code className="bg-blue-100 px-1 rounded">data-answer</code> attribute to mark elements that need answers</li>
-            <li>Example: <code className="bg-blue-100 px-1 rounded">{`<input data-answer="name1" />`}</code></li>
-            <li><strong>For text inputs:</strong> You can add multiple acceptable answers (e.g., "60%", "60 percent")</li>
-            <li><strong>For radio buttons:</strong> You can select multiple correct options</li>
+            <li><strong>Text inputs:</strong> Use <code className="bg-blue-100 px-1 rounded">data-answer="ans1 | ans2 | ans3"</code> to define multiple correct answers</li>
+            <li><strong>Radio buttons:</strong> Add <code className="bg-blue-100 px-1 rounded">data-correct="true"</code> to mark correct option(s)</li>
+            <li>Example text: <code className="bg-blue-100 px-1 rounded">{`<input data-answer="60% | 0.6 | sixty percent" />`}</code></li>
+            <li>Example radio: <code className="bg-blue-100 px-1 rounded">{`<input type="radio" value="a" data-correct="true" />`}</code></li>
             <li>Students will interact with these elements during the exam</li>
-            <li>Write clear instructions in "Question Instructions" field to guide students</li>
+            <li>System automatically grades based on data-answer and data-correct attributes</li>
           </ul>
         </div>
       </div>
@@ -151,12 +150,12 @@ export function PromptHtmlCss({ question, onChange }: PromptHtmlCssProps) {
         <textarea
           value={htmlCode}
           onChange={(e) => handleHtmlChange(e.target.value)}
-          placeholder={`Enter your HTML with interactive elements...\n\nExample:\n<input type="text" data-answer="input1" placeholder="Your name" />\n<input type="radio" name="choice" data-answer="radio1" value="A" /> Option A\n<input type="radio" name="choice" data-answer="radio1" value="B" /> Option B\n<input type="checkbox" data-answer="check1" value="yes" /> Check this`}
+          placeholder={`Enter your HTML with interactive elements...\n\nText input with multiple answers:\n<input type="text" data-answer="60% | 0.6 | sixty percent" />\n\nRadio buttons (mark correct with data-correct):\n<input type="radio" name="q1" value="A" data-correct="true" /> Option A\n<input type="radio" name="q1" value="B" /> Option B\n\nCheckbox:\n<input type="checkbox" data-answer="true" /> Check if correct`}
           className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm font-mono focus:outline-none focus:border-gray-400 min-h-[200px] resize-y bg-gray-50"
           spellCheck={false}
         />
         <p className="text-xs text-gray-500 mt-1">
-          Add <code className="bg-gray-200 px-1 rounded">data-answer="id"</code> to elements that students will interact with
+          <strong>Text:</strong> <code className="bg-gray-200 px-1 rounded">data-answer="ans1 | ans2 | ans3"</code> • <strong>Radio:</strong> <code className="bg-gray-200 px-1 rounded">data-correct="true"</code>
         </p>
       </div>
 
