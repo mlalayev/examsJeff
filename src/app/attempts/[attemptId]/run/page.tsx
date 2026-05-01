@@ -418,6 +418,19 @@ export default function AttemptRunnerPage() {
     fetchAttempt();
   }, [attemptId]);
 
+  // Background sync: periodically flush localStorage → DB (best effort)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!data?.sections) return;
+    if (submitting || showSuccessModal) return;
+    const id = window.setInterval(() => {
+      syncAllFromLocalStorage().catch(() => {
+        // ignore; we'll retry next tick
+      });
+    }, 15000);
+    return () => window.clearInterval(id);
+  }, [data?.sections, submitting, showSuccessModal, syncAllFromLocalStorage]);
+
   // Handle Writing part changes - switch between Task 1 and Task 2 sections
   useEffect(() => {
     if (!data || data.examCategory !== "IELTS") return;
@@ -676,6 +689,40 @@ export default function AttemptRunnerPage() {
     [attemptId, data?.sections]
   );
 
+  const syncAllFromLocalStorage = useCallback(async () => {
+    if (typeof window === "undefined" || !data?.sections) return;
+    const storageKey = getLocalStorageKey(attemptId);
+    const raw = localStorage.getItem(storageKey);
+    let localAnswers: Record<string, Record<string, any>> = {};
+    if (raw) {
+      try {
+        localAnswers = JSON.parse(raw);
+      } catch {
+        localAnswers = {};
+      }
+    }
+
+    // Convert sectionId-keyed answers to sectionType-keyed payload
+    const sectionsPayload = data.sections.map((s) => ({
+      sectionType: s.type,
+      answers: localAnswers[s.id] || {},
+    }));
+
+    // Always include sectionStartTimes as well (best effort)
+    const res = await fetch(`/api/attempts/${attemptId}/save-bulk`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sections: sectionsPayload,
+        sectionStartTimes,
+      }),
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j?.error || "Bulk sync failed");
+    }
+  }, [attemptId, data?.sections, sectionStartTimes]);
+
   const setAnswer = (sectionId: string, questionId: string, value: any) => {
     // Locked və ya completed section-larda dəyişiklik etmək olmaz
     if (lockedSections.has(sectionId) || completedSections.has(sectionId)) return;
@@ -853,10 +900,8 @@ export default function AttemptRunnerPage() {
     setShowSubmitModal(false);
     setSubmitting(true);
     try {
-      const savePromises = Object.keys(answers).map((sectionId) =>
-        saveSection(sectionId, answers[sectionId] || {})
-      );
-      await Promise.all(savePromises);
+      // First: make sure anything in localStorage is synced (offline-first)
+      await syncAllFromLocalStorage();
       
       const res = await fetch(`/api/attempts/${attemptId}/submit`, {
         method: "POST",
