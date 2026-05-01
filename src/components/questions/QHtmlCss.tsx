@@ -81,11 +81,39 @@ export default function QHtmlCss({ question, value, onChange, readOnly }: QHtmlC
         iframeDoc.addEventListener("input", handler, true);
         iframeDoc.addEventListener("change", handler, true);
 
+        // Fallback: poll values (some browsers/iframes can drop events)
+        const poll = () => {
+          try {
+            const next: Record<string, any> = {};
+            const nodes = iframeDoc.querySelectorAll("input, textarea, select");
+            nodes.forEach((el: any) => {
+              const key = el.name || el.id;
+              if (!key) return;
+              if (el.type === "radio") {
+                if (el.checked) next[key] = el.value;
+                return;
+              }
+              if (el.type === "checkbox") {
+                next[key] = !!el.checked;
+                return;
+              }
+              next[key] = el.value;
+            });
+
+            setStudentAnswers((prev) => {
+              if (JSON.stringify(prev) === JSON.stringify(next)) return prev;
+              return next;
+            });
+          } catch {}
+        };
+        const intervalId = window.setInterval(poll, 800);
+
         // Cleanup for this setupListeners run
         (iframe as any).__htmlCssCleanup = () => {
           try {
             iframeDoc.removeEventListener("input", handler, true);
             iframeDoc.removeEventListener("change", handler, true);
+            window.clearInterval(intervalId);
           } catch {}
         };
       } catch (e) {
