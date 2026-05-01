@@ -239,6 +239,38 @@ export default function QuestionPreview({ question }: QuestionPreviewProps) {
           </div>
         )}
 
+        {/* HTML/CSS */}
+        {question.qtype === "HTML_CSS" && (
+          <div className="mt-4 space-y-3">
+            <div className="rounded-lg border border-gray-200 bg-white p-4">
+              <div className="mb-3 pb-3 border-b border-gray-200">
+                <p className="text-sm font-medium text-gray-700">HTML/CSS Preview</p>
+                <p className="text-xs text-gray-500 mt-1">This is how the code will render for students</p>
+              </div>
+              {question.prompt?.htmlCode && (
+                <iframe
+                  srcDoc={`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                      <style>
+                        ${question.prompt?.cssCode || ''}
+                      </style>
+                    </head>
+                    <body>
+                      ${question.prompt?.htmlCode}
+                    </body>
+                    </html>
+                  `}
+                  title="HTML Preview"
+                  className="w-full h-[300px] border border-gray-200 rounded"
+                  sandbox="allow-same-origin"
+                />
+              )}
+            </div>
+          </div>
+        )}
+
       </div>
 
       <p className="text-xs text-gray-500 mt-2 italic">

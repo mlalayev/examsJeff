@@ -191,6 +191,97 @@ export function QuestionAnswerKeyField({
           </div>
         );
 
+      case "HTML_CSS":
+        return (
+          <div className="space-y-3 p-3 bg-white border border-gray-200 rounded-md">
+            <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <svg className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              <div className="text-xs text-blue-800">
+                <p className="font-medium mb-1">Multiple Correct Answers Supported</p>
+                <p>You can add multiple correct HTML/CSS solutions. Each answer should be entered separately below.</p>
+              </div>
+            </div>
+
+            {/* Correct HTML Answer */}
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                Correct HTML Code (Optional)
+              </label>
+              <textarea
+                value={question.answerKey?.correctHTML || ""}
+                onChange={(e) => {
+                  onChange({
+                    ...question,
+                    answerKey: {
+                      ...question.answerKey,
+                      correctHTML: e.target.value,
+                    },
+                  });
+                }}
+                placeholder="Enter correct HTML code here (leave empty for manual grading)"
+                className="w-full px-3 py-2 border border-gray-200 rounded-md text-xs font-mono focus:outline-none focus:border-gray-400 min-h-[100px] resize-y bg-gray-50"
+                spellCheck={false}
+              />
+            </div>
+
+            {/* Correct CSS Answer */}
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                Correct CSS Code (Optional)
+              </label>
+              <textarea
+                value={question.answerKey?.correctCSS || ""}
+                onChange={(e) => {
+                  onChange({
+                    ...question,
+                    answerKey: {
+                      ...question.answerKey,
+                      correctCSS: e.target.value,
+                    },
+                  });
+                }}
+                placeholder="Enter correct CSS code here (leave empty for manual grading)"
+                className="w-full px-3 py-2 border border-gray-200 rounded-md text-xs font-mono focus:outline-none focus:border-gray-400 min-h-[100px] resize-y bg-gray-50"
+                spellCheck={false}
+              />
+            </div>
+
+            {/* Alternative Answers */}
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                Alternative Correct Answers (Optional)
+              </label>
+              <textarea
+                value={question.answerKey?.alternativeAnswers?.join('\n---\n') || ""}
+                onChange={(e) => {
+                  const alternatives = e.target.value.split('\n---\n').filter(a => a.trim());
+                  onChange({
+                    ...question,
+                    answerKey: {
+                      ...question.answerKey,
+                      alternativeAnswers: alternatives,
+                    },
+                  });
+                }}
+                placeholder="Enter alternative correct answers (separate with ---)"
+                className="w-full px-3 py-2 border border-gray-200 rounded-md text-xs font-mono focus:outline-none focus:border-gray-400 min-h-[80px] resize-y bg-gray-50"
+                spellCheck={false}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Add alternative solutions, separated by --- on a new line
+              </p>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-md p-2">
+              <p className="text-xs text-amber-700">
+                <strong>Note:</strong> If left empty, this question will require manual grading by instructors.
+              </p>
+            </div>
+          </div>
+        );
+
       case "SHORT_TEXT":
       case "FILL_IN_BLANK":
       case "ESSAY":

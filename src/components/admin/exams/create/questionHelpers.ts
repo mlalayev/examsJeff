@@ -35,6 +35,12 @@ export const getDefaultPrompt = (qtype: QuestionType): any => {
         backgroundImage: "",
         interactionType: "single" // "single" or "multiple"
       };
+    case "HTML_CSS":
+      return {
+        text: "Create HTML/CSS code according to the requirements",
+        htmlCode: "<!DOCTYPE html>\n<html>\n<head>\n  <title>My Page</title>\n</head>\n<body>\n  <h1>Hello World</h1>\n</body>\n</html>",
+        cssCode: "body {\n  font-family: Arial, sans-serif;\n  margin: 0;\n  padding: 20px;\n}\n\nh1 {\n  color: #333;\n}"
+      };
     default:
       return { text: "" };
   }
@@ -83,6 +89,12 @@ export const getDefaultAnswerKey = (qtype: QuestionType): any => {
       return null; // No answer key for speaking (manual grading)
     case "IMAGE_INTERACTIVE":
       return { correctHotspotIds: [] }; // Array of correct hotspot IDs
+    case "HTML_CSS":
+      return { 
+        correctHTML: "",
+        correctCSS: "",
+        allowMultipleAnswers: true // Multiple correct solutions possible
+      };
     default:
       return {};
   }

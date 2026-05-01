@@ -11,6 +11,7 @@ import { PromptDndGap } from "./prompts/PromptDndGap";
 import { PromptInlineSelect } from "./prompts/PromptInlineSelect";
 import { PromptSpeakingRecording } from "./prompts/PromptSpeakingRecording";
 import { PromptImageInteractive } from "./prompts/PromptImageInteractive";
+import { PromptHtmlCss } from "./prompts/PromptHtmlCss";
 import { PromptDefault } from "./prompts/PromptDefault";
 
 interface QuestionPromptFieldProps {
@@ -62,6 +63,9 @@ export function QuestionPromptField({
             showAlert={showAlert}
           />
         );
+      
+      case "HTML_CSS":
+        return <PromptHtmlCss question={question} onChange={onChange} />;
       
       default:
         return <PromptDefault question={question} onChange={onChange} />;

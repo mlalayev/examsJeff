@@ -12,7 +12,8 @@ export type QuestionType =
   | "INLINE_SELECT"
   | "FILL_IN_BLANK"
   | "SPEAKING_RECORDING"
-  | "IMAGE_INTERACTIVE";
+  | "IMAGE_INTERACTIVE"
+  | "HTML_CSS";
 
 export interface Section {
   id: string;

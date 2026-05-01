@@ -14,6 +14,7 @@ export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   FILL_IN_BLANK: "Fill in the Blank",
   SPEAKING_RECORDING: "Speaking Recording (IELTS)",
   IMAGE_INTERACTIVE: "Interactive Image Question",
+  HTML_CSS: "HTML/CSS Code Question",
 };
 
 export const QUESTION_TYPE_GROUPS = {
@@ -21,6 +22,7 @@ export const QUESTION_TYPE_GROUPS = {
   "Açıq sual": ["SHORT_TEXT", "ESSAY", "FILL_IN_BLANK"],
   "Drag and Drop": ["ORDER_SENTENCE", "DND_GAP"],
   "Interactive": ["IMAGE_INTERACTIVE"],
+  "Kodlama": ["HTML_CSS"],
   "IELTS Speaking": ["SPEAKING_RECORDING"],
 };
 

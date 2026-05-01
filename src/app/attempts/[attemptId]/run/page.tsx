@@ -22,6 +22,7 @@ import { QOrderSentence } from "@/components/questions/QOrderSentence";
 import { QFillInBlank } from "@/components/questions/QFillInBlank";
 import { QSpeakingRecording } from "@/components/questions/QSpeakingRecording";
 import { QImageInteractive } from "@/components/questions/QImageInteractive";
+import QHtmlCss from "@/components/questions/QHtmlCss";
 import { SectionTimer } from "@/components/attempts/SectionTimer";
 import { useAttemptPersistence, type PersistedAttemptState } from "@/hooks/useAttemptPersistence";
 import { SubmitModal } from "@/components/attempts/modals/SubmitModal";
@@ -980,6 +981,8 @@ export default function AttemptRunnerPage() {
         );
        case "IMAGE_INTERACTIVE":
          return <QImageInteractive {...props} />;
+       case "HTML_CSS":
+         return <QHtmlCss {...props} />;
        default:
     return (
             <div className="text-sm text-gray-500">
