@@ -131,8 +131,16 @@ export default function QHtmlCss({ question, value, onChange, readOnly }: QHtmlC
 
     const trySetupWithRetry = (attempt = 0) => {
       const boundCount = setupListeners();
-      if (boundCount > 0) return;
-      if (attempt >= 20) return; // ~2s max
+      console.log(`🔄 Setup attempt ${attempt}: found ${boundCount} inputs`);
+      if (boundCount > 0) {
+        console.log('✅ Successfully bound to', boundCount, 'inputs');
+        return;
+      }
+      if (attempt >= 20) {
+        console.error('❌ Failed to find inputs after 20 attempts (~2 seconds)');
+        console.error('Iframe content:', iframe.contentDocument?.body?.innerHTML?.substring(0, 500));
+        return;
+      }
       window.setTimeout(() => trySetupWithRetry(attempt + 1), 100);
     };
 
@@ -157,6 +165,15 @@ export default function QHtmlCss({ question, value, onChange, readOnly }: QHtmlC
   const renderInteractiveHTML = () => {
     const htmlCode = sanitizeHtmlCssMarkup(question.prompt?.htmlCode || "");
     const cssCode = question.prompt?.cssCode || "";
+
+    console.log('🔍 QHtmlCss render:', {
+      originalHtmlLength: (question.prompt?.htmlCode || "").length,
+      sanitizedHtmlLength: htmlCode.length,
+      cssLength: cssCode.length,
+      htmlPreview: htmlCode.substring(0, 500),
+      hasInputs: htmlCode.includes('<input'),
+      inputCount: (htmlCode.match(/<input/gi) || []).length
+    });
 
     const fullHtml = `
       <!DOCTYPE html>
