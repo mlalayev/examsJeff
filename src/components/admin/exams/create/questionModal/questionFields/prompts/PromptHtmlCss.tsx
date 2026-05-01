@@ -89,7 +89,7 @@ export function PromptHtmlCss({ question, onChange }: PromptHtmlCssProps) {
                 srcDoc={fullHtml}
                 title="HTML Preview"
                 className="w-full h-[300px] border-0"
-                sandbox="allow-same-origin"
+                sandbox="allow-same-origin allow-scripts"
               />
             </div>
           )}
