@@ -1621,44 +1621,42 @@ export default function AttemptResultsPage() {
                             <p className="text-sm font-medium text-gray-600 italic">
                               Manual grading required by teacher
                             </p>
+                          ) : q.qtype === "HTML_CSS" && q.correctAnswer?.fields ? (
+                            // Special rendering for HTML_CSS answer key
+                            <div className="space-y-2">
+                              {Object.entries(q.correctAnswer.fields).map(([fieldName, fieldSpec]: [string, any]) => (
+                                <div key={fieldName} className="flex items-start gap-2">
+                                  <span className="text-xs font-mono bg-gray-200 px-2 py-1 rounded">
+                                    {fieldName}
+                                  </span>
+                                  <span className="text-sm text-gray-700">
+                                    {Array.isArray(fieldSpec.accepted) 
+                                      ? fieldSpec.accepted.join(" / ") 
+                                      : fieldSpec.accepted}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
                           ) : (
-                            {q.qtype === "HTML_CSS" && q.correctAnswer?.fields ? (
-                              // Special rendering for HTML_CSS answer key
-                              <div className="space-y-2">
-                                {Object.entries(q.correctAnswer.fields).map(([fieldName, fieldSpec]: [string, any]) => (
-                                  <div key={fieldName} className="flex items-start gap-2">
-                                    <span className="text-xs font-mono bg-gray-200 px-2 py-1 rounded">
-                                      {fieldName}
-                                    </span>
-                                    <span className="text-sm text-gray-700">
-                                      {Array.isArray(fieldSpec.accepted) 
-                                        ? fieldSpec.accepted.join(" / ") 
-                                        : fieldSpec.accepted}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <p className="text-sm font-semibold text-gray-900">
-                                {(() => {
-                                  if (q.qtype === "FILL_IN_BLANK") {
-                                    return formatAnswer(q.qtype, q.correctAnswer, q.options);
-                                  }
-                                  if (q.qtype === "IMAGE_INTERACTIVE") {
-                                    // For IMAGE_INTERACTIVE, format the correct answer specially
-                                    return formatAnswer(q.qtype, q.correctAnswer, q.options);
-                                  }
-                                  const correctValue = q.correctAnswer?.value ?? 
-                                    q.correctAnswer?.index ?? 
-                                    q.correctAnswer?.indices ?? 
-                                    q.correctAnswer?.answers?.[0] ?? 
-                                    q.correctAnswer?.order ?? 
-                                    q.correctAnswer?.blanks ??
-                                    q.correctAnswer;
-                                  return formatAnswer(q.qtype, correctValue, q.options);
-                                })()}
-                              </p>
-                            )}
+                            <p className="text-sm font-semibold text-gray-900">
+                              {(() => {
+                                if (q.qtype === "FILL_IN_BLANK") {
+                                  return formatAnswer(q.qtype, q.correctAnswer, q.options);
+                                }
+                                if (q.qtype === "IMAGE_INTERACTIVE") {
+                                  // For IMAGE_INTERACTIVE, format the correct answer specially
+                                  return formatAnswer(q.qtype, q.correctAnswer, q.options);
+                                }
+                                const correctValue = q.correctAnswer?.value ?? 
+                                  q.correctAnswer?.index ?? 
+                                  q.correctAnswer?.indices ?? 
+                                  q.correctAnswer?.answers?.[0] ?? 
+                                  q.correctAnswer?.order ?? 
+                                  q.correctAnswer?.blanks ??
+                                  q.correctAnswer;
+                                return formatAnswer(q.qtype, correctValue, q.options);
+                              })()}
+                            </p>
                           )}
                         </div>
                       </div>
