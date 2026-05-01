@@ -102,28 +102,32 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
       if (sectionType && answers && typeof answers === "object") {
         const sectionEnum = sectionType as SectionType;
         const entries = Object.entries(answers as Record<string, any>);
-        await prisma.$transaction(
-          entries.map(([questionId, answer]) =>
-            prisma.attemptAnswer.upsert({
-              where: {
-                attemptId_section_questionId: {
+        try {
+          await prisma.$transaction(
+            entries.map(([questionId, answer]) =>
+              prisma.attemptAnswer.upsert({
+                where: {
+                  attemptId_section_questionId: {
+                    attemptId,
+                    section: sectionEnum,
+                    questionId,
+                  },
+                },
+                create: {
                   attemptId,
                   section: sectionEnum,
                   questionId,
+                  answer: answer ?? null,
                 },
-              },
-              create: {
-                attemptId,
-                section: sectionEnum,
-                questionId,
-                answer: answer ?? null,
-              },
-              update: {
-                answer: answer ?? null,
-              },
-            })
-          )
-        );
+                update: {
+                  answer: answer ?? null,
+                },
+              })
+            )
+          );
+        } catch (e) {
+          console.warn("AttemptAnswer table not available; skipping normalized save.");
+        }
       }
 
       console.log('JSON exam data saved successfully');
@@ -153,28 +157,32 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
       if (sectionType && answers && typeof answers === "object") {
         const sectionEnum = sectionType as SectionType;
         const entries = Object.entries(answers as Record<string, any>);
-        await prisma.$transaction(
-          entries.map(([questionId, answer]) =>
-            prisma.attemptAnswer.upsert({
-              where: {
-                attemptId_section_questionId: {
+        try {
+          await prisma.$transaction(
+            entries.map(([questionId, answer]) =>
+              prisma.attemptAnswer.upsert({
+                where: {
+                  attemptId_section_questionId: {
+                    attemptId,
+                    section: sectionEnum,
+                    questionId,
+                  },
+                },
+                create: {
                   attemptId,
                   section: sectionEnum,
                   questionId,
+                  answer: answer ?? null,
                 },
-              },
-              create: {
-                attemptId,
-                section: sectionEnum,
-                questionId,
-                answer: answer ?? null,
-              },
-              update: {
-                answer: answer ?? null,
-              },
-            })
-          )
-        );
+                update: {
+                  answer: answer ?? null,
+                },
+              })
+            )
+          );
+        } catch (e) {
+          console.warn("AttemptAnswer table not available; skipping normalized save.");
+        }
       }
       
       return NextResponse.json({ success: true, updated: updated.count });

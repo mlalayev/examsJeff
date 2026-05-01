@@ -12,7 +12,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ atte
       where: { id: attemptId },
       include: {
         sections: true,
-        attemptAnswers: true,
       },
     });
 
@@ -119,16 +118,25 @@ export async function GET(request: Request, { params }: { params: Promise<{ atte
           };
         }),
       })),
-      savedAnswers: (() => {
-        // Prefer normalized per-question rows when present
-        if (attempt.attemptAnswers && attempt.attemptAnswers.length > 0) {
-          const bySection: Record<string, Record<string, any>> = {};
-          for (const row of attempt.attemptAnswers as any[]) {
-            const sectionKey = String(row.section);
-            bySection[sectionKey] = bySection[sectionKey] || {};
-            bySection[sectionKey][row.questionId] = row.answer;
+      savedAnswers: await (async () => {
+        // Prefer normalized per-question rows when present (but table may not exist yet)
+        try {
+          const rows = await prisma.attemptAnswer.findMany({
+            where: { attemptId },
+            select: { section: true, questionId: true, answer: true },
+          });
+          if (rows.length > 0) {
+            const bySection: Record<string, Record<string, any>> = {};
+            for (const row of rows as any[]) {
+              const sectionKey = String(row.section);
+              bySection[sectionKey] = bySection[sectionKey] || {};
+              bySection[sectionKey][row.questionId] = row.answer;
+            }
+            return bySection;
           }
-          return bySection;
+        } catch (e) {
+          // Migration might not be applied yet in some environments
+          console.warn("AttemptAnswer table not available; falling back to legacy storage.");
         }
 
         // Legacy: JSON exams store answers in attempt.answers; DB exams store in attempt.sections.answers

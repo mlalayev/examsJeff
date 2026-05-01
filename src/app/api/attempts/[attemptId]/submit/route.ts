@@ -21,9 +21,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
         examId: true,
         status: true,
         answers: true, // For JSON exams
-        attemptAnswers: {
-          select: { section: true, questionId: true, answer: true },
-        },
         sections: {
           select: {
             id: true,
@@ -84,15 +81,27 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
     
     console.log('Submit - Exam type:', { isJsonExam, sectionsCount: attempt.sections.length, hasAnswersField: !!attempt.answers });
     
-    // Prefer normalized per-question rows when present
-    if (attempt.attemptAnswers && attempt.attemptAnswers.length > 0) {
-      for (const row of attempt.attemptAnswers as any[]) {
-        const k = String(row.section);
-        answersByType[k] = answersByType[k] || {};
-        answersByType[k][row.questionId] = row.answer;
+    // Prefer normalized per-question rows when present (but table may not exist yet)
+    let usedNormalized = false;
+    try {
+      const rows = await prisma.attemptAnswer.findMany({
+        where: { attemptId },
+        select: { section: true, questionId: true, answer: true },
+      });
+      if (rows.length > 0) {
+        for (const row of rows as any[]) {
+          const k = String(row.section);
+          answersByType[k] = answersByType[k] || {};
+          answersByType[k][row.questionId] = row.answer;
+        }
+        usedNormalized = true;
+        console.log('Submit - Normalized attempt answers by type:', Object.keys(answersByType));
       }
-      console.log('Submit - Normalized attempt answers by type:', Object.keys(answersByType));
-    } else if (isJsonExam && attempt.answers) {
+    } catch (e) {
+      console.warn("AttemptAnswer table not available; falling back to legacy storage.");
+    }
+
+    if (!usedNormalized && isJsonExam && attempt.answers) {
       // For JSON exams, answers are in attempt.answers: { LISTENING: { q1: ans1 }, READING: { q2: ans2 } }
       const allAnswers = attempt.answers as any;
       answersByType = { ...allAnswers };
