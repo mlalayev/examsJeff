@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Code, Eye, EyeOff } from "lucide-react";
 
 interface QHtmlCssProps {
@@ -18,82 +18,135 @@ interface QHtmlCssProps {
 }
 
 export default function QHtmlCss({ question, value, onChange, readOnly }: QHtmlCssProps) {
-  const [showPreview, setShowPreview] = useState(true);
-  
-  const studentHtml = value?.html || "";
-  const studentCss = value?.css || "";
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [interactiveAnswers, setInteractiveAnswers] = useState<Record<string, any>>(value || {});
 
-  const handleHtmlChange = (html: string) => {
-    onChange({
-      ...value,
-      html,
-    });
-  };
+  // Update parent when interactive answers change
+  useEffect(() => {
+    if (JSON.stringify(interactiveAnswers) !== JSON.stringify(value)) {
+      onChange(interactiveAnswers);
+    }
+  }, [interactiveAnswers]);
 
-  const handleCssChange = (css: string) => {
-    onChange({
-      ...value,
-      css,
-    });
-  };
+  // Inject event listeners into iframe
+  useEffect(() => {
+    if (!iframeRef.current || readOnly) return;
 
-  const renderPreview = () => {
+    const iframe = iframeRef.current;
+    
+    const setupListeners = () => {
+      try {
+        const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+        if (!iframeDoc) return;
+
+        // Find all elements with data-answer attribute
+        const interactiveElements = iframeDoc.querySelectorAll('[data-answer]');
+        
+        interactiveElements.forEach((element: any) => {
+          const answerId = element.getAttribute('data-answer');
+          if (!answerId) return;
+
+          // Restore previous value if exists
+          if (interactiveAnswers[answerId] !== undefined) {
+            if (element.type === 'checkbox') {
+              element.checked = interactiveAnswers[answerId] === true || interactiveAnswers[answerId] === 'true';
+            } else if (element.type === 'radio') {
+              element.checked = interactiveAnswers[answerId] === element.value;
+            } else {
+              element.value = interactiveAnswers[answerId];
+            }
+          }
+
+          // Add event listeners
+          const handleChange = () => {
+            let answerValue: any;
+            
+            if (element.type === 'checkbox') {
+              answerValue = element.checked;
+            } else if (element.type === 'radio') {
+              answerValue = element.value;
+            } else if (element.tagName === 'SELECT') {
+              answerValue = element.value;
+            } else {
+              answerValue = element.value;
+            }
+
+            setInteractiveAnswers(prev => ({
+              ...prev,
+              [answerId]: answerValue
+            }));
+          };
+
+          element.addEventListener('change', handleChange);
+          element.addEventListener('input', handleChange);
+        });
+      } catch (e) {
+        console.error('Error setting up iframe listeners:', e);
+      }
+    };
+
+    // Wait for iframe to load
+    if (iframe.contentDocument?.readyState === 'complete') {
+      setupListeners();
+    } else {
+      iframe.addEventListener('load', setupListeners);
+    }
+
+    return () => {
+      iframe.removeEventListener('load', setupListeners);
+    };
+  }, [question.prompt?.htmlCode, question.prompt?.cssCode, readOnly]);
+
+  const renderInteractiveHTML = () => {
+    const htmlCode = question.prompt?.htmlCode || "";
+    const cssCode = question.prompt?.cssCode || "";
+
     const fullHtml = `
       <!DOCTYPE html>
       <html>
       <head>
+        <meta charset="UTF-8">
         <style>
-          ${studentCss}
+          body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+          }
+          ${cssCode}
         </style>
       </head>
       <body>
-        ${studentHtml}
+        ${htmlCode}
       </body>
       </html>
     `;
 
     return (
       <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">
-        <div className="bg-gray-100 px-3 py-2 border-b border-gray-300 flex items-center justify-between">
+        <div className="bg-gray-100 px-3 py-2 border-b border-gray-300">
           <div className="flex items-center gap-2">
             <Eye className="w-4 h-4 text-gray-600" />
-            <span className="text-xs font-medium text-gray-700">Live Preview</span>
+            <span className="text-xs font-medium text-gray-700">Interactive Question</span>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowPreview(!showPreview)}
-            className="text-xs px-2 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50 flex items-center gap-1"
-          >
-            {showPreview ? (
-              <>
-                <EyeOff className="w-3 h-3" />
-                Hide
-              </>
-            ) : (
-              <>
-                <Eye className="w-3 h-3" />
-                Show
-              </>
-            )}
-          </button>
         </div>
-        {showPreview && (
-          <div className="p-4 bg-white">
-            <iframe
-              srcDoc={fullHtml}
-              title="HTML Preview"
-              className="w-full h-[300px] border-0"
-              sandbox="allow-same-origin"
-            />
+        <div className="p-4 bg-white">
+          <iframe
+            ref={iframeRef}
+            srcDoc={fullHtml}
+            title="Interactive HTML Question"
+            className="w-full h-[400px] border-0"
+            sandbox="allow-same-origin allow-scripts"
+          />
+        </div>
+        {!readOnly && (
+          <div className="bg-blue-50 border-t border-blue-200 px-3 py-2">
+            <p className="text-xs text-blue-700">
+              💡 Interact with the elements above. Your answers are automatically saved.
+            </p>
           </div>
         )}
       </div>
     );
   };
-
-  // Display the reference HTML/CSS from question
-  const referenceHtml = question.prompt?.htmlCode || "";
-  const referenceCss = question.prompt?.cssCode || "";
 
   return (
     <div className="space-y-4">
@@ -106,79 +159,23 @@ export default function QHtmlCss({ question, value, onChange, readOnly }: QHtmlC
         </div>
       )}
 
-      {/* Reference Code Display */}
-      {(referenceHtml || referenceCss) && (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-          <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-3">
-            Reference Code (For Your Reference)
-          </p>
-          
-          {referenceHtml && (
-            <div className="mb-3">
-              <p className="text-xs font-medium text-gray-600 mb-1 flex items-center gap-1">
-                <Code className="w-3 h-3" />
-                HTML Code
-              </p>
-              <pre className="bg-white border border-gray-200 rounded p-2 text-xs font-mono overflow-x-auto max-h-[150px] overflow-y-auto">
-                <code>{referenceHtml}</code>
-              </pre>
-            </div>
-          )}
-          
-          {referenceCss && (
-            <div>
-              <p className="text-xs font-medium text-gray-600 mb-1 flex items-center gap-1">
-                <Code className="w-3 h-3" />
-                CSS Code
-              </p>
-              <pre className="bg-white border border-gray-200 rounded p-2 text-xs font-mono overflow-x-auto max-h-[150px] overflow-y-auto">
-                <code>{referenceCss}</code>
-              </pre>
-            </div>
-          )}
+      {/* Interactive HTML Render */}
+      {renderInteractiveHTML()}
+
+      {/* Show current answers (for debugging/clarity) */}
+      {!readOnly && Object.keys(interactiveAnswers).length > 0 && (
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+          <p className="text-xs font-medium text-gray-700 mb-2">Your Current Answers:</p>
+          <div className="space-y-1">
+            {Object.entries(interactiveAnswers).map(([key, val]) => (
+              <div key={key} className="text-xs text-gray-600">
+                <code className="bg-white px-2 py-0.5 rounded border border-gray-300 mr-2">{key}</code>
+                <span className="font-medium">{String(val)}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
-
-      {/* Student HTML Input */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
-          <Code className="w-4 h-4" />
-          Your HTML Code
-        </label>
-        <textarea
-          value={studentHtml}
-          onChange={(e) => handleHtmlChange(e.target.value)}
-          disabled={readOnly}
-          placeholder="Write your HTML code here..."
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent min-h-[200px] resize-y disabled:bg-gray-100 disabled:cursor-not-allowed"
-          spellCheck={false}
-        />
-        <p className="text-xs text-gray-500 mt-1">
-          {studentHtml.split('\n').length} lines
-        </p>
-      </div>
-
-      {/* Student CSS Input */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
-          <Code className="w-4 h-4" />
-          Your CSS Code (Optional)
-        </label>
-        <textarea
-          value={studentCss}
-          onChange={(e) => handleCssChange(e.target.value)}
-          disabled={readOnly}
-          placeholder="Write your CSS code here... (optional)"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent min-h-[150px] resize-y disabled:bg-gray-100 disabled:cursor-not-allowed"
-          spellCheck={false}
-        />
-        <p className="text-xs text-gray-500 mt-1">
-          {studentCss.split('\n').length} lines
-        </p>
-      </div>
-
-      {/* Live Preview */}
-      {!readOnly && (studentHtml || studentCss) && renderPreview()}
     </div>
   );
 }

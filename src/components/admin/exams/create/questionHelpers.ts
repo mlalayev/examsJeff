@@ -91,9 +91,7 @@ export const getDefaultAnswerKey = (qtype: QuestionType): any => {
       return { correctHotspotIds: [] }; // Array of correct hotspot IDs
     case "HTML_CSS":
       return { 
-        correctHTML: "",
-        correctCSS: "",
-        allowMultipleAnswers: true // Multiple correct solutions possible
+        interactiveAnswers: {} // { answerId: correctValue }
       };
     default:
       return {};

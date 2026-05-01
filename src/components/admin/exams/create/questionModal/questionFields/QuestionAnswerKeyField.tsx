@@ -192,6 +192,28 @@ export function QuestionAnswerKeyField({
         );
 
       case "HTML_CSS":
+        // Parse HTML to find interactive elements with data-answer attribute
+        const htmlCode = question.prompt?.htmlCode || "";
+        const parser = new DOMParser();
+        let interactiveElements: Array<{id: string, type: string, label: string}> = [];
+        
+        try {
+          const doc = parser.parseFromString(htmlCode, 'text/html');
+          const elementsWithAnswer = doc.querySelectorAll('[data-answer]');
+          
+          elementsWithAnswer.forEach((el) => {
+            const id = el.getAttribute('data-answer');
+            const type = el.getAttribute('type') || el.tagName.toLowerCase();
+            const label = el.getAttribute('placeholder') || el.textContent?.trim() || `Element ${id}`;
+            
+            if (id && !interactiveElements.find(e => e.id === id)) {
+              interactiveElements.push({ id, type, label: label.substring(0, 50) });
+            }
+          });
+        } catch (e) {
+          console.error('Error parsing HTML:', e);
+        }
+
         return (
           <div className="space-y-3 p-3 bg-white border border-gray-200 rounded-md">
             <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
@@ -199,84 +221,76 @@ export function QuestionAnswerKeyField({
                 <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
               </svg>
               <div className="text-xs text-blue-800">
-                <p className="font-medium mb-1">Multiple Correct Answers Supported</p>
-                <p>You can add multiple correct HTML/CSS solutions. Each answer should be entered separately below.</p>
+                <p className="font-medium mb-1">Set Correct Answers for Interactive Elements</p>
+                <p>For each element with <code className="bg-blue-100 px-1 rounded">data-answer</code> attribute, specify the correct answer below.</p>
               </div>
             </div>
 
-            {/* Correct HTML Answer */}
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                Correct HTML Code (Optional)
-              </label>
-              <textarea
-                value={question.answerKey?.correctHTML || ""}
-                onChange={(e) => {
-                  onChange({
-                    ...question,
-                    answerKey: {
-                      ...question.answerKey,
-                      correctHTML: e.target.value,
-                    },
-                  });
-                }}
-                placeholder="Enter correct HTML code here (leave empty for manual grading)"
-                className="w-full px-3 py-2 border border-gray-200 rounded-md text-xs font-mono focus:outline-none focus:border-gray-400 min-h-[100px] resize-y bg-gray-50"
-                spellCheck={false}
-              />
-            </div>
+            {interactiveElements.length === 0 ? (
+              <div className="bg-amber-50 border border-amber-200 rounded-md p-3">
+                <p className="text-xs text-amber-700">
+                  <strong>No interactive elements found.</strong> Add <code className="bg-amber-100 px-1 rounded">data-answer="id"</code> to your HTML inputs, radios, checkboxes, or selects.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-xs font-medium text-gray-700">
+                  Found {interactiveElements.length} interactive element(s):
+                </p>
+                
+                {interactiveElements.map((element) => {
+                  const currentAnswers = question.answerKey?.interactiveAnswers || {};
+                  const currentValue = currentAnswers[element.id] || "";
+                  
+                  return (
+                    <div key={element.id} className="border border-gray-200 rounded-md p-3 bg-gray-50">
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <p className="text-xs font-medium text-gray-900">
+                            ID: <code className="bg-white px-2 py-0.5 rounded border border-gray-300">{element.id}</code>
+                          </p>
+                          <p className="text-xs text-gray-600 mt-1">
+                            Type: <span className="font-medium">{element.type}</span> • Label: {element.label}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <label className="block text-xs font-medium text-gray-700 mb-1 mt-2">
+                        Correct Answer:
+                      </label>
+                      <input
+                        type="text"
+                        value={currentValue}
+                        onChange={(e) => {
+                          onChange({
+                            ...question,
+                            answerKey: {
+                              ...question.answerKey,
+                              interactiveAnswers: {
+                                ...(question.answerKey?.interactiveAnswers || {}),
+                                [element.id]: e.target.value,
+                              },
+                            },
+                          });
+                        }}
+                        placeholder={`Enter correct answer for ${element.id}`}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-md text-xs focus:outline-none focus:border-gray-400 bg-white"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        {element.type === 'radio' && '• For radio: enter the value attribute of correct option'}
+                        {element.type === 'checkbox' && '• For checkbox: enter "true" if should be checked'}
+                        {element.type === 'select' && '• For select: enter the value of correct option'}
+                        {(element.type === 'text' || element.type === 'input') && '• For text input: enter the exact answer (case-sensitive)'}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
-            {/* Correct CSS Answer */}
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                Correct CSS Code (Optional)
-              </label>
-              <textarea
-                value={question.answerKey?.correctCSS || ""}
-                onChange={(e) => {
-                  onChange({
-                    ...question,
-                    answerKey: {
-                      ...question.answerKey,
-                      correctCSS: e.target.value,
-                    },
-                  });
-                }}
-                placeholder="Enter correct CSS code here (leave empty for manual grading)"
-                className="w-full px-3 py-2 border border-gray-200 rounded-md text-xs font-mono focus:outline-none focus:border-gray-400 min-h-[100px] resize-y bg-gray-50"
-                spellCheck={false}
-              />
-            </div>
-
-            {/* Alternative Answers */}
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                Alternative Correct Answers (Optional)
-              </label>
-              <textarea
-                value={question.answerKey?.alternativeAnswers?.join('\n---\n') || ""}
-                onChange={(e) => {
-                  const alternatives = e.target.value.split('\n---\n').filter(a => a.trim());
-                  onChange({
-                    ...question,
-                    answerKey: {
-                      ...question.answerKey,
-                      alternativeAnswers: alternatives,
-                    },
-                  });
-                }}
-                placeholder="Enter alternative correct answers (separate with ---)"
-                className="w-full px-3 py-2 border border-gray-200 rounded-md text-xs font-mono focus:outline-none focus:border-gray-400 min-h-[80px] resize-y bg-gray-50"
-                spellCheck={false}
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Add alternative solutions, separated by --- on a new line
-              </p>
-            </div>
-
-            <div className="bg-amber-50 border border-amber-200 rounded-md p-2">
-              <p className="text-xs text-amber-700">
-                <strong>Note:</strong> If left empty, this question will require manual grading by instructors.
+            <div className="bg-gray-100 border border-gray-300 rounded-md p-2 mt-3">
+              <p className="text-xs text-gray-700">
+                <strong>💡 Tip:</strong> Students' answers will be automatically compared with these correct answers during grading.
               </p>
             </div>
           </div>

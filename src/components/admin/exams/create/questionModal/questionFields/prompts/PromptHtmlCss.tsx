@@ -110,13 +110,13 @@ export function PromptHtmlCss({ question, onChange }: PromptHtmlCssProps) {
       <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
         <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
         <div className="text-xs text-blue-800">
-          <p className="font-medium mb-1">HTML/CSS Question Type Instructions:</p>
+          <p className="font-medium mb-1">HTML/CSS Interactive Question Instructions:</p>
           <ul className="list-disc list-inside space-y-0.5 ml-2">
-            <li>Write your HTML and CSS code below</li>
-            <li>The live preview shows how the code will render in the exam</li>
-            <li>Students will see this exact output during the exam</li>
-            <li>You can add multiple correct answers in the "Correct Answer" section below</li>
-            <li>This question type is for evaluating HTML/CSS knowledge</li>
+            <li>Add interactive elements in your HTML: inputs, radio buttons, checkboxes, selects</li>
+            <li>Use <code className="bg-blue-100 px-1 rounded">data-answer</code> attribute to mark elements that need answers</li>
+            <li>Example: <code className="bg-blue-100 px-1 rounded">{`<input data-answer="name1" />`}</code></li>
+            <li>Students will interact with these elements during the exam</li>
+            <li>Define correct answers in the "Correct Answer" section below</li>
           </ul>
         </div>
       </div>
@@ -149,12 +149,12 @@ export function PromptHtmlCss({ question, onChange }: PromptHtmlCssProps) {
         <textarea
           value={htmlCode}
           onChange={(e) => handleHtmlChange(e.target.value)}
-          placeholder="Enter your HTML code here..."
+          placeholder={`Enter your HTML with interactive elements...\n\nExample:\n<input type="text" data-answer="input1" placeholder="Your name" />\n<input type="radio" name="choice" data-answer="radio1" value="A" /> Option A\n<input type="radio" name="choice" data-answer="radio1" value="B" /> Option B\n<input type="checkbox" data-answer="check1" value="yes" /> Check this`}
           className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm font-mono focus:outline-none focus:border-gray-400 min-h-[200px] resize-y bg-gray-50"
           spellCheck={false}
         />
         <p className="text-xs text-gray-500 mt-1">
-          Write the HTML code that students will see in the exam
+          Add <code className="bg-gray-200 px-1 rounded">data-answer="id"</code> to elements that students will interact with
         </p>
       </div>
 
