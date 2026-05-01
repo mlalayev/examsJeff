@@ -533,6 +533,20 @@ export default function AttemptResultsPage() {
       case "SHORT_TEXT":
       case "ESSAY":
         return answer || "No answer";
+      case "HTML_CSS":
+        // Format HTML_CSS answers as field-by-field list
+        if (typeof answer === "object" && answer !== null && !Array.isArray(answer)) {
+          const fields = Object.entries(answer);
+          if (fields.length === 0) return "No answer";
+          
+          return fields.map(([fieldName, value]) => {
+            const displayValue = value === null || value === undefined || String(value).trim() === '' 
+              ? "(empty)" 
+              : String(value);
+            return `${fieldName}: ${displayValue}`;
+          }).join(", ");
+        }
+        return "No answer";
       case "IMAGE_INTERACTIVE":
         // For IMAGE_INTERACTIVE, the "answer" parameter could be either:
         // 1. Student answer (with selectedElementIds, inputValues, etc.)
@@ -1561,6 +1575,27 @@ export default function AttemptResultsPage() {
                                       : (q.studentAnswer as { text: string }).text}
                                   </p>
                                 </div>
+                              ) : q.qtype === "HTML_CSS" && 
+                                 typeof q.studentAnswer === "object" && 
+                                 q.studentAnswer !== null &&
+                                 Object.keys(q.studentAnswer).length > 0 ? (
+                                // Special rendering for HTML_CSS student answers
+                                <div className="space-y-2">
+                                  {Object.entries(q.studentAnswer).map(([fieldName, value]) => (
+                                    <div key={fieldName} className="flex items-start gap-2">
+                                      <span className="text-xs font-mono bg-white px-2 py-1 rounded border border-gray-300">
+                                        {fieldName}
+                                      </span>
+                                      <span className={`text-sm font-medium ${
+                                        q.isCorrect ? "text-green-800" : "text-red-800"
+                                      }`}>
+                                        {value === null || value === undefined || String(value).trim() === '' 
+                                          ? "(empty)" 
+                                          : String(value)}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
                               ) : (
                                 <p
                                   className={`text-sm font-medium ${
@@ -1587,25 +1622,43 @@ export default function AttemptResultsPage() {
                               Manual grading required by teacher
                             </p>
                           ) : (
-                            <p className="text-sm font-semibold text-gray-900">
-                              {(() => {
-                                if (q.qtype === "FILL_IN_BLANK") {
-                                  return formatAnswer(q.qtype, q.correctAnswer, q.options);
-                                }
-                                if (q.qtype === "IMAGE_INTERACTIVE") {
-                                  // For IMAGE_INTERACTIVE, format the correct answer specially
-                                  return formatAnswer(q.qtype, q.correctAnswer, q.options);
-                                }
-                                const correctValue = q.correctAnswer?.value ?? 
-                                  q.correctAnswer?.index ?? 
-                                  q.correctAnswer?.indices ?? 
-                                  q.correctAnswer?.answers?.[0] ?? 
-                                  q.correctAnswer?.order ?? 
-                                  q.correctAnswer?.blanks ??
-                                  q.correctAnswer;
-                                return formatAnswer(q.qtype, correctValue, q.options);
-                              })()}
-                            </p>
+                            {q.qtype === "HTML_CSS" && q.correctAnswer?.fields ? (
+                              // Special rendering for HTML_CSS answer key
+                              <div className="space-y-2">
+                                {Object.entries(q.correctAnswer.fields).map(([fieldName, fieldSpec]: [string, any]) => (
+                                  <div key={fieldName} className="flex items-start gap-2">
+                                    <span className="text-xs font-mono bg-gray-200 px-2 py-1 rounded">
+                                      {fieldName}
+                                    </span>
+                                    <span className="text-sm text-gray-700">
+                                      {Array.isArray(fieldSpec.accepted) 
+                                        ? fieldSpec.accepted.join(" / ") 
+                                        : fieldSpec.accepted}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-sm font-semibold text-gray-900">
+                                {(() => {
+                                  if (q.qtype === "FILL_IN_BLANK") {
+                                    return formatAnswer(q.qtype, q.correctAnswer, q.options);
+                                  }
+                                  if (q.qtype === "IMAGE_INTERACTIVE") {
+                                    // For IMAGE_INTERACTIVE, format the correct answer specially
+                                    return formatAnswer(q.qtype, q.correctAnswer, q.options);
+                                  }
+                                  const correctValue = q.correctAnswer?.value ?? 
+                                    q.correctAnswer?.index ?? 
+                                    q.correctAnswer?.indices ?? 
+                                    q.correctAnswer?.answers?.[0] ?? 
+                                    q.correctAnswer?.order ?? 
+                                    q.correctAnswer?.blanks ??
+                                    q.correctAnswer;
+                                  return formatAnswer(q.qtype, correctValue, q.options);
+                                })()}
+                              </p>
+                            )}
                           )}
                         </div>
                       </div>
