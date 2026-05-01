@@ -159,7 +159,7 @@ export function scoreQuestion(qtype: QuestionType, studentAnswer: any, answerKey
       let totalQuestions = 0;
       
       // 1. Check clickable elements (hotspots, radio buttons, checkboxes)
-      const correctIds = answerKey.correctElementIds || answerKey.correctHotspotIds || [];
+const correctIds = answerKey.correctElementIds || answerKey.correctHotspotIds || [];
       
       if (correctIds.length > 0) {
         totalQuestions++;
@@ -204,6 +204,15 @@ export function scoreQuestion(qtype: QuestionType, studentAnswer: any, answerKey
       // Return 1 if all parts are correct, 0 otherwise
       return totalCorrect === totalQuestions ? 1 : 0;
     }
+    
+    case "HTML_CSS": {
+      // HTML/CSS questions - answers are embedded in the HTML via data-answer and data-correct attributes
+      // This requires the prompt.htmlCode to extract correct answers
+      // For now, return 0 (manual grading required)
+      // TODO: Implement auto-grading by parsing HTML attributes
+      return 0;
+    }
+    
     // Essay requires manual grading (no autoscore)
     case "ESSAY":
     default:
