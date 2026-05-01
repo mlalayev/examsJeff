@@ -126,6 +126,7 @@ export default function QHtmlCss({ question, value, onChange, readOnly }: QHtmlC
                 next[key] = !!el.checked;
                 return;
               }
+              // Always capture the value, even if empty (this is the current state)
               next[key] = el.value;
             });
 
@@ -205,7 +206,7 @@ export default function QHtmlCss({ question, value, onChange, readOnly }: QHtmlC
             srcDoc={fullHtml}
             title="Interactive HTML Question"
             className="w-full min-h-[400px] border-0"
-            sandbox="allow-same-origin"
+            sandbox="allow-same-origin allow-scripts"
             style={{ height: 'auto' }}
           />
         </div>
