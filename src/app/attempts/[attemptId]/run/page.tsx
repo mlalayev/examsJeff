@@ -697,19 +697,13 @@ export default function AttemptRunnerPage() {
 
   const saveSection = useCallback(
     async (sectionId: string, answersToSave: Record<string, any>) => {
-      console.log('💾 saveSection called:', { sectionId, answersToSave, answersCount: Object.keys(answersToSave || {}).length });
-      
       if (!data?.sections) {
-        console.log('💾 No sections in data, aborting save');
         return;
       }
       const section = data.sections.find(s => s.id === sectionId);
       if (!section) {
-        console.log('💾 Section not found:', sectionId);
         return;
       }
-
-      console.log('💾 Saving section:', section.type, 'with', Object.keys(answersToSave || {}).length, 'answers');
       
       setSaving(sectionId);
       try {
@@ -717,7 +711,6 @@ export default function AttemptRunnerPage() {
           sectionType: section.type, // API still expects type
           answers: answersToSave,
         };
-        console.log('💾 Sending to API:', payload);
         
         const res = await fetch(`/api/attempts/${attemptId}/save`, {
           method: "POST",
@@ -725,13 +718,11 @@ export default function AttemptRunnerPage() {
           body: JSON.stringify(payload),
         });
         const json = await res.json();
-        console.log('💾 API response:', json);
         
         if (!res.ok) throw new Error(json.error || "Failed to save");
         setLastSaved(new Date());
-        console.log('💾 Save successful!');
       } catch (e) {
-        console.error('💾 Save error:', e);
+        console.error(e);
       } finally {
         setSaving(null);
       }
@@ -740,13 +731,8 @@ export default function AttemptRunnerPage() {
   );
 
   const setAnswer = (sectionId: string, questionId: string, value: any) => {
-    console.log('🔶 setAnswer called:', { sectionId, questionId, value, valueType: typeof value });
-    
     // Locked və ya completed section-larda dəyişiklik etmək olmaz
-    if (lockedSections.has(sectionId) || completedSections.has(sectionId)) {
-      console.log('🔶 Section is locked or completed, not saving');
-      return;
-    }
+    if (lockedSections.has(sectionId) || completedSections.has(sectionId)) return;
 
     setAnswers((prev) => {
       const newAnswers = {
@@ -754,20 +740,16 @@ export default function AttemptRunnerPage() {
         [sectionId]: { ...(prev[sectionId] || {}), [questionId]: value },
       };
 
-      console.log('🔶 New answers state:', newAnswers);
-
       // Save to localStorage immediately
       if (typeof window !== "undefined") {
         const storageKey = getLocalStorageKey(attemptId);
         localStorage.setItem(storageKey, JSON.stringify(newAnswers));
-        console.log('🔶 Saved to localStorage:', storageKey);
       }
 
       if (autosaveTimerRef.current) {
         clearTimeout(autosaveTimerRef.current);
       }
       autosaveTimerRef.current = setTimeout(() => {
-        console.log('🔶 Auto-saving section:', sectionId);
         saveSection(sectionId, newAnswers[sectionId]);
       }, 3000);
 
@@ -1340,15 +1322,12 @@ export default function AttemptRunnerPage() {
 
   const handleAnswerChange = useCallback(
     (questionId: string, value: any) => {
-      console.log('🟠 handleAnswerChange called:', { questionId, value, valueType: typeof value, valueKeys: typeof value === 'object' ? Object.keys(value || {}) : 'not object' });
       if (!data?.sections) return;
       
       // Find which section this question belongs to
       const questionSection = data.sections.find(s => 
         s.questions.some(q => q.id === questionId)
       );
-      
-      console.log('🟠 Found section:', questionSection?.id, questionSection?.type);
       
       if (questionSection) {
         setAnswer(questionSection.id, questionId, value);

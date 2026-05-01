@@ -111,6 +111,14 @@ export function extractHtmlCssAnswerKeyV1(html: string): HtmlCssAnswerKeyV1 {
  * and security issues, while still rendering HTML/CSS normally.
  */
 export function sanitizeHtmlCssMarkup(html: string): string {
+  // If the author pasted a full HTML document, extract the <body> inner HTML.
+  // Our renderers wrap markup into their own document; nested <html>/<head>/<body>
+  // can lead to unexpected parsing and missing interactive elements.
+  const bodyMatch = html.match(/<body\b[^>]*>([\s\S]*?)<\/body>/i);
+  if (bodyMatch?.[1]) {
+    html = bodyMatch[1];
+  }
+
   // Remove <script>...</script>
   let out = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "");
   // Remove inline event handlers like onclick="..."
