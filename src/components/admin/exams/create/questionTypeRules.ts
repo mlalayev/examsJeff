@@ -59,6 +59,7 @@ export function getAllowedQuestionTypes(context: QuestionTypeContext): QuestionT
     "FILL_IN_BLANK",
     "SPEAKING_RECORDING",
     "IMAGE_INTERACTIVE",
+    "HTML_CSS",
   ];
   
   return allTypes.filter(type => {
@@ -94,6 +95,7 @@ export function getGroupedQuestionTypes(context: QuestionTypeContext): Record<st
     "Açıq sual": ["SHORT_TEXT", "ESSAY", "FILL_IN_BLANK"],
     "Drag and Drop": ["ORDER_SENTENCE", "DND_GAP"],
     "Interactive": ["IMAGE_INTERACTIVE"],
+    "Kodlama": ["HTML_CSS"],
     "IELTS Speaking": ["SPEAKING_RECORDING"],
   };
   
