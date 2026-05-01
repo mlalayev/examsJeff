@@ -35,10 +35,10 @@ export default function QHtmlCss({ question, value, onChange, readOnly }: QHtmlC
 
     const iframe = iframeRef.current;
     
-    const setupListeners = () => {
+    const setupListeners = (): number => {
       try {
         const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-        if (!iframeDoc) return;
+        if (!iframeDoc) return 0;
 
         // Restore previous values (best effort)
         const allInputs = iframeDoc.querySelectorAll("input, textarea, select");
@@ -56,6 +56,9 @@ export default function QHtmlCss({ question, value, onChange, readOnly }: QHtmlC
             el.value = studentAnswers[key];
           }
         });
+
+        // If there is nothing to bind to, caller can retry after load settles.
+        if (allInputs.length === 0) return 0;
 
         // Event delegation (more reliable than per-element listeners)
         const handler = (e: Event) => {
@@ -119,25 +122,37 @@ export default function QHtmlCss({ question, value, onChange, readOnly }: QHtmlC
             window.clearInterval(intervalId);
           } catch {}
         };
+        return allInputs.length;
       } catch (e) {
         console.error('Error setting up iframe listeners:', e);
+        return 0;
       }
     };
 
-    // Wait for iframe to load
-    if (iframe.contentDocument?.readyState === 'complete') {
-      setupListeners();
-    } else {
-      iframe.addEventListener('load', setupListeners);
-    }
+    const trySetupWithRetry = (attempt = 0) => {
+      const boundCount = setupListeners();
+      if (boundCount > 0) return;
+      if (attempt >= 20) return; // ~2s max
+      window.setTimeout(() => trySetupWithRetry(attempt + 1), 100);
+    };
+
+    const onLoad = () => {
+      // Give the browser a moment to parse srcDoc
+      window.setTimeout(() => trySetupWithRetry(0), 0);
+    };
+
+    // Always listen for load; srcDoc updates should trigger it.
+    iframe.addEventListener("load", onLoad);
+    // Best-effort: attempt once immediately as well (in case load already happened).
+    onLoad();
 
     return () => {
       try {
         (iframe as any).__htmlCssCleanup?.();
       } catch {}
-      iframe.removeEventListener('load', setupListeners);
+      iframe.removeEventListener("load", onLoad);
     };
-  }, [question.prompt?.htmlCode, question.prompt?.cssCode, readOnly]);
+  }, [question.prompt?.htmlCode, question.prompt?.cssCode, readOnly, studentAnswers]);
 
   const renderInteractiveHTML = () => {
     const htmlCode = sanitizeHtmlCssMarkup(question.prompt?.htmlCode || "");
