@@ -1,5 +1,4 @@
 import type { Section, Question, ExamCategory } from "./types";
-import { processHtmlCssQuestion } from "@/lib/htmlCssQuestion";
 
 /**
  * Flattened section for API
@@ -130,22 +129,13 @@ function serializeQuestion(question: Question): SerializedQuestion {
       backgroundImage: question.prompt.backgroundImage,
     };
   }
-
-  let answerKey = question.answerKey;
-  if (question.qtype === "HTML_CSS" && question.prompt?.htmlCode) {
-    const { answerKeyPayload } = processHtmlCssQuestion(question.prompt.htmlCode as string);
-    answerKey = {
-      ...(answerKey || {}),
-      htmlCss: answerKeyPayload,
-    };
-  }
   
   return {
     qtype: question.qtype,
     order: question.order,
     prompt: serializedPrompt,
     options: question.options,
-    answerKey,
+    answerKey: question.answerKey,
     maxScore: question.maxScore,
     explanation: question.explanation,
     image: question.image || null,

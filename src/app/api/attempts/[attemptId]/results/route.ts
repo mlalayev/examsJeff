@@ -1,12 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-utils";
-import {
-  formatHtmlCssAnswerForDisplay,
-  formatHtmlCssCorrectForDisplay,
-  scoreHtmlCssInteractive,
-  processHtmlCssQuestion,
-} from "@/lib/htmlCssQuestion";
 
 /**
  * Helper function to check if a student answer is correct
@@ -98,8 +92,6 @@ function checkAnswerCorrectness(q: any, studentAnswer: any, answerKey: any): boo
       const correctAns = correctBlanks[idx] || "";
       return studentAns.trim().toLowerCase() === correctAns.trim().toLowerCase();
     });
-  } else if (q.qtype === "HTML_CSS") {
-    return scoreHtmlCssInteractive(studentAnswer, answerKey) === 1;
   }
   return false;
 }
@@ -233,11 +225,7 @@ export async function GET(
           // Compute score from answers (for JSON exams) - using optimized helper function
           correctCount = allQuestions.filter((q: any) => {
             const studentAnswer = studentAnswers[q.id];
-            let answerKey = q.answerKey as any;
-            if (q.qtype === "HTML_CSS" && q.prompt?.htmlCode) {
-              const parsed = processHtmlCssQuestion(q.prompt.htmlCode).answerKeyPayload;
-              answerKey = { ...(answerKey || {}), htmlCss: answerKey?.htmlCss ?? parsed };
-            }
+            const answerKey = q.answerKey as any;
             return checkAnswerCorrectness(q, studentAnswer, answerKey);
           }).length;
         }
@@ -339,16 +327,9 @@ export async function GET(
         allQuestions.sort((a: any, b: any) => a.order - b.order);
 
         const questions = allQuestions.map((q: any) => {
-          let studentAnswer = studentAnswers[q.id];
-          let answerKey = q.answerKey as any;
+          const studentAnswer = studentAnswers[q.id];
+          const answerKey = q.answerKey as any;
 
-          if (q.qtype === "HTML_CSS" && q.prompt?.htmlCode) {
-            const parsed = processHtmlCssQuestion(q.prompt.htmlCode).answerKeyPayload;
-            answerKey = {
-              ...(answerKey || {}),
-              htmlCss: answerKey?.htmlCss ?? parsed,
-            };
-          }
 
           // Use optimized helper function for correctness check
           const isCorrect = checkAnswerCorrectness(q, studentAnswer, answerKey);
@@ -408,10 +389,6 @@ export async function GET(
               };
               displayStudentAnswer = formatTF(studentAnswer);
               displayCorrectAnswer = formatTF(answerKey?.value);
-            }
-            else if (q.qtype === "HTML_CSS") {
-              displayStudentAnswer = formatHtmlCssAnswerForDisplay(studentAnswer);
-              displayCorrectAnswer = formatHtmlCssCorrectForDisplay(answerKey);
             }
             
             const prompt = q.prompt || {};

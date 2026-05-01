@@ -3,7 +3,7 @@
  */
 
 import { QuestionType } from "@prisma/client";
-import { scoreHtmlCssInteractive } from "@/lib/htmlCssQuestion";
+import { extractHtmlCssAnswerKeyV1, type HtmlCssAnswerKeyV1 } from "@/lib/htmlCssAnswerKey";
 
 /**
  * Normalize text for comparison (removes punctuation, extra spaces, converts to lowercase)
@@ -207,9 +207,45 @@ const correctIds = answerKey.correctElementIds || answerKey.correctHotspotIds ||
     }
     
     case "HTML_CSS": {
-      return scoreHtmlCssInteractive(studentAnswer, answerKey);
-    }
+      // HTML/CSS questions: compare studentAnswer (object keyed by field name)
+      // against answerKey extracted from prompt.htmlCode.
+      // We store extracted keys into question.answerKey (mode: HTML_ATTRS_V1).
+      if (!studentAnswer || typeof studentAnswer !== "object") return 0;
+      if (!answerKey || typeof answerKey !== "object") return 0;
 
+      const key = answerKey as HtmlCssAnswerKeyV1;
+      if (key.mode !== "HTML_ATTRS_V1" || !key.fields) return 0;
+
+      const fields = key.fields;
+      const fieldNames = Object.keys(fields);
+      if (fieldNames.length === 0) return 0;
+
+      for (const name of fieldNames) {
+        const spec = fields[name];
+        const studentVal = studentAnswer[name];
+
+        if (spec.type === "checkbox") {
+          const expected = (spec.accepted[0] || "false").toLowerCase() === "true";
+          const got =
+            studentVal === true ||
+            studentVal === "true" ||
+            studentVal === 1 ||
+            studentVal === "1";
+          if (got !== expected) return 0;
+          continue;
+        }
+
+        const gotStr = studentVal == null ? "" : String(studentVal);
+        if (!gotStr) return 0;
+
+        const gotNorm = normalizeText(gotStr);
+        const ok = (spec.accepted || []).some((a) => normalizeText(String(a)) === gotNorm);
+        if (!ok) return 0;
+      }
+
+      return 1;
+    }
+    
     // Essay requires manual grading (no autoscore)
     case "ESSAY":
     default:

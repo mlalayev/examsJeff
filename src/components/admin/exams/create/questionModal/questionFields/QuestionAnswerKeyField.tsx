@@ -1,6 +1,7 @@
 "use client";
 
 import { Question } from "../../types";
+import { extractHtmlCssAnswerKeyV1 } from "@/lib/htmlCssAnswerKey";
 
 interface QuestionAnswerKeyFieldProps {
   question: Question;
@@ -192,63 +193,12 @@ export function QuestionAnswerKeyField({
         );
 
       case "HTML_CSS":
-        // Parse HTML to extract correct answers from attributes
-        const htmlCode = question.prompt?.htmlCode || "";
-        const parser = new DOMParser();
-        let answerSummary: Array<{id: string, type: string, correctAnswers: string[]}> = [];
-        
-        try {
-          const doc = parser.parseFromString(htmlCode, 'text/html');
-          
-          // Find text inputs with data-answer attribute
-          const textInputs = doc.querySelectorAll('input[type="text"][data-answer], input:not([type])[data-answer], textarea[data-answer]');
-          textInputs.forEach((el) => {
-            const answers = el.getAttribute('data-answer');
-            if (answers) {
-              const answerList = answers.split('|').map(a => a.trim()).filter(a => a);
-              answerSummary.push({
-                id: `Input: ${el.getAttribute('placeholder') || 'text field'}`,
-                type: 'text',
-                correctAnswers: answerList
-              });
-            }
-          });
-          
-          // Find radio buttons with data-correct="true"
-          const correctRadios = doc.querySelectorAll('input[type="radio"][data-correct="true"]');
-          const radioGroups: Record<string, string[]> = {};
-          correctRadios.forEach((el) => {
-            const name = el.getAttribute('name') || 'unnamed';
-            const value = el.getAttribute('value') || '';
-            const label = el.nextSibling?.textContent?.trim() || value;
-            if (!radioGroups[name]) {
-              radioGroups[name] = [];
-            }
-            radioGroups[name].push(label);
-          });
-          
-          Object.entries(radioGroups).forEach(([name, values]) => {
-            answerSummary.push({
-              id: `Radio group: ${name}`,
-              type: 'radio',
-              correctAnswers: values
-            });
-          });
-          
-          // Find checkboxes with data-answer="true"
-          const correctCheckboxes = doc.querySelectorAll('input[type="checkbox"][data-answer="true"]');
-          correctCheckboxes.forEach((el) => {
-            const label = el.nextSibling?.textContent?.trim() || el.getAttribute('value') || 'checkbox';
-            answerSummary.push({
-              id: `Checkbox: ${label}`,
-              type: 'checkbox',
-              correctAnswers: ['checked']
-            });
-          });
-          
-        } catch (e) {
-          console.error('Error parsing HTML:', e);
-        }
+        const extracted = extractHtmlCssAnswerKeyV1(question.prompt?.htmlCode || "");
+        const fields = extracted.fields || {};
+        const answerSummary = Object.entries(fields).map(([name, spec]) => ({
+          id: `${name} (${spec.type})`,
+          correctAnswers: spec.accepted,
+        }));
 
         return (
           <div className="space-y-3 p-3 bg-white border border-gray-200 rounded-md">
