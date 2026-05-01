@@ -105,3 +105,18 @@ export function extractHtmlCssAnswerKeyV1(html: string): HtmlCssAnswerKeyV1 {
   return { mode: "HTML_ATTRS_V1", fields };
 }
 
+/**
+ * We do NOT allow JS execution inside HTML_CSS questions.
+ * This removes <script> tags and inline on* handlers to avoid browser console errors
+ * and security issues, while still rendering HTML/CSS normally.
+ */
+export function sanitizeHtmlCssMarkup(html: string): string {
+  // Remove <script>...</script>
+  let out = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "");
+  // Remove inline event handlers like onclick="..."
+  out = out.replace(/\son[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "");
+  // Remove javascript: URLs
+  out = out.replace(/\s(href|src)\s*=\s*(?:"javascript:[^"]*"|'javascript:[^']*'|javascript:[^\s>]+)/gi, "");
+  return out;
+}
+

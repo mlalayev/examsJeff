@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Code, Eye, EyeOff } from "lucide-react";
+import { Eye } from "lucide-react";
+import { sanitizeHtmlCssMarkup } from "@/lib/htmlCssAnswerKey";
 
 interface QHtmlCssProps {
   question: {
@@ -39,49 +40,54 @@ export default function QHtmlCss({ question, value, onChange, readOnly }: QHtmlC
         const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
         if (!iframeDoc) return;
 
-        // We only persist answers for fields that have name/id
+        // Restore previous values (best effort)
         const allInputs = iframeDoc.querySelectorAll("input, textarea, select");
-        
-        allInputs.forEach((element: any) => {
-          const fieldId = element.name || element.id;
-          if (!fieldId) return;
+        allInputs.forEach((el: any) => {
+          const key = el.name || el.id;
+          if (!key) return;
+          if (studentAnswers[key] === undefined) return;
+          if (el.type === "checkbox") {
+            el.checked = studentAnswers[key] === true || studentAnswers[key] === "true";
+          } else if (el.type === "radio") {
+            el.checked = studentAnswers[key] === el.value;
+          } else {
+            el.value = studentAnswers[key];
+          }
+        });
 
-          // Restore previous value if exists
-          if (studentAnswers[fieldId] !== undefined) {
-            if (element.type === 'checkbox') {
-              element.checked = studentAnswers[fieldId] === true || studentAnswers[fieldId] === 'true';
-            } else if (element.type === 'radio') {
-              element.checked = studentAnswers[fieldId] === element.value;
-            } else {
-              element.value = studentAnswers[fieldId];
-            }
+        // Event delegation (more reliable than per-element listeners)
+        const handler = (e: Event) => {
+          const t = e.target as any;
+          if (!t) return;
+          const tag = (t.tagName || "").toLowerCase();
+          if (tag !== "input" && tag !== "textarea" && tag !== "select") return;
+
+          const key = t.name || t.id;
+          if (!key) return;
+
+          let answerValue: any;
+          if (t.type === "checkbox") {
+            answerValue = !!t.checked;
+          } else if (t.type === "radio") {
+            if (!t.checked) return;
+            answerValue = t.value;
+          } else {
+            answerValue = t.value;
           }
 
-          // Add event listeners
-          const handleChange = () => {
-            let answerValue: any;
-            
-            if (element.type === 'checkbox') {
-              answerValue = element.checked;
-            } else if (element.type === 'radio') {
-              // Store selected value for the radio group (by name)
-              if (!element.checked) return;
-              answerValue = element.value;
-            } else if (element.tagName === 'SELECT') {
-              answerValue = element.value;
-            } else {
-              answerValue = element.value;
-            }
+          setStudentAnswers((prev) => ({ ...prev, [key]: answerValue }));
+        };
 
-            setStudentAnswers(prev => ({
-              ...prev,
-              [fieldId]: answerValue
-            }));
-          };
+        iframeDoc.addEventListener("input", handler, true);
+        iframeDoc.addEventListener("change", handler, true);
 
-          element.addEventListener('change', handleChange);
-          element.addEventListener('input', handleChange);
-        });
+        // Cleanup for this setupListeners run
+        (iframe as any).__htmlCssCleanup = () => {
+          try {
+            iframeDoc.removeEventListener("input", handler, true);
+            iframeDoc.removeEventListener("change", handler, true);
+          } catch {}
+        };
       } catch (e) {
         console.error('Error setting up iframe listeners:', e);
       }
@@ -95,12 +101,15 @@ export default function QHtmlCss({ question, value, onChange, readOnly }: QHtmlC
     }
 
     return () => {
+      try {
+        (iframe as any).__htmlCssCleanup?.();
+      } catch {}
       iframe.removeEventListener('load', setupListeners);
     };
   }, [question.prompt?.htmlCode, question.prompt?.cssCode, readOnly]);
 
   const renderInteractiveHTML = () => {
-    const htmlCode = question.prompt?.htmlCode || "";
+    const htmlCode = sanitizeHtmlCssMarkup(question.prompt?.htmlCode || "");
     const cssCode = question.prompt?.cssCode || "";
 
     const fullHtml = `

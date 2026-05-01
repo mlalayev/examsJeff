@@ -3,7 +3,7 @@
 import { Question } from "../../../types";
 import { Info, Code, Eye } from "lucide-react";
 import { useState, useEffect } from "react";
-import { extractHtmlCssAnswerKeyV1 } from "@/lib/htmlCssAnswerKey";
+import { extractHtmlCssAnswerKeyV1, sanitizeHtmlCssMarkup } from "@/lib/htmlCssAnswerKey";
 
 interface PromptHtmlCssProps {
   question: Question;
@@ -69,6 +69,7 @@ export function PromptHtmlCss({ question, onChange }: PromptHtmlCssProps) {
 
   const renderPreview = () => {
     try {
+      const safeHtml = sanitizeHtmlCssMarkup(htmlCode);
       const fullHtml = `
         <!DOCTYPE html>
         <html>
@@ -78,7 +79,7 @@ export function PromptHtmlCss({ question, onChange }: PromptHtmlCssProps) {
           </style>
         </head>
         <body>
-          ${htmlCode}
+          ${safeHtml}
         </body>
         </html>
       `;
