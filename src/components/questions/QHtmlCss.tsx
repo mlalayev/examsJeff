@@ -22,12 +22,20 @@ export default function QHtmlCss({ question, value, onChange, readOnly }: QHtmlC
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [studentAnswers, setStudentAnswers] = useState<Record<string, any>>(value || {});
 
+  console.log('🎯 QHtmlCss: Render -', { 
+    questionId: question.id, 
+    incomingValue: value, 
+    studentAnswers, 
+    readOnly 
+  });
+
   // Update parent when answers change
   useEffect(() => {
     if (JSON.stringify(studentAnswers) !== JSON.stringify(value)) {
+      console.log('🔴 QHtmlCss: Calling onChange with:', studentAnswers);
       onChange(studentAnswers);
     }
-  }, [studentAnswers]);
+  }, [studentAnswers, onChange, value]);
 
   // Inject event listeners into iframe
   useEffect(() => {
@@ -42,9 +50,25 @@ export default function QHtmlCss({ question, value, onChange, readOnly }: QHtmlC
 
         // Restore previous values (best effort)
         const allInputs = iframeDoc.querySelectorAll("input, textarea, select");
+        console.log('🟣 QHtmlCss: Found', allInputs.length, 'inputs in iframe');
+        
+        let inputsWithoutKey = 0;
         allInputs.forEach((el: any) => {
           const key = el.name || el.id;
-          if (!key) return;
+          console.log('🟣 QHtmlCss: Input element -', { 
+            tag: el.tagName, 
+            type: el.type, 
+            name: el.name, 
+            id: el.id, 
+            key,
+            hasStoredValue: key && studentAnswers[key] !== undefined,
+            storedValue: key ? studentAnswers[key] : undefined
+          });
+          if (!key) {
+            inputsWithoutKey++;
+            console.error('❌ QHtmlCss: Input without name or id attribute!', el);
+            return;
+          }
           if (studentAnswers[key] === undefined) return;
           if (el.type === "checkbox") {
             el.checked = studentAnswers[key] === true || studentAnswers[key] === "true";
@@ -54,6 +78,10 @@ export default function QHtmlCss({ question, value, onChange, readOnly }: QHtmlC
             el.value = studentAnswers[key];
           }
         });
+        
+        if (inputsWithoutKey > 0) {
+          console.error(`❌ QHtmlCss: ${inputsWithoutKey} input(s) found without name or id attribute! These inputs will not be saved.`);
+        }
 
         // Event delegation (more reliable than per-element listeners)
         const handler = (e: Event) => {
@@ -75,6 +103,7 @@ export default function QHtmlCss({ question, value, onChange, readOnly }: QHtmlC
             answerValue = t.value;
           }
 
+          console.log('🟢 QHtmlCss: Input changed -', { key, answerValue, type: t.type });
           setStudentAnswers((prev) => ({ ...prev, [key]: answerValue }));
         };
 
@@ -100,8 +129,11 @@ export default function QHtmlCss({ question, value, onChange, readOnly }: QHtmlC
               next[key] = el.value;
             });
 
+            console.log('🔵 QHtmlCss: Poll found', Object.keys(next).length, 'inputs with values:', next);
+
             setStudentAnswers((prev) => {
               if (JSON.stringify(prev) === JSON.stringify(next)) return prev;
+              console.log('🟡 QHtmlCss: Poll updating state from', prev, 'to', next);
               return next;
             });
           } catch {}
