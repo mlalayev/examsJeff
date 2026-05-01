@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireStudent } from "@/lib/auth-utils";
 import { applyRateLimit } from "@/lib/rate-limiter-enhanced";
 import { createErrorResponse, validateBodySize } from "@/lib/security";
+import { SectionType } from "@prisma/client";
 
 export async function POST(request: Request, { params }: { params: Promise<{ attemptId: string }> }) {
   try {
@@ -97,6 +98,34 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
         data: { answers: updatedAnswers },
       });
 
+      // Also persist each question answer separately
+      if (sectionType && answers && typeof answers === "object") {
+        const sectionEnum = sectionType as SectionType;
+        const entries = Object.entries(answers as Record<string, any>);
+        await prisma.$transaction(
+          entries.map(([questionId, answer]) =>
+            prisma.attemptAnswer.upsert({
+              where: {
+                attemptId_section_questionId: {
+                  attemptId,
+                  section: sectionEnum,
+                  questionId,
+                },
+              },
+              create: {
+                attemptId,
+                section: sectionEnum,
+                questionId,
+                answer: answer ?? null,
+              },
+              update: {
+                answer: answer ?? null,
+              },
+            })
+          )
+        );
+      }
+
       console.log('JSON exam data saved successfully');
       return NextResponse.json({ success: true, updated: 1 });
     } else {
@@ -118,6 +147,34 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
       
       if (updated.count === 0) {
         console.warn('No attempt_section found to update:', { attemptId, sectionType });
+      }
+
+      // Also persist each question answer separately
+      if (sectionType && answers && typeof answers === "object") {
+        const sectionEnum = sectionType as SectionType;
+        const entries = Object.entries(answers as Record<string, any>);
+        await prisma.$transaction(
+          entries.map(([questionId, answer]) =>
+            prisma.attemptAnswer.upsert({
+              where: {
+                attemptId_section_questionId: {
+                  attemptId,
+                  section: sectionEnum,
+                  questionId,
+                },
+              },
+              create: {
+                attemptId,
+                section: sectionEnum,
+                questionId,
+                answer: answer ?? null,
+              },
+              update: {
+                answer: answer ?? null,
+              },
+            })
+          )
+        );
       }
       
       return NextResponse.json({ success: true, updated: updated.count });

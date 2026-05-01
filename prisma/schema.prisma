@@ -141,6 +141,7 @@ model Attempt {
   studentId    String
   answers      Json?
   sections     AttemptSection[]
+  attemptAnswers AttemptAnswer[]
   assignment   Assignment?      @relation(fields: [assignmentId], references: [id])
   booking      Booking?         @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   branch       Branch?          @relation(fields: [branchId], references: [id], onDelete: Restrict)
@@ -170,6 +171,22 @@ model AttemptSection {
 
   @@index([attemptId, type])
   @@map("attempt_sections")
+}
+
+model AttemptAnswer {
+  id         String      @id @default(cuid())
+  attemptId  String
+  section    SectionType
+  questionId String
+  answer     Json?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  attempt Attempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+
+  @@unique([attemptId, section, questionId])
+  @@index([attemptId, section])
+  @@map("attempt_answers")
 }
 
 model WritingSubmission {

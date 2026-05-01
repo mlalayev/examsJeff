@@ -12,6 +12,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ atte
       where: { id: attemptId },
       include: {
         sections: true,
+        attemptAnswers: true,
       },
     });
 
@@ -118,7 +119,29 @@ export async function GET(request: Request, { params }: { params: Promise<{ atte
           };
         }),
       })),
-      savedAnswers: (attempt.answers as any) || {},
+      savedAnswers: (() => {
+        // Prefer normalized per-question rows when present
+        if (attempt.attemptAnswers && attempt.attemptAnswers.length > 0) {
+          const bySection: Record<string, Record<string, any>> = {};
+          for (const row of attempt.attemptAnswers as any[]) {
+            const sectionKey = String(row.section);
+            bySection[sectionKey] = bySection[sectionKey] || {};
+            bySection[sectionKey][row.questionId] = row.answer;
+          }
+          return bySection;
+        }
+
+        // Legacy: JSON exams store answers in attempt.answers; DB exams store in attempt.sections.answers
+        const isJsonExam = attempt.sections.length === 0;
+        if (isJsonExam) return (attempt.answers as any) || {};
+
+        const bySection: Record<string, Record<string, any>> = {};
+        for (const s of attempt.sections as any[]) {
+          if (!s?.type) continue;
+          bySection[String(s.type)] = (s.answers as any) || {};
+        }
+        return bySection;
+      })(),
       sectionStartTimes: (attempt.answers as any)?.sectionStartTimes || {},
     };
 
