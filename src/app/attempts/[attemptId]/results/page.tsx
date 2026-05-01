@@ -20,6 +20,7 @@ import {
 import Sidebar from "@/components/dashboard/Sidebar";
 import { WritingAiFeedbackCard } from "@/components/attempts/WritingAiFeedbackCard";
 import FormattedText from "@/components/FormattedText";
+import { formatHtmlCssAnswerForDisplay } from "@/lib/htmlCssQuestion";
 
 interface ResultsData {
   attemptId: string;
@@ -487,6 +488,16 @@ export default function AttemptResultsPage() {
         if (o.audioUrl) return ""; // audio player rendered separately in the UI
       }
       return "No recording";
+    }
+
+    if (qtype === "HTML_CSS") {
+      if (answer === null || answer === undefined) return "No answer";
+      if (typeof answer === "string") return answer.trim() ? answer : "No answer";
+      if (typeof answer === "object" && !Array.isArray(answer)) {
+        if (Object.keys(answer).length === 0) return "No answer";
+        return formatHtmlCssAnswerForDisplay(answer);
+      }
+      return "No answer";
     }
     
     // General check for other question types

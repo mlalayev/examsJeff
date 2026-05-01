@@ -90,7 +90,7 @@ export const getDefaultAnswerKey = (qtype: QuestionType): any => {
     case "IMAGE_INTERACTIVE":
       return { correctHotspotIds: [] }; // Array of correct hotspot IDs
     case "HTML_CSS":
-      return {}; // Answers are read directly from HTML attributes, no separate answerKey needed
+      return { htmlCss: { texts: {}, radios: {}, checks: {} } };
     default:
       return {};
   }

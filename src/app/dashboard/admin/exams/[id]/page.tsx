@@ -6,6 +6,7 @@ import { ArrowLeft, BookOpen, Clock, FileText, Edit, Trash2, CheckCircle, XCircl
 import AudioPlayer from "@/components/audio/AudioPlayer";
 import { DeleteExamModal } from "@/components/modals/DeleteExamModal";
 import { AlertModal } from "@/components/modals/AlertModal";
+import { formatHtmlCssCorrectForDisplay, processHtmlCssQuestion } from "@/lib/htmlCssQuestion";
 
 interface ExamSection {
   id: string;
@@ -527,6 +528,14 @@ export default function AdminExamDetailPage() {
                                     </ol>
                                   )}
                                 </div>
+                              ) : question.qtype === "HTML_CSS" ? (
+                                <pre className="text-xs text-gray-600 whitespace-pre-wrap font-sans">
+                                  {formatHtmlCssCorrectForDisplay({
+                                    htmlCss:
+                                      question.answerKey?.htmlCss ??
+                                      processHtmlCssQuestion(question.prompt?.htmlCode || "").answerKeyPayload,
+                                  })}
+                                </pre>
                               ) : (
                                 <pre className="text-xs text-gray-600 whitespace-pre-wrap">{JSON.stringify(question.answerKey, null, 2)}</pre>
                               )}

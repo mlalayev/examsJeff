@@ -3,6 +3,7 @@
  */
 
 import { QuestionType } from "@prisma/client";
+import { scoreHtmlCssInteractive } from "@/lib/htmlCssQuestion";
 
 /**
  * Normalize text for comparison (removes punctuation, extra spaces, converts to lowercase)
@@ -206,13 +207,9 @@ const correctIds = answerKey.correctElementIds || answerKey.correctHotspotIds ||
     }
     
     case "HTML_CSS": {
-      // HTML/CSS questions - answers are embedded in the HTML via data-answer and data-correct attributes
-      // This requires the prompt.htmlCode to extract correct answers
-      // For now, return 0 (manual grading required)
-      // TODO: Implement auto-grading by parsing HTML attributes
-      return 0;
+      return scoreHtmlCssInteractive(studentAnswer, answerKey);
     }
-    
+
     // Essay requires manual grading (no autoscore)
     case "ESSAY":
     default:

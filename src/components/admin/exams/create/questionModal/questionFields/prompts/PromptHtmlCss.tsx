@@ -3,6 +3,7 @@
 import { Question } from "../../../types";
 import { Info, Code, Eye } from "lucide-react";
 import { useState, useEffect } from "react";
+import { processHtmlCssQuestion } from "@/lib/htmlCssQuestion";
 
 interface PromptHtmlCssProps {
   question: Question;
@@ -33,11 +34,16 @@ export function PromptHtmlCss({ question, onChange }: PromptHtmlCssProps) {
   };
 
   const handleHtmlChange = (html: string) => {
+    const { answerKeyPayload } = processHtmlCssQuestion(html);
     onChange({
       ...question,
       prompt: {
         ...question.prompt,
         htmlCode: html,
+      },
+      answerKey: {
+        ...question.answerKey,
+        htmlCss: answerKeyPayload,
       },
     });
   };
@@ -116,6 +122,8 @@ export function PromptHtmlCss({ question, onChange }: PromptHtmlCssProps) {
             <li><strong>Radio buttons:</strong> Add <code className="bg-blue-100 px-1 rounded">data-correct="true"</code> to mark correct option(s)</li>
             <li>Example text: <code className="bg-blue-100 px-1 rounded">{`<input data-answer="60% | 0.6 | sixty percent" />`}</code></li>
             <li>Example radio: <code className="bg-blue-100 px-1 rounded">{`<input type="radio" value="a" data-correct="true" />`}</code></li>
+            <li><strong>Checkboxes:</strong> Use <code className="bg-blue-100 px-1 rounded">data-answer=&quot;true&quot;</code> or <code className="bg-blue-100 px-1 rounded">&quot;false&quot;</code> for expected state</li>
+            <li>Plain <strong>textarea</strong> or text <strong>input</strong> without <code className="bg-blue-100 px-1 rounded">data-answer</code> is still saved; grading expects any non-empty answer unless you add <code className="bg-blue-100 px-1 rounded">data-answer</code></li>
             <li>Students will interact with these elements during the exam</li>
             <li>System automatically grades based on data-answer and data-correct attributes</li>
           </ul>

@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import { Code, Eye, EyeOff } from "lucide-react";
+import React, { useEffect, useRef, useMemo, useCallback } from "react";
+import { Eye } from "lucide-react";
+import { processHtmlCssQuestion } from "@/lib/htmlCssQuestion";
 
 interface QHtmlCssProps {
   question: {
@@ -17,150 +18,167 @@ interface QHtmlCssProps {
   readOnly: boolean;
 }
 
-export default function QHtmlCss({ question, value, onChange, readOnly }: QHtmlCssProps) {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [studentAnswers, setStudentAnswers] = useState<Record<string, any>>(value || {});
+function applyAnswersToDom(doc: Document, val: Record<string, any>) {
+  if (!val || typeof val !== "object") return;
 
-  // Update parent when answers change
-  useEffect(() => {
-    if (JSON.stringify(studentAnswers) !== JSON.stringify(value)) {
-      onChange(studentAnswers);
+  doc.querySelectorAll("[data-html-css-key]").forEach((el) => {
+    const key = el.getAttribute("data-html-css-key");
+    if (!key || val[key] === undefined) return;
+    const inp = el as HTMLInputElement;
+    if (inp.type === "checkbox") {
+      inp.checked = val[key] === true || val[key] === "true";
+    } else {
+      inp.value = String(val[key]);
     }
-  }, [studentAnswers]);
+  });
 
-  // Inject event listeners into iframe
+  doc.querySelectorAll('input[type="radio"]').forEach((el) => {
+    const inp = el as HTMLInputElement;
+    const key = `htmlcss_radio_${inp.name}`;
+    if (!inp.name || val[key] === undefined) return;
+    inp.checked = inp.value === String(val[key]);
+  });
+}
+
+export default function QHtmlCss({ question, value, readOnly, onChange }: QHtmlCssProps) {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const lastSentJson = useRef<string>("");
+  const valueRef = useRef(value);
   useEffect(() => {
-    if (!iframeRef.current || readOnly) return;
+    valueRef.current = value;
+  }, [value]);
+  const htmlCode = question.prompt?.htmlCode || "";
 
-    const iframe = iframeRef.current;
-    
-    const setupListeners = () => {
-      try {
-        const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-        if (!iframeDoc) return;
+  const { augmentedBodyHtml } = useMemo(
+    () => processHtmlCssQuestion(htmlCode),
+    [htmlCode]
+  );
 
-        // Find all interactive elements
-        const allInputs = iframeDoc.querySelectorAll('input, textarea, select');
-        
-        allInputs.forEach((element: any) => {
-          const fieldId = element.id || element.name || `field_${Math.random()}`;
+  const fullHtml = useMemo(() => {
+    const cssCode = question.prompt?.cssCode || "";
+    return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+      body{font-family:Arial,sans-serif;padding:20px;}
+      ${cssCode}
+    </style></head><body>${augmentedBodyHtml}</body></html>`;
+  }, [augmentedBodyHtml, question.prompt?.cssCode]);
 
-          // Restore previous value if exists
-          if (studentAnswers[fieldId] !== undefined) {
-            if (element.type === 'checkbox') {
-              element.checked = studentAnswers[fieldId] === true || studentAnswers[fieldId] === 'true';
-            } else if (element.type === 'radio') {
-              element.checked = studentAnswers[fieldId] === element.value;
-            } else {
-              element.value = studentAnswers[fieldId];
-            }
-          }
+  const readAnswersFromDom = useCallback(
+    (doc: Document) => {
+      const snap: Record<string, any> = {};
 
-          // Add event listeners
-          const handleChange = () => {
-            let answerValue: any;
-            
-            if (element.type === 'checkbox') {
-              answerValue = element.checked;
-            } else if (element.type === 'radio') {
-              answerValue = element.value;
-            } else if (element.tagName === 'SELECT') {
-              answerValue = element.value;
-            } else {
-              answerValue = element.value;
-            }
+      doc.querySelectorAll("[data-html-css-key]").forEach((el) => {
+        const key = el.getAttribute("data-html-css-key");
+        if (!key) return;
+        const inp = el as HTMLInputElement;
+        if (inp.type === "checkbox") snap[key] = inp.checked;
+        else snap[key] = inp.value;
+      });
 
-            setStudentAnswers(prev => ({
-              ...prev,
-              [fieldId]: answerValue
-            }));
-          };
-
-          element.addEventListener('change', handleChange);
-          element.addEventListener('input', handleChange);
+      const radioNames = new Set<string>();
+      doc.querySelectorAll('input[type="radio"]').forEach((el) => {
+        const n = (el as HTMLInputElement).name;
+        if (n) radioNames.add(n);
+      });
+      radioNames.forEach((name) => {
+        const key = `htmlcss_radio_${name}`;
+        let picked = "";
+        doc.querySelectorAll('input[type="radio"]').forEach((el) => {
+          const inp = el as HTMLInputElement;
+          if (inp.name === name && inp.checked) picked = inp.value;
         });
-      } catch (e) {
-        console.error('Error setting up iframe listeners:', e);
+        snap[key] = picked;
+      });
+
+      const json = JSON.stringify(snap);
+      if (json !== lastSentJson.current) {
+        lastSentJson.current = json;
+        onChange(snap);
       }
+    },
+    [onChange]
+  );
+
+  useEffect(() => {
+    if (readOnly) return;
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+
+    const onLoad = () => {
+      const doc = iframe.contentDocument;
+      if (!doc) return;
+
+      const initial =
+        valueRef.current && typeof valueRef.current === "object" && !Array.isArray(valueRef.current)
+          ? valueRef.current
+          : {};
+      applyAnswersToDom(doc, initial);
+      lastSentJson.current = "";
+      readAnswersFromDom(doc);
+
+      const handler = () => readAnswersFromDom(doc);
+      doc.addEventListener("input", handler);
+      doc.addEventListener("change", handler);
+
+      return () => {
+        doc.removeEventListener("input", handler);
+        doc.removeEventListener("change", handler);
+      };
     };
 
-    // Wait for iframe to load
-    if (iframe.contentDocument?.readyState === 'complete') {
-      setupListeners();
-    } else {
-      iframe.addEventListener('load', setupListeners);
+    let cleanup: (() => void) | undefined;
+    const wrapped = () => {
+      cleanup?.();
+      cleanup = onLoad();
+    };
+
+    iframe.addEventListener("load", wrapped);
+    if (iframe.contentDocument?.readyState === "complete") {
+      wrapped();
     }
 
     return () => {
-      iframe.removeEventListener('load', setupListeners);
+      iframe.removeEventListener("load", wrapped);
+      cleanup?.();
     };
-  }, [question.prompt?.htmlCode, question.prompt?.cssCode, readOnly]);
+  }, [fullHtml, readOnly, readAnswersFromDom]);
 
-  const renderInteractiveHTML = () => {
-    const htmlCode = question.prompt?.htmlCode || "";
-    const cssCode = question.prompt?.cssCode || "";
+  useEffect(() => {
+    if (readOnly) return;
+    const doc = iframeRef.current?.contentDocument;
+    if (!doc?.body?.innerHTML) return;
+    const v = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+    applyAnswersToDom(doc, v);
+  }, [value, readOnly]);
 
-    const fullHtml = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <style>
-          body {
-            font-family: Arial, sans-serif;
-            padding: 20px;
-          }
-          ${cssCode}
-        </style>
-      </head>
-      <body>
-        ${htmlCode}
-      </body>
-      </html>
-    `;
+  return (
+    <div className="space-y-4">
+      {question.prompt?.text && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+          <p className="text-sm text-blue-900 font-medium whitespace-pre-wrap">{question.prompt.text}</p>
+        </div>
+      )}
 
-    return (
       <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">
-        <div className="bg-gray-100 px-3 py-2 border-b border-gray-300">
-          <div className="flex items-center gap-2">
-            <Eye className="w-4 h-4 text-gray-600" />
-            <span className="text-xs font-medium text-gray-700">Interactive Question</span>
-          </div>
+        <div className="bg-gray-100 px-3 py-2 border-b border-gray-300 flex items-center gap-2">
+          <Eye className="w-4 h-4 text-gray-600" />
+          <span className="text-xs font-medium text-gray-700">Interactive Question</span>
         </div>
         <div className="p-4 bg-white">
           <iframe
             ref={iframeRef}
+            key={fullHtml.slice(0, 200)}
             srcDoc={fullHtml}
-            title="Interactive HTML Question"
+            title="HTML/CSS question"
             className="w-full min-h-[400px] border-0"
             sandbox="allow-same-origin allow-scripts"
-            style={{ height: 'auto' }}
           />
         </div>
         {!readOnly && (
           <div className="bg-blue-50 border-t border-blue-200 px-3 py-2">
-            <p className="text-xs text-blue-700">
-              💡 Fill in the form above. Your answers are automatically saved.
-            </p>
+            <p className="text-xs text-blue-700">Answers save automatically when you change inputs.</p>
           </div>
         )}
       </div>
-    );
-  };
-
-  return (
-    <div className="space-y-4">
-      {/* Question Instructions */}
-      {question.prompt?.text && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-          <p className="text-sm text-blue-900 font-medium whitespace-pre-wrap">
-            {question.prompt.text}
-          </p>
-        </div>
-      )}
-
-      {/* Interactive HTML Render */}
-      {renderInteractiveHTML()}
     </div>
   );
 }
