@@ -24,7 +24,7 @@ function getSecurityHeaders(): Record<string, string> {
     "Referrer-Policy": "strict-origin-when-cross-origin",
     
     // Permissions policy (disable unnecessary features)
-    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), interest-cohort=()",
+    "Permissions-Policy": "camera=(), microphone=(self), geolocation=(), interest-cohort=()",
   };
 
   // Content Security Policy (only if enabled)

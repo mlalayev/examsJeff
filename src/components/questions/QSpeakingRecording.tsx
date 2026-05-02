@@ -83,52 +83,6 @@ export function QSpeakingRecording({
     };
   }, []);
 
-  // Check existing microphone permission on mount
-  useEffect(() => {
-    const checkPermission = async () => {
-      if (typeof navigator === 'undefined' || !navigator.permissions) {
-        setIsCheckingPermission(false);
-        return;
-      }
-
-      try {
-        // Check if permission API is available
-        const permissionStatus = await navigator.permissions.query({ name: 'microphone' as PermissionName });
-        
-        if (permissionStatus.state === 'granted') {
-          setPermissionGranted(true);
-          setError(null);
-          permissionRequestedRef.current = true;
-        } else if (permissionStatus.state === 'denied') {
-          setError("Microphone access denied. Please allow microphone access in your browser settings and refresh the page.");
-          setPermissionGranted(false);
-        }
-        
-        // Listen for permission changes
-        permissionStatus.onchange = () => {
-          if (permissionStatus.state === 'granted') {
-            setPermissionGranted(true);
-            setError(null);
-            permissionRequestedRef.current = true;
-          } else if (permissionStatus.state === 'denied') {
-            setError("Microphone access denied. Please allow microphone access in your browser settings and refresh the page.");
-            setPermissionGranted(false);
-          }
-        };
-      } catch {
-        // Permission API not supported or failed, try getUserMedia
-      }
-      
-      setIsCheckingPermission(false);
-    };
-
-    if (!readOnly && !value) {
-      checkPermission();
-    } else {
-      setIsCheckingPermission(false);
-    }
-  }, [readOnly, value]);
-
   // Request microphone permission early
   const requestMicrophonePermission = async () => {
     if (permissionRequestedRef.current && permissionGranted) {
@@ -168,6 +122,71 @@ export function QSpeakingRecording({
       return false;
     }
   };
+
+  // Query permission state, then call getUserMedia when not denied so the browser shows the prompt ("prompt" or no API).
+  useEffect(() => {
+    let cancelled = false;
+
+    const run = async () => {
+      if (readOnly || value) {
+        setIsCheckingPermission(false);
+        return;
+      }
+
+      let alreadyGranted = false;
+
+      if (typeof navigator !== "undefined" && navigator.permissions?.query) {
+        try {
+          const permissionStatus = await navigator.permissions.query({
+            name: "microphone" as PermissionName,
+          });
+          if (cancelled) return;
+
+          if (permissionStatus.state === "granted") {
+            setPermissionGranted(true);
+            setError(null);
+            permissionRequestedRef.current = true;
+            alreadyGranted = true;
+          } else if (permissionStatus.state === "denied") {
+            setError(
+              "Microphone access denied. Please allow microphone access in your browser settings and refresh the page."
+            );
+            setPermissionGranted(false);
+            setIsCheckingPermission(false);
+            return;
+          }
+
+          permissionStatus.onchange = () => {
+            if (cancelled) return;
+            if (permissionStatus.state === "granted") {
+              setPermissionGranted(true);
+              setError(null);
+              permissionRequestedRef.current = true;
+            } else if (permissionStatus.state === "denied") {
+              setError(
+                "Microphone access denied. Please allow microphone access in your browser settings and refresh the page."
+              );
+              setPermissionGranted(false);
+            }
+          };
+        } catch {
+          /* Permissions-API unsupported or "microphone" not queryable — use getUserMedia below */
+        }
+      }
+
+      setIsCheckingPermission(false);
+
+      if (cancelled || alreadyGranted) return;
+      await requestMicrophonePermission();
+    };
+
+    void run();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- requestMicrophonePermission is stable for this flow
+  }, [readOnly, value]);
 
   const startPreparation = async () => {
     if (timerRef.current) {
@@ -401,13 +420,6 @@ export function QSpeakingRecording({
       startReading();
     }
   };
-
-  // Request permission immediately on mount (non-blocking) - only if not already checked
-  useEffect(() => {
-    if (!readOnly && !value && !isCheckingPermission && !permissionGranted) {
-      requestMicrophonePermission();
-    }
-  }, [isCheckingPermission]); // Run after permission check completes
 
   useEffect(() => {
     // Auto-start recording flow after permission is granted

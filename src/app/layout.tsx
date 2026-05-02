@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   title: 'JEFF Exams Portal - IELTS, TOEFL & SAT Mock Exams',
   description: 'Practice IELTS, TOEFL and SAT with AI-powered feedback and teacher grading',
   other: {
-    'permissions-policy': 'camera=(), microphone=(), geolocation=()',
+    'permissions-policy': 'camera=(), microphone=(self), geolocation=()',
   },
 }
 
