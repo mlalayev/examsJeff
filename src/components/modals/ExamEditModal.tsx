@@ -56,6 +56,7 @@ export default function ExamEditModal({
   const [previewQuestion, setPreviewQuestion] = useState<Question | null>(null);
   const [showQuestionTypeModal, setShowQuestionTypeModal] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [deletingQuestion, setDeletingQuestion] = useState<Question | null>(null);
 
   useEffect(() => {
     if (isOpen && sections.length > 0) {
@@ -217,6 +218,18 @@ export default function ExamEditModal({
     setShowQuestionTypeModal(false);
   };
 
+  const handleDeleteQuestion = () => {
+    if (!deletingQuestion || !selectedSection) return;
+
+    // Remove the question from the section
+    const updatedQuestions = selectedSection.questions.filter(
+      q => q.id !== deletingQuestion.id
+    );
+
+    onSave(updatedQuestions, selectedSection.id);
+    setDeletingQuestion(null);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-xl w-full max-w-6xl h-[80vh] flex flex-col shadow-2xl border border-gray-200">
@@ -351,6 +364,13 @@ export default function ExamEditModal({
                         >
                           <Edit className="w-4 h-4" />
                         </button>
+                        <button
+                          onClick={() => setDeletingQuestion(q)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
 
@@ -422,6 +442,58 @@ export default function ExamEditModal({
         onClose={() => setShowQuestionTypeModal(false)}
         onSelect={handleAddQuestion}
       />
+
+      {/* Delete Confirmation Modal */}
+      {deletingQuestion && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4">
+          <div className="bg-white rounded-lg w-full max-w-md shadow-xl">
+            <div className="p-6">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                  <Trash2 className="w-6 h-6 text-red-600" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    Delete Question {deletingQuestion.order + 1}?
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Are you sure you want to delete this question? This action cannot be undone.
+                  </p>
+                  
+                  {/* Question Preview */}
+                  <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg mb-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs px-2 py-1 bg-gray-200 rounded text-gray-700 font-medium">
+                        {deletingQuestion.qtype}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-700 line-clamp-2">
+                      {typeof deletingQuestion.prompt === "object" && deletingQuestion.prompt?.text
+                        ? deletingQuestion.prompt.text
+                        : "No question text"}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setDeletingQuestion(null)}
+                      className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleDeleteQuestion}
+                      className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+                    >
+                      Delete Question
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

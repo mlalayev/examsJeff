@@ -44,6 +44,8 @@ Added the ability to add and edit questions with the full-featured question edit
 - Updated empty state message to include "Click 'Add Question' to create one"
 - Replaced basic edit modal with full `QuestionEditModal` component
 - Added Question Type Selection Modal
+- Added Delete button (trash icon) to each question card
+- Added Delete Confirmation Modal with question preview
 
 #### Full Question Editor Features (now integrated)
 The editing modal now includes all specialized question editors:
@@ -130,16 +132,33 @@ The editing modal now includes all specialized question editors:
 8. Question is updated in local state AND saved to database
 9. Success/error message is shown
 
+### Deleting a Question
+
+1. From the Quick Edit Questions modal
+2. Find the question you want to delete
+3. Click the Delete icon (trash) on the right (red color)
+4. **Delete Confirmation Modal appears** showing:
+   - Question number
+   - Question type badge
+   - Question text preview
+   - Warning message
+5. Review the question details
+6. Click "Delete Question" to confirm (or "Cancel" to abort)
+7. Question is removed from local state AND deleted from database
+8. Success message is shown
+9. Question disappears from the list
+
 ## Benefits
 
 - ✅ **Full-featured editing**: Complete question editor with all specialized fields for each question type
 - ✅ **HTML/CSS support**: Interactive questions with live preview, syntax help, and auto-grading setup
-- ✅ **Quick access**: Add/edit questions directly from Quick Edit modal without navigating away
+- ✅ **Quick access**: Add/edit/delete questions directly from Quick Edit modal without navigating away
 - ✅ **Smart placement**: Questions are added to the correct part/section with proper ordering
 - ✅ **Instant persistence**: Changes are immediately saved to the database
 - ✅ **All question types**: MCQ, HTML_CSS, DND_GAP, IMAGE_INTERACTIVE, SPEAKING_RECORDING, and more
 - ✅ **Visual feedback**: Live preview for HTML_CSS questions, question preview for all types
 - ✅ **Validation**: Built-in validation (e.g., IMAGE_INTERACTIVE requires hotspots)
+- ✅ **Safe deletion**: Confirmation modal prevents accidental deletions
 - ✅ **Professional UI**: Consistent design with the main exam editor
 - ✅ **Image support**: Upload images for any question type
 - ✅ **Clear feedback**: Loading states and success/error alerts guide the user
@@ -239,15 +258,16 @@ The editing modal now includes all specialized question editors:
 
 - Questions can only be added one at a time (not bulk import)
 - Question order is automatically calculated (cannot manually specify order during creation)
-- Deleting questions is not yet implemented in this modal (must use full editor)
 - Question type cannot be changed after creation (must delete and recreate)
+- Cannot reorder questions by dragging (must use question order field)
 
 ## Future Enhancements
 
-- Add ability to delete questions from Quick Edit modal
+- ✅ ~~Add ability to delete questions from Quick Edit modal~~ (DONE!)
 - Add ability to reorder questions via drag-and-drop
 - Add ability to change question order manually
 - Add bulk import/export functionality
 - Add duplicate question functionality
 - Add ability to move questions between parts/sections
 - Add keyboard shortcuts for faster editing
+- Add undo/redo functionality
