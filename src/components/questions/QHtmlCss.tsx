@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Eye } from "lucide-react";
 import { sanitizeHtmlCssMarkup } from "@/lib/htmlCssAnswerKey";
 
@@ -18,51 +18,83 @@ interface QHtmlCssProps {
   readOnly: boolean;
 }
 
+/** Push answer map into iframe fields (no listener churn). */
+function applyAnswersToIframeDoc(
+  iframeDoc: Document,
+  answers: Record<string, any>
+) {
+  const allInputs = iframeDoc.querySelectorAll("input, textarea, select");
+  allInputs.forEach((el: Element) => {
+    const node = el as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+    const key = node.name || node.id;
+    if (!key) return;
+    if (answers[key] === undefined) return;
+    if (node.type === "checkbox") {
+      node.checked = answers[key] === true || answers[key] === "true";
+    } else if (node.type === "radio") {
+      node.checked = answers[key] === node.value;
+    } else {
+      node.value = String(answers[key] ?? "");
+    }
+  });
+}
+
 export default function QHtmlCss({ question, value, onChange, readOnly }: QHtmlCssProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [studentAnswers, setStudentAnswers] = useState<Record<string, any>>(value || {});
+  const studentAnswersRef = useRef(studentAnswers);
+  studentAnswersRef.current = studentAnswers;
 
-  // Update parent when answers change
-  useEffect(() => {
-    if (JSON.stringify(studentAnswers) !== JSON.stringify(value)) {
-      onChange(studentAnswers);
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
+  const flushParentTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingParentFlushRef = useRef<Record<string, any> | null>(null);
+
+  // Debounce parent updates so rapid iframe events do not re-render the whole exam tree every tick
+  const scheduleParentFlush = useCallback((next: Record<string, any>) => {
+    pendingParentFlushRef.current = next;
+    if (flushParentTimerRef.current) {
+      clearTimeout(flushParentTimerRef.current);
     }
-  }, [studentAnswers, onChange, value]);
+    flushParentTimerRef.current = setTimeout(() => {
+      flushParentTimerRef.current = null;
+      const payload = pendingParentFlushRef.current;
+      pendingParentFlushRef.current = null;
+      const v = onChangeRef.current;
+      if (typeof v === "function" && payload) v(payload);
+    }, 120);
+  }, []);
 
-  // Inject event listeners into iframe
+  // Keep local state in sync when parent `value` changes (e.g. load / reset)
+  useEffect(() => {
+    const next = value || {};
+    setStudentAnswers((prev) => {
+      if (JSON.stringify(prev) === JSON.stringify(next)) return prev;
+      return next;
+    });
+  }, [value]);
+
+  // Bind iframe once per question markup — NOT on every `studentAnswers` change (that froze the page)
   useEffect(() => {
     if (!iframeRef.current || readOnly) return;
 
     const iframe = iframeRef.current;
-    
+    let cancelled = false;
+
     const setupListeners = (): number => {
+      if (cancelled) return 0;
       try {
         const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
         if (!iframeDoc) return 0;
 
-        // Restore previous values (best effort)
-        const allInputs = iframeDoc.querySelectorAll("input, textarea, select");
-        allInputs.forEach((el: any) => {
-          const key = el.name || el.id;
-          if (!key) {
-            return;
-          }
-          if (studentAnswers[key] === undefined) return;
-          if (el.type === "checkbox") {
-            el.checked = studentAnswers[key] === true || studentAnswers[key] === "true";
-          } else if (el.type === "radio") {
-            el.checked = studentAnswers[key] === el.value;
-          } else {
-            el.value = studentAnswers[key];
-          }
-        });
+        applyAnswersToIframeDoc(iframeDoc, studentAnswersRef.current);
 
-        // If there is nothing to bind to, caller can retry after load settles.
+        const allInputs = iframeDoc.querySelectorAll("input, textarea, select");
         if (allInputs.length === 0) return 0;
 
-        // Event delegation (more reliable than per-element listeners)
         const handler = (e: Event) => {
-          const t = e.target as any;
+          const t = e.target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null;
           if (!t) return;
           const tag = (t.tagName || "").toLowerCase();
           if (tag !== "input" && tag !== "textarea" && tag !== "select") return;
@@ -70,7 +102,7 @@ export default function QHtmlCss({ question, value, onChange, readOnly }: QHtmlC
           const key = t.name || t.id;
           if (!key) return;
 
-          let answerValue: any;
+          let answerValue: string | boolean;
           if (t.type === "checkbox") {
             answerValue = !!t.checked;
           } else if (t.type === "radio") {
@@ -80,85 +112,117 @@ export default function QHtmlCss({ question, value, onChange, readOnly }: QHtmlC
             answerValue = t.value;
           }
 
-          setStudentAnswers((prev) => ({ ...prev, [key]: answerValue }));
+          setStudentAnswers((prev) => {
+            if (prev[key] === answerValue) return prev;
+            const merged = { ...prev, [key]: answerValue };
+            scheduleParentFlush(merged);
+            return merged;
+          });
         };
 
         iframeDoc.addEventListener("input", handler, true);
         iframeDoc.addEventListener("change", handler, true);
 
-        // Fallback: poll values (some browsers/iframes can drop events)
         const poll = () => {
+          if (cancelled) return;
           try {
             const next: Record<string, any> = {};
             const nodes = iframeDoc.querySelectorAll("input, textarea, select");
-            nodes.forEach((el: any) => {
-              const key = el.name || el.id;
+            nodes.forEach((el: Element) => {
+              const node = el as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+              const key = node.name || node.id;
               if (!key) return;
-              if (el.type === "radio") {
-                if (el.checked) next[key] = el.value;
+              if (node.type === "radio") {
+                if (node.checked) next[key] = node.value;
                 return;
               }
-              if (el.type === "checkbox") {
-                next[key] = !!el.checked;
+              if (node.type === "checkbox") {
+                next[key] = !!node.checked;
                 return;
               }
-              // Always capture the value, even if empty (this is the current state)
-              next[key] = el.value;
+              next[key] = node.value;
             });
 
             setStudentAnswers((prev) => {
               if (JSON.stringify(prev) === JSON.stringify(next)) return prev;
+              scheduleParentFlush(next);
               return next;
             });
-          } catch {}
+          } catch {
+            /* ignore */
+          }
         };
         const intervalId = window.setInterval(poll, 800);
 
-        // Cleanup for this setupListeners run
-        (iframe as any).__htmlCssCleanup = () => {
+        (iframe as unknown as { __htmlCssCleanup?: () => void }).__htmlCssCleanup = () => {
           try {
             iframeDoc.removeEventListener("input", handler, true);
             iframeDoc.removeEventListener("change", handler, true);
             window.clearInterval(intervalId);
-          } catch {}
+          } catch {
+            /* ignore */
+          }
         };
         return allInputs.length;
       } catch (e) {
-        console.error('Error setting up iframe listeners:', e);
+        console.error("Error setting up iframe listeners:", e);
         return 0;
       }
     };
 
-    const trySetupWithRetry = (attempt = 0) => {
+    const trySetupWithRetry = (attempt: number) => {
+      if (cancelled) return;
       const boundCount = setupListeners();
       if (boundCount > 0) {
         return;
       }
       if (attempt >= 20) {
-        console.error('❌ Failed to find inputs after 20 attempts (~2 seconds)');
-        console.error('Iframe content:', iframe.contentDocument?.body?.innerHTML?.substring(0, 500));
+        console.error("❌ Failed to find inputs after 20 attempts (~2 seconds)");
         return;
       }
-      window.setTimeout(() => trySetupWithRetry(attempt + 1), 100);
+      window.setTimeout(() => {
+        if (cancelled) return;
+        trySetupWithRetry(attempt + 1);
+      }, 100);
     };
 
     const onLoad = () => {
-      // Give the browser a moment to parse srcDoc
-      window.setTimeout(() => trySetupWithRetry(0), 0);
+      window.setTimeout(() => {
+        if (cancelled) return;
+        trySetupWithRetry(0);
+      }, 0);
     };
 
-    // Always listen for load; srcDoc updates should trigger it.
     iframe.addEventListener("load", onLoad);
-    // Best-effort: attempt once immediately as well (in case load already happened).
     onLoad();
 
     return () => {
+      cancelled = true;
+      if (flushParentTimerRef.current) {
+        clearTimeout(flushParentTimerRef.current);
+        flushParentTimerRef.current = null;
+      }
+      if (pendingParentFlushRef.current) {
+        const v = onChangeRef.current;
+        if (typeof v === "function") v(pendingParentFlushRef.current);
+        pendingParentFlushRef.current = null;
+      }
       try {
-        (iframe as any).__htmlCssCleanup?.();
-      } catch {}
+        (iframe as unknown as { __htmlCssCleanup?: () => void }).__htmlCssCleanup?.();
+      } catch {
+        /* ignore */
+      }
       iframe.removeEventListener("load", onLoad);
     };
-  }, [question.prompt?.htmlCode, question.prompt?.cssCode, readOnly, studentAnswers]);
+  }, [question.prompt?.htmlCode, question.prompt?.cssCode, readOnly, scheduleParentFlush]);
+
+  // When parent sends new `value` while iframe already mounted, patch DOM only (no listener teardown)
+  useEffect(() => {
+    if (readOnly) return;
+    const doc = iframeRef.current?.contentDocument;
+    if (!doc) return;
+    applyAnswersToIframeDoc(doc, value || {});
+  }, [value, readOnly]);
 
   const renderInteractiveHTML = () => {
     const htmlCode = sanitizeHtmlCssMarkup(question.prompt?.htmlCode || "");
@@ -213,7 +277,6 @@ export default function QHtmlCss({ question, value, onChange, readOnly }: QHtmlC
 
   return (
     <div className="space-y-4">
-      {/* Question Instructions */}
       {question.prompt?.text && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
           <p className="text-sm text-blue-900 font-medium whitespace-pre-wrap">
@@ -222,7 +285,6 @@ export default function QHtmlCss({ question, value, onChange, readOnly }: QHtmlC
         </div>
       )}
 
-      {/* Interactive HTML Render */}
       {renderInteractiveHTML()}
     </div>
   );

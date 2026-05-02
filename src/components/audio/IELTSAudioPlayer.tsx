@@ -43,6 +43,8 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
   const isDraggingRef = useRef(false);
   /** Persist audio time periodically and on important events */
   const lastPersistedTimeRef = useRef<number>(0);
+  /** Throttle React updates from `timeupdate` (fires very often during playback) */
+  const lastUiUpdateMsRef = useRef(0);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -98,6 +100,7 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
     // Reset flags when audio source changes
     hasCheckedSavedPositionRef.current = false;
     lastPersistedTimeRef.current = 0;
+    lastUiUpdateMsRef.current = 0;
 
     setError(null);
     setIsPlaying(false);
@@ -111,7 +114,7 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
       audio.load();
     }
 
-    const persistCurrentTime = () => {
+    const persistCurrentTime = (opts?: { force?: boolean }) => {
       const storageKey = getAudioTimeStorageKey();
       if (!storageKey || typeof window === "undefined" || !audio) return;
 
@@ -122,8 +125,13 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
         return;
       }
 
-      // Only persist if the time has changed by at least 0.5 seconds
-      if (Math.abs(currentTime - lastPersistedTimeRef.current) < 0.5) return;
+      // While playing, avoid localStorage on every `timeupdate` tick — only when >= 0.5s moved
+      if (
+        !opts?.force &&
+        Math.abs(currentTime - lastPersistedTimeRef.current) < 0.5
+      ) {
+        return;
+      }
 
       try {
         localStorage.setItem(storageKey, currentTime.toString());
@@ -133,10 +141,25 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
       }
     };
 
+    const UI_UPDATE_INTERVAL_MS = 100;
+
     const onTimeUpdate = () => {
-      if (!isDraggingRef.current) {
-        const time = audio.currentTime;
+      if (isDraggingRef.current) return;
+
+      const time = audio.currentTime;
+      const now =
+        typeof performance !== "undefined" && typeof performance.now === "function"
+          ? performance.now()
+          : Date.now();
+
+      // `timeupdate` can fire many times per second — only re-render the UI ~10/s for time + bar
+      if (now - lastUiUpdateMsRef.current >= UI_UPDATE_INTERVAL_MS) {
+        lastUiUpdateMsRef.current = now;
         setCurrentTime(time);
+      }
+
+      // Skip persist on most ticks; only when playback moved enough (same as before, without extra work)
+      if (isFinite(time) && time > 0 && Math.abs(time - lastPersistedTimeRef.current) >= 0.5) {
         persistCurrentTime();
       }
     };
@@ -164,11 +187,11 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
 
     const onPause = () => {
       setIsPlaying(false);
-      persistCurrentTime();
+      persistCurrentTime({ force: true });
     };
 
     const onSeeked = () => {
-      persistCurrentTime();
+      persistCurrentTime({ force: true });
     };
 
     const onError = (e: Event) => {
