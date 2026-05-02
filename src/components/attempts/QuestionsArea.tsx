@@ -170,8 +170,12 @@ export const QuestionsArea = React.memo(function QuestionsArea({
     return bases;
   }, [section.questions]);
 
+  // "Grouped DnD" is a legacy layout for *all-DND_GAP* sections with specific titles.
+  // If the section mixes other types (e.g. HTML_CSS), never group — otherwise those questions disappear.
   const isGroupedDnd =
-    section.questions?.[0]?.qtype === "DND_GAP" &&
+    Array.isArray(section.questions) &&
+    section.questions.length > 0 &&
+    section.questions.every((q) => q.qtype === "DND_GAP") &&
     (section.title?.toLowerCase().includes("preposition") ||
       section.title?.toLowerCase().includes("time expression") ||
       section.title?.toLowerCase().includes("short form"));
