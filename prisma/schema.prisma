@@ -307,7 +307,7 @@ model ExamSection {
   durationMin     Int           @default(15)
   order           Float         @default(0)
   title           String
-  instruction     String?
+  instruction     Json?
   image           String?
   image2          String?
   parentSectionId String?       @map("parent_section_id")

@@ -15,11 +15,22 @@ const questionSchema = z.object({
   image: z.string().nullable().optional(),
 });
 
+// Instruction can be either a string (legacy) or an object with structured data
+const instructionSchema = z.union([
+  z.string(),
+  z.object({
+    text: z.string().optional(),
+    passage: z.string().optional(),
+    audio: z.string().optional(),
+    introduction: z.string().optional(),
+  })
+]).nullable().optional();
+
 const sectionSchema = z.object({
   id: z.string().optional(),
   type: z.enum(["READING", "LISTENING", "WRITING", "SPEAKING", "GRAMMAR", "VOCABULARY"]),
   title: z.string(),
-  instruction: z.any().nullable().optional(), // Can be string or object with text, passage, audio, introduction
+  instruction: instructionSchema,
   image: z.string().nullable().optional(), // Section image (IELTS Listening parts)
   durationMin: z.number(),
   order: z.number(),

@@ -5,29 +5,69 @@ When trying to save a question from the Quick Edit modal, a 500 Internal Server 
 ```
 PATCH https://exams.jeff.az/api/admin/exams/[examId] net::ERR_ABORTED 500 (Internal Server Error)
 Error saving question: Error: Failed to save exam
+
+Invalid `prisma.examSection.update()` invocation:
+Unknown argument `text`. Did you mean `set`?
 ```
 
 ## Root Cause
-The API validation schema was expecting `instruction` to be a `string`, but the client was sending it as an **object** containing:
-- `text`: The main instruction text
-- `passage`: Optional passage text (for Reading sections)
-- `audio`: Optional audio URL (for Listening sections)
-- `introduction`: Optional introduction text
+**Two-part problem:**
 
-This mismatch caused the Zod validation to fail with a 500 error.
+1. The Prisma schema had `instruction` as `String?`, but the code was sending an **object**
+2. The API validation was not properly handling the object format
+
+The client was sending:
+```json
+{
+  "text": "Main instruction",
+  "audio": "/api/audio/file.mp3",
+  "passage": "Optional passage",
+  "introduction": "Optional intro"
+}
+```
+
+But the database schema only accepted a plain string.
 
 ## Solution
 
-### 1. Updated API Schema
-**File**: `src/app/api/admin/exams/[id]/route.ts`
+### 1. Updated Prisma Schema
+**File**: `prisma/schema.prisma`
 
-Changed the `sectionSchema` validation:
-```typescript
+Changed the `ExamSection` model to accept JSON:
+```prisma
 // BEFORE (incorrect)
-instruction: z.string().nullable().optional(),
+instruction     String?
 
 // AFTER (correct)
-instruction: z.any().nullable().optional(), // Can be string or object with text, passage, audio, introduction
+instruction     Json?
+```
+
+**⚠️ IMPORTANT: You need to run a database migration for this change!**
+
+See `MIGRATION_INSTRUCTION.md` for details.
+
+### 2. Updated API Schema
+**File**: `src/app/api/admin/exams/[id]/route.ts`
+
+Created a proper validation schema for instruction:
+```typescript
+// New instruction schema that accepts both string (legacy) and object
+const instructionSchema = z.union([
+  z.string(),
+  z.object({
+    text: z.string().optional(),
+    passage: z.string().optional(),
+    audio: z.string().optional(),
+    introduction: z.string().optional(),
+  })
+]).nullable().optional();
+
+// Used in sectionSchema
+const sectionSchema = z.object({
+  // ... other fields
+  instruction: instructionSchema,
+  // ... other fields
+});
 ```
 
 ### 2. Added Better Error Logging
@@ -118,48 +158,74 @@ Answer keys are automatically extracted from the HTML code using these attribute
 
 ## Files Modified
 
-1. **`src/app/api/admin/exams/[id]/route.ts`**
-   - Changed `instruction` validation from `z.string()` to `z.any()`
+1. **`prisma/schema.prisma`**
+   - Changed `ExamSection.instruction` from `String?` to `Json?`
+   - **Requires migration**: Run `npx prisma migrate dev --name change-instruction-to-json`
+
+2. **`src/app/api/admin/exams/[id]/route.ts`**
+   - Created `instructionSchema` with proper validation
+   - Supports both string (legacy) and object formats
    - Added better error logging
 
-2. **`src/app/dashboard/admin/exams/[id]/edit/page.tsx`**
+3. **`src/app/dashboard/admin/exams/[id]/edit/page.tsx`**
    - Improved error handling to show specific API error messages
    - Added detailed logging of save failures
 
 ## Testing Checklist
 
-- [x] Fix 500 error when saving questions
-- [x] Verify instruction object is accepted
-- [x] Test with HTML/CSS questions
-- [x] Test with MCQ questions
-- [x] Test with all question types
-- [x] Verify answer keys are saved correctly
-- [x] Check error messages are displayed properly
+- [ ] **RUN MIGRATION FIRST**: `npx prisma migrate dev --name change-instruction-to-json`
+- [ ] Fix 500 error when saving questions
+- [ ] Verify instruction object is accepted
+- [ ] Test with HTML/CSS questions
+- [ ] Test with MCQ questions
+- [ ] Test with all question types
+- [ ] Verify answer keys are saved correctly
+- [ ] Check error messages are displayed properly
+- [ ] Verify existing exams still load correctly
+- [ ] Check that audio URLs are saved (for Listening sections)
 
 ## Verification Steps
 
-1. **Open Quick Edit**
-   - Navigate to exam edit page
-   - Click "Quick Edit Questions"
+### Step 0: Run Migration (REQUIRED!)
+```bash
+cd C:\Users\Baku\Desktop\aimentor
+npx prisma migrate dev --name change-instruction-to-json
+```
 
-2. **Add HTML/CSS Question**
-   - Click "Add Question to Part 1"
-   - Select "HTML_CSS" type
-   - Fill in HTML code with `data-answer` attributes
-   - Fill in question instructions
-   - Click "Save Question"
-   - **Expected**: Success message, no 500 error
+Wait for migration to complete, then continue.
 
-3. **Check Database**
-   - Refresh the page
-   - Open Quick Edit again
-   - **Expected**: Question appears in the list
-   - Click Edit on the question
-   - **Expected**: All data is preserved
+### Step 1: Open Quick Edit
+- Navigate to exam edit page
+- Click "Quick Edit Questions"
 
-4. **Check Answer Keys**
-   - In the database, check the `Question.answerKey` field
-   - **Expected**: JSON object with extracted answers
+### Step 2: Add HTML/CSS Question
+- Click "Add Question to Part 1"
+- Select "HTML_CSS" type
+- Fill in HTML code with `data-answer` attributes
+- Fill in question instructions
+- Click "Save Question"
+- **Expected**: Success message, no 500 error
+
+### Step 3: Check Database
+- Refresh the page
+- Open Quick Edit again
+- **Expected**: Question appears in the list
+- Click Edit on the question
+- **Expected**: All data is preserved
+
+### Step 4: Check Instruction Field
+- In the database, check the `exam_sections.instruction` field
+- **Expected**: JSON object like:
+  ```json
+  {
+    "text": "Main instruction",
+    "audio": "/api/audio/file.mp3"
+  }
+  ```
+
+### Step 5: Check Answer Keys
+- In the database, check the `Question.answerKey` field
+- **Expected**: JSON object with extracted answers
 
 ## Common Issues and Solutions
 

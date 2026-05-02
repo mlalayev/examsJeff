@@ -1,0 +1,48 @@
+=====================================
+  IMPORTANT: RUN THIS COMMAND NOW!
+=====================================
+
+Open your terminal in the project directory and run:
+
+npx prisma migrate dev --name change-instruction-to-json
+
+This will:
+1. Create a database migration
+2. Change the instruction field from String to Json
+3. Apply the migration to your database
+4. Update the Prisma client
+
+After running this command:
+- The 500 error will be fixed
+- Questions will save correctly
+- Instructions with audio/passage will work
+
+=====================================
+  WHAT IF IT ASKS FOR CONFIRMATION?
+=====================================
+
+If it asks: "Are you sure you want to create and apply this migration?"
+Answer: YES or y
+
+=====================================
+  WHAT IF THERE'S AN ERROR?
+=====================================
+
+If you see an error about the database:
+1. Make sure your database is running
+2. Check your .env file has the correct DATABASE_URL
+3. Try running: npx prisma generate
+
+If you see an error about data:
+1. The migration might need manual intervention
+2. Check MIGRATION_INSTRUCTION.md for SQL commands
+
+=====================================
+  AFTER THE MIGRATION
+=====================================
+
+1. Restart your development server (Ctrl+C, then npm run dev)
+2. Try adding a question again
+3. You should see "Success" instead of 500 error
+
+=====================================
