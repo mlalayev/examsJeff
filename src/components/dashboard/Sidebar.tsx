@@ -239,6 +239,7 @@ export default function Sidebar() {
         href: "/dashboard/student/history",
         icon: History,
         color: "from-emerald-500 to-emerald-600",
+        disabled: true,
       }
     );
   }
@@ -343,11 +344,14 @@ export default function Sidebar() {
                     <div
                       key={item.href}
                       className="flex items-center gap-3 px-3 py-2 rounded text-slate-400 cursor-not-allowed"
-                      title="Coming soon"
+                      title={item.comingSoon ? "Coming soon" : "Unavailable"}
+                      aria-disabled="true"
                     >
                       <Icon className="w-4 h-4" />
                       <span className="text-sm text-slate-400">{item.label}</span>
-                      <span className="ml-auto text-xs text-slate-400">Soon</span>
+                      {item.comingSoon ? (
+                        <span className="ml-auto text-xs text-slate-400">Soon</span>
+                      ) : null}
                     </div>
                   );
                 }
