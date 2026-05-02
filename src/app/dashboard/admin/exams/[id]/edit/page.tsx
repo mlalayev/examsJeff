@@ -193,11 +193,45 @@ export default function EditExamPage() {
           parsedSections.push(mainListening);
         }
 
-        // Re-group IELTS Reading: 3 (or more) flat "Passage" DB rows → one parent + subsections (matches create UI)
-        if (readingParts.length >= 2) {
+        // IELTS Reading: always one parent + exactly 3 passage subsections (DB may have 1 legacy row or 2–3 rows).
+        if (readingParts.length >= 1) {
           readingParts.sort((a, b) => a.order - b.order);
           const readingParentId = `reading-root-${readingParts.map((p) => p.id).sort().join("-")}`;
           const minOrder = Math.min(...readingParts.map((p) => p.order));
+          const passageTemplates = [
+            { title: "Passage 1", instruction: "Questions 1-13 (Easier text)" },
+            { title: "Passage 2", instruction: "Questions 14-26 (Medium difficulty)" },
+            { title: "Passage 3", instruction: "Questions 27-40 (Harder academic text)" },
+          ];
+          const baseId = Date.now();
+          const subsections: Section[] = [0, 1, 2].map((i) => {
+            const incoming = readingParts[i];
+            const t = passageTemplates[i];
+            if (incoming) {
+              return {
+                ...incoming,
+                title: t.title,
+                order: i,
+                durationMin: incoming.durationMin ?? 0,
+                isSubsection: true,
+                parentId: readingParentId,
+                instruction:
+                  incoming.instruction?.trim() ? incoming.instruction : t.instruction,
+              };
+            }
+            return {
+              id: `subsection-${baseId}-${i}`,
+              type: "READING" as const,
+              title: t.title,
+              instruction: t.instruction,
+              durationMin: 0,
+              order: i,
+              questions: [],
+              passage: "",
+              isSubsection: true,
+              parentId: readingParentId,
+            };
+          });
           const mainReading: Section = {
             id: readingParentId,
             type: "READING",
@@ -207,15 +241,9 @@ export default function EditExamPage() {
             order: minOrder,
             questions: [],
             passage: "",
-            subsections: readingParts.map((part) => ({
-              ...part,
-              isSubsection: true,
-              parentId: readingParentId,
-            })),
+            subsections,
           };
           parsedSections.push(mainReading);
-        } else if (readingParts.length === 1) {
-          parsedSections.push(readingParts[0]);
         }
 
         setSections(sortIELTSSections(parsedSections));
@@ -645,24 +673,38 @@ export default function EditExamPage() {
     setReadingPassageDrafts({});
   };
 
-  /** Opens passage editor; for IELTS with grouped passages, loads drafts for all three at once */
+  /** Opens passage editor; for IELTS Reading, one modal edits all three DB passages (subsection rows). */
   const openReadingPassageModal = (section: Section) => {
-    const parent = sections.find((s) => s.subsections?.some((sub) => sub.id === section.id));
+    let parent: Section | undefined;
     if (
       selectedCategory === "IELTS" &&
-      parent?.subsections &&
-      parent.subsections.length >= 2 &&
-      section.isSubsection
+      section.type === "READING" &&
+      section.subsections &&
+      section.subsections.length > 0
     ) {
+      parent = section;
+    } else {
+      parent = sections.find((s) => s.subsections?.some((sub) => sub.id === section.id));
+    }
+
+    const ieltsThreePassages =
+      selectedCategory === "IELTS" &&
+      parent?.type === "READING" &&
+      parent.subsections &&
+      parent.subsections.length >= 3;
+
+    if (ieltsThreePassages) {
       const drafts: Record<string, string> = {};
-      [...parent.subsections].sort((a, b) => a.order - b.order).forEach((sub) => {
+      [...parent.subsections!].sort((a, b) => a.order - b.order).forEach((sub) => {
         drafts[sub.id] = sub.passage || "";
       });
       setReadingPassageDrafts(drafts);
+      const first = [...parent.subsections!].sort((a, b) => a.order - b.order)[0];
+      setEditingSection(first);
     } else {
       setReadingPassageDrafts({ [section.id]: section.passage || "" });
+      setEditingSection(section);
     }
-    setEditingSection(section);
     setShowSectionEditModal(true);
   };
 
@@ -1090,6 +1132,19 @@ export default function EditExamPage() {
                             Full listening audio
                           </button>
                         )}
+                        {hasSubsections &&
+                          section.type === "READING" &&
+                          selectedCategory === "IELTS" &&
+                          (section.subsections?.length ?? 0) >= 3 && (
+                            <button
+                              onClick={() => openReadingPassageModal(section)}
+                              className="px-2 py-1 text-xs font-medium text-green-700 bg-green-50 rounded hover:bg-green-100 flex items-center gap-1"
+                              title="Edit Passage 1, 2, and 3 in one window"
+                            >
+                              <BookOpen className="w-3 h-3" />
+                              Passages
+                            </button>
+                          )}
                         {!hasSubsections && (
                           <button
                             onClick={() => setCurrentSection(section)}
@@ -2096,7 +2151,7 @@ export default function EditExamPage() {
               selectedCategory === "IELTS" &&
               (() => {
                 const p = sections.find((s) => s.subsections?.some((sub) => sub.id === editingSection.id));
-                return !!(p?.subsections && p.subsections.length >= 2 && editingSection.isSubsection);
+                return !!(p?.subsections && p.subsections.length >= 3 && editingSection.isSubsection);
               })()
                 ? "max-w-4xl"
                 : "max-w-2xl"
@@ -2113,10 +2168,10 @@ export default function EditExamPage() {
                       if (
                         selectedCategory === "IELTS" &&
                         p?.subsections &&
-                        p.subsections.length >= 2 &&
+                        p.subsections.length >= 3 &&
                         editingSection.isSubsection
                       ) {
-                        return "IELTS reading — all passages";
+                        return "IELTS reading — Passages 1–3";
                       }
                       return editingSection.title
                         ? `Reading passage — ${editingSection.title}`
@@ -2144,7 +2199,7 @@ export default function EditExamPage() {
                 const ieltsMulti =
                   selectedCategory === "IELTS" &&
                   !!readingParent?.subsections &&
-                  readingParent.subsections.length >= 2 &&
+                  readingParent.subsections.length >= 3 &&
                   !!editingSection.isSubsection;
 
                 if (ieltsMulti && readingParent.subsections) {
@@ -2419,22 +2474,12 @@ export default function EditExamPage() {
                     editingSection.type === "READING" &&
                     selectedCategory === "IELTS" &&
                     !!readingParentForSave?.subsections &&
-                    readingParentForSave.subsections.length >= 2 &&
+                    readingParentForSave.subsections.length >= 3 &&
                     !!editingSection.isSubsection;
 
                   if (editingSection.type === "READING") {
                     if (ieltsReadingMulti && readingParentForSave.subsections) {
-                      const missing = readingParentForSave.subsections.filter(
-                        (sub) => !(readingPassageDrafts[sub.id] || "").trim()
-                      );
-                      if (missing.length > 0) {
-                        showAlert(
-                          "Validation Error",
-                          "Please enter text for every passage (all boxes must be filled).",
-                          "error"
-                        );
-                        return;
-                      }
+                      // Allow partial saves: each passage maps to its own section row in the DB.
                     } else {
                       const one = (readingPassageDrafts[editingSection.id] ?? editingSection.passage ?? "").trim();
                       if (!one) {
