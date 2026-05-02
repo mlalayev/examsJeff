@@ -78,8 +78,8 @@ export const ExamSidebar = React.memo(function ExamSidebar({
   isIELTS = false,
   currentSectionType,
   isIELTSReading = false,
-  readingPart = 1,
-  onReadingPartChange,
+  readingPart: _readingPart = 1,
+  onReadingPartChange: _onReadingPartChange,
   readingPartProgress = [],
   listeningPart = 1,
   onListeningPartChange,
@@ -244,25 +244,27 @@ export const ExamSidebar = React.memo(function ExamSidebar({
                   Reading
                 </div>
                 <div className="flex rounded-lg overflow-hidden border border-gray-200 bg-white">
-                  {[1, 2, 3].map((p) => {
-                    const progress = readingPartProgress[p - 1] ?? { answered: 0, total: 1, percentage: 0 };
-                    const isActive = readingPart === p;
-                    const isDone = progress.percentage >= 100;
+                  {(() => {
+                    const progress = readingPartProgress[0] ?? { answered: 0, total: 0, percentage: 0 };
+                    const isDone = progress.total > 0 && progress.percentage >= 100;
                     return (
-                      <button
-                        key={p}
-                        type="button"
-                        onClick={() => onReadingPartChange?.(p)}
-                        className={`relative flex-1 flex flex-col items-center justify-center py-2 px-1 min-w-0 transition-colors duration-200 text-xs font-semibold ${isActive ? "text-white" : "text-gray-700 hover:bg-gray-50"}`}
-                        style={isActive ? { backgroundColor: ACCENT } : undefined}
-                        title={`Passage ${p}: ${progress.answered}/${progress.total}`}
+                      <div
+                        className="relative flex w-full flex-col items-center justify-center py-2 px-2 text-xs font-semibold text-white"
+                        style={{ backgroundColor: ACCENT }}
+                        title={`Part 1: ${progress.answered}/${progress.total}`}
                       >
-                        <span>P{p}</span>
-                        <span className={`text-[10px] font-medium tabular-nums mt-0.5 ${isActive ? "text-white/90" : "text-gray-500"}`}>{progress.answered}/{progress.total}</span>
-                        {isDone && <span className={`absolute top-0.5 right-0.5 flex h-3 w-3 items-center justify-center rounded-full ${isActive ? "bg-white/25 text-white" : "bg-emerald-100 text-emerald-600"}`}><Check className="h-1.5 w-1.5" strokeWidth={3} /></span>}
-                      </button>
+                        <span>Part 1</span>
+                        <span className="mt-0.5 text-[10px] font-medium tabular-nums text-white/90">
+                          {progress.answered}/{progress.total}
+                        </span>
+                        {isDone && (
+                          <span className="absolute right-1 top-0.5 flex h-3 w-3 items-center justify-center rounded-full bg-white/25 text-white">
+                            <Check className="h-1.5 w-1.5" strokeWidth={3} />
+                          </span>
+                        )}
+                      </div>
                     );
-                  })}
+                  })()}
                 </div>
                 {renderTimer()}
               </>

@@ -1384,23 +1384,19 @@ export default function AttemptRunnerPage() {
   const readingPartProgress = useMemo(() => {
     if (!currentSection || currentSection.type !== "READING" || data?.examCategory !== "IELTS") return [];
     const questions = currentSection.questions || [];
-    const parts = [
-      questions.filter((q: { order: number }) => q.order >= 0 && q.order < 14),
-      questions.filter((q: { order: number }) => q.order >= 14 && q.order < 27),
-      questions.filter((q: { order: number }) => q.order >= 27),
-    ];
-    return parts.map((partQuestions: { id: string; order: number }[]) => {
-      const sectionAnswers = answers[currentSection.id] || {};
-      const answered = partQuestions.filter((q) => {
-        const v = sectionAnswers[q.id];
-        return v !== undefined && v !== null && v !== "";
-      }).length;
-      return {
+    const sectionAnswers = answers[currentSection.id] || {};
+    const answered = questions.filter((q: { id: string }) => {
+      const v = sectionAnswers[q.id];
+      return v !== undefined && v !== null && v !== "";
+    }).length;
+    const total = questions.length;
+    return [
+      {
         answered,
-        total: partQuestions.length,
-        percentage: partQuestions.length > 0 ? (answered / partQuestions.length) * 100 : 0,
-      };
-    });
+        total,
+        percentage: total > 0 ? (answered / total) * 100 : 0,
+      },
+    ];
   }, [currentSection, activeSection, answers, data?.examCategory]);
 
   const listeningPartProgress = useMemo(() => {
@@ -1654,9 +1650,19 @@ export default function AttemptRunnerPage() {
               const isReadingSplit = currentSection.type === "READING" && data.examCategory === "IELTS";
               const isSpeakingWithIntro = currentSection.type === "SPEAKING" && data.examCategory === "IELTS" && !speakingIntroDismissed;
               const rawPassage = (currentSection as any).passage || currentSection.questions?.[0]?.prompt?.passage;
-              const passageText = typeof rawPassage === "object" && rawPassage !== null
-                ? (rawPassage as any)[`part${readingPart}`] || Object.values(rawPassage as any).join("\n\n")
-                : rawPassage;
+              const passageText =
+                typeof rawPassage === "object" && rawPassage !== null
+                  ? (() => {
+                      const o = rawPassage as Record<string, unknown>;
+                      const ordered = (["part1", "part2", "part3"] as const)
+                        .map((k) => o[k])
+                        .filter((x) => x != null && String(x).trim() !== "");
+                      if (ordered.length > 0) return ordered.map(String).join("\n\n");
+                      return Object.values(o)
+                        .filter((v): v is string => typeof v === "string" && v.trim() !== "")
+                        .join("\n\n");
+                    })()
+                  : rawPassage;
 
               // Speaking: show placeholder until user dismisses intro modal
               if (isSpeakingWithIntro) {

@@ -332,13 +332,7 @@ export const QuestionsArea = React.memo(function QuestionsArea({
                   return true;
                 }).sort((a, b) => a.order - b.order);
               } else if (section.type === "READING" && examCategory === "IELTS") {
-                // Filter questions by selected reading part: Part 1 (14), Part 2 (13), Part 3 (13)
-                filteredQuestions = section.questions.filter((q) => {
-                  if (readingPart === 1) return q.order >= 0 && q.order < 14; // Q1-14 (order 0-13)
-                  if (readingPart === 2) return q.order >= 14 && q.order < 27; // Q15-27 (order 14-26)
-                  if (readingPart === 3) return q.order >= 27; // Q28-40 (order 27-39)
-                  return true;
-                }).sort((a, b) => a.order - b.order);
+                filteredQuestions = [...section.questions].sort((a, b) => a.order - b.order);
               } else if (section.type === "WRITING" && examCategory === "IELTS") {
                 // For Writing, if section has multiple questions, filter by order
                 // Task 1 is typically order 0, Task 2 is order 1
