@@ -2324,7 +2324,7 @@ export default function EditExamPage() {
         examId={examId}
         examCategory={selectedCategory || ""}
         sections={sections}
-        onSave={(updatedQuestions, sectionId) => {
+        onSave={async (updatedQuestions, sectionId) => {
           // Update the questions in the section
           const updatedSections = sections.map(s => {
             if (s.id === sectionId) {
@@ -2342,8 +2342,89 @@ export default function EditExamPage() {
             return s;
           });
           setSections(updatedSections);
-          setShowEditModal(false);
-          showAlert("Success", "Question updated successfully", "success");
+          
+          // Save to database
+          setSaving(true);
+          try {
+            // Flatten subsections for API
+            const flattenedSections = updatedSections.flatMap(s => {
+              if (s.subsections && s.subsections.length > 0) {
+                return s.subsections.map((sub, idx) => ({
+                  ...sub,
+                  audio: s.audio,
+                  order: s.order + (idx * 0.01),
+                }));
+              }
+              return [s];
+            });
+
+            const res = await fetch(`/api/admin/exams/${examId}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                title: examTitle,
+                category: selectedCategory,
+                track: track || null,
+                readingType: selectedCategory === "IELTS" ? readingType : null,
+                writingType: selectedCategory === "IELTS" ? writingType : null,
+                sections: flattenedSections.map((s) => {
+                  const instructionData: any = {
+                    text: s.instruction,
+                  };
+                  if (s.passage) {
+                    instructionData.passage = s.passage;
+                  }
+                  if (s.audio) {
+                    instructionData.audio = s.audio;
+                  }
+                  if (s.introduction) {
+                    instructionData.introduction = s.introduction;
+                  }
+                  
+                  let durationMin = s.durationMin;
+                  if (selectedCategory === "SAT") {
+                    if (s.type === "WRITING") {
+                      durationMin = 35;
+                    } else if (s.type === "READING") {
+                      durationMin = 32;
+                    }
+                  }
+
+                  return {
+                    id: s.id && !s.id.startsWith("subsection-") && !s.id.startsWith("section-") ? s.id : undefined,
+                    type: s.type,
+                    title: s.title,
+                    instruction: instructionData,
+                    durationMin,
+                    order: s.order,
+                    questions: s.questions.map((q) => ({
+                      id: q.id && !q.id.startsWith("q-") && !q.id.startsWith("temp-") ? q.id : undefined,
+                      qtype: q.qtype,
+                      order: q.order,
+                      prompt: q.prompt,
+                      options: q.options,
+                      answerKey: q.answerKey,
+                      maxScore: q.maxScore,
+                      explanation: q.explanation,
+                      image: q.image,
+                    })),
+                  };
+                }),
+              }),
+            });
+
+            if (!res.ok) {
+              throw new Error("Failed to save exam");
+            }
+
+            showAlert("Success", "Question saved successfully", "success");
+            setShowEditModal(false);
+          } catch (error) {
+            console.error("Error saving question:", error);
+            showAlert("Error", "Failed to save question. Please try again.", "error");
+          } finally {
+            setSaving(false);
+          }
         }}
       />
     </div>
