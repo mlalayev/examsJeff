@@ -1,9 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Edit, Trash2, Image as ImageIcon, Eye, Upload } from "lucide-react";
+import { X, Edit, Trash2, Image as ImageIcon, Eye, Upload, Plus } from "lucide-react";
 import QuestionPreview from "@/components/QuestionPreview";
 import ImageUpload from "@/components/ImageUpload";
+import QuestionTypeModal from "@/components/admin/exams/create/QuestionTypeModal";
+import { getDefaultPrompt, getDefaultOptions, getDefaultAnswerKey } from "@/components/admin/exams/create/questionHelpers";
+import type { QuestionType } from "@/components/admin/exams/create/types";
 
 interface Question {
   id: string;
@@ -46,6 +49,7 @@ export default function ExamEditModal({
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [previewQuestion, setPreviewQuestion] = useState<Question | null>(null);
+  const [showQuestionTypeModal, setShowQuestionTypeModal] = useState(false);
 
   useEffect(() => {
     if (isOpen && sections.length > 0) {
@@ -137,12 +141,62 @@ export default function ExamEditModal({
   const handleSaveQuestion = () => {
     if (!editingQuestion || !selectedSection) return;
 
-    const updatedQuestions = selectedSection.questions.map(q =>
-      q.id === editingQuestion.id ? editingQuestion : q
-    );
+    // Check if this is a new question (temporary ID) or existing one
+    const isNewQuestion = editingQuestion.id.startsWith("temp-");
+    
+    let updatedQuestions: Question[];
+    if (isNewQuestion) {
+      // Add new question
+      updatedQuestions = [...selectedSection.questions, editingQuestion];
+    } else {
+      // Update existing question
+      updatedQuestions = selectedSection.questions.map(q =>
+        q.id === editingQuestion.id ? editingQuestion : q
+      );
+    }
 
     onSave(updatedQuestions, selectedSection.id);
     setEditingQuestion(null);
+  };
+
+  const handleAddQuestion = (qtype: QuestionType) => {
+    if (!selectedSection) return;
+
+    // Calculate the order for the new question based on the selected part
+    let newOrder = 0;
+    if (examCategory === "IELTS" && parts.length > 0) {
+      const part = parts.find(p => p.num === selectedPart);
+      if (part) {
+        // Find the last question in this part
+        const questionsInPart = selectedSection.questions.filter(
+          q => q.order >= part.range[0] && q.order <= part.range[1]
+        );
+        if (questionsInPart.length > 0) {
+          newOrder = Math.max(...questionsInPart.map(q => q.order)) + 1;
+        } else {
+          newOrder = part.range[0];
+        }
+      }
+    } else {
+      // For non-IELTS or sections without parts
+      newOrder = selectedSection.questions.length > 0 
+        ? Math.max(...selectedSection.questions.map(q => q.order)) + 1 
+        : 0;
+    }
+
+    const newQuestion: Question = {
+      id: `temp-${Date.now()}`,
+      qtype: qtype,
+      order: newOrder,
+      prompt: getDefaultPrompt(qtype),
+      options: getDefaultOptions(qtype),
+      answerKey: getDefaultAnswerKey(qtype),
+      maxScore: 1,
+      image: null,
+    };
+
+    setEditingQuestion(newQuestion);
+    setShowQuestionTypeModal(false);
   };
 
   return (
@@ -227,9 +281,21 @@ export default function ExamEditModal({
 
           {/* Main Content - Questions List */}
           <div className="flex-1 overflow-y-auto p-6">
+            {/* Add Question Button */}
+            <div className="mb-6">
+              <button
+                onClick={() => setShowQuestionTypeModal(true)}
+                className="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md flex items-center justify-center gap-2 font-medium"
+              >
+                <Plus className="w-5 h-5" />
+                Add Question to {parts.length > 0 ? `Part ${selectedPart}` : "Section"}
+              </button>
+            </div>
+
             {filteredQuestions.length === 0 ? (
               <div className="text-center py-12 text-gray-500">
                 <p>No questions in this {parts.length > 0 ? "part" : "section"}</p>
+                <p className="text-sm mt-2">Click "Add Question" to create one</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -400,6 +466,13 @@ export default function ExamEditModal({
           </div>
         </div>
       )}
+
+      {/* Question Type Selection Modal */}
+      <QuestionTypeModal
+        isOpen={showQuestionTypeModal}
+        onClose={() => setShowQuestionTypeModal(false)}
+        onSelect={handleAddQuestion}
+      />
     </div>
   );
 }
