@@ -19,7 +19,7 @@ const sectionSchema = z.object({
   id: z.string().optional(),
   type: z.enum(["READING", "LISTENING", "WRITING", "SPEAKING", "GRAMMAR", "VOCABULARY"]),
   title: z.string(),
-  instruction: z.string().nullable().optional(),
+  instruction: z.any().nullable().optional(), // Can be string or object with text, passage, audio, introduction
   image: z.string().nullable().optional(), // Section image (IELTS Listening parts)
   durationMin: z.number(),
   order: z.number(),
@@ -317,7 +317,7 @@ export async function PATCH(
   } catch (error) {
     if (error instanceof z.ZodError) {
       console.error("[API] PATCH validation error:", {
-        examId: id,
+        examId: (await params).id,
         errors: error.errors,
         formattedErrors: error.errors.map(e => ({
           path: e.path.join('.'),
@@ -339,9 +339,18 @@ export async function PATCH(
       return NextResponse.json({ error: "Admin access required" }, { status: 403 });
     }
     
-    console.error("Admin update exam error:", error);
+    console.error("[API] Admin update exam error:", error);
+    console.error("[API] Error details:", {
+      message: error instanceof Error ? error.message : "Unknown",
+      stack: error instanceof Error ? error.stack : undefined,
+      examId: (await params).id
+    });
+    
     return NextResponse.json(
-      { error: "An error occurred" },
+      { 
+        error: "An error occurred",
+        details: error instanceof Error ? error.message : "Unknown error"
+      },
       { status: 500 }
     );
   }

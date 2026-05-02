@@ -2414,14 +2414,24 @@ export default function EditExamPage() {
             });
 
             if (!res.ok) {
-              throw new Error("Failed to save exam");
+              const errorData = await res.json().catch(() => ({}));
+              console.error("Save failed:", {
+                status: res.status,
+                statusText: res.statusText,
+                errorData
+              });
+              throw new Error(errorData.details || errorData.error || "Failed to save exam");
             }
 
+            const result = await res.json();
+            console.log("Question saved successfully:", result);
+            
             showAlert("Success", "Question saved successfully", "success");
             setShowEditModal(false);
           } catch (error) {
             console.error("Error saving question:", error);
-            showAlert("Error", "Failed to save question. Please try again.", "error");
+            const errorMessage = error instanceof Error ? error.message : "Failed to save question. Please try again.";
+            showAlert("Error", errorMessage, "error");
           } finally {
             setSaving(false);
           }
