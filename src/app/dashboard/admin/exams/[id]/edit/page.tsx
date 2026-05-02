@@ -65,10 +65,10 @@ export default function EditExamPage() {
   const [saving, setSaving] = useState(false);
   const [showSectionEditModal, setShowSectionEditModal] = useState(false);
   const [editingSection, setEditingSection] = useState<Section | null>(null);
-  /** When editing IELTS Reading with 3 passages, drafts keyed by subsection id */
+  /** When editing IELTS Reading with 3 passages, one textarea per subsection id */
   const [readingPassageDrafts, setReadingPassageDrafts] = useState<Record<string, string>>({});
-  /** Active tab in IELTS reading passage modal (0 = Passage 1, …) */
-  const [readingPassageTabIndex, setReadingPassageTabIndex] = useState(0);
+  /** Active tab for IELTS Reading passages modal (0 = Passage 1, 1 = Passage 2, 2 = Passage 3) */
+  const [activePassageTab, setActivePassageTab] = useState(0);
   const [uploadingAudio, setUploadingAudio] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [deleteQuestionModal, setDeleteQuestionModal] = useState<{ isOpen: boolean; questionId: string | null; questionText?: string; questionNumber?: number }>({
@@ -645,53 +645,28 @@ export default function EditExamPage() {
     setShowSectionEditModal(false);
     setEditingSection(null);
     setReadingPassageDrafts({});
-    setReadingPassageTabIndex(0);
+    setActivePassageTab(0);
   };
 
-  /** Opens passage editor; IELTS Reading parent loads all three passage rows into one modal */
+  /** Opens passage editor; for IELTS with grouped passages, loads drafts for all three at once */
   const openReadingPassageModal = (section: Section) => {
-    if (
-      selectedCategory === "IELTS" &&
-      section.type === "READING" &&
-      section.subsections &&
-      section.subsections.length >= 2
-    ) {
-      const ordered = [...section.subsections].sort((a, b) => a.order - b.order);
-      const drafts: Record<string, string> = {};
-      ordered.forEach((sub) => {
-        drafts[sub.id] = sub.passage || "";
-      });
-      setReadingPassageDrafts(drafts);
-      setEditingSection(ordered[0]);
-      setReadingPassageTabIndex(0);
-      setShowSectionEditModal(true);
-      return;
-    }
-
     const parent = sections.find((s) => s.subsections?.some((sub) => sub.id === section.id));
     if (
       selectedCategory === "IELTS" &&
-      parent?.type === "READING" &&
-      parent.subsections &&
+      parent?.subsections &&
       parent.subsections.length >= 2 &&
       section.isSubsection
     ) {
-      const ordered = [...parent.subsections].sort((a, b) => a.order - b.order);
       const drafts: Record<string, string> = {};
-      ordered.forEach((sub) => {
+      [...parent.subsections].sort((a, b) => a.order - b.order).forEach((sub) => {
         drafts[sub.id] = sub.passage || "";
       });
-      const idx = Math.max(0, ordered.findIndex((sub) => sub.id === section.id));
       setReadingPassageDrafts(drafts);
-      setEditingSection(section);
-      setReadingPassageTabIndex(idx);
-      setShowSectionEditModal(true);
-      return;
+    } else {
+      setReadingPassageDrafts({ [section.id]: section.passage || "" });
     }
-
-    setReadingPassageDrafts({ [section.id]: section.passage || "" });
+    setActivePassageTab(0);
     setEditingSection(section);
-    setReadingPassageTabIndex(0);
     setShowSectionEditModal(true);
   };
 
@@ -1054,8 +1029,8 @@ export default function EditExamPage() {
                         </div>
                         {selectedCategory === "IELTS" && hasSubsections && section.type === "READING" && (
                           <p className="text-xs text-gray-600 max-w-xl">
-                            Use the green <span className="font-medium text-green-800">Passage</span> button above —
-                            one window with Passage 1–3 tabs to edit all reading texts.
+                            Click the <span className="font-medium text-[#303380]">Passages</span> button above to edit{" "}
+                            <strong>all three</strong> reading passages at once in a single window.
                           </p>
                         )}
                         {selectedCategory === "IELTS" && hasSubsections && section.type === "LISTENING" && (
@@ -1082,19 +1057,30 @@ export default function EditExamPage() {
                         )}
                       </div>
                       <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
-                        {section.type === "READING" &&
-                          (!hasSubsections || (selectedCategory === "IELTS" && hasSubsections)) && (
+                        {!hasSubsections && section.type === "READING" && (
                           <button
                             onClick={() => openReadingPassageModal(section)}
                             className="px-2 py-1 text-xs font-medium text-green-700 bg-green-50 rounded hover:bg-green-100 flex items-center gap-1"
-                            title={
-                              hasSubsections && selectedCategory === "IELTS"
-                                ? "Edit Passage 1, 2, and 3"
-                                : "Edit reading passage"
-                            }
+                            title="Edit reading passage"
                           >
                             <BookOpen className="w-3 h-3" />
                             Passage
+                          </button>
+                        )}
+                        {hasSubsections && section.type === "READING" && selectedCategory === "IELTS" && (
+                          <button
+                            onClick={() => {
+                              const firstSubsection = section.subsections?.[0];
+                              if (firstSubsection) {
+                                openReadingPassageModal(firstSubsection);
+                              }
+                            }}
+                            className="px-2 py-1 text-xs font-medium text-white rounded flex items-center gap-1"
+                            style={{ backgroundColor: "#303380" }}
+                            title="Edit all reading passages (Passage 1, 2, and 3)"
+                          >
+                            <BookOpen className="w-3 h-3" />
+                            Passages
                           </button>
                         )}
                         {!hasSubsections && section.type === "LISTENING" && (
@@ -1166,16 +1152,7 @@ export default function EditExamPage() {
                                 </span>
                               </div>
                               <div className="flex items-center gap-2">
-                                {section.type === "READING" && selectedCategory !== "IELTS" && (
-                                  <button
-                                    onClick={() => openReadingPassageModal(subsection)}
-                                    className="px-2 py-1 text-xs font-medium text-green-700 bg-green-50 rounded hover:bg-green-100 flex items-center gap-1"
-                                    title="Edit reading passage"
-                                  >
-                                    <BookOpen className="w-3 h-3" />
-                                    Passage
-                                  </button>
-                                )}
+                                {/* Questions button */}
                                 <button
                                   onClick={() => setCurrentSection(subsection)}
                                   className="px-2 py-1 text-xs font-medium text-white rounded"
@@ -2180,53 +2157,57 @@ export default function EditExamPage() {
 
                 if (ieltsMulti && readingParent.subsections) {
                   const ordered = [...readingParent.subsections].sort((a, b) => a.order - b.order);
-                  const safeTab = Math.min(
-                    Math.max(0, readingPassageTabIndex),
-                    Math.max(0, ordered.length - 1)
-                  );
-                  const activeSub = ordered[safeTab];
+                  const currentPassage = ordered[activePassageTab];
+                  
                   return (
                     <div className="space-y-4">
-                      <p className="text-xs text-gray-600">
-                        Choose Passage 1–3, paste the text, then{" "}
-                        <span className="font-medium">Save changes</span>. Each tab maps to its own row in the
-                        database (questions stay on each part below).
-                      </p>
-                      <div className="flex flex-wrap gap-2 border-b border-gray-200 pb-2">
-                        {ordered.map((sub, idx) => (
+                      {/* Tab buttons */}
+                      <div className="flex gap-2 border-b border-gray-200 pb-2">
+                        {ordered.map((sub, index) => (
                           <button
                             key={sub.id}
                             type="button"
-                            onClick={() => setReadingPassageTabIndex(idx)}
-                            className={`px-3 py-1.5 text-sm font-medium rounded-md border transition-colors ${
-                              safeTab === idx
-                                ? "border-[#303380] bg-[#303380] text-white"
-                                : "border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100"
+                            onClick={() => setActivePassageTab(index)}
+                            className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors ${
+                              activePassageTab === index
+                                ? "bg-[#303380] text-white"
+                                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                             }`}
                           >
-                            Passage {idx + 1}
+                            {sub.title}
                           </button>
                         ))}
                       </div>
-                      {activeSub ? (
-                        <div className="rounded-md border border-gray-200 bg-gray-50/60 p-3">
-                          {activeSub.instruction ? (
-                            <p className="text-xs text-gray-500 mb-2">{activeSub.instruction}</p>
+                      
+                      {/* Info text */}
+                      <p className="text-xs text-gray-600">
+                        Edit passages using the tabs above. All changes will be saved together when you click{" "}
+                        <span className="font-medium">Save changes</span>.
+                      </p>
+                      
+                      {/* Current passage textarea */}
+                      {currentPassage && (
+                        <div className="rounded-md border border-gray-200 bg-gray-50/60 p-4">
+                          <label className="block text-sm font-semibold text-gray-900 mb-1">
+                            {currentPassage.title}
+                          </label>
+                          {currentPassage.instruction ? (
+                            <p className="text-xs text-gray-500 mb-2">{currentPassage.instruction}</p>
                           ) : null}
                           <textarea
-                            value={readingPassageDrafts[activeSub.id] ?? ""}
+                            value={readingPassageDrafts[currentPassage.id] ?? ""}
                             onChange={(e) =>
                               setReadingPassageDrafts((prev) => ({
                                 ...prev,
-                                [activeSub.id]: e.target.value,
+                                [currentPassage.id]: e.target.value,
                               }))
                             }
-                            placeholder={`Paste text for Passage ${safeTab + 1}…`}
-                            className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#303380]/30 focus:border-[#303380] bg-white min-h-[280px]"
-                            rows={14}
+                            placeholder={`Paste ${currentPassage.title} text here…`}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
+                            rows={12}
                           />
                         </div>
-                      ) : null}
+                      )}
                     </div>
                   );
                 }
