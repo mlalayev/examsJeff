@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 import { X, Edit, Trash2, Image as ImageIcon, Eye, Upload, Plus } from "lucide-react";
 import QuestionPreview from "@/components/QuestionPreview";
-import ImageUpload from "@/components/ImageUpload";
 import QuestionTypeModal from "@/components/admin/exams/create/QuestionTypeModal";
+import { QuestionEditModal } from "@/components/admin/exams/create/questionModal/QuestionEditModal";
 import { getDefaultPrompt, getDefaultOptions, getDefaultAnswerKey } from "@/components/admin/exams/create/questionHelpers";
 import type { QuestionType } from "@/components/admin/exams/create/types";
 
@@ -36,6 +36,11 @@ interface ExamEditModalProps {
   onSave: (updatedQuestions: Question[], sectionId: string) => void;
 }
 
+// Dummy alert function for the modal
+const dummyAlert = (title: string, message: string, type: "error" | "warning" | "info") => {
+  console.log(`[${type}] ${title}: ${message}`);
+};
+
 export default function ExamEditModal({
   isOpen,
   onClose,
@@ -50,6 +55,7 @@ export default function ExamEditModal({
   const [showPreview, setShowPreview] = useState(false);
   const [previewQuestion, setPreviewQuestion] = useState<Question | null>(null);
   const [showQuestionTypeModal, setShowQuestionTypeModal] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
     if (isOpen && sections.length > 0) {
@@ -114,7 +120,7 @@ export default function ExamEditModal({
 
   const filteredQuestions = getFilteredQuestions().sort((a, b) => a.order - b.order);
 
-  const handleImageUpload = async (file: File, questionId: string) => {
+  const handleImageUpload = async (file: File) => {
     if (!file || !file.type.startsWith("image/")) {
       alert("Please select a valid image file");
       return;
@@ -125,17 +131,29 @@ export default function ExamEditModal({
       return;
     }
 
-    // Convert to base64
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const dataUrl = e.target?.result as string;
-      
-      // Update the question
-      if (editingQuestion && editingQuestion.id === questionId) {
-        setEditingQuestion({ ...editingQuestion, image: dataUrl });
-      }
-    };
-    reader.readAsDataURL(file);
+    setUploadingImage(true);
+
+    try {
+      // Convert to base64
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        
+        // Update the question
+        if (editingQuestion) {
+          setEditingQuestion({ 
+            ...editingQuestion, 
+            image: dataUrl,
+            prompt: { ...editingQuestion.prompt, imageUrl: dataUrl }
+          });
+        }
+        setUploadingImage(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      setUploadingImage(false);
+    }
   };
 
   const handleSaveQuestion = () => {
@@ -360,86 +378,17 @@ export default function ExamEditModal({
         </div>
       </div>
 
-      {/* Edit Question Modal */}
+      {/* Edit Question Modal - Using the full-featured component */}
       {editingQuestion && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4">
-          <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between z-10">
-              <h3 className="text-xl font-bold text-gray-900">
-                Edit Question {editingQuestion.order + 1}
-              </h3>
-              <button
-                onClick={() => setEditingQuestion(null)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-6">
-              {/* Image Upload */}
-              <ImageUpload
-                label="Question Image (Optional)"
-                value={editingQuestion.image || editingQuestion.prompt?.imageUrl || ""}
-                onChange={(url) => {
-                  setEditingQuestion({
-                    ...editingQuestion,
-                    image: url,
-                    prompt: { ...editingQuestion.prompt, imageUrl: url },
-                  });
-                }}
-                showHelperText={true}
-              />
-
-              {/* Question Text */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Question Text
-                </label>
-                <textarea
-                  value={editingQuestion.prompt?.text || ""}
-                  onChange={(e) => {
-                    setEditingQuestion({
-                      ...editingQuestion,
-                      prompt: { ...editingQuestion.prompt, text: e.target.value },
-                    });
-                  }}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
-                  rows={6}
-                  placeholder="Enter question text..."
-                />
-              </div>
-
-              {/* Answer Key (simplified) */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Answer Key
-                </label>
-                <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                  <pre className="text-xs text-gray-600 whitespace-pre-wrap">
-                    {JSON.stringify(editingQuestion.answerKey, null, 2)}
-                  </pre>
-                </div>
-              </div>
-
-              {/* Save Button */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
-                <button
-                  onClick={() => setEditingQuestion(null)}
-                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSaveQuestion}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                >
-                  Save Changes
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <QuestionEditModal
+          question={editingQuestion}
+          onClose={() => setEditingQuestion(null)}
+          onSave={handleSaveQuestion}
+          onChange={(updatedQuestion) => setEditingQuestion(updatedQuestion)}
+          uploadingImage={uploadingImage}
+          onImageUpload={handleImageUpload}
+          showAlert={dummyAlert}
+        />
       )}
 
       {/* Preview Modal */}
