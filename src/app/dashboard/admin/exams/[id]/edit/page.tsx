@@ -65,8 +65,6 @@ export default function EditExamPage() {
   const [saving, setSaving] = useState(false);
   const [showSectionEditModal, setShowSectionEditModal] = useState(false);
   const [editingSection, setEditingSection] = useState<Section | null>(null);
-  /** When editing IELTS Reading with 3 passages, one textarea per subsection id */
-  const [readingPassageDrafts, setReadingPassageDrafts] = useState<Record<string, string>>({});
   const [uploadingAudio, setUploadingAudio] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [deleteQuestionModal, setDeleteQuestionModal] = useState<{ isOpen: boolean; questionId: string | null; questionText?: string; questionNumber?: number }>({
@@ -104,10 +102,9 @@ export default function EditExamPage() {
         setWritingType(exam.writingType || "ACADEMIC");
         
         // Parse sections and questions
-        // Group IELTS Listening sections into subsections; same for Reading passages (DB stores them flat).
+        // Group IELTS Listening parts into one parent + subsections (DB stores them flat).
         const parsedSections: Section[] = [];
         const listeningParts: any[] = [];
-        const readingParts: any[] = [];
         
         exam.sections.forEach((s: any) => {
           let instructionData: any = { text: "" };
@@ -159,9 +156,6 @@ export default function EditExamPage() {
           // IELTS Listening: Group parts into subsections
           if (exam.category === "IELTS" && s.type === "LISTENING" && s.title.includes("Part")) {
             listeningParts.push(section);
-          } else if (exam.category === "IELTS" && s.type === "READING") {
-            // Flattened passage rows from save — re-group under one "Reading" parent in the editor
-            readingParts.push(section);
           } else {
             parsedSections.push(section);
           }
@@ -191,31 +185,6 @@ export default function EditExamPage() {
             })),
           };
           parsedSections.push(mainListening);
-        }
-
-        // Re-group IELTS Reading: 3 (or more) flat "Passage" DB rows → one parent + subsections (matches create UI)
-        if (readingParts.length >= 2) {
-          readingParts.sort((a, b) => a.order - b.order);
-          const readingParentId = `reading-root-${readingParts.map((p) => p.id).sort().join("-")}`;
-          const minOrder = Math.min(...readingParts.map((p) => p.order));
-          const mainReading: Section = {
-            id: readingParentId,
-            type: "READING",
-            title: "Reading",
-            instruction: IELTS_SECTION_INSTRUCTIONS.READING,
-            durationMin: getIELTSSectionDuration("READING"),
-            order: minOrder,
-            questions: [],
-            passage: "",
-            subsections: readingParts.map((part) => ({
-              ...part,
-              isSubsection: true,
-              parentId: readingParentId,
-            })),
-          };
-          parsedSections.push(mainReading);
-        } else if (readingParts.length === 1) {
-          parsedSections.push(readingParts[0]);
         }
 
         setSections(sortIELTSSections(parsedSections));
@@ -290,7 +259,7 @@ export default function EditExamPage() {
     if (selectedCategory === "IELTS" && type === "LISTENING") {
       const validation = validateIELTSListeningUniqueness(currentSections, type);
       if (!validation.valid) {
-        showAlert("Validation Error", validation.error, "error");
+        showAlert("Validation Error", validation.error ?? "Invalid listening setup", "error");
         return;
       }
     }
@@ -370,30 +339,13 @@ export default function EditExamPage() {
       setCurrentSection(subsections[0]); // Start with Part 1
       setStep("questions");
     } 
-    // IELTS Reading: 1 əsas section + 3 passage subsection yarat
+    // IELTS Reading: one section (passage + all questions together; saves as a single exam_section row)
     else if (selectedCategory === "IELTS" && type === "READING") {
-      const passages = [
-        { title: "Passage 1", instruction: "Questions 1-13 (Easier text)" },
-        { title: "Passage 2", instruction: "Questions 14-26 (Medium difficulty)" },
-        { title: "Passage 3", instruction: "Questions 27-40 (Harder academic text)" },
-      ];
-
-      const subsections: Section[] = passages.map((passage, index) => ({
-        id: `subsection-${Date.now()}-${index}`,
-        type: "READING",
-        title: passage.title,
-        instruction: passage.instruction,
-        durationMin: 0,
-        order: index,
-        questions: [],
-        passage: "", // Empty passage text, admin will fill
-        isSubsection: true,
-        parentId: newSection.id,
-      }));
-
-      newSection.subsections = subsections;
+      newSection.title = "Reading";
+      newSection.instruction = IELTS_SECTION_INSTRUCTIONS.READING;
+      newSection.passage = "";
       setSections([...currentSections, newSection]);
-      setCurrentSection(subsections[0]); // Start with Passage 1
+      setCurrentSection(newSection);
       setStep("questions");
     }
     // IELTS Writing: 1 əsas section + 2 task subsection yarat
@@ -637,33 +589,6 @@ export default function EditExamPage() {
 
   const showAlert = (title: string, message: string, type: "success" | "error" | "warning" | "info" = "info") => {
     setAlertModal({ isOpen: true, title, message, type });
-  };
-
-  const closeSectionEditModal = () => {
-    setShowSectionEditModal(false);
-    setEditingSection(null);
-    setReadingPassageDrafts({});
-  };
-
-  /** Opens passage editor; for IELTS with grouped passages, loads drafts for all three at once */
-  const openReadingPassageModal = (section: Section) => {
-    const parent = sections.find((s) => s.subsections?.some((sub) => sub.id === section.id));
-    if (
-      selectedCategory === "IELTS" &&
-      parent?.subsections &&
-      parent.subsections.length >= 2 &&
-      section.isSubsection
-    ) {
-      const drafts: Record<string, string> = {};
-      [...parent.subsections].sort((a, b) => a.order - b.order).forEach((sub) => {
-        drafts[sub.id] = sub.passage || "";
-      });
-      setReadingPassageDrafts(drafts);
-    } else {
-      setReadingPassageDrafts({ [section.id]: section.passage || "" });
-    }
-    setEditingSection(section);
-    setShowSectionEditModal(true);
   };
 
   const getDefaultPrompt = (qtype: QuestionType): any => {
@@ -1023,12 +948,6 @@ export default function EditExamPage() {
                             </span>
                           )}
                         </div>
-                        {selectedCategory === "IELTS" && hasSubsections && section.type === "READING" && (
-                          <p className="text-xs text-gray-600 max-w-xl">
-                            Use the green <span className="font-medium text-green-800">Passages</span> button on any
-                            passage row below — one window lets you edit <strong>all three</strong> passages at once.
-                          </p>
-                        )}
                         {selectedCategory === "IELTS" && hasSubsections && section.type === "LISTENING" && (
                           <div className="space-y-1">
                             <p className="text-xs text-gray-600 max-w-xl">
@@ -1055,7 +974,10 @@ export default function EditExamPage() {
                       <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
                         {!hasSubsections && section.type === "READING" && (
                           <button
-                            onClick={() => openReadingPassageModal(section)}
+                            onClick={() => {
+                              setEditingSection(section);
+                              setShowSectionEditModal(true);
+                            }}
                             className="px-2 py-1 text-xs font-medium text-green-700 bg-green-50 rounded hover:bg-green-100 flex items-center gap-1"
                             title="Edit reading passage"
                           >
@@ -1132,18 +1054,6 @@ export default function EditExamPage() {
                                 </span>
                               </div>
                               <div className="flex items-center gap-2">
-                                {/* Edit Passage button for Reading subsections */}
-                                {section.type === "READING" && (
-                                  <button
-                                    onClick={() => openReadingPassageModal(subsection)}
-                                    className="px-2 py-1 text-xs font-medium text-green-700 bg-green-50 rounded hover:bg-green-100 flex items-center gap-1"
-                                    title="Edit all reading passages (opens one window with Passage 1–3)"
-                                  >
-                                    <BookOpen className="w-3 h-3" />
-                                    Passages
-                                  </button>
-                                )}
-                                
                                 {/* Questions button */}
                                 <button
                                   onClick={() => setCurrentSection(subsection)}
@@ -2088,40 +1998,21 @@ export default function EditExamPage() {
       {showSectionEditModal && editingSection && (
         <div
           className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 p-4"
-          onClick={closeSectionEditModal}
+          onClick={() => {
+            setShowSectionEditModal(false);
+            setEditingSection(null);
+          }}
         >
           <div
-            className={`bg-white border border-gray-200 rounded-md p-4 sm:p-6 w-full max-h-[90vh] overflow-y-auto ${
-              editingSection.type === "READING" &&
-              selectedCategory === "IELTS" &&
-              (() => {
-                const p = sections.find((s) => s.subsections?.some((sub) => sub.id === editingSection.id));
-                return !!(p?.subsections && p.subsections.length >= 2 && editingSection.isSubsection);
-              })()
-                ? "max-w-4xl"
-                : "max-w-2xl"
-            }`}
+            className="bg-white border border-gray-200 rounded-md p-4 sm:p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base sm:text-lg font-medium text-gray-900">
                 {editingSection.type === "READING"
-                  ? (() => {
-                      const p = sections.find((s) =>
-                        s.subsections?.some((sub) => sub.id === editingSection.id)
-                      );
-                      if (
-                        selectedCategory === "IELTS" &&
-                        p?.subsections &&
-                        p.subsections.length >= 2 &&
-                        editingSection.isSubsection
-                      ) {
-                        return "IELTS reading — all passages";
-                      }
-                      return editingSection.title
-                        ? `Reading passage — ${editingSection.title}`
-                        : "Edit reading passage";
-                    })()
+                  ? editingSection.title
+                    ? `Reading passage — ${editingSection.title}`
+                    : "Edit reading passage"
                   : editingSection.type === "WRITING"
                     ? `Edit ${editingSection.title} - Task Image & Instruction`
                     : editingSection.isSubsection
@@ -2129,7 +2020,10 @@ export default function EditExamPage() {
                       : "Full listening audio (all parts)"}
               </h3>
               <button
-                onClick={closeSectionEditModal}
+                onClick={() => {
+                  setShowSectionEditModal(false);
+                  setEditingSection(null);
+                }}
                 className="text-gray-400 hover:text-gray-600"
               >
                 <X className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -2137,70 +2031,25 @@ export default function EditExamPage() {
             </div>
 
             <div className="space-y-4">
-              {editingSection.type === "READING" && (() => {
-                const readingParent = sections.find((s) =>
-                  s.subsections?.some((sub) => sub.id === editingSection.id)
-                );
-                const ieltsMulti =
-                  selectedCategory === "IELTS" &&
-                  !!readingParent?.subsections &&
-                  readingParent.subsections.length >= 2 &&
-                  !!editingSection.isSubsection;
-
-                if (ieltsMulti && readingParent.subsections) {
-                  const ordered = [...readingParent.subsections].sort((a, b) => a.order - b.order);
-                  return (
-                    <div className="space-y-5">
-                      <p className="text-xs text-gray-600">
-                        Each box is one passage (questions stay on each part row). Click{" "}
-                        <span className="font-medium">Save changes</span> to store all three together.
-                      </p>
-                      {ordered.map((sub) => (
-                        <div key={sub.id} className="rounded-md border border-gray-200 bg-gray-50/60 p-3">
-                          <label className="block text-sm font-semibold text-gray-900 mb-1">
-                            {sub.title}
-                          </label>
-                          {sub.instruction ? (
-                            <p className="text-xs text-gray-500 mb-2">{sub.instruction}</p>
-                          ) : null}
-                          <textarea
-                            value={readingPassageDrafts[sub.id] ?? ""}
-                            onChange={(e) =>
-                              setReadingPassageDrafts((prev) => ({
-                                ...prev,
-                                [sub.id]: e.target.value,
-                              }))
-                            }
-                            placeholder={`Paste ${sub.title} text here…`}
-                            className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
-                            rows={10}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  );
-                }
-
-                return (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      Reading passage *
-                    </label>
-                    <textarea
-                      value={readingPassageDrafts[editingSection.id] ?? ""}
-                      onChange={(e) =>
-                        setReadingPassageDrafts((prev) => ({
-                          ...prev,
-                          [editingSection.id]: e.target.value,
-                        }))
-                      }
-                      placeholder="Enter the reading passage text..."
-                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
-                      rows={10}
-                    />
-                  </div>
-                );
-              })()}
+              {editingSection.type === "READING" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Reading passage *
+                  </label>
+                  <textarea
+                    value={editingSection.passage || ""}
+                    onChange={(e) => {
+                      setEditingSection({
+                        ...editingSection,
+                        passage: e.target.value,
+                      });
+                    }}
+                    placeholder="Enter the reading passage text..."
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+                    rows={10}
+                  />
+                </div>
+              )}
 
               {editingSection.type === "LISTENING" && (
                 <div className="space-y-4">
@@ -2405,111 +2254,47 @@ export default function EditExamPage() {
 
             <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 mt-6 pt-4 border-t border-gray-200">
               <button
-                onClick={closeSectionEditModal}
+                onClick={() => {
+                  setShowSectionEditModal(false);
+                  setEditingSection(null);
+                }}
                 className="px-3 sm:px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50"
               >
                 Cancel
               </button>
               <button
                 onClick={() => {
-                  const readingParentForSave = sections.find((s) =>
-                    s.subsections?.some((sub) => sub.id === editingSection.id)
-                  );
-                  const ieltsReadingMulti =
-                    editingSection.type === "READING" &&
-                    selectedCategory === "IELTS" &&
-                    !!readingParentForSave?.subsections &&
-                    readingParentForSave.subsections.length >= 2 &&
-                    !!editingSection.isSubsection;
-
-                  if (editingSection.type === "READING") {
-                    if (ieltsReadingMulti && readingParentForSave.subsections) {
-                      const missing = readingParentForSave.subsections.filter(
-                        (sub) => !(readingPassageDrafts[sub.id] || "").trim()
-                      );
-                      if (missing.length > 0) {
-                        showAlert(
-                          "Validation Error",
-                          "Please enter text for every passage (all boxes must be filled).",
-                          "error"
-                        );
-                        return;
-                      }
-                    } else {
-                      const one = (readingPassageDrafts[editingSection.id] ?? editingSection.passage ?? "").trim();
-                      if (!one) {
-                        showAlert("Validation Error", "Please enter a reading passage", "error");
-                        return;
-                      }
-                    }
+                  if (editingSection.type === "READING" && !editingSection.passage?.trim()) {
+                    showAlert("Validation Error", "Please enter a reading passage", "error");
+                    return;
                   }
                   if (editingSection.type === "LISTENING" && !editingSection.isSubsection && !editingSection.audio) {
                     showAlert("Validation Error", "Please upload an audio file", "error");
                     return;
                   }
 
-                  let updatedSections: Section[];
-
-                  if (editingSection.type === "READING" && ieltsReadingMulti && readingParentForSave) {
-                    updatedSections = sections.map((s) => {
-                      if (s.id !== readingParentForSave.id) return s;
+                  const updatedSections = sections.map((s) => {
+                    if (editingSection.isSubsection && s.subsections) {
                       return {
                         ...s,
-                        subsections: s.subsections!.map((sub) => ({
-                          ...sub,
-                          passage: readingPassageDrafts[sub.id] ?? sub.passage ?? "",
-                        })),
+                        subsections: s.subsections.map((sub) =>
+                          sub.id === editingSection.id ? editingSection : sub
+                        ),
                       };
-                    });
-                  } else {
-                    const sectionToStore =
-                      editingSection.type === "READING"
-                        ? {
-                            ...editingSection,
-                            passage: readingPassageDrafts[editingSection.id] ?? editingSection.passage ?? "",
-                          }
-                        : editingSection;
-
-                    updatedSections = sections.map((s) => {
-                      if (sectionToStore.isSubsection && s.subsections) {
-                        return {
-                          ...s,
-                          subsections: s.subsections.map((sub) =>
-                            sub.id === sectionToStore.id ? sectionToStore : sub
-                          ),
-                        };
-                      }
-                      if (s.id === sectionToStore.id) {
-                        return sectionToStore as Section;
-                      }
-                      return s;
-                    });
-                  }
-
+                    }
+                    if (s.id === editingSection.id) {
+                      return editingSection;
+                    }
+                    return s;
+                  });
                   setSections(updatedSections);
 
                   if (currentSection?.id === editingSection.id) {
-                    if (ieltsReadingMulti && readingParentForSave?.subsections) {
-                      const sub = readingParentForSave.subsections.find((x) => x.id === currentSection.id);
-                      if (sub) {
-                        setCurrentSection({
-                          ...sub,
-                          passage: readingPassageDrafts[sub.id] ?? sub.passage ?? "",
-                        });
-                      }
-                    } else {
-                      const flat =
-                        editingSection.type === "READING"
-                          ? {
-                              ...editingSection,
-                              passage: readingPassageDrafts[editingSection.id] ?? editingSection.passage ?? "",
-                            }
-                          : editingSection;
-                      setCurrentSection(flat as Section);
-                    }
+                    setCurrentSection(editingSection);
                   }
 
-                  closeSectionEditModal();
+                  setShowSectionEditModal(false);
+                  setEditingSection(null);
                 }}
                 className="px-3 sm:px-4 py-2 text-sm font-medium text-white rounded-md flex items-center gap-2"
                 style={{ backgroundColor: "#303380" }}
