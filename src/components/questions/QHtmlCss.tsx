@@ -202,14 +202,13 @@ export default function QHtmlCss({ question, value, onChange, readOnly }: QHtmlC
             <span className="text-xs font-medium text-gray-700">Interactive Question</span>
           </div>
         </div>
-        <div className="p-4 bg-white">
+        <div className="p-4 bg-white min-h-0">
           <iframe
             ref={iframeRef}
             srcDoc={fullHtml}
             title="Interactive HTML Question"
-            className="w-full min-h-[400px] border-0"
+            className="w-full min-h-[560px] sm:min-h-[640px] md:min-h-[720px] lg:min-h-[min(80vh,880px)] border-0"
             sandbox="allow-same-origin"
-            style={{ height: 'auto' }}
           />
         </div>
         {!readOnly && (

@@ -162,19 +162,25 @@ export default function EditExamPage() {
 
         // Create main Listening section with subsections if we have listening parts
         if (listeningParts.length > 0) {
+          // Stable synthetic id (not Date.now) so React state / saves stay consistent across reloads
+          const listeningParentId = `listening-root-${listeningParts.map((p) => p.id).sort().join("-")}`;
+          const sharedAudio =
+            listeningParts.map((p) => p.audio).find((a) => a && String(a).trim()) ||
+            listeningParts[0]?.audio ||
+            "";
           const mainListening: Section = {
-            id: `listening-${Date.now()}`,
+            id: listeningParentId,
             type: "LISTENING",
             title: "Listening",
             instruction: "IELTS Listening Test",
             durationMin: 30,
             order: IELTS_SECTION_ORDER.LISTENING,
             questions: [],
-            audio: listeningParts[0]?.audio,
-            subsections: listeningParts.map(part => ({
+            audio: sharedAudio,
+            subsections: listeningParts.map((part) => ({
               ...part,
               isSubsection: true,
-              parentId: `listening-${Date.now()}`,
+              parentId: listeningParentId,
             })),
           };
           parsedSections.push(mainListening);
@@ -938,35 +944,81 @@ export default function EditExamPage() {
                         : "border-gray-200 bg-white"
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm font-medium text-gray-700">
-                          {idx + 1}. {section.title}
-                        </span>
-                        <span className="text-xs px-2 py-1 bg-gray-100 rounded text-gray-600">
-                          {getSectionLabel(section.type, selectedCategory)}
-                        </span>
-                        {!hasSubsections && (
-                          <span className="text-xs text-gray-500">
-                            {section.questions.length} questions
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="flex flex-col gap-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <span className="text-sm font-medium text-gray-700">
+                            {idx + 1}. {section.title}
                           </span>
+                          <span className="text-xs px-2 py-1 bg-gray-100 rounded text-gray-600">
+                            {getSectionLabel(section.type, selectedCategory)}
+                          </span>
+                          {!hasSubsections && (
+                            <span className="text-xs text-gray-500">
+                              {section.questions.length} questions
+                            </span>
+                          )}
+                          {hasSubsections && (
+                            <span className="text-xs text-blue-600 font-medium">
+                              ({(section.subsections || []).length} parts)
+                            </span>
+                          )}
+                        </div>
+                        {selectedCategory === "IELTS" && hasSubsections && section.type === "READING" && (
+                          <p className="text-xs text-gray-600 max-w-xl">
+                            Each part has its own passage text. Use the green{" "}
+                            <span className="font-medium text-green-800">Passage (this part)</span> button on each
+                            passage row below — not on this header row.
+                          </p>
                         )}
-                        {hasSubsections && (
-                          <span className="text-xs text-blue-600 font-medium">
-                            ({(section.subsections || []).length} parts)
-                          </span>
+                        {selectedCategory === "IELTS" && hasSubsections && section.type === "LISTENING" && (
+                          <div className="space-y-1">
+                            <p className="text-xs text-gray-600 max-w-xl">
+                              Upload <span className="font-medium text-blue-800">one</span> audio file for the whole
+                              listening test; it applies to every part. Part rows below are only for optional images or
+                              short introductions.
+                            </p>
+                            <div className="flex flex-wrap items-center gap-2 text-xs">
+                              <span className="text-gray-500">Current file:</span>
+                              {section.audio ? (
+                                <span
+                                  className="truncate max-w-[min(100%,28rem)] text-gray-800 font-medium"
+                                  title={section.audio}
+                                >
+                                  {section.audio}
+                                </span>
+                              ) : (
+                                <span className="text-amber-700 font-medium">Not uploaded yet</span>
+                              )}
+                            </div>
+                          </div>
                         )}
                       </div>
-                      <div className="flex items-center gap-2">
-                        {!hasSubsections && (section.type === "READING" || section.type === "LISTENING") && (
+                      <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
+                        {!hasSubsections && section.type === "READING" && (
                           <button
                             onClick={() => {
                               setEditingSection(section);
                               setShowSectionEditModal(true);
                             }}
-                            className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100"
+                            className="px-2 py-1 text-xs font-medium text-green-700 bg-green-50 rounded hover:bg-green-100 flex items-center gap-1"
+                            title="Edit reading passage"
                           >
-                            <Edit className="w-3 h-3" />
+                            <BookOpen className="w-3 h-3" />
+                            Passage
+                          </button>
+                        )}
+                        {!hasSubsections && section.type === "LISTENING" && (
+                          <button
+                            onClick={() => {
+                              setEditingSection(section);
+                              setShowSectionEditModal(true);
+                            }}
+                            className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100 flex items-center gap-1"
+                            title="Upload listening audio"
+                          >
+                            <Volume2 className="w-3 h-3" />
+                            Audio
                           </button>
                         )}
                         {hasSubsections && section.type === "LISTENING" && (
@@ -975,9 +1027,12 @@ export default function EditExamPage() {
                               setEditingSection(section);
                               setShowSectionEditModal(true);
                             }}
-                            className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100"
+                            className="px-2 py-1 text-xs font-medium text-white rounded flex items-center gap-1"
+                            style={{ backgroundColor: "#303380" }}
+                            title="Upload one audio file for all listening parts"
                           >
                             <Volume2 className="w-3 h-3" />
+                            Full listening audio
                           </button>
                         )}
                         {!hasSubsections && (
@@ -1030,10 +1085,10 @@ export default function EditExamPage() {
                                       setShowSectionEditModal(true);
                                     }}
                                     className="px-2 py-1 text-xs font-medium text-green-700 bg-green-50 rounded hover:bg-green-100 flex items-center gap-1"
-                                    title="Edit passage text"
+                                    title="Edit passage text for this part only"
                                   >
                                     <BookOpen className="w-3 h-3" />
-                                    Passage
+                                    Passage (this part)
                                   </button>
                                 )}
                                 
@@ -1992,14 +2047,15 @@ export default function EditExamPage() {
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base sm:text-lg font-medium text-gray-900">
-                {editingSection.type === "READING" 
-                  ? "Edit Reading Passage" 
+                {editingSection.type === "READING"
+                  ? editingSection.title
+                    ? `Reading passage — ${editingSection.title}`
+                    : "Edit reading passage"
                   : editingSection.type === "WRITING"
                     ? `Edit ${editingSection.title} - Task Image & Instruction`
-                    : editingSection.isSubsection 
-                      ? `Edit ${editingSection.title} - Image & Introduction`
-                      : "Edit Listening Audio"
-                }
+                    : editingSection.isSubsection
+                      ? `Listening part — ${editingSection.title} (image & introduction)`
+                      : "Full listening audio (all parts)"}
               </h3>
               <button
                 onClick={() => {
