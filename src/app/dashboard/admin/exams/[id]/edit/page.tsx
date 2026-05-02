@@ -17,6 +17,7 @@ import {
   QUESTION_TYPE_GROUPS,
   IELTS_SECTION_DURATIONS,
   IELTS_SECTION_ORDER,
+  IELTS_SECTION_INSTRUCTIONS,
   sortIELTSSections,
   getIELTSSectionDuration,
   validateIELTSListeningUniqueness,
@@ -101,9 +102,10 @@ export default function EditExamPage() {
         setWritingType(exam.writingType || "ACADEMIC");
         
         // Parse sections and questions
-        // Group IELTS Listening sections into subsections
+        // Group IELTS Listening sections into subsections; same for Reading passages (DB stores them flat).
         const parsedSections: Section[] = [];
         const listeningParts: any[] = [];
+        const readingParts: any[] = [];
         
         exam.sections.forEach((s: any) => {
           let instructionData: any = { text: "" };
@@ -155,6 +157,9 @@ export default function EditExamPage() {
           // IELTS Listening: Group parts into subsections
           if (exam.category === "IELTS" && s.type === "LISTENING" && s.title.includes("Part")) {
             listeningParts.push(section);
+          } else if (exam.category === "IELTS" && s.type === "READING") {
+            // Flattened passage rows from save — re-group under one "Reading" parent in the editor
+            readingParts.push(section);
           } else {
             parsedSections.push(section);
           }
@@ -185,8 +190,33 @@ export default function EditExamPage() {
           };
           parsedSections.push(mainListening);
         }
-        
-        setSections(parsedSections);
+
+        // Re-group IELTS Reading: 3 (or more) flat "Passage" DB rows → one parent + subsections (matches create UI)
+        if (readingParts.length >= 2) {
+          readingParts.sort((a, b) => a.order - b.order);
+          const readingParentId = `reading-root-${readingParts.map((p) => p.id).sort().join("-")}`;
+          const minOrder = Math.min(...readingParts.map((p) => p.order));
+          const mainReading: Section = {
+            id: readingParentId,
+            type: "READING",
+            title: "Reading",
+            instruction: IELTS_SECTION_INSTRUCTIONS.READING,
+            durationMin: getIELTSSectionDuration("READING"),
+            order: minOrder,
+            questions: [],
+            passage: "",
+            subsections: readingParts.map((part) => ({
+              ...part,
+              isSubsection: true,
+              parentId: readingParentId,
+            })),
+          };
+          parsedSections.push(mainReading);
+        } else if (readingParts.length === 1) {
+          parsedSections.push(readingParts[0]);
+        }
+
+        setSections(sortIELTSSections(parsedSections));
         if (parsedSections.length > 0) {
           setStep("sections");
         }
