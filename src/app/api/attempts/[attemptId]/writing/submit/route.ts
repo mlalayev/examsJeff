@@ -17,8 +17,6 @@ async function scoreWritingWithAI(
   task2Response: string
 ) {
   try {
-    console.log("🤖 Starting AI scoring for submission:", submissionId);
-
     // Call the AI scoring endpoint
     const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
     const response = await fetch(`${baseUrl}/api/ai-writing-score`, {
@@ -37,7 +35,6 @@ async function scoreWritingWithAI(
     }
 
     const scores = await response.json();
-    console.log("✅ AI scores received:", scores);
 
     // Update the submission with AI scores
     await prisma.writingSubmission.update({
@@ -58,8 +55,6 @@ async function scoreWritingWithAI(
         aiScoredAt: new Date(),
       },
     });
-
-    console.log("✅ AI scores saved to database");
   } catch (error) {
     console.error("❌ Error in AI scoring:", error);
     throw error;
@@ -75,10 +70,6 @@ export async function POST(
     const user = await requireAuth();
     const { attemptId } = await params;
     const body = await request.json();
-
-    console.log("=== WRITING SUBMISSION ===");
-    console.log("Attempt ID:", attemptId);
-    console.log("User ID:", user.id);
 
     const validatedData = submitWritingSchema.parse(body);
 
@@ -180,8 +171,6 @@ export async function POST(
         endedAt: new Date(),
       },
     });
-
-    console.log("✅ Writing submission created:", submission.id);
 
     // Call AI scoring API in the background (don't wait for it)
     scoreWritingWithAI(submission.id, validatedData.task1Response, validatedData.task2Response)

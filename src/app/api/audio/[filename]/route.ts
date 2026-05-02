@@ -11,9 +11,7 @@ export async function GET(
     // Await params in Next.js 15+
     const params = await context.params;
     const filename = params.filename;
-    
-    console.log("Serving audio:", filename);
-    
+
     // Security: prevent directory traversal
     if (!filename || filename.includes("..") || filename.includes("/") || filename.includes("\\")) {
       console.error("Invalid filename:", filename);
@@ -21,8 +19,7 @@ export async function GET(
     }
     
     const filePath = join(process.cwd(), "public", "audio", filename);
-    console.log("Audio file path:", filePath);
-    
+
     // Check if file exists
     if (!existsSync(filePath)) {
       console.error("Audio not found:", filePath);
@@ -31,8 +28,7 @@ export async function GET(
     
     // Read and serve the file
     const fileBuffer = await readFile(filePath);
-    console.log("Audio file read successfully, size:", fileBuffer.length);
-    
+
     // Determine content type based on extension
     const ext = filename.split('.').pop()?.toLowerCase();
     const contentType = {

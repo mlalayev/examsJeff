@@ -71,20 +71,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ atte
       return instruction as Record<string, any>;
     };
 
-    // Debug log to check if images are in the data
-    console.log('📸 Exam questions with images:', JSON.stringify(exam.sections.map(s => ({
-      section: s.type,
-      questions: s.questions.map((q: any) => ({
-        id: q.id,
-        qtype: q.qtype,
-        order: q.order,
-        hasImage: !!q.image,
-        image: q.image,
-        promptKeys: Object.keys(q.prompt || {}),
-        hasPrompt: !!q.prompt,
-      }))
-    })), null, 2));
-
     const responseData = {
       id: attempt.id,
       examTitle: exam.title,
@@ -152,21 +138,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ atte
       })(),
       sectionStartTimes: (attempt.answers as any)?.sectionStartTimes || {},
     };
-
-    // Log the mapped questions to verify structure
-    console.log('🔍 Mapped questions:', JSON.stringify({
-      totalSections: responseData.sections.length,
-      sectionsWithQuestions: responseData.sections.filter(s => s.questions.length > 0).map(s => ({
-        type: s.type,
-        questionCount: s.questions.length,
-        firstQuestion: s.questions[0] ? {
-          id: s.questions[0].id,
-          qtype: s.questions[0].qtype,
-          hasPrompt: !!s.questions[0].prompt,
-          promptKeys: Object.keys(s.questions[0].prompt || {}),
-        } : null
-      }))
-    }, null, 2));
 
     return NextResponse.json(responseData);
   } catch (error) {

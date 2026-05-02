@@ -1026,8 +1026,7 @@ export default function AttemptRunnerPage() {
                 : undefined
             }
             onRecordingComplete={() => {
-              console.log("🎤 Recording completed for question:", q.id);
-              setSpeakingRecordingCompleted(prev => new Set(prev).add(q.id));
+              setSpeakingRecordingCompleted((prev) => new Set(prev).add(q.id));
             }}
           />
         );

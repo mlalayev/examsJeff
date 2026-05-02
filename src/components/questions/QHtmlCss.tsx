@@ -131,9 +131,7 @@ export default function QHtmlCss({ question, value, onChange, readOnly }: QHtmlC
 
     const trySetupWithRetry = (attempt = 0) => {
       const boundCount = setupListeners();
-      console.log(`🔄 Setup attempt ${attempt}: found ${boundCount} inputs`);
       if (boundCount > 0) {
-        console.log('✅ Successfully bound to', boundCount, 'inputs');
         return;
       }
       if (attempt >= 20) {
@@ -165,15 +163,6 @@ export default function QHtmlCss({ question, value, onChange, readOnly }: QHtmlC
   const renderInteractiveHTML = () => {
     const htmlCode = sanitizeHtmlCssMarkup(question.prompt?.htmlCode || "");
     const cssCode = question.prompt?.cssCode || "";
-
-    console.log('🔍 QHtmlCss render:', {
-      originalHtmlLength: (question.prompt?.htmlCode || "").length,
-      sanitizedHtmlLength: htmlCode.length,
-      cssLength: cssCode.length,
-      htmlPreview: htmlCode.substring(0, 500),
-      hasInputs: htmlCode.includes('<input'),
-      inputCount: (htmlCode.match(/<input/gi) || []).length
-    });
 
     const fullHtml = `
       <!DOCTYPE html>

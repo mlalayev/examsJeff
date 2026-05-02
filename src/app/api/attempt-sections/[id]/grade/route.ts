@@ -114,8 +114,6 @@ export async function POST(
           bandOverall: overallBand,
         }
       });
-      
-      console.log(`Attempt ${section.attemptId} fully graded. Overall band: ${overallBand}`);
     }
     
     return NextResponse.json({

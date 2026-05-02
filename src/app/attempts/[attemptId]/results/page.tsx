@@ -203,25 +203,7 @@ export default function AttemptResultsPage() {
         }
         throw new Error(json.error || "Failed to load results");
       }
-      
-      console.log('📊 Results data fetched at', new Date().toLocaleTimeString(), ':', json);
-      console.log('📊 Sections:', json.sections?.map((s: any) => ({ 
-        type: s.type, 
-        questionsCount: s.questions?.length,
-        questions: s.questions 
-      })));
-      
-      // Debug ALL questions to see which ones have answers
-      json.sections?.forEach((section: any) => {
-        console.log(`📋 Section ${section.type} questions:`, section.questions?.map((q: any) => ({
-          id: q.id,
-          qtype: q.qtype,
-          hasAnswer: !!q.studentAnswer,
-          answer: q.studentAnswer,
-          answerType: typeof q.studentAnswer,
-        })));
-      });
-      
+
       setData(json);
     } catch (err: any) {
       console.error(err);
@@ -238,9 +220,6 @@ export default function AttemptResultsPage() {
 
   const openSectionModal = (section: any) => {
     if (data && data.role === "TEACHER") {
-      console.log('📖 Opening modal for section:', section.type);
-      console.log('📖 Section data:', section);
-      console.log('📖 Questions in this section:', data.sections?.find(s => s.type === section.type)?.questions);
       setSelectedSection(section);
       setShowModal(true);
       document.body.style.overflow = 'hidden';
@@ -288,9 +267,7 @@ export default function AttemptResultsPage() {
         answerToEdit = currentAnswer;
       }
     }
-    
-    console.log('✏️ EDIT:', { questionId, qtype: question.qtype, original: currentAnswer, normalized: answerToEdit });
-    
+
     setEditingQuestion(questionId);
     setEditedAnswers({ [questionId]: answerToEdit });
   };
@@ -366,16 +343,7 @@ export default function AttemptResultsPage() {
         .find(q => q.id === questionId);
       answerToSave = question?.studentAnswer;
     }
-    
-    console.log('💾 SAVING:', {
-      questionId,
-      qtype,
-      sectionType: selectedSection.type,
-      answerToSave,
-      answerType: typeof answerToSave,
-      editedAnswersKeys: Object.keys(editedAnswers),
-    });
-    
+
     setSaving(true);
     try {
       const response = await fetch(`/api/attempts/${attemptId}/update-answer`, {
@@ -393,9 +361,7 @@ export default function AttemptResultsPage() {
       if (!response.ok) {
         throw new Error(result.error || 'Failed to save answer');
       }
-      
-      console.log('✅ SAVED SUCCESSFULLY:', result);
-      
+
       // Close edit mode
       setEditingQuestion(null);
       setEditedAnswers({});
@@ -413,19 +379,6 @@ export default function AttemptResultsPage() {
   };
 
   const formatAnswer = (qtype: string, answer: any, options: any): string => {
-    // Debug logging
-    if (qtype === "FILL_IN_BLANK") {
-      console.log('🎨 formatAnswer called for FILL_IN_BLANK:', {
-        answer,
-        answerType: typeof answer,
-        answerKeys: answer && typeof answer === 'object' ? Object.keys(answer) : [],
-        answerValues: answer && typeof answer === 'object' ? Object.values(answer) : [],
-        isNull: answer === null,
-        isUndefined: answer === undefined,
-        rawAnswer: JSON.stringify(answer),
-      });
-    }
-    
     // Special handling for FILL_IN_BLANK BEFORE the general check
     if (qtype === "FILL_IN_BLANK") {
       // For student answer (object with blank indices)
@@ -435,7 +388,6 @@ export default function AttemptResultsPage() {
         
         // If empty object or no keys
         if (keys.length === 0) {
-          console.log('⚠️ FILL_IN_BLANK: Empty object, no keys');
           return "No answer";
         }
         
@@ -446,7 +398,6 @@ export default function AttemptResultsPage() {
         });
         
         if (!hasAnyValue) {
-          console.log('⚠️ FILL_IN_BLANK: All values are empty');
           return "No answer";
         }
         
@@ -459,8 +410,7 @@ export default function AttemptResultsPage() {
           }
           return `${blankNum}. ${String(val).trim()}`;
         }).join(", ");
-        
-        console.log('✅ FILL_IN_BLANK formatted:', formatted);
+
         return formatted;
       }
       // For correct answer (array of alternatives)
@@ -472,7 +422,6 @@ export default function AttemptResultsPage() {
           return `${idx + 1}. ${alternatives}`;
         }).join(", ");
       }
-      console.log('⚠️ FILL_IN_BLANK: Not object or array');
       return "No answer";
     }
 
@@ -491,7 +440,6 @@ export default function AttemptResultsPage() {
     
     // General check for other question types
     if (!answer && answer !== 0 && answer !== false) {
-      console.log(`⚠️ No answer detected for ${qtype}`);
       return "No answer";
     }
 

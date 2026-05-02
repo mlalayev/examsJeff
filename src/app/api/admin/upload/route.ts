@@ -83,11 +83,7 @@ export async function POST(request: NextRequest) {
     // Use /api/images/[filename] or /api/audio/[filename] route instead of /images/ or /audio/
     const apiPath = type === "audio" ? `/api/audio/${filename}` : `/api/images/${filename}`;
     const publicPath = `/${uploadDir.replace('public/', '')}/${filename}`;
-    
-    console.log("File saved to:", filePath);
-    console.log("API path:", apiPath);
-    console.log("Public path:", publicPath);
-    
+
     return NextResponse.json({ 
       success: true,
       path: apiPath, // Use API route for reliable serving

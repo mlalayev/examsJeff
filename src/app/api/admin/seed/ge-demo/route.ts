@@ -39,7 +39,6 @@ export async function POST(req: NextRequest) {
         });
 
         if (existing) {
-          console.log(`Exam "${examTitle}" already exists, skipping...`);
           continue;
         }
 
@@ -254,8 +253,6 @@ export async function POST(req: NextRequest) {
           sections: exam.sections.length,
           questions: exam.sections.reduce((sum, s) => sum + s.questions.length, 0),
         });
-
-        console.log(`✓ Created: ${examTitle}`);
       }
     }
 

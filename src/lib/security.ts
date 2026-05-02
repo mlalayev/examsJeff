@@ -49,8 +49,6 @@ export function validateRequiredEnvVars(): void {
       "Generate a strong secret using: openssl rand -base64 32"
     );
   }
-
-  console.log("✅ Environment variables validated successfully");
 }
 
 /**

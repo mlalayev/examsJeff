@@ -666,37 +666,27 @@ export default function CreateExamPage() {
 
               if (res.ok) {
                 const data = await res.json();
-                console.log("Image uploaded successfully:", data);
-                console.log("Current location:", window.location.origin);
-                
+
                 // Get base64 preview for immediate display
                 const base64Image = await base64Promise;
                 
                 // Try both API path and public path
                 const apiImageUrl = `${window.location.origin}${data.path}`;
                 const publicImageUrl = `${window.location.origin}${data.publicPath}`;
-                
-                console.log("API Image URL:", apiImageUrl);
-                console.log("Public Image URL:", publicImageUrl);
-                console.log("Using base64 for immediate preview");
-                
+
                 // Use base64 for immediate display, will be replaced with server URL when saved
                 let displayUrl = base64Image;
                 
                 // Test which server URL works for future reference
                 try {
                   const testPublicResponse = await fetch(publicImageUrl, { method: 'HEAD' });
-                  console.log("Public path test:", testPublicResponse.status);
-                  
+
                   if (testPublicResponse.ok) {
                     displayUrl = publicImageUrl;
-                    console.log("Public path works, using it");
                   } else {
                     const testApiResponse = await fetch(apiImageUrl, { method: 'HEAD' });
-                    console.log("API path test:", testApiResponse.status);
                     if (testApiResponse.ok) {
                       displayUrl = apiImageUrl;
-                      console.log("API path works, using it");
                     } else {
                       console.warn("Neither path accessible yet, using base64 preview");
                       modals.showAlert(
@@ -709,9 +699,7 @@ export default function CreateExamPage() {
                 } catch (testError) {
                   console.error("Failed to test image accessibility:", testError);
                 }
-                
-                console.log("Display URL:", displayUrl.substring(0, 50) + "...");
-                
+
                 // Store both the server path (for saving) and display URL (for preview)
                 if (editingQuestion.qtype === "IMAGE_INTERACTIVE") {
                   setEditingQuestion({

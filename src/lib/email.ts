@@ -43,19 +43,13 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
         html: html || text,
       });
 
-      console.log(`✅ Email sent to ${to}: ${subject}`);
       return true;
     } catch (error) {
       console.error('❌ Email send failed:', error);
       return false;
     }
   } else {
-    // Development: log to console
-    console.log('\n📧 ================== EMAIL (DEV MODE) ==================');
-    console.log(`To: ${to}`);
-    console.log(`Subject: ${subject}`);
-    console.log(`Message:\n${text}`);
-    console.log('========================================================\n');
+    // Development: SMTP not configured; email is skipped (no console noise)
     return true;
   }
 }

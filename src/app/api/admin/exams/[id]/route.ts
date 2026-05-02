@@ -54,10 +54,8 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
-    console.log("[API] GET /api/admin/exams/" + id);
     await requireAdmin();
-    
-    console.log("[API] Fetching exam from database:", id);
+
     const exam = await prisma.exam.findUnique({
       where: { id },
       include: {
@@ -87,11 +85,9 @@ export async function GET(
     });
     
     if (!exam) {
-      console.log("[API] Exam not found:", id);
       return NextResponse.json({ error: "Exam not found" }, { status: 404 });
     }
-    
-    console.log("[API] Exam loaded successfully:", exam.title);
+
     return NextResponse.json({ exam });
     
   } catch (error) {

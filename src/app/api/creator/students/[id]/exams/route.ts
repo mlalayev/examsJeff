@@ -25,15 +25,12 @@ export async function GET(
     await requireAdmin();
     const { id: studentId } = await params;
 
-    console.log(`Fetching exams for student: ${studentId}`);
-
     const data = await fetchStudentExamAttemptsForDashboard(studentId);
     if (!data) {
       console.warn(`Student not found or not a student role: ${studentId}`);
       return NextResponse.json({ error: "Student not found" }, { status: 404 });
     }
 
-    console.log(`Successfully fetched ${data.exams.length} exams for student ${studentId}`);
     return NextResponse.json(data);
   } catch (error) {
     const auth = authErrorResponse(error);

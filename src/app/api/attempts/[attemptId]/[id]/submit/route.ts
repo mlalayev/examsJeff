@@ -85,9 +85,6 @@ export async function POST(
     
     // Auto-score Reading and Listening sections
     try {
-      // const scoringResult = await scoreAttempt(params.id);
-      // console.log('Auto-scoring completed:', scoringResult);
-      
       // Fetch updated attempt with scores
       const finalAttempt = await prisma.attempt.findUnique({
         where: { id: params.id },

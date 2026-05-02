@@ -78,9 +78,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
     
     // Check if this is a JSON exam (answers stored in attempt.answers field)
     const isJsonExam = attempt.sections.length === 0;
-    
-    console.log('Submit - Exam type:', { isJsonExam, sectionsCount: attempt.sections.length, hasAnswersField: !!attempt.answers });
-    
+
     // Prefer normalized per-question rows when present (but table may not exist yet)
     let usedNormalized = false;
     try {
@@ -95,7 +93,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
           answersByType[k][row.questionId] = row.answer;
         }
         usedNormalized = true;
-        console.log('Submit - Normalized attempt answers by type:', Object.keys(answersByType));
       }
     } catch (e) {
       console.warn("AttemptAnswer table not available; falling back to legacy storage.");
@@ -107,7 +104,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
       answersByType = { ...allAnswers };
       // Remove sectionStartTimes if present (not actual answers)
       delete answersByType.sectionStartTimes;
-      console.log('Submit - JSON exam answers by type:', Object.keys(answersByType));
     } else {
       // For DB exams, answers are in attempt.sections
     for (const as of attempt.sections) {
@@ -115,7 +111,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
         answersByType[as.type as string] = as.answers as AnswersByQuestionId;
       }
       }
-      console.log('Submit - DB exam answers by type:', Object.keys(answersByType));
     }
 
     // Calculate scores for all sections
@@ -139,8 +134,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
 
       // Get answers for this section
       const sectionAnswers = answersByType[sectionType] || {};
-      
-      console.log(`Submit - Section ${sectionType}: ${Object.keys(sectionAnswers).length} answers, ${section.questions.length} questions`);
 
       // For writing, don't auto-score; calculate maxScore but keep raw null
       if (!isWriting) {

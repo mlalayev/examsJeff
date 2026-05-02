@@ -4,15 +4,11 @@ import { requireAuth } from "@/lib/auth-utils";
 
 export async function POST(request: Request) {
   try {
-    console.log("Test seed starting...");
-    
     const user = await requireAuth();
-    console.log("User:", user?.email, "Role:", (user as any)?.role);
-    
+
     // Test database connection
     const userCount = await prisma.user.count();
-    console.log("Database connected, user count:", userCount);
-    
+
     // Test exam creation with minimal data
     const testExam = await prisma.exam.create({
       data: {
@@ -51,13 +47,10 @@ export async function POST(request: Request) {
         }
       }
     });
-    
-    console.log("Test exam created:", testExam.id);
-    
+
     // Clean up
     await prisma.exam.delete({ where: { id: testExam.id } });
-    console.log("Test exam deleted");
-    
+
     return NextResponse.json({
       success: true,
       message: "Test completed successfully",

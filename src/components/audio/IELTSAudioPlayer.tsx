@@ -18,7 +18,6 @@ export const clearAudioTime = (attemptId?: string, sectionId?: string) => {
   const key = `audio_time_${attemptId}_${sectionId}`;
   try {
     localStorage.removeItem(key);
-    console.log(`🗑️ Cleared audio time for ${key}`);
   } catch (error) {
     console.error("Failed to clear audio time:", error);
   }
@@ -62,18 +61,18 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
   // Normalize audio URL - memoized to prevent infinite re-renders
   const normalizedSrc = React.useMemo(() => {
     if (!src) return null;
-    
+
     // If already a full URL or base64, return as-is
     if (src.startsWith("http://") || src.startsWith("https://") || src.startsWith("data:")) {
       return src;
     }
-    
+
     // Convert old /audio/ paths to /api/audio/ for reliable serving
     if (src.startsWith("/audio/")) {
       const filename = src.replace("/audio/", "");
       return `/api/audio/${filename}`;
     }
-    
+
     // If it's /api/images/ (wrong path for audio), fix it
     if (src.startsWith("/api/images/")) {
       const filename = src.replace("/api/images/", "");
@@ -82,12 +81,12 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
         return `/api/audio/${filename}`;
       }
     }
-    
+
     // If already /api/audio/, return as-is
     if (src.startsWith("/api/audio/")) {
       return src;
     }
-    
+
     // Fallback
     return src;
   }, [src]);
@@ -103,37 +102,32 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
     setError(null);
     setIsPlaying(false);
     setDuration(0);
-    
+
     // CRITICAL: Only call load() if the source has changed or is not set
     const needsLoad = !audio.src || audio.src !== normalizedSrc;
-    
+
     if (needsLoad) {
-      console.log(`🎧 Loading new audio source: ${normalizedSrc}`);
       audio.src = normalizedSrc;
       audio.load();
-    } else {
-      console.log(`🎧 Audio source unchanged, skipping load()`);
     }
 
     const persistCurrentTime = () => {
       const storageKey = getAudioTimeStorageKey();
       if (!storageKey || typeof window === "undefined" || !audio) return;
-      
+
       const currentTime = audio.currentTime;
-      
+
       // Don't save if time is 0 or invalid
       if (!isFinite(currentTime) || currentTime <= 0) {
-        console.log(`⏸️ Skipping persist - invalid time: ${currentTime}`);
         return;
       }
-      
+
       // Only persist if the time has changed by at least 0.5 seconds
       if (Math.abs(currentTime - lastPersistedTimeRef.current) < 0.5) return;
-      
+
       try {
         localStorage.setItem(storageKey, currentTime.toString());
         lastPersistedTimeRef.current = currentTime;
-        console.log(`💾 Saved audio position: ${currentTime.toFixed(2)}s`);
       } catch (error) {
         console.error("Failed to persist audio time:", error);
       }
@@ -150,19 +144,6 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
     const onLoadedMetadata = () => {
       const dur = audio.duration;
       setDuration(dur);
-      console.log(`🎧 Audio metadata loaded, duration: ${dur.toFixed(2)}s`);
-    };
-
-    const onLoadedData = () => {
-      console.log("🎧 Audio data loaded - enough data buffered");
-    };
-
-    const onCanPlay = () => {
-      console.log("🎧 Audio can play");
-    };
-    
-    const onCanPlayThrough = () => {
-      console.log("🎧 Audio can play through (fully buffered)");
     };
 
     const onEnded = () => {
@@ -171,7 +152,6 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
       if (storageKey && typeof window !== "undefined") {
         try {
           localStorage.removeItem(storageKey);
-          console.log("🎧 Audio ended, cleared saved position");
         } catch {
           /* ignore */
         }
@@ -180,7 +160,6 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
 
     const onPlay = () => {
       setIsPlaying(true);
-      console.log(`✓ Playback started at: ${audio.currentTime.toFixed(2)}s`);
     };
 
     const onPause = () => {
@@ -188,21 +167,14 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
       persistCurrentTime();
     };
 
-    const onSeeking = () => {
-      const currentTime = audio.currentTime;
-      console.log(`🎧 Seeking to: ${currentTime.toFixed(2)}s`);
-    };
-
     const onSeeked = () => {
-      const currentTime = audio.currentTime;
-      console.log(`🎧 Seeked to: ${currentTime.toFixed(2)}s`);
       persistCurrentTime();
     };
 
     const onError = (e: Event) => {
       const audioElement = e.target as HTMLAudioElement;
-      const errorMsg = audioElement.error 
-        ? `Error ${audioElement.error.code}: ${audioElement.error.message}` 
+      const errorMsg = audioElement.error
+        ? `Error ${audioElement.error.code}: ${audioElement.error.message}`
         : "Unknown audio error";
       setError(errorMsg);
       console.error("🎧 Audio error:", errorMsg, "URL:", normalizedSrc);
@@ -216,7 +188,6 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
           const currentTime = audio.currentTime;
           if (isFinite(currentTime) && currentTime > 0) {
             localStorage.setItem(storageKey, currentTime.toString());
-            console.log(`💾 Page hide: saved position ${currentTime.toFixed(2)}s`);
           }
         } catch {
           /* ignore */
@@ -227,12 +198,11 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
     const onBeforeUnload = () => {
       // Force persist on page unload
       const storageKey = getAudioTimeStorageKey();
-      if (storageKey && typeof window === "undefined" && audio) {
+      if (storageKey && typeof window !== "undefined" && audio) {
         try {
           const currentTime = audio.currentTime;
           if (isFinite(currentTime) && currentTime > 0) {
             localStorage.setItem(storageKey, currentTime.toString());
-            console.log(`💾 Before unload: saved position ${currentTime.toFixed(2)}s`);
           }
         } catch {
           /* ignore */
@@ -242,16 +212,12 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
 
     audio.addEventListener("timeupdate", onTimeUpdate);
     audio.addEventListener("loadedmetadata", onLoadedMetadata);
-    audio.addEventListener("loadeddata", onLoadedData);
-    audio.addEventListener("canplay", onCanPlay);
-    audio.addEventListener("canplaythrough", onCanPlayThrough);
     audio.addEventListener("ended", onEnded);
     audio.addEventListener("play", onPlay);
     audio.addEventListener("pause", onPause);
-    audio.addEventListener("seeking", onSeeking);
     audio.addEventListener("seeked", onSeeked);
     audio.addEventListener("error", onError);
-    
+
     if (typeof window !== "undefined") {
       window.addEventListener("pagehide", onPageHide);
       window.addEventListener("beforeunload", onBeforeUnload);
@@ -265,25 +231,20 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
           const currentTime = audio.currentTime;
           if (isFinite(currentTime) && currentTime > 0) {
             localStorage.setItem(storageKey, currentTime.toString());
-            console.log(`💾 Component cleanup: saved position ${currentTime.toFixed(2)}s`);
           }
         } catch {
           /* ignore */
         }
       }
-      
+
       audio.removeEventListener("timeupdate", onTimeUpdate);
       audio.removeEventListener("loadedmetadata", onLoadedMetadata);
-      audio.removeEventListener("loadeddata", onLoadedData);
-      audio.removeEventListener("canplay", onCanPlay);
-      audio.removeEventListener("canplaythrough", onCanPlayThrough);
       audio.removeEventListener("ended", onEnded);
       audio.removeEventListener("play", onPlay);
       audio.removeEventListener("pause", onPause);
-      audio.removeEventListener("seeking", onSeeking);
       audio.removeEventListener("seeked", onSeeked);
       audio.removeEventListener("error", onError);
-      
+
       if (typeof window !== "undefined") {
         window.removeEventListener("pagehide", onPageHide);
         window.removeEventListener("beforeunload", onBeforeUnload);
@@ -298,60 +259,39 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
     if (isPlaying) {
       audio.pause();
     } else {
-      // CRITICAL: Check localStorage and restore position BEFORE playing
-      console.log(`🎵 Play button pressed. hasChecked: ${hasCheckedSavedPositionRef.current}`);
-      
       if (!hasCheckedSavedPositionRef.current) {
         const storageKey = getAudioTimeStorageKey();
-        console.log(`🔑 Storage key: ${storageKey}`);
-        
+
         if (storageKey && typeof window !== "undefined") {
           try {
             const savedTime = localStorage.getItem(storageKey);
-            console.log(`📦 Retrieved from localStorage: ${savedTime}`);
-            
+
             if (savedTime) {
               const time = parseFloat(savedTime);
-              console.log(`⏱️ Parsed time: ${time}`);
-              
+
               if (!isNaN(time) && time > 0) {
                 const dur = audio.duration;
-                console.log(`🎧 Audio duration: ${dur}, time to restore: ${time}`);
-                
+
                 // Only restore if within valid range
                 if (Number.isFinite(dur) && dur > 0 && time < dur - 0.5) {
-                  console.log(`✅ Restoring to ${time.toFixed(2)}s`);
                   audio.currentTime = time;
                   setCurrentTime(time);
                   lastPersistedTimeRef.current = time;
-                  console.log(`✅ Restored audio position on play: ${time.toFixed(2)}s / ${dur.toFixed(2)}s`);
                 } else if (time > 0 && (!Number.isFinite(dur) || dur === 0)) {
                   // Duration not ready yet, try anyway
-                  console.log(`✅ Restoring without duration check: ${time.toFixed(2)}s`);
                   audio.currentTime = time;
                   setCurrentTime(time);
                   lastPersistedTimeRef.current = time;
-                  console.log(`✅ Restored audio position on play (no duration yet): ${time.toFixed(2)}s`);
-                } else {
-                  console.log(`⚠️ Time ${time} out of range or duration ${dur} invalid`);
                 }
-              } else {
-                console.log(`⚠️ Invalid time value: ${time}`);
               }
-            } else {
-              console.log(`ℹ️ No saved time found in localStorage`);
             }
           } catch (error) {
             console.error("❌ Failed to restore audio position on play:", error);
           }
-        } else {
-          console.log(`⚠️ No storage key or window undefined`);
         }
         hasCheckedSavedPositionRef.current = true;
-      } else {
-        console.log(`ℹ️ Already checked localStorage, not checking again`);
       }
-      
+
       audio.play().catch((err) => console.error("Audio play error:", err));
     }
   };
@@ -361,14 +301,13 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
     if (!audio) return;
     audio.currentTime = 0;
     setCurrentTime(0);
-    
+
     // Clear saved position on restart (don't save 0)
     const storageKey = getAudioTimeStorageKey();
     if (storageKey && typeof window !== "undefined") {
       try {
         localStorage.removeItem(storageKey);
         lastPersistedTimeRef.current = 0;
-        console.log("🔄 Restarted audio, cleared saved position");
       } catch {
         /* ignore */
       }
@@ -380,7 +319,7 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
     if (!audio) return;
     const newTime = Math.max(0, audio.currentTime - 10);
     audio.currentTime = newTime;
-    
+
     // Only persist if greater than 0
     if (newTime > 0) {
       const storageKey = getAudioTimeStorageKey();
@@ -388,7 +327,6 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
         try {
           localStorage.setItem(storageKey, newTime.toString());
           lastPersistedTimeRef.current = newTime;
-          console.log(`💾 Skipped backward to: ${newTime.toFixed(2)}s`);
         } catch {
           /* ignore */
         }
@@ -400,7 +338,6 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
         try {
           localStorage.removeItem(storageKey);
           lastPersistedTimeRef.current = 0;
-          console.log("🔄 Skipped to start, cleared saved position");
         } catch {
           /* ignore */
         }
@@ -413,7 +350,7 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
     if (!audio) return;
     const newTime = Math.min(duration, audio.currentTime + 10);
     audio.currentTime = newTime;
-    
+
     // Persist immediately
     if (newTime > 0) {
       const storageKey = getAudioTimeStorageKey();
@@ -421,7 +358,6 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
         try {
           localStorage.setItem(storageKey, newTime.toString());
           lastPersistedTimeRef.current = newTime;
-          console.log(`💾 Skipped forward to: ${newTime.toFixed(2)}s`);
         } catch {
           /* ignore */
         }
@@ -437,10 +373,10 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
     const rect = progressBar.getBoundingClientRect();
     const pos = (clientX - rect.left) / rect.width;
     const newTime = Math.max(0, Math.min(duration, pos * duration));
-    
+
     audio.currentTime = newTime;
     setCurrentTime(newTime);
-    
+
     // Persist immediately when seeking (only if > 0)
     if (newTime > 0) {
       const storageKey = getAudioTimeStorageKey();
@@ -448,7 +384,6 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
         try {
           localStorage.setItem(storageKey, newTime.toString());
           lastPersistedTimeRef.current = newTime;
-          console.log(`💾 Seeked to: ${newTime.toFixed(2)}s`);
         } catch {
           /* ignore */
         }
@@ -531,11 +466,7 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
           <p className="text-xs text-red-600">Normalized URL: {normalizedSrc}</p>
         </div>
       )}
-      <audio
-        ref={audioRef}
-        src={normalizedSrc || undefined}
-        preload="auto"
-      />
+      <audio ref={audioRef} src={normalizedSrc || undefined} preload="auto" />
 
       {/* Controls Row */}
       <div className="flex items-center gap-3">

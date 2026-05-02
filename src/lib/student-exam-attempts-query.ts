@@ -47,8 +47,6 @@ export async function fetchStudentExamAttemptsForDashboard(
       },
     });
 
-    console.log(`Found ${attempts.length} attempts for student ${studentId}`);
-
     // Get unique exam IDs
     const examIds = [...new Set(attempts.map(a => a.examId))];
     

@@ -130,18 +130,6 @@ export const QuestionsArea = React.memo(function QuestionsArea({
   const readingPassage =
     section.passage || section.questions?.[0]?.prompt?.passage;
 
-  // Debug: Log IELTS Listening conditions
-  if (section.type === "LISTENING" && examCategory === "IELTS") {
-    console.log("🎧 IELTS Listening Debug:", {
-      sectionType: section.type,
-      examCategory,
-      hasAudio: !!audioSource,
-      audioSource,
-      sectionAudio: section.audio,
-      questionsCount: section.questions?.length,
-    });
-  }
-
   const sectionAnswers = answers[section.id] || {};
 
   // Calculate base question numbers for DND_GAP questions

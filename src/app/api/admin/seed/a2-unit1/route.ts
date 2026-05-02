@@ -4,22 +4,16 @@ import { requireAuth } from "@/lib/auth-utils";
 
 export async function POST(request: Request) {
   try {
-    console.log("Starting seed process...");
-    
     const user = await requireAuth();
-    console.log("User authenticated:", user?.email);
-    
+
     const role = (user as any).role;
-    console.log("User role:", role);
 
     // Only ADMIN, BOSS, or TEACHER can seed
     if (!["ADMIN", "BOSS", "TEACHER"].includes(role)) {
-      console.log("Access denied for role:", role);
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     // Check if exam already exists
-    console.log("Checking for existing exam...");
     const existing = await prisma.exam.findFirst({
       where: {
         title: "General English A2 — Unit 1",
@@ -29,14 +23,11 @@ export async function POST(request: Request) {
     });
 
     if (existing) {
-      console.log("Exam already exists:", existing.id);
       return NextResponse.json(
         { error: "This exam already exists", examId: existing.id },
         { status: 400 }
       );
     }
-
-    console.log("Creating new exam...");
 
     // Create exam with sections and questions
     const exam = await prisma.exam.create({

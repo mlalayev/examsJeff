@@ -206,9 +206,6 @@ export function PromptImageInteractive({
                 const errorMsg = e.currentTarget.parentElement?.querySelector('.image-error');
                 if (errorMsg) errorMsg.classList.remove('hidden');
               }}
-              onLoad={() => {
-                console.log("Image loaded successfully:", question.prompt.backgroundImage);
-              }}
             />
             <div className="image-error hidden text-xs text-red-600 bg-red-50 p-2 rounded border border-red-200 mt-2">
               Failed to load image. Path: {question.prompt.backgroundImage}
@@ -239,7 +236,6 @@ export function PromptImageInteractive({
           onChange={async (e) => {
             const file = e.target.files?.[0];
             if (file) {
-              console.log("Uploading file:", file.name, "Size:", file.size);
               await onImageUpload(file);
             }
           }}

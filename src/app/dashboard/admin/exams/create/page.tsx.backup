@@ -407,9 +407,7 @@ export default function CreateExamPage() {
             ? questionToDelete.prompt 
             : "Question")
       : undefined;
-    
-    console.log("Opening delete modal for question:", { questionId, questionNumber, questionText });
-    
+
     setDeleteQuestionModal({
       isOpen: true,
       questionId,

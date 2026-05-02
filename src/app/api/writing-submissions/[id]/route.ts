@@ -208,8 +208,6 @@ export async function PATCH(
       },
     });
 
-    console.log("✅ Writing feedback saved:", id);
-
     return NextResponse.json({
       success: true,
       submission: {

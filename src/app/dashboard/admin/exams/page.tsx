@@ -45,13 +45,6 @@ export default function AdminExamsPage() {
     fetchExams();
   }, [filterCategory, filterActive]);
 
-  // Debug: Log exams when they change
-  useEffect(() => {
-    if (exams.length > 0) {
-      console.log("Exams loaded:", exams.length, exams.map(e => ({ title: e.title, category: e.category, isActive: e.isActive })));
-    }
-  }, [exams]);
-
   const fetchExams = async () => {
     try {
       const params = new URLSearchParams();

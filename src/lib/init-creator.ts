@@ -21,8 +21,7 @@ export async function initializeCreatorAccount() {
 
     if (existingCreator) {
       // Creator account already exists
-      console.log("✓ Creator account already exists");
-      
+
       // Ensure the creator has the CREATOR role and is approved
       if (existingCreator.role !== "CREATOR" || !existingCreator.approved) {
         await prisma.user.update({
@@ -32,7 +31,6 @@ export async function initializeCreatorAccount() {
             approved: true,
           },
         });
-        console.log("✓ Creator account updated with CREATOR role");
       }
       
       return;
@@ -47,7 +45,6 @@ export async function initializeCreatorAccount() {
       defaultBranch = await prisma.branch.create({
         data: { name: "Main Branch" },
       });
-      console.log("✓ Created default branch");
     }
 
     // Hash the password
@@ -65,12 +62,6 @@ export async function initializeCreatorAccount() {
         branchId: defaultBranch.id,
       },
     });
-
-    console.log("✓ Creator account created successfully");
-    console.log(`  Email: ${CREATOR_EMAIL}`);
-    console.log(`  Password: ${CREATOR_PASSWORD}`);
-    console.log("  Role: CREATOR (superadmin with full access)");
-    console.log("  Note: This account is hidden from all users");
   } catch (error) {
     console.error("✗ Failed to initialize creator account:", error);
     // Don't throw - we don't want to prevent the app from starting

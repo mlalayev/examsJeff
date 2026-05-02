@@ -27,9 +27,6 @@ export async function GET(request: Request) {
     const window1hStart = new Date(now.getTime() + 40 * 60 * 1000);
     const window1hEnd = new Date(now.getTime() + 1 * 60 * 60 * 1000 + 20 * 60 * 1000);
 
-    console.log('🔔 Running reminder cron job...');
-    console.log('Current time (UTC):', now.toISOString());
-
     let sent24h = 0;
     let sent1h = 0;
 
@@ -68,8 +65,6 @@ export async function GET(request: Request) {
         }
       }
     });
-
-    console.log(`Found ${bookings24h.length} bookings needing 24h reminder`);
 
     // Send 24h reminders
     for (const booking of bookings24h) {
@@ -168,8 +163,6 @@ export async function GET(request: Request) {
       }
     });
 
-    console.log(`Found ${bookings1h.length} bookings needing 1h reminder`);
-
     // Send 1h reminders
     for (const booking of bookings1h) {
       try {
@@ -230,8 +223,6 @@ export async function GET(request: Request) {
         console.error(`Error sending 1h reminder for booking ${booking.id}:`, error);
       }
     }
-
-    console.log(`✅ Reminder cron completed: ${sent24h} x 24h, ${sent1h} x 1h`);
 
     return NextResponse.json({
       success: true,

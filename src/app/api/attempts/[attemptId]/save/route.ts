@@ -22,8 +22,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
       return NextResponse.json({ error: sizeValidation.error }, { status: 400 });
     }
 
-    console.log('Save attempt request:', { attemptId, studentId, bodyKeys: Object.keys(body) });
-
     const { sectionType, answers, sectionStartTimes } = body as { 
       sectionType?: string; 
       answers?: any;
@@ -55,7 +53,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
 
     // Check if this is a JSON exam (no attempt_sections in DB)
     const isJsonExam = attempt.sections.length === 0;
-    console.log('Save attempt:', { attemptId, sectionType, isJsonExam, sectionsCount: attempt.sections.length, answersCount: Object.keys(answers || {}).length });
 
     if (isJsonExam) {
       // For JSON exams, merge answers into attempt.answers
@@ -85,13 +82,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
           }
         };
       }
-
-      console.log('Saving JSON exam data:', { 
-        sectionType, 
-        hasAnswers: !!answers,
-        hasTimes: !!sectionStartTimes,
-        answersCount: answers ? Object.keys(answers).length : 0
-      });
 
       await prisma.attempt.update({
         where: { id: attemptId },
@@ -130,12 +120,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
         }
       }
 
-      console.log('JSON exam data saved successfully');
       return NextResponse.json({ success: true, updated: 1 });
     } else {
       // For DB exams, update attempt_section
-      console.log('Saving DB exam section:', { sectionType, answersCount: Object.keys(answers || {}).length });
-      
+
       // Ensure answers is not null/undefined
       if (!answers) {
         console.warn('No answers to save for section:', sectionType);
@@ -147,8 +135,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
         data: { answers },
       });
 
-      console.log('DB exam section saved:', { updated: updated.count, sectionType });
-      
       if (updated.count === 0) {
         console.warn('No attempt_section found to update:', { attemptId, sectionType });
       }

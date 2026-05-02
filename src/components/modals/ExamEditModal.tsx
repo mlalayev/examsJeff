@@ -36,10 +36,8 @@ interface ExamEditModalProps {
   onSave: (updatedQuestions: Question[], sectionId: string) => void;
 }
 
-// Dummy alert function for the modal
-const dummyAlert = (title: string, message: string, type: "error" | "warning" | "info") => {
-  console.log(`[${type}] ${title}: ${message}`);
-};
+// Placeholder for modal alerts (no console output in production UI)
+const dummyAlert = (_title: string, _message: string, _type: "error" | "warning" | "info") => {};
 
 export default function ExamEditModal({
   isOpen,

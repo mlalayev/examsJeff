@@ -133,12 +133,7 @@ export async function POST(request: Request) {
   try {
     const user = await requireAdmin();
     const body = await request.json();
-    
-    console.log("=== CREATE EXAM REQUEST ===");
-    console.log("Category:", body.category);
-    console.log("Sections count:", body.sections?.length || 0);
-    console.log("First section:", JSON.stringify(body.sections?.[0], null, 2));
-    
+
     const validatedData = createExamSchema.parse(body);
     
     // IELTS validation: Check LISTENING uniqueness
@@ -158,10 +153,7 @@ export async function POST(request: Request) {
     // Separate parent sections from subsections
     const subsections = validatedData.sections?.filter(s => s.parentTitle) || [];
     const regularSections = validatedData.sections?.filter(s => !s.parentTitle) || [];
-    
-    console.log("Regular sections:", regularSections.length);
-    console.log("Subsections:", subsections.length);
-    
+
     // Create exam with regular sections first
     const exam = await prisma.exam.create({
       data: {
@@ -175,7 +167,6 @@ export async function POST(request: Request) {
         createdById: (user as any).id,
         sections: {
           create: regularSections.map((section) => {
-              console.log("Creating section:", section.title, "order:", section.order, "type:", typeof section.order);
               return {
               type: section.type,
               title: section.title,

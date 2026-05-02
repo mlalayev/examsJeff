@@ -86,13 +86,10 @@ export default function EditExamPage() {
   const fetchExam = async () => {
     setLoading(true);
     try {
-      console.log("Fetching exam:", examId);
       const res = await fetch(`/api/admin/exams/${examId}`);
-      console.log("Fetch response status:", res.status);
-      
+
       if (res.ok) {
         const data = await res.json();
-        console.log("Exam data loaded successfully");
         const exam = data.exam;
         
         setExamTitle(exam.title);
@@ -446,10 +443,6 @@ export default function EditExamPage() {
       return;
     }
 
-    console.log("Saving question:", editingQuestion);
-    console.log("Current section:", currentSection);
-    console.log("Sections before update:", sections);
-
     // Remove rawText from prompt before saving (it's only for display)
     const questionToSave = {
       ...editingQuestion,
@@ -461,8 +454,6 @@ export default function EditExamPage() {
     if (questionToSave.prompt && 'rawText' in questionToSave.prompt) {
       delete (questionToSave.prompt as any).rawText;
     }
-
-    console.log("Question to save:", questionToSave);
 
     const updatedSections = sections.map((s) => {
       // If current section is a subsection, update inside parent
@@ -491,9 +482,7 @@ export default function EditExamPage() {
           }
         : s;
     });
-    
-    console.log("Sections after update:", updatedSections);
-    
+
     setSections(updatedSections);
     
     // Update currentSection
@@ -508,10 +497,8 @@ export default function EditExamPage() {
       return null;
     };
     const updatedCurrentSection = findCurrentSection(updatedSections);
-    console.log("Updated current section:", updatedCurrentSection);
     setCurrentSection(updatedCurrentSection);
     setEditingQuestion(null);
-    console.log("✅ Question saved successfully!");
   };
 
   const deleteQuestion = (questionId: string) => {
@@ -2437,9 +2424,8 @@ export default function EditExamPage() {
               throw new Error(errorData.details || errorData.error || "Failed to save exam");
             }
 
-            const result = await res.json();
-            console.log("Question saved successfully:", result);
-            
+            await res.json();
+
             showAlert("Success", "Question saved successfully", "success");
             setShowEditModal(false);
           } catch (error) {
