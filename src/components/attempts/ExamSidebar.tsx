@@ -193,11 +193,12 @@ export const ExamSidebar = React.memo(function ExamSidebar({
           >
             Exam Sections
           </p>
-          <ProgressBar
+          {/* TODO: restore question counters (overall progress) */}
+          {/* <ProgressBar
             answered={progressStats.answered}
             total={progressStats.total}
             percentage={progressStats.percentage}
-          />
+          /> */}
         </div>
 
         {/* IELTS: Timer + part/task choosers for current section (Listening, Reading, Writing, Speaking) */}
@@ -226,10 +227,11 @@ export const ExamSidebar = React.memo(function ExamSidebar({
                         onClick={() => onListeningPartChange?.(p)}
                         className={`relative flex-1 flex flex-col items-center justify-center py-2 px-0.5 min-w-0 transition-colors duration-200 text-xs font-semibold ${isActive ? "text-white" : "text-gray-700 hover:bg-gray-50"}`}
                         style={isActive ? { backgroundColor: ACCENT } : undefined}
-                        title={`Part ${p}: ${progress.answered}/${progress.total}`}
+                        title={`Part ${p}`}
                       >
                         <span>P{p}</span>
-                        <span className={`text-[10px] font-medium tabular-nums mt-0.5 ${isActive ? "text-white/90" : "text-gray-500"}`}>{progress.answered}/{progress.total}</span>
+                        {/* TODO: restore part counters */}
+                        {/* <span className={`text-[10px] font-medium tabular-nums mt-0.5 ${isActive ? "text-white/90" : "text-gray-500"}`}>{progress.answered}/{progress.total}</span> */}
                         {isDone && <span className={`absolute top-0.5 right-0.5 flex h-3 w-3 items-center justify-center rounded-full ${isActive ? "bg-white/25 text-white" : "bg-emerald-100 text-emerald-600"}`}><Check className="h-1.5 w-1.5" strokeWidth={3} /></span>}
                       </button>
                     );
@@ -251,12 +253,13 @@ export const ExamSidebar = React.memo(function ExamSidebar({
                       <div
                         className="relative flex w-full flex-col items-center justify-center py-2 px-2 text-xs font-semibold text-white"
                         style={{ backgroundColor: ACCENT }}
-                        title={`Part 1: ${progress.answered}/${progress.total}`}
+                        title="Part 1"
                       >
                         <span>Part 1</span>
-                        <span className="mt-0.5 text-[10px] font-medium tabular-nums text-white/90">
+                        {/* TODO: restore reading part counters */}
+                        {/* <span className="mt-0.5 text-[10px] font-medium tabular-nums text-white/90">
                           {progress.answered}/{progress.total}
-                        </span>
+                        </span> */}
                         {isDone && (
                           <span className="absolute right-1 top-0.5 flex h-3 w-3 items-center justify-center rounded-full bg-white/25 text-white">
                             <Check className="h-1.5 w-1.5" strokeWidth={3} />
@@ -286,10 +289,11 @@ export const ExamSidebar = React.memo(function ExamSidebar({
                         onClick={() => onWritingPartChange?.(p)}
                         className={`relative flex-1 flex flex-col items-center justify-center py-2 px-1 min-w-0 transition-colors duration-200 text-xs font-semibold ${isActive ? "text-white" : "text-gray-700 hover:bg-gray-50"}`}
                         style={isActive ? { backgroundColor: ACCENT } : undefined}
-                        title={`Task ${p}: ${progress.answered}/${progress.total}`}
+                        title={`Task ${p}`}
                       >
                         <span>T{p}</span>
-                        <span className={`text-[10px] font-medium tabular-nums mt-0.5 ${isActive ? "text-white/90" : "text-gray-500"}`}>{progress.answered}/{progress.total}</span>
+                        {/* TODO: restore task counters */}
+                        {/* <span className={`text-[10px] font-medium tabular-nums mt-0.5 ${isActive ? "text-white/90" : "text-gray-500"}`}>{progress.answered}/{progress.total}</span> */}
                         {isDone && <span className={`absolute top-0.5 right-0.5 flex h-3 w-3 items-center justify-center rounded-full ${isActive ? "bg-white/25 text-white" : "bg-emerald-100 text-emerald-600"}`}><Check className="h-1.5 w-1.5" strokeWidth={3} /></span>}
                       </button>
                     );
@@ -315,10 +319,11 @@ export const ExamSidebar = React.memo(function ExamSidebar({
                         onClick={() => onSpeakingPartChange?.(p)}
                         className={`relative flex-1 flex flex-col items-center justify-center py-2 px-1 min-w-0 transition-colors duration-200 text-xs font-semibold ${isActive ? "text-white" : "text-gray-700 hover:bg-gray-50"}`}
                         style={isActive ? { backgroundColor: ACCENT } : undefined}
-                        title={`Part ${p}: ${progress.answered}/${progress.total}`}
+                        title={`Part ${p}`}
                       >
                         <span>P{p}</span>
-                        <span className={`text-[10px] font-medium tabular-nums mt-0.5 ${isActive ? "text-white/90" : "text-gray-500"}`}>{progress.answered}/{progress.total}</span>
+                        {/* TODO: restore part counters */}
+                        {/* <span className={`text-[10px] font-medium tabular-nums mt-0.5 ${isActive ? "text-white/90" : "text-gray-500"}`}>{progress.answered}/{progress.total}</span> */}
                         {isDone && <span className={`absolute top-0.5 right-0.5 flex h-3 w-3 items-center justify-center rounded-full ${isActive ? "bg-white/25 text-white" : "bg-emerald-100 text-emerald-600"}`}><Check className="h-1.5 w-1.5" strokeWidth={3} /></span>}
                       </button>
                     );

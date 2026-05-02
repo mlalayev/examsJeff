@@ -81,10 +81,11 @@ export const SectionListItem = React.memo(function SectionListItem({
           <CheckCircle className="w-4 h-4 flex-shrink-0 text-emerald-600" />
         )}
       </div>
-      <div className="mt-1 text-xs"
+      {/* TODO: restore per-section question counters */}
+      {/* <div className="mt-1 text-xs"
            style={{ color: 'rgba(48, 51, 128, 0.6)' }}>
         {answeredCount}/{totalCount} answered
-      </div>
+      </div> */}
     </button>
   );
 });
