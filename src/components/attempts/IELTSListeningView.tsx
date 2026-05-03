@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { IELTSAudioPlayer } from "@/components/audio/IELTSAudioPlayer";
-import { Headphones } from "lucide-react";
+import { AlertTriangle, Headphones } from "lucide-react";
 
 interface Question {
   id: string;
@@ -195,12 +195,22 @@ export function IELTSListeningView({
               <p className="text-sm text-gray-500">Listen to the audio, then answer the questions below.</p>
             </div>
           </div>
+          <div className="mb-4 flex gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" aria-hidden />
+            <div className="space-y-1">
+              <p className="font-semibold text-amber-900">Exam rules for this audio</p>
+              <p className="text-amber-900/90">
+                Once you start listening, you cannot move forward or backward in the recording (no skipping or
+                seeking). Do not reload or close this page during the test, or you may lose progress or time.
+              </p>
+            </div>
+          </div>
           <IELTSAudioPlayer
             src={audioSource}
             className="w-full"
             attemptId={attemptId}
             sectionId={section.id}
-            playOnly={false}
+            playOnly
           />
         </div>
       ) : (
