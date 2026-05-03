@@ -49,7 +49,6 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Get localStorage key for audio time
@@ -461,36 +460,44 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
     }
   };
 
-  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+  /** Seek / scrub: pointer capture so drag works for mouse, touch, and pen without document listeners */
+  const handleProgressPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (playOnly) return;
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    const el = e.currentTarget;
+    el.setPointerCapture(e.pointerId);
     isDraggingRef.current = true;
-    setIsDragging(true);
     handleSeek(e.clientX);
   };
 
-  useEffect(() => {
-    if (playOnly) return;
+  const handleProgressPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingRef.current) return;
+    handleSeek(e.clientX);
+  };
 
-    const handleMouseMove = (e: MouseEvent) => {
-      if (isDragging) {
-        handleSeek(e.clientX);
+  const endProgressDrag = (e: React.PointerEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    if (el.hasPointerCapture(e.pointerId)) {
+      try {
+        el.releasePointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
       }
-    };
-
-    const handleMouseUp = () => {
-      isDraggingRef.current = false;
-      setIsDragging(false);
-    };
-
-    if (isDragging) {
-      document.addEventListener("mousemove", handleMouseMove);
-      document.addEventListener("mouseup", handleMouseUp);
     }
+    isDraggingRef.current = false;
+  };
 
-    return () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-    };
-  }, [isDragging, duration, playOnly]);
+  const handleProgressPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    endProgressDrag(e);
+  };
+
+  const handleProgressPointerCancel = (e: React.PointerEvent<HTMLDivElement>) => {
+    endProgressDrag(e);
+  };
+
+  const handleProgressLostPointerCapture = () => {
+    isDraggingRef.current = false;
+  };
 
   const formatTime = (time: number) => {
     if (!isFinite(time) || isNaN(time)) return "0:00";
@@ -589,39 +596,44 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
         </div>
       </div>
 
-      {/* Simple Progress Bar (read-only when playOnly) */}
+      {/* Progress bar: click / tap / drag to seek (wider touch target when seeking enabled) */}
       <div className="space-y-2">
-        <div
-          ref={progressBarRef}
-          role={playOnly ? "progressbar" : undefined}
-          aria-valuenow={playOnly ? Math.round(progressPct) : undefined}
-          aria-valuemin={playOnly ? 0 : undefined}
-          aria-valuemax={playOnly ? 100 : undefined}
-          className={`relative h-2 rounded-full bg-gray-200 overflow-hidden transition-all ${
-            playOnly
-              ? "cursor-default pointer-events-none"
-              : "cursor-pointer group hover:h-3"
-          }`}
-          onMouseDown={playOnly ? undefined : handleMouseDown}
-          title={
-            playOnly
-              ? "Progress (seek disabled for this exam)"
-              : "Audio üzərinə klikləyərək istədiyiniz yerə keçin"
-          }
-        >
-          {/* Progress fill — pointer-events-none so clicks always hit the track (correct clientX math) */}
+        <div className={playOnly ? "" : "touch-none py-2 -my-2"}>
           <div
-            className="pointer-events-none absolute top-0 left-0 bottom-0 bg-[#303380] transition-all"
-            style={{ width: `${progressPct}%` }}
-          />
-
-          {/* Current position indicator */}
-          {!playOnly && (
+            ref={progressBarRef}
+            role={playOnly ? "progressbar" : undefined}
+            aria-valuenow={playOnly ? Math.round(progressPct) : undefined}
+            aria-valuemin={playOnly ? 0 : undefined}
+            aria-valuemax={playOnly ? 100 : undefined}
+            className={`relative h-2 rounded-full bg-gray-200 overflow-hidden transition-all ${
+              playOnly
+                ? "cursor-default pointer-events-none"
+                : "cursor-pointer group hover:h-3"
+            }`}
+            onPointerDown={playOnly ? undefined : handleProgressPointerDown}
+            onPointerMove={playOnly ? undefined : handleProgressPointerMove}
+            onPointerUp={playOnly ? undefined : handleProgressPointerUp}
+            onPointerCancel={playOnly ? undefined : handleProgressPointerCancel}
+            onLostPointerCapture={playOnly ? undefined : handleProgressLostPointerCapture}
+            title={
+              playOnly
+                ? "Progress (seek disabled for this exam)"
+                : "Click or drag on the bar to jump to that position in the audio"
+            }
+          >
+            {/* Progress fill — pointer-events-none so input goes to the track */}
             <div
-              className="pointer-events-none absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white border-2 border-[#303380] rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
-              style={{ left: `${progressPct}%`, transform: `translateX(-50%) translateY(-50%)` }}
+              className="pointer-events-none absolute top-0 left-0 bottom-0 bg-[#303380] transition-all"
+              style={{ width: `${progressPct}%` }}
             />
-          )}
+
+            {!playOnly && (
+              <div
+                className="pointer-events-none absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white border-2 border-[#303380] rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+                style={{ left: `${progressPct}%`, transform: `translateX(-50%) translateY(-50%)` }}
+              />
+            )}
+          </div>
         </div>
       </div>
     </div>
