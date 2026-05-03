@@ -375,13 +375,15 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
     }
   };
 
+  /** Never return Infinity/NaN — assigning currentTime to Infinity resets playback to 0 in browsers. */
   const getSeekableEnd = (audio: HTMLAudioElement): number => {
-    if (Number.isFinite(audio.duration) && audio.duration > 0) return audio.duration;
+    const d = audio.duration;
+    if (Number.isFinite(d) && d > 0 && d !== Number.POSITIVE_INFINITY) return d;
     try {
       const r = audio.seekable;
-      if (r.length > 0) {
-        const end = r.end(r.length - 1);
-        if (Number.isFinite(end) && end > 0) return end;
+      for (let i = r.length - 1; i >= 0; i--) {
+        const end = r.end(i);
+        if (Number.isFinite(end) && end > 0 && end !== Number.POSITIVE_INFINITY) return end;
       }
     } catch {
       /* ignore */
@@ -418,15 +420,21 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
 
     // Use element duration / seekable range — React `duration` is often still 0 on first clicks
     const end = getSeekableEnd(audio);
-    if (!end) return;
+    if (!Number.isFinite(end) || end <= 0) return;
 
     const rect = progressBar.getBoundingClientRect();
     if (rect.width <= 0) return;
     const pos = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
-    const newTime = pos * end;
+    const newTime = Math.min(end, Math.max(0, pos * end));
+    if (!Number.isFinite(newTime)) return;
 
     audio.currentTime = newTime;
     setCurrentTime(newTime);
+    if (Number.isFinite(audio.duration) && audio.duration > 0 && audio.duration !== Number.POSITIVE_INFINITY) {
+      setDuration(audio.duration);
+    } else if (end > 0 && (!Number.isFinite(duration) || duration <= 0)) {
+      setDuration(end);
+    }
 
     // Persist immediately when seeking (only if > 0)
     if (newTime > 0) {
@@ -451,10 +459,6 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
         }
       }
     }
-  };
-
-  const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    handleSeek(e.clientX);
   };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -495,7 +499,16 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
     return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
-  const progressPct = duration ? (currentTime / duration) * 100 : 0;
+  const durationForBar =
+    audioRef.current &&
+    Number.isFinite(audioRef.current.duration) &&
+    audioRef.current.duration > 0 &&
+    audioRef.current.duration !== Number.POSITIVE_INFINITY
+      ? audioRef.current.duration
+      : duration > 0 && Number.isFinite(duration)
+        ? duration
+        : 0;
+  const progressPct = durationForBar ? (currentTime / durationForBar) * 100 : 0;
 
   if (!src) {
     return (
@@ -589,7 +602,6 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
               ? "cursor-default pointer-events-none"
               : "cursor-pointer group hover:h-3"
           }`}
-          onClick={playOnly ? undefined : handleProgressClick}
           onMouseDown={playOnly ? undefined : handleMouseDown}
           title={
             playOnly
@@ -597,16 +609,16 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
               : "Audio üzərinə klikləyərək istədiyiniz yerə keçin"
           }
         >
-          {/* Progress fill */}
+          {/* Progress fill — pointer-events-none so clicks always hit the track (correct clientX math) */}
           <div
-            className="absolute top-0 left-0 bottom-0 bg-[#303380] transition-all"
+            className="pointer-events-none absolute top-0 left-0 bottom-0 bg-[#303380] transition-all"
             style={{ width: `${progressPct}%` }}
           />
 
           {/* Current position indicator */}
           {!playOnly && (
             <div
-              className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white border-2 border-[#303380] rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+              className="pointer-events-none absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white border-2 border-[#303380] rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
               style={{ left: `${progressPct}%`, transform: `translateX(-50%) translateY(-50%)` }}
             />
           )}
