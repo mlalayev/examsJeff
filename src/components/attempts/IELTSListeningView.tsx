@@ -200,7 +200,6 @@ export function IELTSListeningView({
             className="w-full"
             attemptId={attemptId}
             sectionId={section.id}
-            playOnly
           />
         </div>
       ) : (
