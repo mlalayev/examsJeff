@@ -166,7 +166,12 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
 
     const onLoadedMetadata = () => {
       const dur = audio.duration;
-      setDuration(dur);
+      if (Number.isFinite(dur) && dur > 0) setDuration(dur);
+    };
+
+    const onDurationChange = () => {
+      const dur = audio.duration;
+      if (Number.isFinite(dur) && dur > 0) setDuration(dur);
     };
 
     const onEnded = () => {
@@ -235,6 +240,7 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
 
     audio.addEventListener("timeupdate", onTimeUpdate);
     audio.addEventListener("loadedmetadata", onLoadedMetadata);
+    audio.addEventListener("durationchange", onDurationChange);
     audio.addEventListener("ended", onEnded);
     audio.addEventListener("play", onPlay);
     audio.addEventListener("pause", onPause);
@@ -262,6 +268,7 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
 
       audio.removeEventListener("timeupdate", onTimeUpdate);
       audio.removeEventListener("loadedmetadata", onLoadedMetadata);
+      audio.removeEventListener("durationchange", onDurationChange);
       audio.removeEventListener("ended", onEnded);
       audio.removeEventListener("play", onPlay);
       audio.removeEventListener("pause", onPause);
@@ -368,10 +375,26 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
     }
   };
 
+  const getSeekableEnd = (audio: HTMLAudioElement): number => {
+    if (Number.isFinite(audio.duration) && audio.duration > 0) return audio.duration;
+    try {
+      const r = audio.seekable;
+      if (r.length > 0) {
+        const end = r.end(r.length - 1);
+        if (Number.isFinite(end) && end > 0) return end;
+      }
+    } catch {
+      /* ignore */
+    }
+    return Number.isFinite(duration) && duration > 0 ? duration : 0;
+  };
+
   const handleSkipForward = () => {
     const audio = audioRef.current;
     if (!audio) return;
-    const newTime = Math.min(duration, audio.currentTime + 10);
+    const end = getSeekableEnd(audio);
+    if (!end) return;
+    const newTime = Math.min(end, audio.currentTime + 10);
     audio.currentTime = newTime;
 
     // Persist immediately
@@ -391,11 +414,16 @@ export const IELTSAudioPlayer: React.FC<IELTSAudioPlayerProps> = ({
   const handleSeek = (clientX: number) => {
     const audio = audioRef.current;
     const progressBar = progressBarRef.current;
-    if (!audio || !progressBar || !duration) return;
+    if (!audio || !progressBar) return;
+
+    // Use element duration / seekable range — React `duration` is often still 0 on first clicks
+    const end = getSeekableEnd(audio);
+    if (!end) return;
 
     const rect = progressBar.getBoundingClientRect();
-    const pos = (clientX - rect.left) / rect.width;
-    const newTime = Math.max(0, Math.min(duration, pos * duration));
+    if (rect.width <= 0) return;
+    const pos = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+    const newTime = pos * end;
 
     audio.currentTime = newTime;
     setCurrentTime(newTime);
