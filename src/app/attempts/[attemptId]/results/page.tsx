@@ -118,6 +118,35 @@ function isSpeakingSectionType(type: unknown): boolean {
   return String(type ?? "").toUpperCase() === "SPEAKING";
 }
 
+/**
+ * IELTS reading prompts often store three passages under prompt.passage.part1|2|3.
+ * Show only the passage that matches the question id (e.g. q-part2-...) so each
+ * review card does not repeat all passages or only the first.
+ */
+function readingPassageTextForQuestion(q: {
+  id?: string;
+  prompt?: { passage?: unknown };
+}): string {
+  const passage = q.prompt?.passage;
+  if (passage == null) return "";
+  if (typeof passage === "object" && passage !== null) {
+    const o = passage as Record<string, unknown>;
+    const m = String(q.id || "").match(/part(\d)/i);
+    const partKey = m ? `part${m[1]}` : null;
+    if (partKey && o[partKey] != null && String(o[partKey]).trim() !== "") {
+      return String(o[partKey]);
+    }
+    const ordered = (["part1", "part2", "part3"] as const)
+      .map((k) => o[k])
+      .filter((x) => x != null && String(x).trim() !== "");
+    if (ordered.length > 0) return ordered.map(String).join("\n\n");
+    return Object.values(o)
+      .filter((v): v is string => typeof v === "string" && v.trim() !== "")
+      .join("\n\n");
+  }
+  return String(passage);
+}
+
 /** Saved AI writing band (DB); prefers overallBand, else average of tasks */
 function getPersistedWritingBand(
   ws: ResultsData["writingSubmission"] | null | undefined
@@ -760,7 +789,7 @@ export default function AttemptResultsPage() {
                     : section.percentage;
                 return (
                 <li 
-                  key={`${section.type}-${index}`}
+                  key={`${section.type}-${section.title ?? ""}-${index}`}
                   className={`p-4 hover:bg-gray-50 ${data.role === "TEACHER" ? "cursor-pointer" : ""}`}
                   onClick={() => openSectionModal(section)}
                 >
@@ -1257,7 +1286,7 @@ export default function AttemptResultsPage() {
 
               {/* Questions */}
               <div className="space-y-5">
-                {data.sections && data.sections.find(s => s.type === selectedSection.type)?.questions.map((q, idx) => (
+                {(selectedSection.questions ?? []).map((q: any, idx: number) => (
                   <div key={q.id}>
                     {idx > 0 && (
                       <div className="h-0.5 bg-gray-300 my-5"></div>
@@ -1339,11 +1368,7 @@ export default function AttemptResultsPage() {
                           </div>
                           <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
                             <FormattedText
-                              text={
-                                typeof q.prompt.passage === "object" && q.prompt.passage !== null
-                                  ? Object.values(q.prompt.passage).join("\n\n")
-                                  : String(q.prompt.passage ?? "")
-                              }
+                              text={readingPassageTextForQuestion(q)}
                             />
                           </p>
                         </div>

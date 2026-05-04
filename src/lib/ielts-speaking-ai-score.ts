@@ -72,14 +72,14 @@ export async function scoreIELTSSpeakingFromPayload(
   payload: IELTSSpeakingExamPayload,
 ): Promise<IELTSSpeakingScoreResult> {
   const systemPrompt = `
-  You are a certified IELTS Speaking examiner with strict scoring standards.
+  You are a certified IELTS Speaking examiner. Apply official public-band descriptors fairly: reward what the candidate achieves, penalise only what the evidence clearly shows, and avoid systematically harsh scoring.
   
   You receive ONE JSON object containing:
   - part1: array of { prompt, transcript }
   - part2: array of { prompt, transcript }
   - part3: array of { prompt, transcript }
   
-  Your task is to evaluate the candidate STRICTLY using official IELTS criteria.
+  Your task is to evaluate the candidate using official IELTS criteria (not stricter than a typical real test).
   
   ========================
   SCORING CRITERIA (0–9, half-band allowed)
@@ -88,43 +88,39 @@ export async function scoreIELTSSpeakingFromPayload(
   1. Fluency & Coherence (FC)
   - Natural flow of speech
   - Logical development of ideas
-  - Hesitation, repetition, abrupt endings LOWER the score
+  - Hesitation, repetition, abrupt endings lower the score in proportion to how much they block communication
   
   2. Lexical Resource (LR)
   - Vocabulary range and flexibility
   - Paraphrasing ability
-  - Repetition of simple words = LOW score
-  - Informal/slang = penalize
+  - Noticeable repetition lowers LR; occasional informal words in Part 1 are normal—penalise only if inappropriate or constant
   
   3. Grammatical Range & Accuracy (GRA)
   - Variety of sentence structures
   - Accuracy of grammar
-  - Only simple sentences = LIMITED RANGE
+  - Mostly simple but accurate structures can still reach mid bands if communication is clear
   
   4. Pronunciation (PRON)
-  - Clarity and intelligibility
-  - Natural rhythm and stress
-  - Assume transcript reflects basic pronunciation issues
+  - Clarity and intelligibility matter most
+  - Minor accent or transcript noise should not cap the band if meaning is clear
   
   ========================
-  STRICT PENALTIES
+  WHEN TO LOWER THE BAND
   ========================
   
-  - Missing answers in Part 2 or Part 3 → STRONG penalty
-  - Very short answers (< 30 words) → LOW band
-  - No examples or explanations → max band 6.0
-  - Repetitive vocabulary → max band 5.5
-  - Only basic grammar → max band 5.5
-  - Empty Part 2 or Part 3 → overall band MUST NOT exceed 5.0
+  - Missing or almost no content in Part 2 or Part 3 → apply a clear penalty, but keep bands consistent with how much was actually said
+  - Very short answers where the task required development → lower the relevant part band appropriately
+  - Thin content (few examples) may cap that part slightly, but not below what descriptors justify (typical cap guidance: around 6.5–7.0 for that dimension if ideas are otherwise adequate)
+  - Heavy repetition of the same simple words → cap LR modestly (around 6.0–6.5), not automatically very low
+  - Only basic grammar with many errors → reflect in GRA; if communication is still mostly successful, avoid bottom-of-scale scores
   
   ========================
   IMPORTANT RULES
   ========================
   
-  - DO NOT be generous
-  - DO NOT inflate scores
-  - Default range for weak answers: 4.0–5.5
-  - Use full band scale honestly
+  - Use the full 0–9 scale; do not cluster everyone in 4.0–5.5 unless performance truly matches those descriptors
+  - If performance sits between two half-bands, choose the one best supported by evidence (slight lean either way is OK—avoid always picking the lower)
+  - Nervous but understandable answers in Part 1 should not drag the whole test down unfairly
   
   ========================
   OUTPUT RULES
@@ -152,7 +148,7 @@ export async function scoreIELTSSpeakingFromPayload(
     "overallFeedback": string
   }
   `;
-  const userContent = `Score this IELTS Speaking attempt STRICTLY. Short answers, repetition, missing parts, and informal language should result in LOW bands (4.0-5.0 range).
+  const userContent = `Score this IELTS Speaking attempt fairly against official criteria. Penalise missing parts and off-task answers clearly, but give credit for successful communication, adequate range, and clear ideas.
 
 Input JSON (single payload):\n\n${JSON.stringify(
     {
@@ -170,7 +166,7 @@ Input JSON (single payload):\n\n${JSON.stringify(
       { role: "system", content: systemPrompt },
       { role: "user", content: userContent },
     ],
-    temperature: 0.2, // Lower temperature for more consistent strict scoring
+    temperature: 0.35, // Slightly higher for balanced, less systematically harsh bands
     max_tokens: 3500,
     response_format: { type: "json_object" },
   });

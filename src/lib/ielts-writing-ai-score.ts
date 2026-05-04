@@ -54,16 +54,15 @@ function finalizeTaskScores(
   };
 }
 
-const STRICT_WRITING_RULES = `
+const IELTS_WRITING_SCORING_GUIDANCE = `
 ========================
-STRICT EXAMINER (CRITICAL)
+FAIR, OFFICIAL-STYLE SCORING
 ========================
-- Do NOT inflate scores. When in doubt, choose the LOWER half-band.
-- Weak answers, vague ideas, or missing development: default band range 4.0–5.5 for affected criteria.
-- Memorised / generic phrases without real development → Lexical Resource must not exceed 5.5.
-- Many basic errors or only simple sentences → Grammatical Range & Accuracy capped at 5.5–6.0.
-- Off-topic or severely under-length (beyond word-count penalty) → Task Response cannot be above 5.0.
-- You are assessing for a real exam; be strict like an official IELTS examiner.
+- Align with public IELTS band descriptors. Reward strengths; deduct for clear weaknesses—avoid always defaulting to the lowest plausible half-band.
+- Weak or under-developed answers: reflect that in the relevant criteria, but typical affected ranges are closer to 5.0–6.5 unless performance clearly matches lower descriptors.
+- Memorised / generic phrases with little real development → lower Lexical Resource and Task Response appropriately (often around 6.0–6.5 cap for LR if ideas are thin, not automatically 5.5).
+- Many basic errors or limited range → reflect in GRA; if meaning is still clear throughout, mid-band GRA is possible.
+- Off-topic or severely under-length (beyond word-count penalty) → Task Response should drop clearly, but cap in line with descriptors (often around 5.0–5.5, not automatically floor scores).
 
 Scores must use 0.5 increments only (e.g. 6.0, 6.5, 7.0, never 6.7).
 `;
@@ -74,7 +73,7 @@ export async function scoreIELTSWritingFull(data: {
 }): Promise<IELTSWritingFullScore> {
   const systemPrompt = `You are a certified IELTS Writing examiner. Score BOTH Task 1 and Task 2 using official IELTS Writing Assessment Criteria.
 
-${STRICT_WRITING_RULES}
+${IELTS_WRITING_SCORING_GUIDANCE}
 
 📝 Criteria (each 0–9, half-band increments):
 
@@ -90,7 +89,7 @@ ${STRICT_WRITING_RULES}
 
 6️⃣ Structure: clear paragraphs, logical progression (Task 1 & 2).
 
-7️⃣ Idea development: explanations + examples where required; empty lists of ideas → cannot score above 6 for TR.
+7️⃣ Idea development: explanations + examples where the task requires them; very thin lists of ideas may limit Task Response, but give credit for partial success (avoid capping TR at 6.0 unless development is clearly inadequate for the band descriptor).
 
 8️⃣ Relevance: off-topic content → strong Task Response penalty.
 
@@ -144,7 +143,7 @@ ${data.task2.userAnswer}
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
     ],
-    temperature: 0.2,
+    temperature: 0.35,
     max_tokens: 2500,
     response_format: { type: "json_object" },
   });
@@ -197,9 +196,9 @@ export async function scoreIELTSWriting(
 ): Promise<IELTSTaskScore> {
   const wordCount = response.trim().split(/\s+/).filter(Boolean).length;
 
-  const systemPrompt = `You are a strict IELTS Writing examiner. Score the following ${taskType} response using official IELTS criteria.
+  const systemPrompt = `You are a certified IELTS Writing examiner. Score the following ${taskType} response using official IELTS criteria, fairly and proportionally.
 
-${STRICT_WRITING_RULES}
+${IELTS_WRITING_SCORING_GUIDANCE}
 
 1️⃣ Task Response (TR) / Task Achievement (TA)
 2️⃣ Coherence & Cohesion (CC)
@@ -229,7 +228,7 @@ Do NOT include "overall" — it will be computed as the mean of the four criteri
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
     ],
-    temperature: 0.2,
+    temperature: 0.35,
     max_tokens: 1500,
     response_format: { type: "json_object" },
   });
