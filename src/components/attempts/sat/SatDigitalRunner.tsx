@@ -8,6 +8,8 @@ import {
   Pencil,
   Strikethrough,
   ChevronRight,
+  Check,
+  X,
 } from "lucide-react";
 import FormattedText from "@/components/FormattedText";
 
@@ -43,6 +45,52 @@ type AttemptPayload = {
 
 function answersStorageKey(attemptId: string) {
   return `exam_answers_${attemptId}`;
+}
+
+function markedReviewStorageKey(attemptId: string) {
+  return `sat_marked_review_${attemptId}`;
+}
+
+function loadMarkedReviewSet(attemptId: string): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = localStorage.getItem(markedReviewStorageKey(attemptId));
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw) as unknown;
+    if (!Array.isArray(arr)) return new Set();
+    return new Set(arr.filter((x) => typeof x === "string"));
+  } catch {
+    return new Set();
+  }
+}
+
+function persistMarkedReview(attemptId: string, keys: Set<string>) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(
+    markedReviewStorageKey(attemptId),
+    JSON.stringify([...keys])
+  );
+}
+
+function isAnsweredForQuestion(
+  sectionAnswers: Record<string, any> | undefined,
+  q: Question
+): boolean {
+  if (!sectionAnswers) return false;
+  const v = sectionAnswers[q.id];
+  if (v === undefined || v === null) return false;
+  if (typeof v === "string" && v.trim() === "") return false;
+  if (q.qtype === "MCQ_SINGLE" || q.qtype === "SELECT" || q.qtype === "INLINE_SELECT") {
+    return typeof v === "number";
+  }
+  if (q.qtype === "MCQ_MULTI") {
+    return Array.isArray(v) && v.length > 0;
+  }
+  return true;
+}
+
+function reviewKeyFor(sectionId: string, questionId: string) {
+  return `${sectionId}:${questionId}`;
 }
 
 function satTimerKey(attemptId: string, sectionId: string) {
@@ -95,6 +143,7 @@ export function SatDigitalRunner({
   const [lockedModules, setLockedModules] = useState<Set<string>>(() => new Set());
   const [submitting, setSubmitting] = useState(false);
   const [showSubmitExam, setShowSubmitExam] = useState(false);
+  const [showQuestionNavModal, setShowQuestionNavModal] = useState(false);
   const autosaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const answersRef = useRef(answers);
   answersRef.current = answers;
@@ -109,13 +158,17 @@ export function SatDigitalRunner({
     setQIndex(0);
   }, [moduleIndex]);
 
+  useEffect(() => {
+    setShowQuestionNavModal(false);
+  }, [moduleIndex]);
+
   const currentSection = sortedSections[moduleIndex] ?? null;
   const isBreak = currentSection ? isBreakSection(currentSection) : false;
   const questions = currentSection?.questions ?? [];
   const currentQuestion = questions[qIndex] ?? null;
 
   const reviewKey = currentQuestion
-    ? `${currentSection!.id}:${currentQuestion.id}`
+    ? reviewKeyFor(currentSection!.id, currentQuestion.id)
     : "";
 
   const loadAttempt = useCallback(async () => {
@@ -169,6 +222,8 @@ export function SatDigitalRunner({
         );
       }
 
+      setMarked(loadMarkedReviewSet(attemptId));
+
       setModuleIndex(0);
       setQIndex(0);
     } catch (e) {
@@ -182,6 +237,15 @@ export function SatDigitalRunner({
   useEffect(() => {
     void loadAttempt();
   }, [loadAttempt]);
+
+  useEffect(() => {
+    if (!showQuestionNavModal) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowQuestionNavModal(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showQuestionNavModal]);
 
   const saveSection = useCallback(
     async (section: Section, sectionAnswers: Record<string, any>) => {
@@ -340,6 +404,7 @@ export function SatDigitalRunner({
       if (!res.ok) throw new Error(json.error || "Submit failed");
       if (typeof window !== "undefined") {
         localStorage.removeItem(answersStorageKey(attemptId));
+        localStorage.removeItem(markedReviewStorageKey(attemptId));
         for (const s of sortedSections) {
           localStorage.removeItem(satTimerKey(attemptId, s.id));
         }
@@ -497,6 +562,7 @@ export function SatDigitalRunner({
                           const n = new Set(prev);
                           if (n.has(reviewKey)) n.delete(reviewKey);
                           else n.add(reviewKey);
+                          persistMarkedReview(attemptId, n);
                           return n;
                         });
                       }}
@@ -587,28 +653,25 @@ export function SatDigitalRunner({
         <div className="max-w-[1400px] mx-auto grid grid-cols-3 items-center gap-4 pt-2">
           <div />
           <div className="flex justify-center">
-            {!isBreak && questions.length > 0 ? (
-              <div className="inline-flex items-center gap-2 rounded-full bg-slate-900 text-white pl-4 pr-2 py-2 text-sm font-medium">
-                <span>
+            {!isBreak && questions.length > 0 && currentSection ? (
+              <div className="inline-flex items-stretch rounded-full bg-slate-900 text-white text-sm font-medium overflow-hidden shadow-md ring-1 ring-slate-900/20">
+                <span
+                  className="px-4 py-2.5 flex items-center border-r border-white/15 tabular-nums"
+                  aria-hidden
+                >
                   Question {qIndex + 1} of {questions.length}
                 </span>
-                {questions.length > 1 && (
-                  <select
-                    className="bg-slate-800 text-white text-sm font-medium border-0 rounded-md cursor-pointer px-2 py-1 ml-1 focus:outline-none focus:ring-2 focus:ring-white/30"
-                    value={qIndex}
-                    onChange={(e) => setQIndex(Number(e.target.value))}
-                    aria-label="Jump to question"
-                  >
-                    {questions.map((_, i) => (
-                      <option key={i} value={i}>
-                        Question {i + 1}
-                      </option>
-                    ))}
-                  </select>
-                )}
-                {questions.length > 1 && (
-                  <ChevronDown className="w-4 h-4 shrink-0 opacity-90 pointer-events-none -ml-4" />
-                )}
+                <button
+                  type="button"
+                  onClick={() => setShowQuestionNavModal(true)}
+                  className="px-4 py-2.5 flex items-center gap-2 bg-slate-800 hover:bg-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 text-white min-w-[7.5rem] justify-center transition-colors"
+                  aria-expanded={showQuestionNavModal}
+                  aria-haspopup="dialog"
+                  aria-label="Open question navigator"
+                >
+                  <span>Question {qIndex + 1}</span>
+                  <ChevronDown className="w-4 h-4 shrink-0 opacity-90" />
+                </button>
               </div>
             ) : (
               <span className="text-sm text-slate-400">—</span>
@@ -664,6 +727,88 @@ export function SatDigitalRunner({
           </div>
         </div>
       </footer>
+
+      {showQuestionNavModal && currentSection && !isBreak && questions.length > 0 && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/45 p-4"
+          role="presentation"
+          onClick={() => setShowQuestionNavModal(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="sat-qnav-title"
+            className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[min(80vh,520px)] flex flex-col border border-slate-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3 shrink-0">
+              <h2
+                id="sat-qnav-title"
+                className="text-base font-semibold text-slate-900"
+              >
+                Questions in this module
+              </h2>
+              <button
+                type="button"
+                onClick={() => setShowQuestionNavModal(false)}
+                className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1 py-1">
+              {questions.map((q, i) => {
+                const rk = reviewKeyFor(currentSection.id, q.id);
+                const answered = isAnsweredForQuestion(
+                  answers[currentSection.id],
+                  q
+                );
+                const forReview = marked.has(rk);
+                const isCurrent = i === qIndex;
+                return (
+                  <button
+                    key={q.id}
+                    type="button"
+                    onClick={() => {
+                      setQIndex(i);
+                      setShowQuestionNavModal(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-4 py-3.5 text-left border-b border-slate-100 last:border-b-0 transition-colors ${
+                      isCurrent
+                        ? "bg-blue-50/90"
+                        : "hover:bg-slate-50"
+                    }`}
+                  >
+                    <span
+                      className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full"
+                      title={answered ? "Answered" : "Not answered"}
+                    >
+                      {answered ? (
+                        <Check
+                          className="w-5 h-5 text-emerald-600"
+                          strokeWidth={2.5}
+                        />
+                      ) : (
+                        <X className="w-5 h-5 text-rose-500" strokeWidth={2.5} />
+                      )}
+                    </span>
+                    <span className="flex-1 min-w-0 font-medium text-slate-900">
+                      Question {i + 1}
+                    </span>
+                    {forReview && (
+                      <span className="shrink-0 inline-flex items-center gap-1 text-xs font-semibold text-blue-800 bg-blue-100 px-2.5 py-1 rounded-md">
+                        <Bookmark className="w-3.5 h-3.5" />
+                        Review
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {showSubmitExam && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
