@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type MouseEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { attemptRunnerPath } from "@/lib/attempt-runner-path";
 import { 
   XCircle, 
   Award, 
@@ -193,7 +194,9 @@ export default function AttemptResultsPage() {
       if (!res.ok) {
         // Attempt not submitted: redirect to run page so user can continue
         if (json.error === "Attempt not submitted yet") {
-          router.replace(`/attempts/${attemptId}/run`);
+          router.replace(
+            attemptRunnerPath(attemptId, json.examCategory)
+          );
           return;
         }
         // Auth error: redirect to login

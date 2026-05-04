@@ -181,7 +181,10 @@ export async function GET(
     // Check if submitted
     if (attempt.status !== "SUBMITTED") {
       return NextResponse.json(
-        { error: "Attempt not submitted yet" },
+        {
+          error: "Attempt not submitted yet",
+          examCategory: examWithSections.category,
+        },
         { status: 400 }
       );
     }

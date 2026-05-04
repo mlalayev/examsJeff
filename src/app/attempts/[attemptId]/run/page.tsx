@@ -500,6 +500,11 @@ export default function AttemptRunnerPage() {
         router.push(`/attempts/${attemptId}/results`);
         return;
       }
+
+      if (json.examCategory === "SAT") {
+        router.replace(`/attempts/${attemptId}/sat/run`);
+        return;
+      }
       
       setData(json);
       

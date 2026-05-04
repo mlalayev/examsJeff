@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { attemptRunnerPath } from "@/lib/attempt-runner-path";
 import { BookOpen, Search, Trash2, Loader2 } from "lucide-react";
 
 type SectionType =
@@ -82,6 +83,7 @@ export default function StudentExamsPage() {
   );
 
   const handleStart = async (bookingId: string) => {
+    const row = items.find((i) => i.id === bookingId);
     setStarting(bookingId);
     try {
       // Create or get attempt for this booking with timeout
@@ -104,8 +106,10 @@ export default function StudentExamsPage() {
         return;
       }
 
-      // Navigate to attempt runner immediately using replace for better UX
-      router.replace(`/attempts/${data.attemptId}/run`);
+      const category = data.examCategory ?? row?.category;
+      router.replace(
+        attemptRunnerPath(data.attemptId, category)
+      );
       // Don't set starting to null here - let the navigation handle it
     } catch (err) {
       console.error("Failed to start exam", err);

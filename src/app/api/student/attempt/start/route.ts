@@ -44,6 +44,7 @@ export async function POST(request: Request) {
       // Return existing attempt
       return NextResponse.json({
         attemptId: attempt.id,
+        examCategory: booking.exam.category,
         message: "Continuing existing attempt",
       });
     }
@@ -71,6 +72,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       attemptId: attempt.id,
+      examCategory: booking.exam.category,
       message: "Attempt created successfully",
     });
   } catch (error) {

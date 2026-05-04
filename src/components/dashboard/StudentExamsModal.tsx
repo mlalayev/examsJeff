@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { X, ExternalLink, Loader2 } from "lucide-react";
 import { studentExamsApiUrl } from "@/lib/student-exams-api";
+import { attemptRunnerPath } from "@/lib/attempt-runner-path";
 
 export type StudentExamsModalStudent = {
   id: string;
@@ -71,10 +72,14 @@ export default function StudentExamsModal({ open, onClose, student }: Props) {
 
   if (!open || !student) return null;
 
-  const hrefForAttempt = (attemptId: string, status: string) =>
+  const hrefForAttempt = (
+    attemptId: string,
+    status: string,
+    category: string | null | undefined
+  ) =>
     status === "SUBMITTED"
       ? `/attempts/${attemptId}/results`
-      : `/attempts/${attemptId}/run`;
+      : attemptRunnerPath(attemptId, category);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
@@ -141,7 +146,11 @@ export default function StudentExamsModal({ open, onClose, student }: Props) {
                       </td>
                       <td className="px-3 py-2 text-right">
                         <Link
-                          href={hrefForAttempt(r.attemptId, r.status)}
+                          href={hrefForAttempt(
+                            r.attemptId,
+                            r.status,
+                            r.category
+                          )}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1 text-xs font-medium text-[#303380] hover:underline"
