@@ -11,7 +11,7 @@ const createUserSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters"),
   role: z.enum(["STUDENT", "TEACHER", "ADMIN", "PARENT"]),
   branchId: z.string().nullable(),
-  approved: z.boolean().default(false),
+  approved: z.boolean().optional(),
   childIds: z.array(z.string().min(1)).optional(),
   tags: z.array(z.string().min(1)).max(20).optional(),
   studentProfile: z
@@ -80,7 +80,7 @@ export async function POST(request: Request) {
         email: validatedData.email,
         passwordHash,
         role: validatedData.role,
-        approved: validatedData.approved,
+        approved: true,
         branchId: validatedData.branchId,
         tags: validatedData.tags ?? [],
         ...(validatedData.role === "STUDENT" && validatedData.branchId && validatedData.studentProfile && {

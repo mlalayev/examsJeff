@@ -195,6 +195,26 @@ export default function BossUsersPage() {
     }
   };
 
+  const handleDeleteUser = async (userId: string, email?: string) => {
+    if (!confirm(`Delete this account?\n\n${email || userId}\n\nThis cannot be undone.`)) return;
+    try {
+      const res = await fetch(`/api/admin/users/${userId}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data.error || "Failed to delete user");
+        return;
+      }
+      setUsers((prev) => prev.filter((u) => u.id !== userId));
+      if (bossUsersCache) {
+        bossUsersCache = { ...bossUsersCache, users: bossUsersCache.users.filter((u) => u.id !== userId) };
+      }
+      alert("User deleted successfully");
+    } catch (error) {
+      console.error("Failed to delete user:", error);
+      alert("Failed to delete user");
+    }
+  };
+
   const stats = getUserStats();
   const filteredUsers = getFilteredUsers();
 
@@ -315,6 +335,13 @@ export default function BossUsersPage() {
                         className="text-gray-400 hover:text-gray-600"
                       >
                         <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteUser(user.id, user.email)}
+                        className="ml-3 text-red-500 hover:text-red-700"
+                        title="Delete user"
+                      >
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </td>
                 </tr>

@@ -179,4 +179,38 @@ export async function GET(
   }
 }
 
+// DELETE /api/creator/users/:id - Delete a user (CREATOR only)
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const user = await requireAuth();
+    const role = (user as any).role;
+    if (role !== "CREATOR") {
+      return NextResponse.json({ error: "Forbidden: CREATOR access required" }, { status: 403 });
+    }
+
+    const { id } = await params;
+
+    const target = await prisma.user.findUnique({
+      where: { id },
+      select: { id: true, role: true },
+    });
+
+    if (!target) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+    // Never delete CREATOR accounts via UI/API (safety)
+    if (target.role === "CREATOR") {
+      return NextResponse.json({ error: "Cannot delete creator account" }, { status: 403 });
+    }
+
+    await prisma.user.delete({ where: { id } });
+    return NextResponse.json({ message: "User deleted successfully" });
+  } catch (error: any) {
+    console.error("Error deleting user:", error);
+    return NextResponse.json({ error: error?.message || "Failed to delete user" }, { status: 500 });
+  }
+}
+
 

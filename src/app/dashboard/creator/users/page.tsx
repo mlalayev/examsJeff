@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { 
   Users, Key, Search, Filter, CheckCircle, XCircle, Plus,
-  Eye, X, Check, Edit, UserPlus, Loader2
+  Eye, X, Check, Edit, UserPlus, Loader2, Trash2
 } from "lucide-react";
 import UnifiedLoading from "@/components/loading/UnifiedLoading";
 import { AlertModal } from "@/components/modals/AlertModal";
@@ -56,7 +56,7 @@ export default function CreatorUsersPage() {
     password: "",
     role: "STUDENT" as string,
     branchId: "",
-    approved: false,
+    approved: true,
     phoneNumber: "",
     dateOfBirth: "",
     program: "",
@@ -178,6 +178,39 @@ export default function CreatorUsersPage() {
     setApproving(null);
   };
 
+  const handleDeleteUser = async (userId: string, email?: string) => {
+    if (!confirm(`Delete this account?\n\n${email || userId}\n\nThis cannot be undone.`)) return;
+    try {
+      const res = await fetch(`/api/creator/users/${userId}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setAlertModal({
+          isOpen: true,
+          title: "Error",
+          message: data.error || "Failed to delete user",
+          type: "error",
+        });
+        return;
+      }
+      // Update local state immediately (no flash), then refetch
+      setUsers((prev) => prev.filter((u) => u.id !== userId));
+      fetchUsers();
+      setAlertModal({
+        isOpen: true,
+        title: "Deleted",
+        message: "User deleted successfully",
+        type: "success",
+      });
+    } catch {
+      setAlertModal({
+        isOpen: true,
+        title: "Error",
+        message: "Failed to delete user",
+        type: "error",
+      });
+    }
+  };
+
   const fetchUserDetails = async (userId: string) => {
     setLoadingDetails(true);
     setShowDetailsModal(true);
@@ -272,7 +305,7 @@ export default function CreatorUsersPage() {
         password: createFormData.password,
         role: createFormData.role,
         branchId: createFormData.branchId || null,
-        approved: createFormData.approved,
+        approved: true,
       };
       if (createFormData.role === "STUDENT") {
         payload.studentProfile = {
@@ -302,7 +335,7 @@ export default function CreatorUsersPage() {
           password: "",
           role: "STUDENT",
           branchId: "",
-          approved: false,
+          approved: true,
           phoneNumber: "",
           dateOfBirth: "",
           program: "",
@@ -423,7 +456,7 @@ export default function CreatorUsersPage() {
               password: "",
               role: "STUDENT",
               branchId: "",
-              approved: false,
+              approved: true,
               phoneNumber: "",
               dateOfBirth: "",
               program: "",
@@ -637,6 +670,13 @@ export default function CreatorUsersPage() {
                           title="Reset password"
                         >
                           <Key className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteUser(user.id, user.email)}
+                          className="inline-flex items-center justify-center p-1.5 text-red-600 hover:text-red-700 transition-colors"
+                          title="Delete user"
+                        >
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </td>
@@ -1061,18 +1101,6 @@ export default function CreatorUsersPage() {
                   </div>
                 </>
               )}
-              <div className="flex items-center gap-2 pt-2">
-                <input
-                  type="checkbox"
-                  id="create-approved"
-                  checked={createFormData.approved}
-                  onChange={(e) => setCreateFormData({ ...createFormData, approved: e.target.checked })}
-                  className="w-4 h-4 text-[#303380] border-gray-300 rounded focus:ring-[#303380]"
-                />
-                <label htmlFor="create-approved" className="text-sm text-gray-700">
-                  Approve user immediately
-                </label>
-              </div>
               <div className="flex gap-3 pt-4 border-t">
                 <button
                   type="button"

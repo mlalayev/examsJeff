@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Search } from "lucide-react";
+import { Search, Trash2 } from "lucide-react";
 import UnifiedLoading from "@/components/loading/UnifiedLoading";
 
 interface User {
@@ -77,6 +77,24 @@ export default function UsersTab() {
       }
     } catch (error) {
       console.error("Error:", error);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string, email?: string) => {
+    if (!confirm(`Delete this account?\n\n${email || userId}\n\nThis cannot be undone.`)) return;
+    try {
+      const res = await fetch(`/api/admin/users/${userId}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data.error || "Failed to delete user");
+        return;
+      }
+      setUsers((prev) => prev.filter((u) => u.id !== userId));
+      cachedUsers = (cachedUsers ?? []).filter((u) => u.id !== userId);
+      await fetchUsers();
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Failed to delete user");
     }
   };
 
@@ -169,15 +187,25 @@ export default function UsersTab() {
                   {new Date(user.createdAt).toLocaleDateString()}
                 </td>
                 <td className="px-4 py-3">
-                  <select
-                    value={user.role}
-                    onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                    className="px-2 py-1 border rounded text-sm"
-                  >
-                    <option value="STUDENT">STUDENT</option>
-                    <option value="TEACHER">TEACHER</option>
-                    <option value="ADMIN">ADMIN</option>
-                  </select>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={user.role}
+                      onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                      className="px-2 py-1 border rounded text-sm"
+                    >
+                      <option value="STUDENT">STUDENT</option>
+                      <option value="TEACHER">TEACHER</option>
+                      <option value="ADMIN">ADMIN</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteUser(user.id, user.email)}
+                      className="inline-flex items-center justify-center p-1.5 text-red-600 hover:text-red-700"
+                      title="Delete user"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
