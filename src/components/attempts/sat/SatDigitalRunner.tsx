@@ -12,6 +12,8 @@ import {
   X,
 } from "lucide-react";
 import FormattedText from "@/components/FormattedText";
+import { parseStructuredTextBlocks } from "@/lib/text-formatter";
+import { StructuredFormattedText } from "@/components/StructuredFormattedText";
 
 type Question = {
   id: string;
@@ -440,6 +442,8 @@ export function SatDigitalRunner({
     currentSection?.passage ||
     (questions[0]?.prompt?.passage as string | undefined) ||
     "";
+  const structured = parseStructuredTextBlocks(passageText);
+  const derivedStem = structured?.question?.trim() ? structured.question : "";
 
   return (
     <div
@@ -538,12 +542,18 @@ export function SatDigitalRunner({
         ) : (
           <div className="flex-1 min-h-0 max-w-[1400px] mx-auto w-full flex gap-0 border border-slate-200 rounded-lg overflow-hidden shadow-sm">
             <div
-              className={`w-1/2 min-w-0 border-r border-slate-200 bg-slate-50/80 overflow-y-auto p-6 text-[15px] leading-relaxed text-slate-800 ${
+              className={`w-1/2 min-w-0 border-r border-slate-200 bg-slate-50/80 overflow-y-auto p-6 ${
                 annotateMode ? "[&::selection]:bg-amber-200" : ""
               }`}
             >
               {passageText ? (
-                <FormattedText text={passageText} />
+                structured ? (
+                  <StructuredFormattedText text={passageText} showQuestion={false} />
+                ) : (
+                  <div className="text-[15px] leading-relaxed text-slate-800">
+                    <FormattedText text={passageText} />
+                  </div>
+                )
               ) : (
                 <p className="text-slate-500 text-sm">No passage for this item.</p>
               )}
@@ -577,9 +587,9 @@ export function SatDigitalRunner({
                     </button>
                   </div>
                   {dashedRule}
-                  {promptText(currentQuestion) && (
+                  {(derivedStem || promptText(currentQuestion)) && (
                     <p className="mt-4 text-[15px] text-slate-900 leading-relaxed">
-                      <FormattedText text={promptText(currentQuestion)} />
+                      <FormattedText text={derivedStem || promptText(currentQuestion)} />
                     </p>
                   )}
                   {currentQuestion.qtype === "MCQ_SINGLE" && (
@@ -806,18 +816,24 @@ export function SatDigitalRunner({
                                 {i + 1}
 
                                 {/* Answered status icon */}
-                                <span className="absolute -left-1.5 -top-1.5 w-5 h-5 rounded-full bg-white border border-slate-200 flex items-center justify-center shadow-sm">
-                                  {answered ? (
-                                    <Check className="w-3.5 h-3.5 text-emerald-600" strokeWidth={3} />
-                                  ) : (
-                                    <X className="w-3.5 h-3.5 text-rose-500" strokeWidth={3} />
-                                  )}
+                                <span
+                                  className="absolute -left-1.5 -top-1.5 w-5 h-5 rounded-full bg-white border border-slate-200 flex items-center justify-center shadow-sm"
+                                  title={answered ? "Answered" : "Not answered"}
+                                >
+                                  <span
+                                    className={`w-2.5 h-2.5 rounded-full ${
+                                      answered ? "bg-emerald-500" : "bg-rose-500"
+                                    }`}
+                                  />
                                 </span>
 
                                 {/* Mark for review */}
                                 {forReview && (
-                                  <span className="absolute -right-1.5 -top-1.5 w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-sm">
-                                    <Bookmark className="w-3.5 h-3.5" />
+                                  <span
+                                    className="absolute -right-1.5 -top-1.5 w-5 h-5 rounded-full bg-white border border-slate-200 flex items-center justify-center shadow-sm"
+                                    title="Marked for review"
+                                  >
+                                    <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
                                   </span>
                                 )}
                               </button>

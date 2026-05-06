@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
-import { parseFormattedText, getFormattingExamples } from "@/lib/text-formatter";
+import { parseFormattedText, getFormattingExamples, parseStructuredTextBlocks } from "@/lib/text-formatter";
 import { Info, ChevronDown, ChevronUp } from "lucide-react";
+import { StructuredFormattedText } from "@/components/StructuredFormattedText";
 
 interface TextFormattingPreviewProps {
   text: string;
@@ -12,6 +13,7 @@ interface TextFormattingPreviewProps {
 export default function TextFormattingPreview({ text, className = "" }: TextFormattingPreviewProps) {
   const [showGuide, setShowGuide] = useState(false);
   const segments = parseFormattedText(text);
+  const structured = parseStructuredTextBlocks(text);
 
   const getSegmentClassName = (segment: any) => {
     const classes: string[] = [];
@@ -30,7 +32,9 @@ export default function TextFormattingPreview({ text, className = "" }: TextForm
           <span className="text-xs font-medium text-gray-600">Preview:</span>
         </div>
         <div className="text-sm text-gray-900 min-h-[24px] leading-relaxed">
-          {segments.length > 0 ? (
+          {structured ? (
+            <StructuredFormattedText text={text} />
+          ) : segments.length > 0 ? (
             segments.map((segment, idx) => (
               <span key={idx} className={getSegmentClassName(segment)}>
                 {segment.text}

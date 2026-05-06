@@ -2,6 +2,8 @@
 
 import React from "react";
 import FormattedText from "./FormattedText";
+import { parseStructuredTextBlocks } from "@/lib/text-formatter";
+import { StructuredFormattedText } from "@/components/StructuredFormattedText";
 
 interface QuestionPreviewProps {
   question: {
@@ -48,7 +50,11 @@ export default function QuestionPreview({ question }: QuestionPreviewProps) {
               </div>
               <div className="flex-1 pt-1">
                 <p className="text-gray-800 text-base leading-relaxed font-normal" style={{ lineHeight: "1.6" }}>
-                  <FormattedText text={question.prompt.text} />
+                  {parseStructuredTextBlocks(question.prompt.text) ? (
+                    <StructuredFormattedText text={question.prompt.text} />
+                  ) : (
+                    <FormattedText text={question.prompt.text} />
+                  )}
                 </p>
               </div>
             </div>

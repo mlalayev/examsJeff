@@ -16,6 +16,47 @@ export interface FormattedSegment {
   gray: boolean;
 }
 
+export interface StructuredTextBlocks {
+  intro: string;
+  text: string;
+  question: string;
+}
+
+function extractTaggedBlock(input: string, tag: string): string {
+  const open = `[${tag}]`;
+  const close = `[${tag}]`;
+  const start = input.toLowerCase().indexOf(open.toLowerCase());
+  if (start === -1) return "";
+  const afterOpen = start + open.length;
+  const end = input.toLowerCase().indexOf(close.toLowerCase(), afterOpen);
+  if (end === -1) return "";
+  return input.slice(afterOpen, end).trim();
+}
+
+/**
+ * SAT structured layout syntax:
+ * [textintro] ... [textintro]
+ * [text] ... [text]
+ * [question] ... [question]
+ *
+ * If any of these tags are present, returns extracted blocks (missing blocks become empty strings).
+ */
+export function parseStructuredTextBlocks(text: string): StructuredTextBlocks | null {
+  if (!text) return null;
+  const lower = text.toLowerCase();
+  const has =
+    lower.includes("[textintro]") ||
+    lower.includes("[text]") ||
+    lower.includes("[question]");
+  if (!has) return null;
+
+  return {
+    intro: extractTaggedBlock(text, "textintro"),
+    text: extractTaggedBlock(text, "text"),
+    question: extractTaggedBlock(text, "question"),
+  };
+}
+
 /**
  * Parse text with custom formatting syntax and return formatted segments
  * Uses a simpler approach: process formatting markers sequentially
@@ -251,6 +292,11 @@ export function getFormattingExamples(): Array<{ syntax: string; description: st
     { syntax: "--strikethrough text--", description: "Strikethrough (Line Through)" },
     { syntax: "~~italic text~~", description: "Italic" },
     { syntax: "&&italic text&&", description: "Italic (SAT style)" },
+    {
+      syntax:
+        "[textintro] Intro (auto italic) [textintro]\n[text] Left text content [text]\n[question] Right-side question content [question]",
+      description: "SAT layout blocks (intro + left text + right question)",
+    },
     { syntax: "__**combined formatting**__", description: "Combined (underline + bold)" },
   ];
 }
