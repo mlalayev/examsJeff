@@ -450,7 +450,11 @@ export function SatDigitalRunner({
     ? parseStructuredTextBlocks(promptTextRaw)
     : null;
   const structuredFromPassage = parseStructuredTextBlocks(defaultPassageText);
-  const structured = structuredFromPrompt || structuredFromPassage;
+  const isMathModule = currentSection?.title?.toLowerCase().includes("math") ?? false;
+  const isVerbalModule = currentSection?.title?.toLowerCase().includes("verbal") ?? false;
+
+  // Only verbal uses the structured split layout. Math stays single-panel like the real SAT UI.
+  const structured = !isMathModule ? (structuredFromPrompt || structuredFromPassage) : null;
   const structuredSourceText = structuredFromPrompt ? promptTextRaw : defaultPassageText;
   const passageText = structured ? structuredSourceText : defaultPassageText;
   const derivedStem = structured?.question?.trim() ? structured.question : "";
@@ -463,31 +467,44 @@ export function SatDigitalRunner({
     >
       <header className="shrink-0 px-6 pt-4 pb-1">
         <div className="max-w-[1400px] mx-auto flex items-start justify-between gap-4">
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setDirectionsOpen((v) => !v)}
-              className="inline-flex items-center gap-1 text-sm font-medium text-slate-800 border border-slate-300 rounded-md px-3 py-2 bg-white hover:bg-slate-50"
-            >
-              Directions
-              <ChevronDown className="w-4 h-4" />
-            </button>
-            {directionsOpen && (
-              <div className="absolute left-0 top-full mt-1 z-20 w-[min(100vw-3rem,420px)] rounded-lg border border-slate-200 bg-white shadow-lg p-4 text-sm text-slate-700">
-                <p className="mb-2">
-                  Work each problem in this module. You may use the on-screen
-                  calculator where allowed. When you finish this module, submit
-                  it; you will not be able to return to it.
-                </p>
-                <button
-                  type="button"
-                  className="text-blue-600 font-medium"
-                  onClick={() => setDirectionsOpen(false)}
-                >
-                  Close
-                </button>
+          <div className="flex flex-col gap-2">
+            {!isBreak && currentSection && (
+              <div className="text-sm text-slate-700 leading-snug">
+                <div className="font-medium">
+                  {currentSection.title}
+                </div>
+                <div className="text-xs text-slate-500">
+                  Module {moduleIndex + 1} of {sortedSections.length}
+                  {isMathModule ? " · Math" : isVerbalModule ? " · Verbal" : ""}
+                </div>
               </div>
             )}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setDirectionsOpen((v) => !v)}
+                className="inline-flex items-center gap-1 text-sm font-medium text-slate-800 border border-slate-300 rounded-md px-3 py-2 bg-white hover:bg-slate-50"
+              >
+                Directions
+                <ChevronDown className="w-4 h-4" />
+              </button>
+              {directionsOpen && (
+                <div className="absolute left-0 top-full mt-1 z-20 w-[min(100vw-3rem,420px)] rounded-lg border border-slate-200 bg-white shadow-lg p-4 text-sm text-slate-700">
+                  <p className="mb-2">
+                    Work each problem in this module. You may use the on-screen
+                    calculator where allowed. When you finish this module, submit
+                    it; you will not be able to return to it.
+                  </p>
+                  <button
+                    type="button"
+                    className="text-blue-600 font-medium"
+                    onClick={() => setDirectionsOpen(false)}
+                  >
+                    Close
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="flex flex-col items-center">
@@ -512,18 +529,38 @@ export function SatDigitalRunner({
             )}
           </div>
 
-          <button
-            type="button"
-            onClick={() => setAnnotateMode((v) => !v)}
-            className={`inline-flex items-center gap-2 text-sm font-medium rounded-md px-3 py-2 border ${
-              annotateMode
-                ? "border-amber-400 bg-amber-50 text-amber-900"
-                : "border-slate-300 bg-white text-slate-800 hover:bg-slate-50"
-            }`}
-          >
-            <Pencil className="w-4 h-4" />
-            Annotate
-          </button>
+          <div className="flex items-center gap-2">
+            {isMathModule && !isBreak && (
+              <>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 text-sm font-medium rounded-md px-3 py-2 border border-slate-300 bg-white text-slate-800 hover:bg-slate-50"
+                  onClick={() => alert("Calculator is not implemented yet.")}
+                >
+                  Calculator
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 text-sm font-medium rounded-md px-3 py-2 border border-slate-300 bg-white text-slate-800 hover:bg-slate-50"
+                  onClick={() => alert("Reference is not implemented yet.")}
+                >
+                  Reference
+                </button>
+              </>
+            )}
+            <button
+              type="button"
+              onClick={() => setAnnotateMode((v) => !v)}
+              className={`inline-flex items-center gap-2 text-sm font-medium rounded-md px-3 py-2 border ${
+                annotateMode
+                  ? "border-amber-400 bg-amber-50 text-amber-900"
+                  : "border-slate-300 bg-white text-slate-800 hover:bg-slate-50"
+              }`}
+            >
+              <Pencil className="w-4 h-4" />
+              Annotate
+            </button>
+          </div>
         </div>
         {dashedRule}
       </header>
@@ -550,67 +587,53 @@ export function SatDigitalRunner({
             </button>
           </div>
         ) : (
-          <div className="flex-1 min-h-0 max-w-[1400px] mx-auto w-full flex gap-0 border border-slate-200 rounded-lg overflow-hidden shadow-sm">
-            <div
-              className={`w-1/2 min-w-0 border-r border-slate-200 bg-slate-50/80 overflow-y-auto p-6 ${
-                annotateMode ? "[&::selection]:bg-amber-200" : ""
-              }`}
-            >
-              {passageText ? (
-                structured ? (
-                  <StructuredFormattedText text={passageText} showQuestion={false} />
-                ) : (
-                  <div className="text-[15px] leading-relaxed text-slate-800">
-                    <FormattedText text={passageText} />
-                  </div>
-                )
-              ) : (
-                <p className="text-slate-500 text-sm">No passage for this item.</p>
-              )}
-            </div>
-            <div className="w-1/2 min-w-0 flex flex-col bg-white overflow-y-auto">
-              {currentQuestion && currentSection && (
-                <div className="p-6 flex flex-col flex-1 min-h-0">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-9 h-9 bg-slate-900 text-white text-sm font-semibold flex items-center justify-center rounded">
-                      {qIndex + 1}
+          <div className="flex-1 min-h-0 max-w-[1400px] mx-auto w-full">
+            {/* Verbal: split passage + question (structured layout). Math: single question pane like real SAT. */}
+            {isMathModule ? (
+              <div className="w-full border border-slate-200 rounded-lg overflow-hidden shadow-sm bg-white">
+                {currentQuestion && currentSection && (
+                  <div className="p-6">
+                    {/* Top bar with question number + mark for review */}
+                    <div className="bg-slate-100 border border-slate-200 rounded-md px-4 py-2 flex items-center gap-3">
+                      <div className="w-9 h-9 bg-slate-900 text-white text-sm font-semibold flex items-center justify-center rounded">
+                        {qIndex + 1}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMarked((prev) => {
+                            const n = new Set(prev);
+                            if (n.has(reviewKey)) n.delete(reviewKey);
+                            else n.add(reviewKey);
+                            persistMarkedReview(attemptId, n);
+                            return n;
+                          });
+                        }}
+                        className={`inline-flex items-center gap-2 text-sm font-medium rounded-md px-3 py-2 border ${
+                          marked.has(reviewKey)
+                            ? "border-blue-500 bg-blue-50 text-blue-900"
+                            : "border-slate-300 bg-white text-slate-800 hover:bg-slate-50"
+                        }`}
+                      >
+                        <Bookmark className="w-4 h-4" />
+                        Mark for Review
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMarked((prev) => {
-                          const n = new Set(prev);
-                          if (n.has(reviewKey)) n.delete(reviewKey);
-                          else n.add(reviewKey);
-                          persistMarkedReview(attemptId, n);
-                          return n;
-                        });
-                      }}
-                      className={`inline-flex items-center gap-2 text-sm font-medium rounded-md px-3 py-2 border ${
-                        marked.has(reviewKey)
-                          ? "border-blue-500 bg-blue-50 text-blue-900"
-                          : "border-slate-300 text-slate-800 hover:bg-slate-50"
-                      }`}
-                    >
-                      <Bookmark className="w-4 h-4" />
-                      Mark for Review
-                    </button>
-                  </div>
-                  {dashedRule}
-                  {(derivedStem || promptText(currentQuestion)) && (
-                    <p className="mt-4 text-[15px] text-slate-900 leading-relaxed">
-                      <FormattedText text={derivedStem || promptText(currentQuestion)} />
-                    </p>
-                  )}
-                  {currentQuestion.qtype === "MCQ_SINGLE" && (
-                    <div className="mt-6 space-y-3 flex-1">
-                      {(currentQuestion.options?.choices || []).map(
-                        (choice: string, idx: number) => {
-                          const val =
-                            answers[currentSection.id]?.[currentQuestion.id];
+
+                    {dashedRule}
+
+                    {promptText(currentQuestion) && (
+                      <div className="mt-4 text-[15px] text-slate-900 leading-relaxed">
+                        <FormattedText text={promptText(currentQuestion)} />
+                      </div>
+                    )}
+
+                    {currentQuestion.qtype === "MCQ_SINGLE" && (
+                      <div className="mt-6 space-y-3">
+                        {(currentQuestion.options?.choices || []).map((choice: string, idx: number) => {
+                          const val = answers[currentSection.id]?.[currentQuestion.id];
                           const selected = val === idx;
-                          const crossed =
-                            eliminated[currentQuestion.id]?.has(idx) ?? false;
+                          const crossed = eliminated[currentQuestion.id]?.has(idx) ?? false;
                           return (
                             <div
                               key={idx}
@@ -624,12 +647,8 @@ export function SatDigitalRunner({
                             >
                               <button
                                 type="button"
-                                disabled={
-                                  lockedModules.has(currentSection.id) || crossed
-                                }
-                                onClick={() =>
-                                  setAnswer(currentQuestion.id, idx)
-                                }
+                                disabled={lockedModules.has(currentSection.id) || crossed}
+                                onClick={() => setAnswer(currentQuestion.id, idx)}
                                 className="flex-1 text-left px-4 py-3 flex gap-3 min-w-0"
                               >
                                 <span className="font-semibold text-slate-700 shrink-0">
@@ -642,28 +661,154 @@ export function SatDigitalRunner({
                               <button
                                 type="button"
                                 title="Eliminate answer"
-                                onClick={() =>
-                                  toggleEliminated(currentQuestion.id, idx)
-                                }
+                                onClick={() => toggleEliminated(currentQuestion.id, idx)}
                                 className="shrink-0 px-3 flex items-center border-l border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-50"
                               >
                                 <Strikethrough className="w-4 h-4" />
                               </button>
                             </div>
                           );
-                        }
+                        })}
+                      </div>
+                    )}
+
+                    {currentQuestion.qtype === "SHORT_TEXT" && (
+                      <div className="mt-6">
+                        <input
+                          value={answers[currentSection.id]?.[currentQuestion.id] ?? ""}
+                          onChange={(e) => setAnswer(currentQuestion.id, e.target.value)}
+                          disabled={lockedModules.has(currentSection.id)}
+                          placeholder="Enter your answer"
+                          className="w-full px-4 py-3 border border-slate-300 rounded-lg text-base"
+                        />
+                      </div>
+                    )}
+
+                    {currentQuestion.qtype !== "MCQ_SINGLE" && currentQuestion.qtype !== "SHORT_TEXT" && (
+                      <p className="mt-6 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                        This module supports MCQ (single) and Short Answer for now. Question type: {currentQuestion.qtype}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex-1 min-h-0 w-full flex gap-0 border border-slate-200 rounded-lg overflow-hidden shadow-sm">
+                <div
+                  className={`w-1/2 min-w-0 border-r border-slate-200 bg-slate-50/80 overflow-y-auto p-6 ${
+                    annotateMode ? "[&::selection]:bg-amber-200" : ""
+                  }`}
+                >
+                  {passageText ? (
+                    structured ? (
+                      <StructuredFormattedText text={passageText} showQuestion={false} />
+                    ) : (
+                      <div className="text-[15px] leading-relaxed text-slate-800">
+                        <FormattedText text={passageText} />
+                      </div>
+                    )
+                  ) : (
+                    <p className="text-slate-500 text-sm">No passage for this item.</p>
+                  )}
+                </div>
+                <div className="w-1/2 min-w-0 flex flex-col bg-white overflow-y-auto">
+                  {currentQuestion && currentSection && (
+                    <div className="p-6 flex flex-col flex-1 min-h-0">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-9 h-9 bg-slate-900 text-white text-sm font-semibold flex items-center justify-center rounded">
+                          {qIndex + 1}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMarked((prev) => {
+                              const n = new Set(prev);
+                              if (n.has(reviewKey)) n.delete(reviewKey);
+                              else n.add(reviewKey);
+                              persistMarkedReview(attemptId, n);
+                              return n;
+                            });
+                          }}
+                          className={`inline-flex items-center gap-2 text-sm font-medium rounded-md px-3 py-2 border ${
+                            marked.has(reviewKey)
+                              ? "border-blue-500 bg-blue-50 text-blue-900"
+                              : "border-slate-300 text-slate-800 hover:bg-slate-50"
+                          }`}
+                        >
+                          <Bookmark className="w-4 h-4" />
+                          Mark for Review
+                        </button>
+                      </div>
+                      {dashedRule}
+                      {(derivedStem || promptText(currentQuestion)) && (
+                        <p className="mt-4 text-[15px] text-slate-900 leading-relaxed">
+                          <FormattedText text={derivedStem || promptText(currentQuestion)} />
+                        </p>
+                      )}
+                      {currentQuestion.qtype === "MCQ_SINGLE" && (
+                        <div className="mt-6 space-y-3 flex-1">
+                          {(currentQuestion.options?.choices || []).map((choice: string, idx: number) => {
+                            const val = answers[currentSection.id]?.[currentQuestion.id];
+                            const selected = val === idx;
+                            const crossed = eliminated[currentQuestion.id]?.has(idx) ?? false;
+                            return (
+                              <div
+                                key={idx}
+                                className={`flex items-stretch gap-2 rounded-lg border transition-colors ${
+                                  selected
+                                    ? "border-blue-600 ring-1 ring-blue-600 bg-blue-50/60"
+                                    : crossed
+                                    ? "border-slate-200 bg-slate-100 opacity-70"
+                                    : "border-slate-300 bg-white hover:border-slate-400"
+                                }`}
+                              >
+                                <button
+                                  type="button"
+                                  disabled={lockedModules.has(currentSection.id) || crossed}
+                                  onClick={() => setAnswer(currentQuestion.id, idx)}
+                                  className="flex-1 text-left px-4 py-3 flex gap-3 min-w-0"
+                                >
+                                  <span className="font-semibold text-slate-700 shrink-0">
+                                    {String.fromCharCode(65 + idx)}:
+                                  </span>
+                                  <span className="text-[15px] text-slate-900">
+                                    <FormattedText text={choice} />
+                                  </span>
+                                </button>
+                                <button
+                                  type="button"
+                                  title="Eliminate answer"
+                                  onClick={() => toggleEliminated(currentQuestion.id, idx)}
+                                  className="shrink-0 px-3 flex items-center border-l border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-50"
+                                >
+                                  <Strikethrough className="w-4 h-4" />
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                      {currentQuestion.qtype === "SHORT_TEXT" && (
+                        <div className="mt-6">
+                          <input
+                            value={answers[currentSection.id]?.[currentQuestion.id] ?? ""}
+                            onChange={(e) => setAnswer(currentQuestion.id, e.target.value)}
+                            disabled={lockedModules.has(currentSection.id)}
+                            placeholder="Enter your answer"
+                            className="w-full px-4 py-3 border border-slate-300 rounded-lg text-base"
+                          />
+                        </div>
+                      )}
+                      {currentQuestion.qtype !== "MCQ_SINGLE" && currentQuestion.qtype !== "SHORT_TEXT" && (
+                        <p className="mt-6 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                          This sample UI currently supports multiple choice (single) and Short Answer. Question type: {currentQuestion.qtype}
+                        </p>
                       )}
                     </div>
                   )}
-                  {currentQuestion.qtype !== "MCQ_SINGLE" && (
-                    <p className="mt-6 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-                      This sample UI currently supports multiple choice (single)
-                      for SAT Digital. Question type: {currentQuestion.qtype}
-                    </p>
-                  )}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         )}
       </main>
@@ -819,23 +964,13 @@ export function SatDigitalRunner({
                                   "flex items-center justify-center",
                                   isCurrent
                                     ? "border-blue-600 bg-blue-50 text-blue-900"
-                                    : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50 hover:border-slate-300",
+                                    : answered
+                                    ? "border-slate-200 bg-emerald-50/70 text-slate-800 hover:bg-emerald-50 hover:border-slate-300"
+                                    : "border-slate-200 bg-rose-50/60 text-slate-800 hover:bg-rose-50 hover:border-slate-300",
                                 ].join(" ")}
                                 aria-label={`Question ${i + 1}${answered ? ", answered" : ", not answered"}${forReview ? ", marked for review" : ""}`}
                               >
                                 {i + 1}
-
-                                {/* Answered status icon */}
-                                <span
-                                  className="absolute -left-1 -top-1 w-4 h-4 rounded-full bg-white border border-slate-200 flex items-center justify-center shadow-sm"
-                                  title={answered ? "Answered" : "Not answered"}
-                                >
-                                  <span
-                                    className={`w-2 h-2 rounded-full ${
-                                      answered ? "bg-emerald-500" : "bg-rose-500"
-                                    }`}
-                                  />
-                                </span>
 
                                 {/* Mark for review */}
                                 {forReview && (
