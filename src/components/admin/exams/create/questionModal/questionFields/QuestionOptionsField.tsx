@@ -58,17 +58,18 @@ export function QuestionOptionsField({
 
                     const formData = new FormData();
                     formData.append("file", file);
+                    formData.append("type", "image");
 
                     try {
-                      const res = await fetch("/api/upload", {
+                      const res = await fetch("/api/admin/upload", {
                         method: "POST",
                         body: formData,
                       });
                       const data = await res.json();
 
-                      if (data.url) {
+                      if (data.publicPath || data.path) {
                         const newOptionsImages = [...(question.options?.choiceImages || [])];
-                        newOptionsImages[idx] = data.url;
+                        newOptionsImages[idx] = data.publicPath || data.path;
                         onChange({
                           ...question,
                           options: {
