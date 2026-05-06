@@ -514,7 +514,7 @@ export function SatDigitalRunner({
       }`}
     >
       <header className="shrink-0 px-6 pt-4 pb-1">
-        <div className="max-w-[1400px] mx-auto flex items-start justify-between gap-4">
+        <div className="w-full flex items-start justify-between gap-4">
           <div className="flex flex-col gap-2">
             {!isBreak && currentSection && (
               <div className="text-sm text-slate-700 leading-snug">
@@ -617,10 +617,10 @@ export function SatDigitalRunner({
             </button>
           </div>
         ) : (
-          <div className="flex-1 min-h-0 max-w-[1400px] mx-auto w-full">
+          <div className="flex-1 min-h-0 w-full">
             {/* Verbal: split passage + question (structured layout). Math: single question pane like real SAT. */}
             {isMathModule ? (
-              <div className="w-full max-w-[1000px] mx-auto border border-slate-200 rounded-lg overflow-hidden shadow-sm bg-white">
+              <div className="w-full border border-slate-200 rounded-lg overflow-hidden shadow-sm bg-white">
                 {currentQuestion && currentSection && (
                   <div className="p-6">
                     {/* Top bar with question number + mark for review */}
@@ -845,7 +845,7 @@ export function SatDigitalRunner({
 
       <footer className="shrink-0 px-6 pb-6 pt-2">
         {dashedRule}
-        <div className="max-w-[1400px] mx-auto grid grid-cols-3 items-center gap-4 pt-2">
+        <div className="w-full grid grid-cols-3 items-center gap-4 pt-2">
           <div />
           <div className="flex justify-center">
             {!isBreak && questions.length > 0 && currentSection ? (
