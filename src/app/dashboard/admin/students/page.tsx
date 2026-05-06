@@ -65,6 +65,7 @@ export default function AdminStudentsPage() {
     program: "",
     paymentDate: "",
     paymentAmount: "",
+    childIds: [] as string[],
   });
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
@@ -306,6 +307,7 @@ export default function AdminStudentsPage() {
       program: "",
       paymentDate: "",
       paymentAmount: "",
+      childIds: [],
     });
     setCreateError("");
     setShowCreateModal(true);
@@ -344,6 +346,13 @@ export default function AdminStudentsPage() {
       }
     }
 
+    if (formData.role === "PARENT") {
+      if (!formData.childIds || formData.childIds.length === 0) {
+        setCreateError("Please select at least one child for a parent account");
+        return;
+      }
+    }
+
     setCreating(true);
 
     try {
@@ -366,6 +375,10 @@ export default function AdminStudentsPage() {
           paymentDate: formData.paymentDate || null,
           paymentAmount: formData.paymentAmount || null,
         };
+      }
+
+      if (formData.role === "PARENT") {
+        payload.childIds = formData.childIds;
       }
 
       const res = await fetch("/api/admin/users/create", {
@@ -1051,8 +1064,52 @@ export default function AdminStudentsPage() {
                     <option value="STUDENT">Student</option>
                     <option value="TEACHER">Teacher</option>
                     <option value="ADMIN">Admin</option>
+                    <option value="PARENT">Parent</option>
                   </select>
                 </div>
+
+                {/* Parent-specific fields */}
+                {formData.role === "PARENT" && (
+                  <div className="border-t pt-4">
+                    <h3 className="text-base font-semibold text-gray-900 mb-4">Parent Information</h3>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Children <span className="text-red-500">*</span>
+                      </label>
+                      <div className="border border-gray-300 rounded-md p-3 max-h-56 overflow-y-auto space-y-2">
+                        {students.map((s) => {
+                          const checked = formData.childIds.includes(s.id);
+                          return (
+                            <label key={s.id} className="flex items-center gap-3 text-sm text-gray-800">
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={(e) => {
+                                  const next = e.target.checked
+                                    ? Array.from(new Set([...formData.childIds, s.id]))
+                                    : formData.childIds.filter((id) => id !== s.id);
+                                  setFormData({ ...formData, childIds: next });
+                                }}
+                                className="w-4 h-4 text-gray-600 border-gray-300 rounded focus:ring-gray-500"
+                              />
+                              <span className="truncate">
+                                {s.name || `${s.email}`}
+                                {s.branch?.name ? ` • ${s.branch.name}` : ""}
+                              </span>
+                            </label>
+                          );
+                        })}
+                        {students.length === 0 && (
+                          <p className="text-sm text-gray-500">No students found.</p>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Selected: {formData.childIds.length}
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Branch */}
                 <div>

@@ -16,6 +16,8 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
     const roleFilter = searchParams.get("role");
+    const takeRaw = searchParams.get("take");
+    const minimal = searchParams.get("minimal") === "1";
 
     const where: any = {};
 
@@ -31,26 +33,43 @@ export async function GET(request: Request) {
       where.role = roleFilter;
     }
 
+    const take = (() => {
+      const n = takeRaw ? Number(takeRaw) : NaN;
+      if (!Number.isFinite(n)) return minimal ? 20 : 500;
+      return Math.max(1, Math.min(500, Math.floor(n)));
+    })();
+
     const users = await prisma.user.findMany({
       where,
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        role: true,
-        approved: true,
-        branchId: true,
-        createdAt: true,
-        branch: {
-          select: {
+      select: minimal
+        ? {
             id: true,
-            name: true
+            firstName: true,
+            lastName: true,
+            email: true,
+            role: true,
+            branch: {
+              select: { id: true, name: true },
+            },
           }
-        }
-      },
+        : {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            role: true,
+            approved: true,
+            branchId: true,
+            createdAt: true,
+            branch: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
+          },
       orderBy: { createdAt: "desc" },
-      take: 500
+      take,
     });
 
     return NextResponse.json({ users });

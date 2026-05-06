@@ -9,9 +9,10 @@ const createUserSchema = z.object({
   lastName: z.string().min(2, "Last name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  role: z.enum(["STUDENT", "TEACHER", "ADMIN", "BOSS", "BRANCH_ADMIN", "BRANCH_BOSS", "CREATOR"]),
+  role: z.enum(["STUDENT", "TEACHER", "ADMIN", "BOSS", "BRANCH_ADMIN", "BRANCH_BOSS", "CREATOR", "PARENT"]),
   branchId: z.string().nullable(),
   approved: z.boolean().default(false),
+  childIds: z.array(z.string().min(1)).optional(),
 });
 
 // POST /api/creator/users/create - Create a user manually (CREATOR only)
@@ -40,6 +41,22 @@ export async function POST(request: Request) {
     // Hash password
     const passwordHash = await bcrypt.hash(validatedData.password, 10);
 
+    if (validatedData.role === "PARENT") {
+      const childIds = validatedData.childIds ?? [];
+      if (childIds.length === 0) {
+        return NextResponse.json({ error: "At least one child is required for parents" }, { status: 400 });
+      }
+
+      const children = await prisma.user.findMany({
+        where: { id: { in: childIds }, role: "STUDENT" },
+        select: { id: true },
+      });
+
+      if (children.length !== childIds.length) {
+        return NextResponse.json({ error: "One or more selected children are invalid" }, { status: 400 });
+      }
+    }
+
     // Create user
     const newUser = await prisma.user.create({
       data: {
@@ -50,6 +67,11 @@ export async function POST(request: Request) {
         role: validatedData.role,
         approved: validatedData.approved,
         branchId: validatedData.branchId,
+        ...(validatedData.role === "PARENT" && {
+          childrenAsParent: {
+            create: (validatedData.childIds ?? []).map((childId) => ({ childId })),
+          },
+        }),
       },
       select: {
         id: true,

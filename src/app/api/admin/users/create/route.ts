@@ -9,9 +9,10 @@ const createUserSchema = z.object({
   lastName: z.string().min(2, "Last name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  role: z.enum(["STUDENT", "TEACHER", "ADMIN"]),
+  role: z.enum(["STUDENT", "TEACHER", "ADMIN", "PARENT"]),
   branchId: z.string().nullable(),
   approved: z.boolean().default(false),
+  childIds: z.array(z.string().min(1)).optional(),
   studentProfile: z
     .object({
       phoneNumber: z.string().optional(),
@@ -54,6 +55,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Branch is required for students" }, { status: 400 });
     }
 
+    // Validate parent-specific requirements
+    if (validatedData.role === "PARENT") {
+      const childIds = validatedData.childIds ?? [];
+      if (childIds.length === 0) {
+        return NextResponse.json({ error: "At least one child is required for parents" }, { status: 400 });
+      }
+
+      const children = await prisma.user.findMany({
+        where: { id: { in: childIds }, role: "STUDENT" },
+        select: { id: true },
+      });
+
+      if (children.length !== childIds.length) {
+        return NextResponse.json({ error: "One or more selected children are invalid" }, { status: 400 });
+      }
+    }
+
     const newUser = await prisma.user.create({
       data: {
         firstName: validatedData.firstName,
@@ -74,7 +92,14 @@ export async function POST(request: Request) {
               paymentAmount: validatedData.studentProfile.paymentAmount ? parseFloat(validatedData.studentProfile.paymentAmount) : null,
             }
           }
-        })
+        }),
+        ...(validatedData.role === "PARENT" && {
+          childrenAsParent: {
+            create: (validatedData.childIds ?? []).map((childId) => ({
+              childId,
+            })),
+          },
+        }),
       },
       select: {
         id: true,

@@ -169,9 +169,15 @@ export async function GET(
     const role = (user as any).role;
     const isOwner = booking.studentId === user.id;
     const isTeacher = role === "TEACHER" || role === "ADMIN" || role === "BRANCH_ADMIN" || role === "BOSS" || role === "BRANCH_BOSS" || role === "CREATOR";
+    const isParent =
+      role === "PARENT" &&
+      (await prisma.parentChild.findFirst({
+        where: { parentId: user.id, childId: booking.studentId },
+        select: { id: true },
+      })) != null;
 
     // Authorization check
-    if (!isOwner && !isTeacher) {
+    if (!isOwner && !isTeacher && !isParent) {
       return NextResponse.json(
         { error: "Forbidden" },
         { status: 403 }
@@ -199,8 +205,8 @@ export async function GET(
         return acc;
       }, {});
 
-    // STUDENT VIEW: Summary only
-    if (role === "STUDENT" && isOwner) {
+    // STUDENT/PARENT VIEW: Summary only
+    if ((role === "STUDENT" && isOwner) || isParent) {
       // For JSON exams, we may not have attempt.sections in DB, so compute from answers
       // Structure: { sectionType: { questionId: answer } }
       const allStudentAnswers = (attempt.answers as any) || {};
@@ -257,7 +263,7 @@ export async function GET(
         studentName: booking.student.name || booking.student.email,
         submittedAt: attempt.submittedAt,
         status: attempt.status,
-        role: "STUDENT",
+        role: isParent ? "PARENT" : "STUDENT",
         summary: {
           totalCorrect,
           totalQuestions,

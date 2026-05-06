@@ -28,7 +28,7 @@ interface ResultsData {
   studentName: string;
   submittedAt: string;
   status: string;
-  role: "STUDENT" | "TEACHER";
+  role: "STUDENT" | "TEACHER" | "PARENT";
   summary: {
     totalCorrect: number;
     totalQuestions: number;
@@ -710,7 +710,7 @@ export default function AttemptResultsPage() {
           <h1 className="text-2xl font-semibold text-gray-900">{data.examTitle}</h1>
           <p className="text-gray-500">
             {new Date(data.submittedAt).toLocaleDateString()}
-            {data.role === "TEACHER" && ` • ${data.studentName}`}
+            {data.role !== "STUDENT" && ` • ${data.studentName}`}
           </p>
         </div>
 

@@ -21,6 +21,8 @@ model User {
   approved                    Boolean             @default(false)
   branchId                    String?
   accounts                    Account[]
+  childrenAsParent            ParentChild[]       @relation("ParentChildParent")
+  parentsAsChild              ParentChild[]       @relation("ParentChildChild")
   assignmentsAsStudent        Assignment[]        @relation("AssignmentStudent")
   assignmentsAsTeacher        Assignment[]        @relation("AssignmentTeacher")
   bookingsAsStudent           Booking[]           @relation("StudentBookings")
@@ -42,6 +44,21 @@ model User {
   writingSubmissionsAsTeacher WritingSubmission[] @relation("WritingTeacher")
 
   @@map("users")
+}
+
+model ParentChild {
+  id        String   @id @default(cuid())
+  parentId  String
+  childId   String
+  createdAt DateTime @default(now())
+
+  parent User @relation("ParentChildParent", fields: [parentId], references: [id], onDelete: Cascade)
+  child  User @relation("ParentChildChild", fields: [childId], references: [id], onDelete: Cascade)
+
+  @@unique([parentId, childId])
+  @@index([parentId])
+  @@index([childId])
+  @@map("parent_children")
 }
 
 model Branch {
