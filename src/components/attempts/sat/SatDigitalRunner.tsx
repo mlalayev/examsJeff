@@ -530,24 +530,6 @@ export function SatDigitalRunner({
           </div>
 
           <div className="flex items-center gap-2">
-            {isMathModule && !isBreak && (
-              <>
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-2 text-sm font-medium rounded-md px-3 py-2 border border-slate-300 bg-white text-slate-800 hover:bg-slate-50"
-                  onClick={() => alert("Calculator is not implemented yet.")}
-                >
-                  Calculator
-                </button>
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-2 text-sm font-medium rounded-md px-3 py-2 border border-slate-300 bg-white text-slate-800 hover:bg-slate-50"
-                  onClick={() => alert("Reference is not implemented yet.")}
-                >
-                  Reference
-                </button>
-              </>
-            )}
             <button
               type="button"
               onClick={() => setAnnotateMode((v) => !v)}
@@ -590,7 +572,7 @@ export function SatDigitalRunner({
           <div className="flex-1 min-h-0 max-w-[1400px] mx-auto w-full">
             {/* Verbal: split passage + question (structured layout). Math: single question pane like real SAT. */}
             {isMathModule ? (
-              <div className="w-full border border-slate-200 rounded-lg overflow-hidden shadow-sm bg-white">
+              <div className="w-full max-w-[1000px] mx-auto border border-slate-200 rounded-lg overflow-hidden shadow-sm bg-white">
                 {currentQuestion && currentSection && (
                   <div className="p-6">
                     {/* Top bar with question number + mark for review */}
@@ -654,7 +636,7 @@ export function SatDigitalRunner({
                                 <span className="font-semibold text-slate-700 shrink-0">
                                   {String.fromCharCode(65 + idx)}:
                                 </span>
-                                <span className="text-[15px] text-slate-900">
+                                <span className={`text-[15px] ${crossed ? "text-slate-500 line-through" : "text-slate-900"}`}>
                                   <FormattedText text={choice} />
                                 </span>
                               </button>
@@ -771,7 +753,7 @@ export function SatDigitalRunner({
                                   <span className="font-semibold text-slate-700 shrink-0">
                                     {String.fromCharCode(65 + idx)}:
                                   </span>
-                                  <span className="text-[15px] text-slate-900">
+                                  <span className={`text-[15px] ${crossed ? "text-slate-500 line-through" : "text-slate-900"}`}>
                                     <FormattedText text={choice} />
                                   </span>
                                 </button>
@@ -965,8 +947,8 @@ export function SatDigitalRunner({
                                   isCurrent
                                     ? "border-blue-600 bg-blue-50 text-blue-900"
                                     : answered
-                                    ? "border-slate-200 bg-emerald-50/70 text-slate-800 hover:bg-emerald-50 hover:border-slate-300"
-                                    : "border-slate-200 bg-rose-50/60 text-slate-800 hover:bg-rose-50 hover:border-slate-300",
+                                    ? "border-slate-200 bg-emerald-100/70 text-slate-800 hover:bg-emerald-100 hover:border-slate-300"
+                                    : "border-slate-200 bg-rose-100/70 text-slate-800 hover:bg-rose-100 hover:border-slate-300",
                                 ].join(" ")}
                                 aria-label={`Question ${i + 1}${answered ? ", answered" : ", not answered"}${forReview ? ", marked for review" : ""}`}
                               >
