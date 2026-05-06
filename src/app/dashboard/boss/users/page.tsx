@@ -21,11 +21,28 @@ type UserRole = "STUDENT" | "TEACHER" | "ADMIN" | "BRANCH_ADMIN" | "BRANCH_BOSS"
 type ViewMode = "all" | "branch" | "role";
 type FilterType = "all" | UserRole;
 
+type BossUserRow = {
+  id: string;
+  name?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  email: string;
+  role: string;
+  approved?: boolean;
+  branchId?: string | null;
+  tags?: string[];
+};
+
+type BossBranchRow = { id: string; name: string };
+
+// In-memory cache: prevents “refresh flash” when navigating away/back
+let bossUsersCache: { users: BossUserRow[]; branches: BossBranchRow[]; branchMap: Record<string, string> } | null = null;
+
 export default function BossUsersPage() {
-  const [users, setUsers] = useState<any[]>([]);
-  const [branches, setBranches] = useState<any[]>([]);
-  const [branchMap, setBranchMap] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(true);
+  const [users, setUsers] = useState<BossUserRow[]>(bossUsersCache?.users ?? []);
+  const [branches, setBranches] = useState<BossBranchRow[]>(bossUsersCache?.branches ?? []);
+  const [branchMap, setBranchMap] = useState<Record<string, string>>(bossUsersCache?.branchMap ?? {});
+  const [loading, setLoading] = useState(bossUsersCache == null);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
   const [selectedRole, setSelectedRole] = useState<string>("");
@@ -40,16 +57,22 @@ export default function BossUsersPage() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const load = async () => {
-    setLoading(true);
+    if (!bossUsersCache) setLoading(true);
     const [uRes, bRes] = await Promise.all([
       fetch("/api/admin/users"),
       fetch("/api/admin/branches"),
     ]);
     const u = await uRes.json();
     const b = await bRes.json();
-    setUsers(u.users || []);
-    setBranches(b.branches || []);
-    setBranchMap(Object.fromEntries((b.branches || []).map((x: any) => [x.id, x.name])));
+    const nextUsers: BossUserRow[] = Array.isArray(u.users) ? u.users : [];
+    const nextBranches: BossBranchRow[] = Array.isArray(b.branches) ? b.branches : [];
+    const nextBranchMap = Object.fromEntries(nextBranches.map((x: any) => [x.id, x.name]));
+
+    bossUsersCache = { users: nextUsers, branches: nextBranches, branchMap: nextBranchMap };
+
+    setUsers(nextUsers);
+    setBranches(nextBranches);
+    setBranchMap(nextBranchMap);
     setLoading(false);
   };
 

@@ -11,10 +11,26 @@ import UnifiedLoading from "@/components/loading/UnifiedLoading";
 import { AlertModal } from "@/components/modals/AlertModal";
 import { UserDetailsModal } from "@/components/modals/UserDetailsModal";
 
+type CreatorUserRow = {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string;
+  role: string;
+  approved?: boolean;
+  branchId?: string | null;
+  createdAt?: string;
+  tags?: string[];
+  branch?: { id: string; name: string } | null;
+};
+
+// In-memory cache: prevents “refresh flash” when navigating away/back
+let creatorUsersCache: { key: string; users: CreatorUserRow[] } | null = null;
+
 export default function CreatorUsersPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<CreatorUserRow[]>(creatorUsersCache?.users ?? []);
   const [searchUsers, setSearchUsers] = useState("");
   const [roleFilter, setRoleFilter] = useState("ALL");
   const [tagFilter, setTagFilter] = useState("ALL");
@@ -31,7 +47,7 @@ export default function CreatorUsersPage() {
   const [newBranchId, setNewBranchId] = useState("");
   const [branches, setBranches] = useState<any[]>([]);
   const [updating, setUpdating] = useState(false);
-  const [usersLoading, setUsersLoading] = useState(true);
+  const [usersLoading, setUsersLoading] = useState(creatorUsersCache == null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createFormData, setCreateFormData] = useState({
     firstName: "",
@@ -86,16 +102,23 @@ export default function CreatorUsersPage() {
   }, [session, status, router, searchUsers, roleFilter, tagFilter]);
 
   const fetchUsers = async () => {
-    setUsersLoading(true);
+    const params = new URLSearchParams();
+    if (searchUsers) params.append("search", searchUsers);
+    if (roleFilter) params.append("role", roleFilter);
+    if (tagFilter && tagFilter !== "ALL") params.append("tag", tagFilter);
+    const key = params.toString();
+
     try {
-      const params = new URLSearchParams();
-      if (searchUsers) params.append("search", searchUsers);
-      if (roleFilter) params.append("role", roleFilter);
-      if (tagFilter && tagFilter !== "ALL") params.append("tag", tagFilter);
+      // Only show spinner if this query isn't already cached
+      if (!(creatorUsersCache && creatorUsersCache.key === key)) {
+        setUsersLoading(true);
+      }
 
       const res = await fetch(`/api/creator/users?${params}`);
       const data = await res.json();
-      setUsers(data.users || []);
+      const nextUsers: CreatorUserRow[] = Array.isArray(data.users) ? data.users : [];
+      creatorUsersCache = { key, users: nextUsers };
+      setUsers(nextUsers);
     } catch (error) {
       console.error("Error fetching users:", error);
     } finally {
