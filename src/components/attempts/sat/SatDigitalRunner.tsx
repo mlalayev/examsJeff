@@ -438,11 +438,21 @@ export function SatDigitalRunner({
     );
   }
 
-  const passageText =
+  // SAT structured layout can live either in the module passage (section.passage)
+  // OR inside the question prompt text (preferred for per-question passages).
+  const defaultPassageText =
     currentSection?.passage ||
     (questions[0]?.prompt?.passage as string | undefined) ||
     "";
-  const structured = parseStructuredTextBlocks(passageText);
+  const promptTextRaw =
+    currentQuestion?.prompt?.text != null ? String(currentQuestion.prompt.text) : "";
+  const structuredFromPrompt = promptTextRaw
+    ? parseStructuredTextBlocks(promptTextRaw)
+    : null;
+  const structuredFromPassage = parseStructuredTextBlocks(defaultPassageText);
+  const structured = structuredFromPrompt || structuredFromPassage;
+  const structuredSourceText = structuredFromPrompt ? promptTextRaw : defaultPassageText;
+  const passageText = structured ? structuredSourceText : defaultPassageText;
   const derivedStem = structured?.question?.trim() ? structured.question : "";
 
   return (
@@ -817,11 +827,11 @@ export function SatDigitalRunner({
 
                                 {/* Answered status icon */}
                                 <span
-                                  className="absolute -left-1.5 -top-1.5 w-5 h-5 rounded-full bg-white border border-slate-200 flex items-center justify-center shadow-sm"
+                                  className="absolute -left-1 -top-1 w-4 h-4 rounded-full bg-white border border-slate-200 flex items-center justify-center shadow-sm"
                                   title={answered ? "Answered" : "Not answered"}
                                 >
                                   <span
-                                    className={`w-2.5 h-2.5 rounded-full ${
+                                    className={`w-2 h-2 rounded-full ${
                                       answered ? "bg-emerald-500" : "bg-rose-500"
                                     }`}
                                   />
@@ -830,10 +840,10 @@ export function SatDigitalRunner({
                                 {/* Mark for review */}
                                 {forReview && (
                                   <span
-                                    className="absolute -right-1.5 -top-1.5 w-5 h-5 rounded-full bg-white border border-slate-200 flex items-center justify-center shadow-sm"
+                                    className="absolute -right-1 -top-1 w-4 h-4 rounded-full bg-white border border-slate-200 flex items-center justify-center shadow-sm"
                                     title="Marked for review"
                                   >
-                                    <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
+                                    <span className="w-2 h-2 rounded-full bg-blue-600" />
                                   </span>
                                 )}
                               </button>
