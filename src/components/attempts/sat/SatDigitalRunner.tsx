@@ -757,54 +757,78 @@ export function SatDigitalRunner({
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="overflow-y-auto flex-1 py-1">
-              {questions.map((q, i) => {
-                const rk = reviewKeyFor(currentSection.id, q.id);
-                const answered = isAnsweredForQuestion(
-                  answers[currentSection.id],
-                  q
-                );
-                const forReview = marked.has(rk);
-                const isCurrent = i === qIndex;
+            <div className="overflow-y-auto flex-1 p-4">
+              {(() => {
+                const perRow = 10;
+                const rows: Array<Array<{ q: (typeof questions)[number]; i: number }>> = [];
+                for (let i = 0; i < questions.length; i += perRow) {
+                  rows.push(
+                    questions.slice(i, i + perRow).map((q, idx) => ({
+                      q,
+                      i: i + idx,
+                    }))
+                  );
+                }
+
                 return (
-                  <button
-                    key={q.id}
-                    type="button"
-                    onClick={() => {
-                      setQIndex(i);
-                      setShowQuestionNavModal(false);
-                    }}
-                    className={`w-full flex items-center gap-3 px-4 py-3.5 text-left border-b border-slate-100 last:border-b-0 transition-colors ${
-                      isCurrent
-                        ? "bg-blue-50/90"
-                        : "hover:bg-slate-50"
-                    }`}
-                  >
-                    <span
-                      className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full"
-                      title={answered ? "Answered" : "Not answered"}
-                    >
-                      {answered ? (
-                        <Check
-                          className="w-5 h-5 text-emerald-600"
-                          strokeWidth={2.5}
-                        />
-                      ) : (
-                        <X className="w-5 h-5 text-rose-500" strokeWidth={2.5} />
-                      )}
-                    </span>
-                    <span className="flex-1 min-w-0 font-medium text-slate-900">
-                      Question {i + 1}
-                    </span>
-                    {forReview && (
-                      <span className="shrink-0 inline-flex items-center gap-1 text-xs font-semibold text-blue-800 bg-blue-100 px-2.5 py-1 rounded-md">
-                        <Bookmark className="w-3.5 h-3.5" />
-                        Review
-                      </span>
-                    )}
-                  </button>
+                  <div className="space-y-3">
+                    {rows.map((row, rowIdx) => {
+                      const isLast = rowIdx === rows.length - 1;
+                      const needsCenter = isLast && row.length < perRow;
+                      return (
+                        <div
+                          key={rowIdx}
+                          className={`flex gap-2 ${needsCenter ? "justify-center" : "justify-start"}`}
+                        >
+                          {row.map(({ q, i }) => {
+                            const rk = reviewKeyFor(currentSection.id, q.id);
+                            const answered = isAnsweredForQuestion(answers[currentSection.id], q);
+                            const forReview = marked.has(rk);
+                            const isCurrent = i === qIndex;
+
+                            return (
+                              <button
+                                key={q.id}
+                                type="button"
+                                onClick={() => {
+                                  setQIndex(i);
+                                  setShowQuestionNavModal(false);
+                                }}
+                                className={[
+                                  "relative w-10 h-10 rounded-md border text-sm font-semibold tabular-nums transition-colors",
+                                  "flex items-center justify-center",
+                                  isCurrent
+                                    ? "border-blue-600 bg-blue-50 text-blue-900"
+                                    : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50 hover:border-slate-300",
+                                ].join(" ")}
+                                aria-label={`Question ${i + 1}${answered ? ", answered" : ", not answered"}${forReview ? ", marked for review" : ""}`}
+                              >
+                                {i + 1}
+
+                                {/* Answered status icon */}
+                                <span className="absolute -left-1.5 -top-1.5 w-5 h-5 rounded-full bg-white border border-slate-200 flex items-center justify-center shadow-sm">
+                                  {answered ? (
+                                    <Check className="w-3.5 h-3.5 text-emerald-600" strokeWidth={3} />
+                                  ) : (
+                                    <X className="w-3.5 h-3.5 text-rose-500" strokeWidth={3} />
+                                  )}
+                                </span>
+
+                                {/* Mark for review */}
+                                {forReview && (
+                                  <span className="absolute -right-1.5 -top-1.5 w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-sm">
+                                    <Bookmark className="w-3.5 h-3.5" />
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                  </div>
                 );
-              })}
+              })()}
             </div>
           </div>
         </div>

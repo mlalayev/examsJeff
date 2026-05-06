@@ -33,6 +33,8 @@ export function parseFormattedText(text: string): FormattedSegment[] {
     { marker: "__", key: "underline" as const },
     { marker: "--", key: "strikethrough" as const },
     { marker: "~~", key: "italic" as const },
+    // Some SAT content uses &&text&& as emphasis (treat as italic)
+    { marker: "&&", key: "italic" as const },
     // Custom marker used in some IELTS prompts: [gray]muted text[gray]
     { marker: "[gray]", key: "gray" as const },
   ];
@@ -248,6 +250,7 @@ export function getFormattingExamples(): Array<{ syntax: string; description: st
     { syntax: "__underlined text__", description: "Underline" },
     { syntax: "--strikethrough text--", description: "Strikethrough (Line Through)" },
     { syntax: "~~italic text~~", description: "Italic" },
+    { syntax: "&&italic text&&", description: "Italic (SAT style)" },
     { syntax: "__**combined formatting**__", description: "Combined (underline + bold)" },
   ];
 }
