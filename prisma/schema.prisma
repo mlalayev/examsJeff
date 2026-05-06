@@ -16,6 +16,7 @@ model User {
   image                       String?
   passwordHash                String
   role                        Role                @default(STUDENT)
+  tags                        String[]            @default([])
   createdAt                   DateTime            @default(now())
   updatedAt                   DateTime            @updatedAt
   approved                    Boolean             @default(false)

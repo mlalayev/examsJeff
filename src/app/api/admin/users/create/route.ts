@@ -13,6 +13,7 @@ const createUserSchema = z.object({
   branchId: z.string().nullable(),
   approved: z.boolean().default(false),
   childIds: z.array(z.string().min(1)).optional(),
+  tags: z.array(z.string().min(1)).max(20).optional(),
   studentProfile: z
     .object({
       phoneNumber: z.string().optional(),
@@ -81,6 +82,7 @@ export async function POST(request: Request) {
         role: validatedData.role,
         approved: validatedData.approved,
         branchId: validatedData.branchId,
+        tags: validatedData.tags ?? [],
         ...(validatedData.role === "STUDENT" && validatedData.branchId && validatedData.studentProfile && {
           studentProfile: {
             create: {

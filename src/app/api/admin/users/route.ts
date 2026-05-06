@@ -10,6 +10,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const roleFilter = searchParams.get("role");
     const search = searchParams.get("search");
+    const tag = searchParams.get("tag");
     const currentRole = (current as any).role as string;
     const currentBranchId = (current as any).branchId as string | null | undefined;
     
@@ -17,6 +18,7 @@ export async function GET(request: Request) {
       where: {
         role: { not: "CREATOR" },
         ...(roleFilter && { role: roleFilter as any }),
+        ...(tag && { tags: { has: tag } }),
         ...(search && {
           OR: [
             { firstName: { contains: search, mode: "insensitive" } },
@@ -34,6 +36,7 @@ export async function GET(request: Request) {
         lastName: true,
         email: true,
         role: true,
+        tags: true,
         approved: true,
         branchId: true,
         createdAt: true,

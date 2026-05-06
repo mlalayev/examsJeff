@@ -17,6 +17,7 @@ export default function CreatorUsersPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [searchUsers, setSearchUsers] = useState("");
   const [roleFilter, setRoleFilter] = useState("ALL");
+  const [tagFilter, setTagFilter] = useState("ALL");
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [newPassword, setNewPassword] = useState("");
   const [resetting, setResetting] = useState(false);
@@ -46,6 +47,7 @@ export default function CreatorUsersPage() {
     paymentDate: "",
     paymentAmount: "",
     childIds: [] as string[],
+    tags: [] as string[],
   });
   const [createCreating, setCreateCreating] = useState(false);
   const [createError, setCreateError] = useState("");
@@ -81,7 +83,7 @@ export default function CreatorUsersPage() {
       .then((res) => res.json())
       .then((data) => setBranches(data.branches || []))
       .catch(console.error);
-  }, [session, status, router, searchUsers, roleFilter]);
+  }, [session, status, router, searchUsers, roleFilter, tagFilter]);
 
   const fetchUsers = async () => {
     setUsersLoading(true);
@@ -89,6 +91,7 @@ export default function CreatorUsersPage() {
       const params = new URLSearchParams();
       if (searchUsers) params.append("search", searchUsers);
       if (roleFilter) params.append("role", roleFilter);
+      if (tagFilter && tagFilter !== "ALL") params.append("tag", tagFilter);
 
       const res = await fetch(`/api/creator/users?${params}`);
       const data = await res.json();
@@ -260,6 +263,7 @@ export default function CreatorUsersPage() {
       if (createFormData.role === "PARENT") {
         payload.childIds = createFormData.childIds;
       }
+      payload.tags = createFormData.tags;
       const res = await fetch("/api/creator/users/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -282,6 +286,7 @@ export default function CreatorUsersPage() {
           paymentDate: "",
           paymentAmount: "",
           childIds: [],
+          tags: [],
         });
         setChildSearch("");
         setChildResults([]);
@@ -402,6 +407,7 @@ export default function CreatorUsersPage() {
               paymentDate: "",
               paymentAmount: "",
               childIds: [],
+              tags: [],
             });
             setChildSearch("");
             setChildResults([]);
@@ -448,6 +454,19 @@ export default function CreatorUsersPage() {
             <option value="BOSS">Boss</option>
             <option value="BRANCH_ADMIN">Branch Admins</option>
             <option value="CREATOR">Creators</option>
+            <option value="PARENT">Parents</option>
+          </select>
+        </div>
+        <div className="relative sm:w-56">
+          <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <select
+            value={tagFilter}
+            onChange={(e) => setTagFilter(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+          >
+            <option value="ALL">All Groups</option>
+            <option value="JEFF_STUDENT">JEFF students</option>
+            <option value="SUNDAY_EXAMINER">Sundays examiners</option>
           </select>
         </div>
       </div>
@@ -780,6 +799,35 @@ export default function CreatorUsersPage() {
                   <option value="CREATOR">Creator (Super Admin)</option>
                   <option value="PARENT">Parent</option>
                 </select>
+              </div>
+
+              {/* Labels (optional) */}
+              <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+                <div className="text-sm font-medium text-gray-900 mb-2">Groups (optional)</div>
+                <div className="flex flex-col gap-2">
+                  {[
+                    { id: "JEFF_STUDENT", label: "JEFF student" },
+                    { id: "SUNDAY_EXAMINER", label: "Sunday examiner" },
+                  ].map((t) => {
+                    const checked = createFormData.tags.includes(t.id);
+                    return (
+                      <label key={t.id} className="flex items-center gap-2 text-sm text-gray-700">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => {
+                            const next = e.target.checked
+                              ? Array.from(new Set([...createFormData.tags, t.id]))
+                              : createFormData.tags.filter((x) => x !== t.id);
+                            setCreateFormData({ ...createFormData, tags: next });
+                          }}
+                          className="w-4 h-4 text-[#303380] border-gray-300 rounded focus:ring-[#303380]"
+                        />
+                        {t.label}
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Parent: searchable child picker */}

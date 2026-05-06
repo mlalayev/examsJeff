@@ -18,25 +18,40 @@ interface User {
   };
 }
 
+// Simple in-memory cache to avoid "refresh" feel when switching tabs/routes
+let cachedUsers: User[] | null = null;
+let cachedParamsKey: string | null = null;
+
 export default function UsersTab() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [users, setUsers] = useState<User[]>(cachedUsers ?? []);
+  const [loading, setLoading] = useState(cachedUsers == null);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
+  const [tagFilter, setTagFilter] = useState("");
 
   useEffect(() => {
     fetchUsers();
-  }, [roleFilter]);
+  }, [roleFilter, tagFilter]);
 
   const fetchUsers = async () => {
+    const params = new URLSearchParams();
+    if (roleFilter) params.set("role", roleFilter);
+    if (search) params.set("search", search);
+    if (tagFilter) params.set("tag", tagFilter);
+    const paramsKey = params.toString();
+
     try {
-      const params = new URLSearchParams();
-      if (roleFilter) params.set("role", roleFilter);
-      if (search) params.set("search", search);
+      // Only show spinner if we don't have cached data for these params
+      if (!(cachedUsers && cachedParamsKey === paramsKey)) {
+        setLoading(true);
+      }
       
       const res = await fetch(`/api/admin/users?${params}`);
       const data = await res.json();
-      setUsers(data.users);
+      const nextUsers = Array.isArray(data.users) ? data.users : [];
+      cachedUsers = nextUsers;
+      cachedParamsKey = paramsKey;
+      setUsers(nextUsers);
     } catch (error) {
       console.error("Error:", error);
     } finally {
@@ -100,6 +115,17 @@ export default function UsersTab() {
             <option value="STUDENT">Students</option>
             <option value="TEACHER">Teachers</option>
             <option value="ADMIN">Admins</option>
+            <option value="PARENT">Parents</option>
+          </select>
+
+          <select
+            value={tagFilter}
+            onChange={(e) => setTagFilter(e.target.value)}
+            className="px-4 py-2 border rounded-lg"
+          >
+            <option value="">All Groups</option>
+            <option value="JEFF_STUDENT">JEFF students</option>
+            <option value="SUNDAY_EXAMINER">Sundays examiners</option>
           </select>
         </div>
       </div>

@@ -13,6 +13,7 @@ const createUserSchema = z.object({
   branchId: z.string().nullable(),
   approved: z.boolean().default(false),
   childIds: z.array(z.string().min(1)).optional(),
+  tags: z.array(z.string().min(1)).max(20).optional(),
 });
 
 // POST /api/creator/users/create - Create a user manually (CREATOR only)
@@ -67,6 +68,7 @@ export async function POST(request: Request) {
         role: validatedData.role,
         approved: validatedData.approved,
         branchId: validatedData.branchId,
+        tags: validatedData.tags ?? [],
         ...(validatedData.role === "PARENT" && {
           childrenAsParent: {
             create: (validatedData.childIds ?? []).map((childId) => ({ childId })),

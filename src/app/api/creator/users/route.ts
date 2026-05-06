@@ -18,6 +18,7 @@ export async function GET(request: Request) {
     const roleFilter = searchParams.get("role");
     const takeRaw = searchParams.get("take");
     const minimal = searchParams.get("minimal") === "1";
+    const tag = searchParams.get("tag");
 
     const where: any = {};
 
@@ -31,6 +32,10 @@ export async function GET(request: Request) {
 
     if (roleFilter && roleFilter !== "ALL") {
       where.role = roleFilter;
+    }
+
+    if (tag) {
+      where.tags = { has: tag };
     }
 
     const take = (() => {
@@ -48,6 +53,7 @@ export async function GET(request: Request) {
             lastName: true,
             email: true,
             role: true,
+            tags: true,
             branch: {
               select: { id: true, name: true },
             },
@@ -60,6 +66,7 @@ export async function GET(request: Request) {
             role: true,
             approved: true,
             branchId: true,
+            tags: true,
             createdAt: true,
             branch: {
               select: {
