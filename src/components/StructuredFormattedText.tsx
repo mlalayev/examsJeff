@@ -37,7 +37,7 @@ export function StructuredFormattedText({
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
         <div className="min-w-0">
           {hasText ? (
             <div className="text-[15px] leading-relaxed text-slate-800">
