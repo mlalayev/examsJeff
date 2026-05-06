@@ -53,6 +53,28 @@ function markedReviewStorageKey(attemptId: string) {
   return `sat_marked_review_${attemptId}`;
 }
 
+function lockedModulesStorageKey(attemptId: string) {
+  return `sat_locked_modules_${attemptId}`;
+}
+
+function loadLockedModulesSet(attemptId: string): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = localStorage.getItem(lockedModulesStorageKey(attemptId));
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw) as unknown;
+    if (!Array.isArray(arr)) return new Set();
+    return new Set(arr.filter((x) => typeof x === "string"));
+  } catch {
+    return new Set();
+  }
+}
+
+function persistLockedModules(attemptId: string, ids: Set<string>) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(lockedModulesStorageKey(attemptId), JSON.stringify([...ids]));
+}
+
 function loadMarkedReviewSet(attemptId: string): Set<string> {
   if (typeof window === "undefined") return new Set();
   try {
@@ -146,6 +168,7 @@ export function SatDigitalRunner({
   const [submitting, setSubmitting] = useState(false);
   const [showSubmitExam, setShowSubmitExam] = useState(false);
   const [showQuestionNavModal, setShowQuestionNavModal] = useState(false);
+  const [showSubmitModuleModal, setShowSubmitModuleModal] = useState(false);
   const autosaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const answersRef = useRef(answers);
   answersRef.current = answers;
@@ -225,8 +248,12 @@ export function SatDigitalRunner({
       }
 
       setMarked(loadMarkedReviewSet(attemptId));
+      const locked = loadLockedModulesSet(attemptId);
+      setLockedModules(locked);
 
-      setModuleIndex(0);
+      // Move user to the first unlocked module (can't return to submitted modules)
+      const firstUnlocked = (json.sections || []).findIndex((s: any) => !locked.has(s.id));
+      setModuleIndex(firstUnlocked >= 0 ? firstUnlocked : 0);
       setQIndex(0);
     } catch (e) {
       console.error(e);
@@ -382,7 +409,11 @@ export function SatDigitalRunner({
     if (typeof window !== "undefined") {
       localStorage.removeItem(satTimerKey(attemptId, currentSection.id));
     }
-    setLockedModules((prev) => new Set([...prev, currentSection.id]));
+    setLockedModules((prev) => {
+      const next = new Set([...prev, currentSection.id]);
+      persistLockedModules(attemptId, next);
+      return next;
+    });
     if (moduleIndex < sortedSections.length - 1) {
       setModuleIndex((i) => i + 1);
       setQIndex(0);
@@ -407,6 +438,7 @@ export function SatDigitalRunner({
       if (typeof window !== "undefined") {
         localStorage.removeItem(answersStorageKey(attemptId));
         localStorage.removeItem(markedReviewStorageKey(attemptId));
+        localStorage.removeItem(lockedModulesStorageKey(attemptId));
         for (const s of sortedSections) {
           localStorage.removeItem(satTimerKey(attemptId, s.id));
         }
@@ -419,6 +451,22 @@ export function SatDigitalRunner({
       setSubmitting(false);
     }
   };
+
+  const currentModuleStats = useMemo(() => {
+    if (!currentSection || isBreak) {
+      return { unanswered: [] as number[], markedForReview: [] as number[] };
+    }
+    const sectionAnswers = answers[currentSection.id] || {};
+    const unanswered: number[] = [];
+    const markedForReview: number[] = [];
+    (currentSection.questions || []).forEach((q, idx) => {
+      const questionNumber = idx + 1;
+      const rk = reviewKeyFor(currentSection.id, q.id);
+      if (!isAnsweredForQuestion(sectionAnswers, q)) unanswered.push(questionNumber);
+      if (marked.has(rk)) markedForReview.push(questionNumber);
+    });
+    return { unanswered, markedForReview };
+  }, [answers, currentSection, isBreak, marked]);
 
   const dashedRule = (
     <div
@@ -859,7 +907,7 @@ export function SatDigitalRunner({
                       if (moduleIndex === sortedSections.length - 1) {
                         setShowSubmitExam(true);
                       } else {
-                        void handleSubmitModule();
+                        setShowSubmitModuleModal(true);
                       }
                     }}
                     className="inline-flex items-center gap-1 px-6 py-2.5 rounded-full text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40"
@@ -874,6 +922,79 @@ export function SatDigitalRunner({
           </div>
         </div>
       </footer>
+
+      {showSubmitModuleModal && currentSection && !isBreak && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/45 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 border border-slate-200">
+            <h3 className="text-lg font-semibold text-slate-900 mb-2">
+              Submit this module?
+            </h3>
+            <p className="text-sm text-slate-600 mb-4">
+              After you submit <span className="font-medium">{currentSection.title}</span>, you{" "}
+              <span className="font-semibold">cannot return</span> to it.
+            </p>
+
+            <div className="space-y-3 mb-5">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-sm font-medium text-slate-900">Unanswered</div>
+                  <div className="text-sm font-semibold text-slate-900 tabular-nums">
+                    {currentModuleStats.unanswered.length}
+                  </div>
+                </div>
+                {currentModuleStats.unanswered.length > 0 && (
+                  <div className="mt-2 text-xs text-slate-600">
+                    Questions: {currentModuleStats.unanswered.slice(0, 30).join(", ")}
+                    {currentModuleStats.unanswered.length > 30 ? " …" : ""}
+                  </div>
+                )}
+              </div>
+
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-sm font-medium text-slate-900">Marked for review</div>
+                  <div className="text-sm font-semibold text-slate-900 tabular-nums">
+                    {currentModuleStats.markedForReview.length}
+                  </div>
+                </div>
+                {currentModuleStats.markedForReview.length > 0 && (
+                  <div className="mt-2 text-xs text-slate-600">
+                    Questions: {currentModuleStats.markedForReview.slice(0, 30).join(", ")}
+                    {currentModuleStats.markedForReview.length > 30 ? " …" : ""}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {(currentModuleStats.unanswered.length > 0 || currentModuleStats.markedForReview.length > 0) && (
+              <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                Please double-check these items before submitting. Once submitted, this module is locked.
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                className="px-4 py-2 text-sm font-medium rounded-lg border border-slate-300 text-slate-800 hover:bg-slate-50"
+                onClick={() => setShowSubmitModuleModal(false)}
+              >
+                Go back
+              </button>
+              <button
+                type="button"
+                disabled={lockedModules.has(currentSection.id)}
+                className="px-4 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                onClick={() => {
+                  setShowSubmitModuleModal(false);
+                  void handleSubmitModule();
+                }}
+              >
+                Submit module
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showQuestionNavModal && currentSection && !isBreak && questions.length > 0 && (
         <div
