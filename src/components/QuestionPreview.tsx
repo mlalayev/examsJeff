@@ -4,6 +4,7 @@ import React from "react";
 import FormattedText from "./FormattedText";
 import { parseStructuredTextBlocks } from "@/lib/text-formatter";
 import { StructuredFormattedText } from "@/components/StructuredFormattedText";
+import { Bookmark, Strikethrough } from "lucide-react";
 
 interface QuestionPreviewProps {
   question: {
@@ -25,6 +26,131 @@ export default function QuestionPreview({ question }: QuestionPreviewProps) {
   const hasContent = question.prompt?.text || (question.options?.choices && question.options.choices.length > 0);
   
   if (!hasContent) return null;
+
+  const prompt = typeof question.prompt?.text === "string" ? question.prompt.text : "";
+  const structured = prompt ? parseStructuredTextBlocks(prompt) : null;
+
+  const renderSatDigitalPreview = () => {
+    const stem = structured?.question || prompt;
+    const hasChoices = Array.isArray(question.options?.choices) && question.options!.choices!.length > 0;
+    const choiceImages = question.options?.choiceImages || [];
+    const questionImage = (question as any).image as string | undefined;
+
+    const dashedRule = (
+      <div
+        className="h-px w-full my-3"
+        style={{
+          background:
+            "repeating-linear-gradient(90deg, #9ca3af 0 8px, #3b82f6 8px 16px, #eab308 16px 24px)",
+        }}
+      />
+    );
+
+    return (
+      <div className="border-t-2 border-gray-300 pt-4 mt-6">
+        <div className="mb-3">
+          <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
+            Preview: How students will see this (SAT Digital)
+          </h4>
+        </div>
+
+        <div className="bg-white rounded-xl border shadow-sm" style={{ borderColor: "rgba(15, 17, 80, 0.63)" }}>
+          <div className="px-6 pt-5 pb-1">{dashedRule}</div>
+
+          <div className="px-6 pb-6">
+            <div className="w-full flex gap-0 border border-slate-200 rounded-lg overflow-hidden shadow-sm">
+              <div className="w-1/2 min-w-0 border-r border-slate-200 bg-slate-50/80 p-5">
+                <StructuredFormattedText text={prompt} showQuestion={false} />
+              </div>
+              <div className="w-1/2 min-w-0 bg-white p-5">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-9 h-9 bg-slate-900 text-white text-sm font-semibold flex items-center justify-center rounded">
+                    1
+                  </div>
+                  <div className="flex items-center gap-2 text-sm font-medium text-slate-700 border border-slate-200 rounded-md px-3 py-2 bg-slate-50">
+                    <Bookmark className="w-4 h-4" />
+                    Mark for Review
+                  </div>
+                </div>
+
+                {dashedRule}
+
+                {questionImage && (
+                  <div className="mt-4">
+                    <img
+                      src={questionImage}
+                      alt="Question"
+                      className="max-h-48 w-auto rounded border border-slate-200"
+                    />
+                  </div>
+                )}
+
+                {stem && (
+                  <p className="mt-4 text-[15px] text-slate-900 leading-relaxed">
+                    <FormattedText text={stem} />
+                  </p>
+                )}
+
+                {hasChoices && (
+                  <div className="mt-5 space-y-3">
+                    {question.options!.choices!.map((choice: string, idx: number) => {
+                      const choiceImage = choiceImages?.[idx];
+                      return (
+                        <div
+                          key={idx}
+                          className="flex items-stretch gap-2 rounded-lg border border-slate-300 bg-white"
+                        >
+                          <div className="flex-1 text-left px-4 py-3 flex gap-3 min-w-0">
+                            <span className="font-semibold text-slate-700 shrink-0">
+                              {String.fromCharCode(65 + idx)}:
+                            </span>
+                            <span className="text-[15px] text-slate-900">
+                              <FormattedText text={choice} />
+                              {choiceImage && (
+                                <div className="mt-2">
+                                  <img
+                                    src={choiceImage}
+                                    alt={`Option ${idx + 1}`}
+                                    className="max-h-32 w-auto rounded border border-slate-200"
+                                  />
+                                </div>
+                              )}
+                            </span>
+                          </div>
+                          <div className="shrink-0 px-3 flex items-center border-l border-slate-200 text-slate-500 bg-slate-50">
+                            <Strikethrough className="w-4 h-4" />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {(question.qtype === "SHORT_TEXT" || question.qtype === "GAP" || question.qtype === "ESSAY") && (
+                  <div className="mt-5">
+                    <input
+                      type="text"
+                      disabled
+                      placeholder="Student answer will appear here..."
+                      className="w-full px-4 py-3 border rounded-lg text-base font-medium bg-gray-50 cursor-not-allowed"
+                      style={{
+                        borderColor: "rgba(48, 51, 128, 0.2)",
+                        color: "#9CA3AF",
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  if (structured) {
+    return renderSatDigitalPreview();
+  }
 
   return (
     <div className="border-t-2 border-gray-300 pt-4 mt-6">
