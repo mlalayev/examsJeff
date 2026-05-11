@@ -505,6 +505,11 @@ export default function AttemptRunnerPage() {
         router.replace(`/attempts/${attemptId}/sat/run`);
         return;
       }
+
+      if (json.examCategory === "IELTS") {
+        router.replace(`/attempts/${attemptId}/ielts/run`);
+        return;
+      }
       
       setData(json);
       
