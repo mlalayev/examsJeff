@@ -164,6 +164,7 @@ function IeltsAudioPlayer({
   const [duration, setDuration] = useState(0);
   const [current, setCurrent] = useState(0);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  const lastSavedSecondRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -176,16 +177,24 @@ function IeltsAudioPlayer({
     const audio = audioRef.current;
     if (!audio) return;
     if (audio.paused) {
+      // Playback automatically starts checkpointing from the current position.
+      const time = Math.max(0, audio.currentTime || 0);
+      if (typeof window !== "undefined") {
+        localStorage.setItem(checkpointKey, String(time));
+        setSavedAt(time);
+        lastSavedSecondRef.current = Math.floor(time);
+      }
       void audio.play();
     } else {
       audio.pause();
     }
   };
 
-  const saveCheckpoint = () => {
-    const audio = audioRef.current;
-    if (!audio || typeof window === "undefined") return;
-    const time = Math.max(0, audio.currentTime || 0);
+  const autoSaveCheckpoint = (time: number) => {
+    if (typeof window === "undefined") return;
+    const sec = Math.floor(Math.max(0, time));
+    if (lastSavedSecondRef.current === sec) return;
+    lastSavedSecondRef.current = sec;
     localStorage.setItem(checkpointKey, String(time));
     setSavedAt(time);
   };
@@ -206,13 +215,17 @@ function IeltsAudioPlayer({
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
         onLoadedMetadata={(e) => setDuration(e.currentTarget.duration || 0)}
-        onTimeUpdate={(e) => setCurrent(e.currentTarget.currentTime || 0)}
+        onTimeUpdate={(e) => {
+          const time = e.currentTarget.currentTime || 0;
+          setCurrent(time);
+          if (!e.currentTarget.paused) autoSaveCheckpoint(time);
+        }}
       />
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <button
           type="button"
           onClick={toggle}
-          className="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center hover:bg-slate-800"
+          className="w-11 h-11 rounded-full bg-slate-900 text-white flex items-center justify-center hover:bg-slate-800 shadow-sm shrink-0"
         >
           {playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
         </button>
@@ -226,6 +239,7 @@ function IeltsAudioPlayer({
               const next = Number(e.target.value);
               if (audioRef.current) audioRef.current.currentTime = next;
               setCurrent(next);
+              autoSaveCheckpoint(next);
             }}
             className="w-full accent-slate-900"
           />
@@ -234,23 +248,16 @@ function IeltsAudioPlayer({
             <span>{duration ? formatTime(Math.floor(duration)) : "--:--"}</span>
           </div>
         </div>
-        <Volume2 className="w-4 h-4 text-slate-500" />
-        <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
-          <button
-            type="button"
-            onClick={saveCheckpoint}
-            className="px-3 py-2 rounded-lg text-xs font-semibold bg-slate-900 text-white hover:bg-slate-800"
-          >
-            Save time
-          </button>
+        <div className="flex items-center gap-2 sm:pl-2 sm:border-l border-slate-200">
+          <Volume2 className="w-4 h-4 text-slate-500 hidden sm:block" />
           <button
             type="button"
             disabled={savedAt == null}
             onClick={resumeCheckpoint}
-            className="px-3 py-2 rounded-lg text-xs font-semibold border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40"
-            title={savedAt == null ? "No saved time yet" : `Resume from ${formatTime(Math.floor(savedAt))}`}
+            className="px-3 py-2 rounded-lg text-xs font-semibold border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40 whitespace-nowrap"
+            title={savedAt == null ? "Playback time will be saved automatically after pressing play." : `Resume from ${formatTime(Math.floor(savedAt))}`}
           >
-            Resume
+            {savedAt == null ? "Auto-save ready" : `Saved ${formatTime(Math.floor(savedAt))}`}
           </button>
         </div>
       </div>
@@ -497,7 +504,7 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
   const renderLeftPanel = () => {
     if (activeSection.type === "LISTENING") {
       return (
-        <div className="p-4">
+        <div className="h-full overflow-y-auto p-4">
           <h2 className="text-lg font-semibold text-slate-900 uppercase mb-4">
             Part {activePart}
           </h2>
@@ -610,8 +617,8 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
         </div>
       </header>
 
-      <main className="flex-1 min-h-0 overflow-hidden grid grid-cols-[minmax(280px,38%)_1fr]">
-        <aside className="border-r border-slate-200 bg-white min-h-0 overflow-hidden">
+      <main className="flex-1 min-h-0 overflow-hidden grid grid-rows-[minmax(150px,34%)_1fr] md:grid-rows-none md:grid-cols-[minmax(280px,38%)_1fr]">
+        <aside className="border-b md:border-b-0 md:border-r border-slate-200 bg-white min-h-0 overflow-hidden">
           {renderLeftPanel()}
         </aside>
 
@@ -621,7 +628,7 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
               No question in this part yet.
             </div>
           ) : activeSection.type === "LISTENING" || activeSection.type === "READING" ? (
-            <div className="h-full">
+            <div className="h-full min-h-0">
               {renderQuestion(questions.find((q) => q.qtype === "HTML_CSS") || questions[0])}
             </div>
           ) : (
@@ -632,8 +639,8 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
         </section>
       </main>
 
-      <footer className="px-4 py-3 border-t border-slate-200 flex items-center justify-between gap-4 bg-white">
-        <div className="flex items-center gap-2">
+      <footer className="px-4 py-3 border-t border-slate-200 flex items-center justify-between gap-4 bg-white overflow-x-auto">
+        <div className="flex items-center gap-2 shrink-0">
           <button className="px-3 py-2 text-sm border border-slate-200 rounded-md bg-white">
             Scores
           </button>
@@ -659,7 +666,7 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 shrink-0">
           <div className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold">
             <Clock className="w-4 h-4" />
             {secondsLeft == null ? "--:--" : formatTime(secondsLeft)}

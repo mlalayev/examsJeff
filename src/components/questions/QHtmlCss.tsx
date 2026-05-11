@@ -288,6 +288,10 @@ export default function QHtmlCss({ question, value, onChange, readOnly, bare = f
     );
   };
 
+  if (bare) {
+    return <div className="w-full h-full min-h-0">{renderInteractiveHTML()}</div>;
+  }
+
   return (
     <div className="space-y-4">
       {question.prompt?.text && (
