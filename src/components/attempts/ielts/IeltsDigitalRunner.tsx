@@ -244,12 +244,21 @@ function IeltsAudioPlayer({
     }
     
     // Check seekable ranges
+    let isSeekable = false;
     if (audio.seekable.length > 0) {
+      const seekEnd = audio.seekable.end(audio.seekable.length - 1);
       console.log("Seekable ranges:", {
         start: audio.seekable.start(0),
-        end: audio.seekable.end(0)
+        end: seekEnd,
+        target,
+        isWithinRange: target <= seekEnd
       });
+      isSeekable = seekEnd > 10 && target <= seekEnd; // At least 10 seconds buffered
     }
+    
+    console.log("Is seekable:", isSeekable);
+    
+    // If not seekable yet, try anyway (browser might auto-buffer)
     
     // Pause audio first to prevent interference
     const wasPlaying = !audio.paused;
@@ -268,9 +277,24 @@ function IeltsAudioPlayer({
       if (seeked) return;
       seeked = true;
       audio.removeEventListener("seeked", onSeeked);
-      console.log("Seeked event fired, currentTime:", audio.currentTime);
-      setCurrent(audio.currentTime);
-      updateSavedAt(audio.currentTime);
+      const actualTime = audio.currentTime;
+      console.log("Seeked event fired, currentTime:", actualTime);
+      
+      // Check if seek actually worked
+      if (Math.abs(actualTime - target) > 2) {
+        console.log("Seek failed - audio stayed at:", actualTime, "target was:", target);
+        // Seek failed - audio server doesn't support range requests
+        alert(
+          `Unable to jump to saved time ${formatTime(Math.floor(target))}.\n\n` +
+          `This happens when the audio file hasn't buffered that position yet. ` +
+          `The audio will continue playing from the current position (${formatTime(Math.floor(actualTime))}).`
+        );
+      }
+      
+      setCurrent(actualTime);
+      if (actualTime > 1) {
+        updateSavedAt(actualTime);
+      }
       void audio.play().then(() => {
         console.log("Playing from:", audio.currentTime);
       });
@@ -313,6 +337,8 @@ function IeltsAudioPlayer({
       <audio
         ref={audioRef}
         src={src}
+        preload="auto"
+        crossOrigin="anonymous"
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
         onLoadedMetadata={(e) => setDuration(e.currentTarget.duration || 0)}
