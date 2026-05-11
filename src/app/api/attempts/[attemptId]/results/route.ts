@@ -306,37 +306,34 @@ export async function GET(
           (as) => as.type === examSection.type
         );
 
-        // Collect all questions from this section and its subsections
-        let allQuestions = [...(examSection.questions || [])];
+        // Collect all questions from this section and its subsections.
+        // IMPORTANT: some IELTS Reading passage subsections reuse question ids (e.g. "q1"),
+        // so we must preserve the originating section type to fetch the correct answer
+        // from attempt.answers[sectionType][questionId] without collisions.
+        let allQuestions: Array<{ q: any; sourceSectionType: string }> = [
+          ...(examSection.questions || []).map((q: any) => ({
+            q,
+            sourceSectionType: String(examSection.type),
+          })),
+        ];
         const sectionSubsections = subsectionsByParent[examSection.id] || [];
         sectionSubsections.forEach((sub: any) => {
-          allQuestions = [...allQuestions, ...(sub.questions || [])];
+          allQuestions = [
+            ...allQuestions,
+            ...(sub.questions || []).map((q: any) => ({
+              q,
+              sourceSectionType: String(sub.type),
+            })),
+          ];
         });
-
-        // Collect student answers from parent section AND all subsections
-        // For JSON exams: answers are in allStudentAnswers[sectionType]
-        // For DB exams: answers are in attemptSection.answers
-        let studentAnswers: Record<string, any> = {};
-          
-        if (attemptSection?.answers) {
-          // DB exam: use attemptSection.answers
-          studentAnswers = { ...(attemptSection.answers as Record<string, any>) };
-        } else {
-          // JSON exam: collect from parent section and all subsections
-          studentAnswers = { ...(allStudentAnswers[examSection.type] || {}) };
-          
-          // Also collect answers from subsections
-          sectionSubsections.forEach((sub: any) => {
-            const subAnswers = allStudentAnswers[sub.type] || {};
-            studentAnswers = { ...studentAnswers, ...subAnswers };
-          });
-        }
         
         // Sort by order
-        allQuestions.sort((a: any, b: any) => a.order - b.order);
+        allQuestions.sort((a, b) => (a.q?.order ?? 0) - (b.q?.order ?? 0));
 
-        const questions = allQuestions.map((q: any) => {
-          const studentAnswer = studentAnswers[q.id];
+        const questions = allQuestions.map(({ q, sourceSectionType }) => {
+          const studentAnswer = attemptSection?.answers
+            ? (attemptSection.answers as Record<string, any>)[q.id]
+            : (allStudentAnswers[sourceSectionType] || {})[q.id];
           const answerKey = q.answerKey as any;
 
 

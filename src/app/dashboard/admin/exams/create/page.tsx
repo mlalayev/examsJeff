@@ -12,6 +12,11 @@ export default function CreateExamLandingPage() {
   const categories: ExamCategory[] = ["IELTS", "TOEFL", "SAT", "GENERAL_ENGLISH", "MATH", "KIDS"];
 
   const handleCategorySelect = (category: ExamCategory) => {
+    // IELTS has its own dedicated builder UI (keep legacy /create/ielts intact)
+    if (category === "IELTS") {
+      router.push("/dashboard/admin/exams/create/ielts-digital");
+      return;
+    }
     // SAT Digital has its own dedicated builder UI (keep legacy /create/sat intact)
     if (category === "SAT") {
       router.push("/dashboard/admin/exams/create/sat-digital");
