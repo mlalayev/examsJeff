@@ -165,25 +165,26 @@ function IeltsAudioPlayer({
   const [current, setCurrent] = useState(0);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const lastSavedSecondRef = useRef<number | null>(null);
+  const savedAtRef = useRef<number | null>(null);
+
+  const updateSavedAt = (time: number | null) => {
+    savedAtRef.current = time;
+    setSavedAt(time);
+  };
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const raw = localStorage.getItem(checkpointKey);
     const n = raw ? Number(raw) : NaN;
-    setSavedAt(Number.isFinite(n) && n > 0 ? n : null);
+    const saved = Number.isFinite(n) && n > 0 ? n : null;
+    updateSavedAt(saved);
+    lastSavedSecondRef.current = saved == null ? null : Math.floor(saved);
   }, [checkpointKey]);
 
   const toggle = () => {
     const audio = audioRef.current;
     if (!audio) return;
     if (audio.paused) {
-      // Playback automatically starts checkpointing from the current position.
-      const time = Math.max(0, audio.currentTime || 0);
-      if (typeof window !== "undefined") {
-        localStorage.setItem(checkpointKey, String(time));
-        setSavedAt(time);
-        lastSavedSecondRef.current = Math.floor(time);
-      }
       void audio.play();
     } else {
       audio.pause();
@@ -193,17 +194,29 @@ function IeltsAudioPlayer({
   const autoSaveCheckpoint = (time: number) => {
     if (typeof window === "undefined") return;
     const sec = Math.floor(Math.max(0, time));
+    const existing = savedAtRef.current;
+    if (existing != null && sec < Math.floor(existing)) return;
     if (lastSavedSecondRef.current === sec) return;
     lastSavedSecondRef.current = sec;
     localStorage.setItem(checkpointKey, String(time));
-    setSavedAt(time);
+    updateSavedAt(time);
   };
 
   const resumeCheckpoint = () => {
     const audio = audioRef.current;
-    if (!audio || savedAt == null) return;
-    audio.currentTime = savedAt;
-    setCurrent(savedAt);
+    if (!audio) return;
+    const raw = typeof window !== "undefined" ? localStorage.getItem(checkpointKey) : null;
+    const storedTime = raw ? Number(raw) : NaN;
+    const target =
+      Number.isFinite(storedTime) && storedTime > 0
+        ? storedTime
+        : savedAtRef.current;
+    if (target == null) return;
+    const next = duration > 0 ? Math.min(target, duration) : target;
+    audio.currentTime = next;
+    setCurrent(next);
+    updateSavedAt(next);
+    lastSavedSecondRef.current = Math.floor(next);
     void audio.play();
   };
 
@@ -239,7 +252,7 @@ function IeltsAudioPlayer({
               const next = Number(e.target.value);
               if (audioRef.current) audioRef.current.currentTime = next;
               setCurrent(next);
-              autoSaveCheckpoint(next);
+              if (playing) autoSaveCheckpoint(next);
             }}
             className="w-full accent-slate-900"
           />
@@ -254,7 +267,7 @@ function IeltsAudioPlayer({
             type="button"
             disabled={savedAt == null}
             onClick={resumeCheckpoint}
-            className="px-3 py-2 rounded-lg text-xs font-semibold border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40 whitespace-nowrap"
+            className="w-32 sm:w-36 px-3 py-2 rounded-lg text-xs font-semibold border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40 whitespace-nowrap text-center"
             title={savedAt == null ? "Playback time will be saved automatically after pressing play." : `Resume from ${formatTime(Math.floor(savedAt))}`}
           >
             {savedAt == null ? "Auto-save ready" : `Saved ${formatTime(Math.floor(savedAt))}`}
