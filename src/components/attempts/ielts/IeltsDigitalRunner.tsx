@@ -2,7 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, Clock, Save } from "lucide-react";
+import {
+  BookOpen,
+  Clock,
+  Headphones,
+  Mic,
+  Pause,
+  PenLine,
+  Play,
+  Save,
+  Volume2,
+} from "lucide-react";
 import FormattedText from "@/components/FormattedText";
 import QHtmlCss from "@/components/questions/QHtmlCss";
 import { QSpeakingRecording } from "@/components/questions/QSpeakingRecording";
@@ -54,6 +64,26 @@ function ieltsTimerKey(attemptId: string, sectionId: string) {
   return `ielts_digital_timer_${attemptId}_${sectionId}`;
 }
 
+function ieltsLockedSectionsKey(attemptId: string) {
+  return `ielts_digital_locked_sections_${attemptId}`;
+}
+
+function loadLockedSections(attemptId: string): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = localStorage.getItem(ieltsLockedSectionsKey(attemptId));
+    const parsed = raw ? JSON.parse(raw) : [];
+    return new Set(Array.isArray(parsed) ? parsed.filter((x) => typeof x === "string") : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function persistLockedSections(attemptId: string, ids: Set<string>) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(ieltsLockedSectionsKey(attemptId), JSON.stringify([...ids]));
+}
+
 function formatTime(seconds: number) {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
@@ -76,7 +106,14 @@ function partLabel(section: Section, part: number) {
 
 function filterQuestionsByPart(section: Section, part: number) {
   const prefix = section.type === "WRITING" ? `task${part}` : `part${part}`;
-  return (section.questions || []).filter((q) => q.id.includes(prefix));
+  const questions = section.questions || [];
+  const tagged = questions.filter((q) => q.id.includes(prefix));
+
+  // New IELTS questions are created with q-partX/q-taskX ids. If an older/imported
+  // exam has no part tags at all, show those questions in part 1 instead of hiding them.
+  const hasAnyPartTags = questions.some((q) => /q-(part|task)\d+/.test(q.id));
+  if (tagged.length > 0 || hasAnyPartTags) return tagged;
+  return part === 1 ? questions : [];
 }
 
 function getReadingPassage(section: Section, part: number) {
@@ -85,6 +122,88 @@ function getReadingPassage(section: Section, part: number) {
     return String(passage[`part${part}`] || "");
   }
   return typeof passage === "string" ? passage : "";
+}
+
+function sectionIcon(type: string) {
+  if (type === "LISTENING") return Headphones;
+  if (type === "READING") return BookOpen;
+  if (type === "WRITING") return PenLine;
+  if (type === "SPEAKING") return Mic;
+  return BookOpen;
+}
+
+function isQuestionAnswered(question: Question, value: any) {
+  if (value == null) return false;
+  if (question.qtype === "HTML_CSS") {
+    if (typeof value !== "object") return false;
+    return Object.values(value).some((v) => {
+      if (typeof v === "boolean") return v;
+      if (v == null) return false;
+      return String(v).trim().length > 0;
+    });
+  }
+  if (typeof value === "string") return value.trim().length > 0;
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === "object") return Object.keys(value).length > 0;
+  return true;
+}
+
+function IeltsAudioPlayer({ src }: { src: string }) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const [duration, setDuration] = useState(0);
+  const [current, setCurrent] = useState(0);
+
+  const toggle = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (audio.paused) {
+      void audio.play();
+    } else {
+      audio.pause();
+    }
+  };
+
+  return (
+    <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-sm px-4 py-3">
+      <audio
+        ref={audioRef}
+        src={src}
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onLoadedMetadata={(e) => setDuration(e.currentTarget.duration || 0)}
+        onTimeUpdate={(e) => setCurrent(e.currentTarget.currentTime || 0)}
+      />
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={toggle}
+          className="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center hover:bg-slate-800"
+        >
+          {playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
+        </button>
+        <div className="flex-1 min-w-0">
+          <input
+            type="range"
+            min={0}
+            max={duration || 0}
+            value={current}
+            onChange={(e) => {
+              const next = Number(e.target.value);
+              if (audioRef.current) audioRef.current.currentTime = next;
+              setCurrent(next);
+            }}
+            className="w-full accent-slate-900"
+          />
+          <div className="mt-1 flex items-center justify-between text-xs text-slate-500 tabular-nums">
+            <span>{formatTime(Math.floor(current))}</span>
+            <span>{duration ? formatTime(Math.floor(duration)) : "--:--"}</span>
+          </div>
+        </div>
+        <Volume2 className="w-4 h-4 text-slate-500" />
+      </div>
+    </div>
+  );
 }
 
 export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: Props) {
@@ -96,6 +215,8 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
   const [answers, setAnswers] = useState<Record<string, Record<string, any>>>({});
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [lockedSections, setLockedSections] = useState<Set<string>>(() => new Set());
+  const [pendingSectionId, setPendingSectionId] = useState<string | null>(null);
   const autosaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const answersRef = useRef(answers);
   answersRef.current = answers;
@@ -114,6 +235,16 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
   const activeSection = sections.find((s) => s.id === activeSectionId) || sections[0] || null;
   const activePart = activeSection ? parts[activeSection.id] || 1 : 1;
   const questions = activeSection ? filterQuestionsByPart(activeSection, activePart) : [];
+
+  const currentSectionStats = useMemo(() => {
+    if (!activeSection) return { answered: 0, unanswered: 0, total: 0 };
+    const sectionAnswers = answers[activeSection.id] || {};
+    const total = activeSection.questions.length;
+    const answered = activeSection.questions.filter((q) =>
+      isQuestionAnswered(q, sectionAnswers[q.id])
+    ).length;
+    return { answered, unanswered: Math.max(0, total - answered), total };
+  }, [activeSection, answers]);
 
   const saveSection = useCallback(
     async (section: Section, sectionAnswers: Record<string, any>) => {
@@ -172,11 +303,15 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
 
       setData(json);
       setAnswers(loaded);
+      const locked = loadLockedSections(attemptId);
+      setLockedSections(locked);
       if (Object.keys(loaded).length > 0 && typeof window !== "undefined") {
         localStorage.setItem(answersStorageKey(attemptId), JSON.stringify(loaded));
       }
 
-      const first = (json.sections || []).sort((a, b) => a.order - b.order)[0];
+      const first = (json.sections || [])
+        .sort((a, b) => a.order - b.order)
+        .find((section) => !locked.has(section.id)) || (json.sections || []).sort((a, b) => a.order - b.order)[0];
       setActiveSectionId(first?.id || "");
       const initialParts: Record<string, number> = {};
       for (const section of json.sections || []) initialParts[section.id] = 1;
@@ -260,6 +395,7 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
       if (!res.ok) throw new Error(json.error || "Failed to submit");
       if (typeof window !== "undefined") {
         localStorage.removeItem(answersStorageKey(attemptId));
+        localStorage.removeItem(ieltsLockedSectionsKey(attemptId));
         for (const section of sections) {
           localStorage.removeItem(ieltsTimerKey(attemptId, section.id));
         }
@@ -272,6 +408,27 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
     }
   };
 
+  const requestSectionChange = (sectionId: string) => {
+    if (!activeSection || sectionId === activeSection.id) return;
+    if (lockedSections.has(sectionId)) {
+      alert("This section has already been submitted and cannot be reopened.");
+      return;
+    }
+    setPendingSectionId(sectionId);
+  };
+
+  const confirmSectionChange = async () => {
+    if (!activeSection || !pendingSectionId) return;
+    await saveSection(activeSection, answersRef.current[activeSection.id] || {});
+    setLockedSections((prev) => {
+      const next = new Set([...prev, activeSection.id]);
+      persistLockedSections(attemptId, next);
+      return next;
+    });
+    setActiveSectionId(pendingSectionId);
+    setPendingSectionId(null);
+  };
+
   if (loading || !data || !activeSection) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white text-slate-600">
@@ -279,6 +436,10 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
       </div>
     );
   }
+
+  const pendingSection = pendingSectionId
+    ? sections.find((section) => section.id === pendingSectionId)
+    : null;
 
   const renderLeftPanel = () => {
     if (activeSection.type === "LISTENING") {
@@ -288,7 +449,7 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
             Part {activePart}
           </h2>
           {activeSection.audio ? (
-            <audio controls src={activeSection.audio} className="w-full max-w-sm" />
+            <IeltsAudioPlayer src={activeSection.audio} />
           ) : (
             <div className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md p-3">
               No audio uploaded for this listening section.
@@ -453,19 +614,29 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
             <Clock className="w-4 h-4" />
             {secondsLeft == null ? "--:--" : formatTime(secondsLeft)}
           </div>
-          {sections.map((section) => (
-            <button
-              key={section.id}
-              onClick={() => setActiveSectionId(section.id)}
-              className={`px-3 py-2 text-sm rounded-md border ${
-                activeSection.id === section.id
-                  ? "bg-blue-600 border-blue-600 text-white"
-                  : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
-              }`}
-            >
-              {section.title}
-            </button>
-          ))}
+          {sections.map((section) => {
+            const Icon = sectionIcon(section.type);
+            const isActive = activeSection.id === section.id;
+            const isLocked = lockedSections.has(section.id);
+            return (
+              <button
+                key={section.id}
+                onClick={() => requestSectionChange(section.id)}
+                title={section.title}
+                aria-label={section.title}
+                disabled={isLocked && !isActive}
+                className={`w-10 h-10 rounded-md border flex items-center justify-center transition ${
+                  isActive
+                    ? "bg-blue-600 border-blue-600 text-white"
+                    : isLocked
+                      ? "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed"
+                      : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                <Icon className="w-5 h-5" />
+              </button>
+            );
+          })}
           <button
             onClick={() => {
               if (confirm("Submit the IELTS exam?")) void submitExam();
@@ -477,6 +648,62 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
           </button>
         </div>
       </footer>
+
+      {pendingSection && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 border border-slate-200">
+            <h3 className="text-lg font-semibold text-slate-900 mb-2">
+              Move to {pendingSection.title}?
+            </h3>
+            <p className="text-sm text-slate-600 mb-5">
+              Before leaving <span className="font-medium">{activeSection.title}</span>, please review your work carefully.
+              Once you continue, this section will be submitted and locked, and you will not be able to return to it.
+            </p>
+
+            <div className="grid grid-cols-2 gap-3 mb-5">
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
+                <div className="text-xs font-medium text-emerald-700 uppercase tracking-wide">
+                  Answered
+                </div>
+                <div className="mt-1 text-2xl font-semibold text-emerald-900 tabular-nums">
+                  {currentSectionStats.answered}
+                </div>
+              </div>
+              <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3">
+                <div className="text-xs font-medium text-rose-700 uppercase tracking-wide">
+                  Unanswered
+                </div>
+                <div className="mt-1 text-2xl font-semibold text-rose-900 tabular-nums">
+                  {currentSectionStats.unanswered}
+                </div>
+              </div>
+            </div>
+
+            {currentSectionStats.unanswered > 0 && (
+              <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                You still have unanswered questions in this section. We recommend double-checking them before continuing.
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setPendingSectionId(null)}
+                className="px-4 py-2 text-sm font-medium rounded-lg border border-slate-300 text-slate-800 hover:bg-slate-50"
+              >
+                Review this section
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmSectionChange()}
+                className="px-4 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+              >
+                Continue and lock section
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
