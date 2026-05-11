@@ -33,6 +33,22 @@ const CONTEXT_SPECIFIC_TYPES: Partial<Record<QuestionType, (ctx: QuestionTypeCon
  */
 export function getAllowedQuestionTypes(context: QuestionTypeContext): QuestionType[] {
   const { sectionType, examCategory } = context;
+
+  // IELTS Digital builder rules:
+  // - Listening/Reading use one interactive HTML/CSS question style.
+  // - Writing is essay only.
+  // - Speaking is speaking-recording only.
+  if (examCategory === "IELTS") {
+    if (sectionType === "LISTENING" || sectionType === "READING") {
+      return ["HTML_CSS"];
+    }
+    if (sectionType === "WRITING") {
+      return ["ESSAY"];
+    }
+    if (sectionType === "SPEAKING") {
+      return ["SPEAKING_RECORDING"];
+    }
+  }
   
   // If section has restrictions, use those
   if (QUESTION_TYPE_RESTRICTIONS[sectionType]) {

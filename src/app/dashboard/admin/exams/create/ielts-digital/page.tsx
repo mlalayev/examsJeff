@@ -21,6 +21,7 @@ import { createQuestionDraft } from "@/components/admin/exams/create/addQuestion
 import { validateExamInfo } from "@/components/admin/exams/create/examValidation";
 import { buildExamPayload } from "@/components/admin/exams/create/examSerializer";
 import { getGroupedQuestionTypes } from "@/components/admin/exams/create/questionTypeRules";
+import { filterQuestionsByPart } from "@/components/admin/exams/create/ieltsHelpers";
 
 const IELTS_CATEGORY: ExamCategory = "IELTS";
 
@@ -99,6 +100,9 @@ export default function CreateIELTSDigitalExamPage() {
   );
 
   const currentPart = parts[activeTab];
+  const currentPartQuestions = currentSection
+    ? filterQuestionsByPart(currentSection.questions, currentSection.type, currentPart)
+    : [];
 
   const updateSection = (sectionType: SectionType, updater: (s: Section) => Section) => {
     setSections((prev) => prev.map((s) => (s.type === sectionType ? updater(s) : s)));
@@ -346,7 +350,7 @@ export default function CreateIELTSDigitalExamPage() {
                   <h2 className="text-lg font-semibold text-gray-900">{currentSection.title}</h2>
                   <p className="text-sm text-gray-500 mt-0.5">
                     {partLabels(currentSection.type).find((p) => p.part === currentPart)?.label} · Questions:{" "}
-                    {currentSection.questions.length}
+                    {currentPartQuestions.length}
                   </p>
                 </div>
                 <button
