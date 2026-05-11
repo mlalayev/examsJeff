@@ -214,53 +214,57 @@ function IeltsAudioPlayer({
         ? storedTime
         : savedAtRef.current;
     
-    console.log("Resume checkpoint:", {
-      raw,
-      storedTime,
-      savedAtRef: savedAtRef.current,
-      target,
-      currentTime: audio.currentTime,
-      duration: audio.duration,
-      paused: audio.paused
-    });
+    if (target == null || target <= 0) return;
     
-    if (target == null || target <= 0) {
-      console.log("Invalid target, aborting");
+    // Check if audio duration is loaded and target is valid
+    if (!audio.duration || audio.duration <= 0) {
+      alert("Audio is still loading. Please wait a moment and try again.");
+      return;
+    }
+    
+    if (target > audio.duration) {
+      alert(`Saved time ${formatTime(Math.floor(target))} is beyond audio duration. Starting from beginning.`);
+      audio.currentTime = 0;
+      setCurrent(0);
+      void audio.play();
       return;
     }
     
     // Pause audio first to prevent interference
-    const wasPlaying = !audio.paused;
-    if (wasPlaying) {
+    if (!audio.paused) {
       audio.pause();
     }
     
     // Block auto-save temporarily during manual seek
-    const seeking = true;
     const originalBlock = lastSavedSecondRef.current;
     lastSavedSecondRef.current = Math.floor(target);
     
-    // Seek to target
-    audio.currentTime = target;
-    setCurrent(target);
-    updateSavedAt(target);
+    // Use seeked event to ensure seek completes before playing
+    const onSeeked = () => {
+      audio.removeEventListener("seeked", onSeeked);
+      setCurrent(audio.currentTime);
+      updateSavedAt(audio.currentTime);
+      void audio.play();
+      
+      // Restore auto-save after seek completes
+      setTimeout(() => {
+        if (lastSavedSecondRef.current === Math.floor(target)) {
+          lastSavedSecondRef.current = originalBlock;
+        }
+      }, 200);
+    };
     
-    console.log("After seek:", {
-      audioCurrentTime: audio.currentTime,
-      target
-    });
+    audio.addEventListener("seeked", onSeeked);
     
-    // Start playing
-    void audio.play().then(() => {
-      console.log("Playing from:", audio.currentTime);
-    });
-    
-    // Restore auto-save after seek completes
-    setTimeout(() => {
-      if (lastSavedSecondRef.current === Math.floor(target)) {
-        lastSavedSecondRef.current = originalBlock;
-      }
-    }, 200);
+    // Perform the seek
+    try {
+      audio.currentTime = target;
+      setCurrent(target);
+    } catch (e) {
+      audio.removeEventListener("seeked", onSeeked);
+      alert("Failed to seek to saved position. The audio may not be fully loaded yet.");
+      lastSavedSecondRef.current = originalBlock;
+    }
   };
 
   return (
