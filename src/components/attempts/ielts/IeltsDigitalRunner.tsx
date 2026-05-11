@@ -205,19 +205,62 @@ function IeltsAudioPlayer({
   const resumeCheckpoint = () => {
     const audio = audioRef.current;
     if (!audio) return;
+    
+    // Read the saved time from localStorage
     const raw = typeof window !== "undefined" ? localStorage.getItem(checkpointKey) : null;
     const storedTime = raw ? Number(raw) : NaN;
     const target =
       Number.isFinite(storedTime) && storedTime > 0
         ? storedTime
         : savedAtRef.current;
-    if (target == null) return;
-    const next = duration > 0 ? Math.min(target, duration) : target;
-    audio.currentTime = next;
-    setCurrent(next);
-    updateSavedAt(next);
-    lastSavedSecondRef.current = Math.floor(next);
-    void audio.play();
+    
+    console.log("Resume checkpoint:", {
+      raw,
+      storedTime,
+      savedAtRef: savedAtRef.current,
+      target,
+      currentTime: audio.currentTime,
+      duration: audio.duration,
+      paused: audio.paused
+    });
+    
+    if (target == null || target <= 0) {
+      console.log("Invalid target, aborting");
+      return;
+    }
+    
+    // Pause audio first to prevent interference
+    const wasPlaying = !audio.paused;
+    if (wasPlaying) {
+      audio.pause();
+    }
+    
+    // Block auto-save temporarily during manual seek
+    const seeking = true;
+    const originalBlock = lastSavedSecondRef.current;
+    lastSavedSecondRef.current = Math.floor(target);
+    
+    // Seek to target
+    audio.currentTime = target;
+    setCurrent(target);
+    updateSavedAt(target);
+    
+    console.log("After seek:", {
+      audioCurrentTime: audio.currentTime,
+      target
+    });
+    
+    // Start playing
+    void audio.play().then(() => {
+      console.log("Playing from:", audio.currentTime);
+    });
+    
+    // Restore auto-save after seek completes
+    setTimeout(() => {
+      if (lastSavedSecondRef.current === Math.floor(target)) {
+        lastSavedSecondRef.current = originalBlock;
+      }
+    }, 200);
   };
 
   return (
