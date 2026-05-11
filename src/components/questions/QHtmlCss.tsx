@@ -254,7 +254,7 @@ export default function QHtmlCss({ question, value, onChange, readOnly, bare = f
           ref={iframeRef}
           srcDoc={fullHtml}
           title="Interactive HTML Question"
-          className="w-full h-full min-h-[calc(100vh-150px)] border-0"
+          className="w-full h-full border-0"
           sandbox="allow-same-origin"
         />
       );

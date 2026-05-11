@@ -64,6 +64,10 @@ function ieltsTimerKey(attemptId: string, sectionId: string) {
   return `ielts_digital_timer_${attemptId}_${sectionId}`;
 }
 
+function ieltsAudioCheckpointKey(attemptId: string, sectionId: string) {
+  return `ielts_audio_checkpoint_${attemptId}_${sectionId}`;
+}
+
 function ieltsLockedSectionsKey(attemptId: string) {
   return `ielts_digital_locked_sections_${attemptId}`;
 }
@@ -148,11 +152,25 @@ function isQuestionAnswered(question: Question, value: any) {
   return true;
 }
 
-function IeltsAudioPlayer({ src }: { src: string }) {
+function IeltsAudioPlayer({
+  src,
+  checkpointKey,
+}: {
+  src: string;
+  checkpointKey: string;
+}) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [current, setCurrent] = useState(0);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = localStorage.getItem(checkpointKey);
+    const n = raw ? Number(raw) : NaN;
+    setSavedAt(Number.isFinite(n) && n > 0 ? n : null);
+  }, [checkpointKey]);
 
   const toggle = () => {
     const audio = audioRef.current;
@@ -164,8 +182,24 @@ function IeltsAudioPlayer({ src }: { src: string }) {
     }
   };
 
+  const saveCheckpoint = () => {
+    const audio = audioRef.current;
+    if (!audio || typeof window === "undefined") return;
+    const time = Math.max(0, audio.currentTime || 0);
+    localStorage.setItem(checkpointKey, String(time));
+    setSavedAt(time);
+  };
+
+  const resumeCheckpoint = () => {
+    const audio = audioRef.current;
+    if (!audio || savedAt == null) return;
+    audio.currentTime = savedAt;
+    setCurrent(savedAt);
+    void audio.play();
+  };
+
   return (
-    <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-sm px-4 py-3">
+    <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white shadow-sm px-4 py-3">
       <audio
         ref={audioRef}
         src={src}
@@ -201,6 +235,24 @@ function IeltsAudioPlayer({ src }: { src: string }) {
           </div>
         </div>
         <Volume2 className="w-4 h-4 text-slate-500" />
+        <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
+          <button
+            type="button"
+            onClick={saveCheckpoint}
+            className="px-3 py-2 rounded-lg text-xs font-semibold bg-slate-900 text-white hover:bg-slate-800"
+          >
+            Save time
+          </button>
+          <button
+            type="button"
+            disabled={savedAt == null}
+            onClick={resumeCheckpoint}
+            className="px-3 py-2 rounded-lg text-xs font-semibold border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+            title={savedAt == null ? "No saved time yet" : `Resume from ${formatTime(Math.floor(savedAt))}`}
+          >
+            Resume
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -398,6 +450,7 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
         localStorage.removeItem(ieltsLockedSectionsKey(attemptId));
         for (const section of sections) {
           localStorage.removeItem(ieltsTimerKey(attemptId, section.id));
+          localStorage.removeItem(ieltsAudioCheckpointKey(attemptId, section.id));
         }
       }
       router.replace(`/attempts/${attemptId}/results`);
@@ -449,18 +502,15 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
             Part {activePart}
           </h2>
           {activeSection.audio ? (
-            <IeltsAudioPlayer src={activeSection.audio} />
+            <IeltsAudioPlayer
+              src={activeSection.audio}
+              checkpointKey={ieltsAudioCheckpointKey(attemptId, activeSection.id)}
+            />
           ) : (
             <div className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md p-3">
               No audio uploaded for this listening section.
             </div>
           )}
-          <details className="mt-6 text-sm">
-            <summary className="font-medium cursor-pointer">Audioscript</summary>
-            <p className="mt-3 text-slate-500 whitespace-pre-wrap">
-              {activeSection.introduction || "No audioscript added."}
-            </p>
-          </details>
         </div>
       );
     }
@@ -546,7 +596,7 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col text-slate-900">
+    <div className="h-screen overflow-hidden bg-white flex flex-col text-slate-900">
       <header className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
         <div>
           <h1 className="text-sm font-semibold text-slate-900">{data.examTitle}</h1>
@@ -560,12 +610,12 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
         </div>
       </header>
 
-      <main className="flex-1 min-h-0 grid grid-cols-[minmax(280px,38%)_1fr]">
-        <aside className="border-r border-slate-200 bg-white min-h-0 overflow-y-auto">
+      <main className="flex-1 min-h-0 overflow-hidden grid grid-cols-[minmax(280px,38%)_1fr]">
+        <aside className="border-r border-slate-200 bg-white min-h-0 overflow-hidden">
           {renderLeftPanel()}
         </aside>
 
-        <section className="min-h-0 overflow-y-auto p-0">
+        <section className="min-h-0 overflow-hidden p-0">
           {questions.length === 0 ? (
             <div className="h-full flex items-center justify-center text-sm text-slate-500">
               No question in this part yet.
@@ -575,7 +625,7 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
               {renderQuestion(questions.find((q) => q.qtype === "HTML_CSS") || questions[0])}
             </div>
           ) : (
-            <div className="max-w-[980px] mx-auto p-6 space-y-6">
+            <div className="h-full overflow-y-auto max-w-[980px] mx-auto p-6 space-y-6">
               {questions.map((q) => renderQuestion(q))}
             </div>
           )}
