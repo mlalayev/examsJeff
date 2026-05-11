@@ -118,6 +118,23 @@ export default function CreateIELTSDigitalExamPage() {
 
   const handleAddQuestion = (qtype: QuestionType) => {
     if (!currentSection) return;
+
+    if (
+      (currentSection.type === "LISTENING" || currentSection.type === "READING") &&
+      qtype === "HTML_CSS" &&
+      filterQuestionsByPart(currentSection.questions, currentSection.type, currentPart).some(
+        (q) => q.qtype === "HTML_CSS"
+      )
+    ) {
+      showAlert(
+        "Question already exists",
+        `${partLabels(currentSection.type).find((p) => p.part === currentPart)?.label} already has its HTML/CSS question. Edit the existing question instead of adding another one.`,
+        "warning"
+      );
+      setShowQuestionTypeModal(false);
+      return;
+    }
+
     const result = createQuestionDraft({
       questionType: qtype,
       examCategory: IELTS_CATEGORY,

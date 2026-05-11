@@ -16,6 +16,7 @@ interface QHtmlCssProps {
   value: any;
   onChange: (value: any) => void;
   readOnly: boolean;
+  bare?: boolean;
 }
 
 /** Push answer map into iframe fields (no listener churn). */
@@ -39,7 +40,7 @@ function applyAnswersToIframeDoc(
   });
 }
 
-export default function QHtmlCss({ question, value, onChange, readOnly }: QHtmlCssProps) {
+export default function QHtmlCss({ question, value, onChange, readOnly, bare = false }: QHtmlCssProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [studentAnswers, setStudentAnswers] = useState<Record<string, any>>(value || {});
   const studentAnswersRef = useRef(studentAnswers);
@@ -246,6 +247,18 @@ export default function QHtmlCss({ question, value, onChange, readOnly }: QHtmlC
       </body>
       </html>
     `;
+
+    if (bare) {
+      return (
+        <iframe
+          ref={iframeRef}
+          srcDoc={fullHtml}
+          title="Interactive HTML Question"
+          className="w-full h-full min-h-[calc(100vh-150px)] border-0"
+          sandbox="allow-same-origin"
+        />
+      );
+    }
 
     return (
       <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">

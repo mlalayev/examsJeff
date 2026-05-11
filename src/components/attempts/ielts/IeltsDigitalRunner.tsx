@@ -500,6 +500,7 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
           value={value || {}}
           onChange={(v) => setAnswer(question.id, v)}
           readOnly={false}
+          bare={activeSection.type === "LISTENING" || activeSection.type === "READING"}
         />
       );
     }
@@ -564,21 +565,20 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
           {renderLeftPanel()}
         </aside>
 
-        <section className="min-h-0 overflow-y-auto p-6">
-          <div className="max-w-[980px] mx-auto">
-            <div className="text-xs font-semibold text-slate-900 mb-4">
-              Questions {questions.length > 0 ? `1-${questions.length}` : "0"}
+        <section className="min-h-0 overflow-y-auto p-0">
+          {questions.length === 0 ? (
+            <div className="h-full flex items-center justify-center text-sm text-slate-500">
+              No question in this part yet.
             </div>
-            {questions.length === 0 ? (
-              <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-500">
-                No questions in this part yet.
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {questions.map((q) => renderQuestion(q))}
-              </div>
-            )}
-          </div>
+          ) : activeSection.type === "LISTENING" || activeSection.type === "READING" ? (
+            <div className="h-full">
+              {renderQuestion(questions.find((q) => q.qtype === "HTML_CSS") || questions[0])}
+            </div>
+          ) : (
+            <div className="max-w-[980px] mx-auto p-6 space-y-6">
+              {questions.map((q) => renderQuestion(q))}
+            </div>
+          )}
         </section>
       </main>
 
