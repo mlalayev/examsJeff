@@ -6,6 +6,7 @@ import {
   BookOpen,
   Clock,
   Headphones,
+  Loader2,
   Mic,
   Pause,
   PenLine,
@@ -113,11 +114,19 @@ function filterQuestionsByPart(section: Section, part: number) {
   const questions = section.questions || [];
   const tagged = questions.filter((q) => q.id.includes(prefix));
 
-  // New IELTS questions are created with q-partX/q-taskX ids. If an older/imported
-  // exam has no part tags at all, show those questions in part 1 instead of hiding them.
+  // If we found questions with this part tag, return them
+  if (tagged.length > 0) return tagged;
+
+  // If no questions found for this part, check if ANY questions have part tags
+  // If no part tags exist at all (old exams), show all questions in part 1
   const hasAnyPartTags = questions.some((q) => /q-(part|task)\d+/.test(q.id));
-  if (tagged.length > 0 || hasAnyPartTags) return tagged;
-  return part === 1 ? questions : [];
+  if (!hasAnyPartTags && part === 1) {
+    // Legacy exam with no part tags - show all questions in part 1
+    return questions;
+  }
+  
+  // No questions for this part
+  return [];
 }
 
 function getReadingPassage(section: Section, part: number) {
@@ -164,8 +173,11 @@ function IeltsAudioPlayer({
   const [duration, setDuration] = useState(0);
   const [current, setCurrent] = useState(0);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [buffering, setBuffering] = useState(false);
+  const [bufferProgress, setBufferProgress] = useState(0);
   const lastSavedSecondRef = useRef<number | null>(null);
   const savedAtRef = useRef<number | null>(null);
+  const bufferCheckInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const updateSavedAt = (time: number | null) => {
     savedAtRef.current = time;
@@ -180,6 +192,15 @@ function IeltsAudioPlayer({
     updateSavedAt(saved);
     lastSavedSecondRef.current = saved == null ? null : Math.floor(saved);
   }, [checkpointKey]);
+
+  // Cleanup buffer check interval on unmount
+  useEffect(() => {
+    return () => {
+      if (bufferCheckInterval.current) {
+        clearInterval(bufferCheckInterval.current);
+      }
+    };
+  }, []);
 
   const toggle = () => {
     const audio = audioRef.current;
@@ -214,80 +235,123 @@ function IeltsAudioPlayer({
         ? storedTime
         : savedAtRef.current;
     
-    console.log("=== RESUME CHECKPOINT DEBUG ===");
-    console.log("Raw from localStorage:", raw);
-    console.log("Parsed target:", target);
-    console.log("Audio duration:", audio.duration);
-    console.log("Audio readyState:", audio.readyState);
-    console.log("Audio paused:", audio.paused);
-    console.log("Current time before:", audio.currentTime);
-    
-    if (target == null || target <= 0) {
-      console.log("Invalid target, aborting");
-      return;
-    }
+    if (target == null || target <= 0) return;
     
     // Check if audio duration is loaded and target is valid
     if (!audio.duration || audio.duration <= 0) {
-      console.log("Duration not loaded");
       alert("Audio is still loading. Please wait a moment and try again.");
       return;
     }
     
     if (target > audio.duration) {
-      console.log("Target exceeds duration");
-      alert(`Saved time ${formatTime(Math.floor(target))} is beyond audio duration. Starting from beginning.`);
-      audio.currentTime = 0;
-      setCurrent(0);
-      void audio.play();
+      alert(`Saved time ${formatTime(Math.floor(target))} is beyond audio duration.`);
       return;
     }
     
-    // Check seekable ranges
-    let isSeekable = false;
+    // Check if already buffered
+    let isBuffered = false;
     if (audio.seekable.length > 0) {
       const seekEnd = audio.seekable.end(audio.seekable.length - 1);
-      console.log("Seekable ranges:", {
-        start: audio.seekable.start(0),
-        end: seekEnd,
-        target,
-        isWithinRange: target <= seekEnd
-      });
-      isSeekable = seekEnd > 10 && target <= seekEnd; // At least 10 seconds buffered
+      isBuffered = seekEnd >= target;
     }
     
-    console.log("Is seekable:", isSeekable);
+    if (isBuffered) {
+      // Already buffered, seek immediately
+      performSeek(target);
+    } else {
+      // Need to buffer first
+      startBufferingForSeek(target);
+    }
+  };
+  
+  const startBufferingForSeek = (target: number) => {
+    const audio = audioRef.current;
+    if (!audio) return;
     
-    // If not seekable yet, try anyway (browser might auto-buffer)
+    setBuffering(true);
+    setBufferProgress(0);
     
-    // Pause audio first to prevent interference
-    const wasPlaying = !audio.paused;
-    if (wasPlaying) {
+    // Pause current playback
+    if (!audio.paused) {
       audio.pause();
-      console.log("Paused audio");
     }
     
-    // Block auto-save temporarily during manual seek
+    // Force load the audio
+    audio.load();
+    
+    // Monitor buffer progress
+    let attempts = 0;
+    const maxAttempts = 50; // 10 seconds max wait (50 * 200ms)
+    
+    if (bufferCheckInterval.current) {
+      clearInterval(bufferCheckInterval.current);
+    }
+    
+    bufferCheckInterval.current = setInterval(() => {
+      attempts++;
+      
+      if (!audio) {
+        clearInterval(bufferCheckInterval.current!);
+        setBuffering(false);
+        return;
+      }
+      
+      // Check seekable range
+      let seekEnd = 0;
+      if (audio.seekable.length > 0) {
+        seekEnd = audio.seekable.end(audio.seekable.length - 1);
+      }
+      
+      const progress = audio.duration > 0 ? (seekEnd / audio.duration) * 100 : 0;
+      setBufferProgress(Math.min(progress, 99));
+      
+      // Check if buffered enough
+      if (seekEnd >= target) {
+        // Success! Buffered enough
+        clearInterval(bufferCheckInterval.current!);
+        setBuffering(false);
+        setBufferProgress(0);
+        performSeek(target);
+      } else if (attempts >= maxAttempts) {
+        // Timeout - try anyway
+        clearInterval(bufferCheckInterval.current!);
+        setBuffering(false);
+        setBufferProgress(0);
+        alert(
+          `Buffering timeout. The audio will start from the beginning.\n\n` +
+          `Tip: Let the audio play for a few minutes to buffer, then try resuming.`
+        );
+        audio.currentTime = 0;
+        setCurrent(0);
+        void audio.play();
+      }
+    }, 200);
+  };
+  
+  const performSeek = (target: number) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    
     const originalBlock = lastSavedSecondRef.current;
     lastSavedSecondRef.current = Math.floor(target);
     
-    // Use seeked event to ensure seek completes before playing
+    // Pause if playing
+    if (!audio.paused) {
+      audio.pause();
+    }
+    
     let seeked = false;
     const onSeeked = () => {
       if (seeked) return;
       seeked = true;
       audio.removeEventListener("seeked", onSeeked);
       const actualTime = audio.currentTime;
-      console.log("Seeked event fired, currentTime:", actualTime);
       
       // Check if seek actually worked
       if (Math.abs(actualTime - target) > 2) {
-        console.log("Seek failed - audio stayed at:", actualTime, "target was:", target);
-        // Seek failed - audio server doesn't support range requests
         alert(
-          `Unable to jump to saved time ${formatTime(Math.floor(target))}.\n\n` +
-          `This happens when the audio file hasn't buffered that position yet. ` +
-          `The audio will continue playing from the current position (${formatTime(Math.floor(actualTime))}).`
+          `Unable to jump to ${formatTime(Math.floor(target))}. ` +
+          `The audio server doesn't support seeking. Playing from ${formatTime(Math.floor(actualTime))}.`
         );
       }
       
@@ -295,11 +359,8 @@ function IeltsAudioPlayer({
       if (actualTime > 1) {
         updateSavedAt(actualTime);
       }
-      void audio.play().then(() => {
-        console.log("Playing from:", audio.currentTime);
-      });
+      void audio.play();
       
-      // Restore auto-save after seek completes
       setTimeout(() => {
         if (lastSavedSecondRef.current === Math.floor(target)) {
           lastSavedSecondRef.current = originalBlock;
@@ -307,27 +368,21 @@ function IeltsAudioPlayer({
       }, 200);
     };
     
-    // Timeout fallback in case seeked event doesn't fire
     const timeout = setTimeout(() => {
       if (!seeked) {
-        console.log("Seeked event timeout, forcing play");
         onSeeked();
       }
     }, 1000);
     
     audio.addEventListener("seeked", onSeeked);
     
-    // Perform the seek
     try {
-      console.log("Setting currentTime to:", target);
       audio.currentTime = target;
-      console.log("currentTime after set:", audio.currentTime);
       setCurrent(target);
     } catch (e) {
-      console.error("Seek failed:", e);
       clearTimeout(timeout);
       audio.removeEventListener("seeked", onSeeked);
-      alert("Failed to seek to saved position. The audio may not be fully loaded yet.");
+      alert("Failed to seek. Please try again.");
       lastSavedSecondRef.current = originalBlock;
     }
   };
@@ -379,12 +434,27 @@ function IeltsAudioPlayer({
           <Volume2 className="w-4 h-4 text-slate-500 hidden sm:block" />
           <button
             type="button"
-            disabled={savedAt == null}
+            disabled={savedAt == null || buffering}
             onClick={resumeCheckpoint}
-            className="w-32 sm:w-36 px-3 py-2 rounded-lg text-xs font-semibold border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40 whitespace-nowrap text-center"
-            title={savedAt == null ? "Playback time will be saved automatically after pressing play." : `Resume from ${formatTime(Math.floor(savedAt))}`}
+            className="w-32 sm:w-36 px-3 py-2 rounded-lg text-xs font-semibold border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40 whitespace-nowrap text-center flex items-center justify-center gap-2"
+            title={
+              buffering
+                ? `Buffering audio... ${Math.floor(bufferProgress)}%`
+                : savedAt == null
+                  ? "Playback time will be saved automatically after pressing play."
+                  : `Resume from ${formatTime(Math.floor(savedAt))}`
+            }
           >
-            {savedAt == null ? "Auto-save ready" : `Saved ${formatTime(Math.floor(savedAt))}`}
+            {buffering ? (
+              <>
+                <Loader2 className="w-3 h-3 animate-spin" />
+                {Math.floor(bufferProgress)}%
+              </>
+            ) : savedAt == null ? (
+              "Auto-save ready"
+            ) : (
+              `Saved ${formatTime(Math.floor(savedAt))}`
+            )}
           </button>
         </div>
       </div>
