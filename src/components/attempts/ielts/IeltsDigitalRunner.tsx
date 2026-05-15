@@ -113,34 +113,27 @@ function filterQuestionsByPart(section: Section, part: number) {
   const prefix = section.type === "WRITING" ? `task${part}` : `part${part}`;
   const questions = section.questions || [];
   
-  console.log("=== FILTER QUESTIONS DEBUG ===");
-  console.log("Section type:", section.type);
-  console.log("Looking for part:", part);
-  console.log("Prefix:", prefix);
-  console.log("All question IDs:", questions.map(q => q.id));
-  
   const tagged = questions.filter((q) => q.id.includes(prefix));
-  console.log("Filtered questions:", tagged.map(q => q.id));
 
   // If we found questions with this part tag, return them
   if (tagged.length > 0) {
-    console.log("Found", tagged.length, "questions for", prefix);
     return tagged;
   }
 
-  // If no questions found for this part, check if ANY questions have part tags
-  // If no part tags exist at all (old exams), show all questions in part 1
+  // Check if ANY questions have part tags
   const hasAnyPartTags = questions.some((q) => /q-(part|task)\d+/.test(q.id));
-  console.log("Has any part tags:", hasAnyPartTags);
   
-  if (!hasAnyPartTags && part === 1) {
-    // Legacy exam with no part tags - show all questions in part 1
-    console.log("Legacy mode: showing all questions in part 1");
-    return questions;
+  // Legacy exam with no part tags - distribute questions by order across parts
+  if (!hasAnyPartTags) {
+    const totalParts = sectionPartCount(section);
+    const questionsPerPart = Math.ceil(questions.length / totalParts);
+    const startIdx = (part - 1) * questionsPerPart;
+    const endIdx = startIdx + questionsPerPart;
+    
+    return questions.slice(startIdx, endIdx);
   }
   
   // No questions for this part
-  console.log("No questions found for", prefix);
   return [];
 }
 

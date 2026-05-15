@@ -5,6 +5,7 @@ import { z } from "zod";
 import { validateIELTSListeningUniqueness, sortIELTSSections } from "@/components/admin/exams/create/constants";
 
 const questionSchema = z.object({
+  id: z.string().optional(), // Allow custom IDs (especially for IELTS part-tagged questions)
   qtype: z.enum(["MCQ", "ORDER", "DND_MATCH", "TF", "TF_NG", "MCQ_SINGLE", "MCQ_MULTI", "SELECT", "GAP", "ORDER_SENTENCE", "DND_GAP", "SHORT_TEXT", "ESSAY", "INLINE_SELECT", "FILL_IN_BLANK", "SPEAKING_RECORDING", "IMAGE_INTERACTIVE", "HTML_CSS"]),
   order: z.number(),
   prompt: z.any(),
@@ -177,6 +178,7 @@ export async function POST(request: Request) {
               order: Number(section.order), // Ensure it's a number
               questions: {
                 create: (section.questions || []).map((q) => ({
+                  ...(q.id ? { id: q.id } : {}), // Use custom ID if provided (for IELTS parts)
                   qtype: q.qtype,
                   order: q.order,
                   prompt: {
@@ -254,6 +256,7 @@ export async function POST(request: Request) {
               order: subsection.order,
               questions: {
                 create: subsection.questions?.map((q) => ({
+                  ...(q.id ? { id: q.id } : {}), // Use custom ID if provided (for IELTS parts)
                   qtype: q.qtype,
                   order: q.order,
                   prompt: {

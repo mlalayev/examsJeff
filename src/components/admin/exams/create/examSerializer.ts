@@ -21,6 +21,7 @@ export interface FlattenedSection {
  * Serialized question for API
  */
 export interface SerializedQuestion {
+  id?: string; // Include custom ID for IELTS part-tagged questions
   qtype: string;
   order: number;
   prompt: any;
@@ -131,6 +132,7 @@ function serializeQuestion(question: Question): SerializedQuestion {
   }
   
   return {
+    id: question.id, // Preserve custom ID (important for IELTS part-tagged questions)
     qtype: question.qtype,
     order: question.order,
     prompt: serializedPrompt,
