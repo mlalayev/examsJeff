@@ -16,8 +16,16 @@ import {
 } from "lucide-react";
 import FormattedText from "@/components/FormattedText";
 import QHtmlCss from "@/components/questions/QHtmlCss";
+import { IELTSAudioPlayer } from "@/components/audio/IELTSAudioPlayer";
 import { IeltsSpeakingFlow } from "@/components/attempts/ielts/IeltsSpeakingFlow";
 import { groupSpeakingQuestionsByPart } from "@/lib/ielts-speaking-questions";
+import {
+  filterListeningQuestionsByPart,
+  getListeningSectionIds,
+  mergeListeningAnswers,
+  normalizeIeltsRunnerSections,
+  resolveSectionAudio,
+} from "@/lib/ielts-listening-section";
 
 type Question = {
   id: string;
@@ -521,13 +529,7 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
 
   const sections = useMemo(() => {
     if (!data?.sections) return [];
-    const order = ["LISTENING", "READING", "WRITING", "SPEAKING"];
-    return [...data.sections].sort((a, b) => {
-      const ai = order.indexOf(a.type);
-      const bi = order.indexOf(b.type);
-      if (ai !== bi) return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
-      return a.order - b.order;
-    });
+    return normalizeIeltsRunnerSections(data.sections as Section[]);
   }, [data?.sections]);
 
   const activeSection = sections.find((s) => s.id === activeSectionId) || sections[0] || null;
@@ -540,7 +542,11 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
     activeSection?.type === "WRITING"
       ? findWritingTaskSection(sections, activePart) || activeSection
       : null;
-  const questions = activeSection ? filterQuestionsByPart(activeSection, activePart) : [];
+  const questions = activeSection
+    ? activeSection.type === "LISTENING"
+      ? filterListeningQuestionsByPart(activeSection.questions, activePart)
+      : filterQuestionsByPart(activeSection, activePart)
+    : [];
 
   const selectWritingPart = (part: number) => {
     if (!activeSection || activeSection.type !== "WRITING") return;
@@ -620,6 +626,15 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
         }
       }
 
+      const listeningIds = getListeningSectionIds(json.sections || []);
+      if (listeningIds.length > 1) {
+        loaded = mergeListeningAnswers(
+          loaded,
+          listeningIds,
+          json.savedAnswers?.LISTENING as Record<string, unknown> | undefined,
+        );
+      }
+
       setData(json);
       setAnswers(loaded);
       const locked = loadLockedSections(attemptId);
@@ -628,9 +643,12 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
         localStorage.setItem(answersStorageKey(attemptId), JSON.stringify(loaded));
       }
 
-      const first = (json.sections || [])
-        .sort((a, b) => a.order - b.order)
-        .find((section) => !locked.has(section.id)) || (json.sections || []).sort((a, b) => a.order - b.order)[0];
+      const normalizedForStart = normalizeIeltsRunnerSections(
+        (json.sections || []) as Section[],
+      );
+      const first =
+        normalizedForStart.find((section) => !locked.has(section.id)) ||
+        normalizedForStart[0];
       setActiveSectionId(first?.id || "");
       const initialParts: Record<string, number> = {};
       for (const section of json.sections || []) {
@@ -781,10 +799,13 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
           <h2 className="text-lg font-semibold text-slate-900 uppercase mb-4">
             Part {activePart}
           </h2>
-          {activeSection.audio ? (
-            <IeltsAudioPlayer
-              src={activeSection.audio}
-              checkpointKey={ieltsAudioCheckpointKey(attemptId, activeSection.id)}
+          {resolveSectionAudio(activeSection) || activeSection.audio ? (
+            <IELTSAudioPlayer
+              src={resolveSectionAudio(activeSection) || activeSection.audio || ""}
+              className="w-full"
+              attemptId={attemptId}
+              sectionId={activeSection.id}
+              playOnly
             />
           ) : (
             <div className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md p-3">
