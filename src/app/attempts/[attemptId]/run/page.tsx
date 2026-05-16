@@ -33,6 +33,7 @@ import { IELTSSectionChangeModal } from "@/components/attempts/modals/IELTSSecti
 import { SpeakingIntroModal } from "@/components/attempts/modals/SpeakingIntroModal";
 import { SpeakingTimeUpModal } from "@/components/attempts/modals/SpeakingTimeUpModal";
 import { totalSecondsForSpeakingPart } from "@/lib/ielts-speaking-timers";
+import { groupSpeakingQuestionsByPart } from "@/lib/ielts-speaking-questions";
 import { countWords } from "@/lib/get-writing-task-texts";
 import FormattedText from "@/components/FormattedText";
 import { Clock, Save, CheckCircle, Send, ChevronRight, X, PanelLeft, PanelRight } from "lucide-react";
@@ -1450,9 +1451,7 @@ export default function AttemptRunnerPage() {
     const sectionAnswers = answers[currentSection.id] || {};
 
     // Group by actual prompt.part (1, 2, 3) so counts match P1/P2/P3 selector
-    const part1 = questions.filter((q: any) => (q.prompt?.part ?? 1) === 1);
-    const part2 = questions.filter((q: any) => (q.prompt?.part ?? 1) === 2);
-    const part3 = questions.filter((q: any) => (q.prompt?.part ?? 1) === 3);
+    const { part1, part2, part3 } = groupSpeakingQuestionsByPart(questions);
     const parts = [part1, part2, part3];
 
     return parts.map((partQuestions: { id: string }[]) => {
@@ -1470,13 +1469,10 @@ export default function AttemptRunnerPage() {
   }, [currentSection, activeSection, answers, data?.examCategory]);
 
   const speakingPartQuestions = useMemo(() => {
-    if (!currentSection?.questions || currentSection.type !== "SPEAKING") return { part1: [], part2: [], part3: [] };
-    const q = currentSection.questions;
-    return {
-      part1: q.filter((x: any) => (x.prompt?.part ?? 1) === 1).sort((a: any, b: any) => a.order - b.order),
-      part2: q.filter((x: any) => (x.prompt?.part ?? 1) === 2).sort((a: any, b: any) => a.order - b.order),
-      part3: q.filter((x: any) => (x.prompt?.part ?? 1) === 3).sort((a: any, b: any) => a.order - b.order),
-    };
+    if (!currentSection?.questions || currentSection.type !== "SPEAKING") {
+      return { part1: [], part2: [], part3: [] };
+    }
+    return groupSpeakingQuestionsByPart(currentSection.questions);
   }, [currentSection]);
 
   const advanceIeltsSpeakingQuestion = useCallback(() => {

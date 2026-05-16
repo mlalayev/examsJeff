@@ -17,6 +17,7 @@ import {
   recordingMarkerPercent,
   isSpeakingPrepPhase,
 } from "@/lib/ielts-speaking-timers";
+import { resolveSpeakingPartNumber } from "@/lib/ielts-speaking-questions";
 
 interface Question {
   id: string;
@@ -584,22 +585,9 @@ export const QuestionsArea = React.memo(function QuestionsArea({
                   filteredQuestions = section.questions;
                 }
               } else if (section.type === "SPEAKING" && examCategory === "IELTS") {
-                // For Speaking, filter by prompt.part
-                filteredQuestions = section.questions.filter((q) => {
-                  const part = q.prompt?.part;
-                  if (part === speakingPart) return true;
-                  const promptText = q.prompt?.text?.toLowerCase() || "";
-                  if (speakingPart === 1 && (promptText.includes("part 1") || promptText.includes("part1"))) return true;
-                  if (speakingPart === 2 && (promptText.includes("part 2") || promptText.includes("part2"))) return true;
-                  if (speakingPart === 3 && (promptText.includes("part 3") || promptText.includes("part3"))) return true;
-                  if (!part && !promptText.includes("part")) {
-                    const totalQuestions = section.questions.length;
-                    if (speakingPart === 1 && q.order < totalQuestions / 3) return true;
-                    if (speakingPart === 2 && q.order >= totalQuestions / 3 && q.order < (totalQuestions * 2) / 3) return true;
-                    if (speakingPart === 3 && q.order >= (totalQuestions * 2) / 3) return true;
-                  }
-                  return false;
-                }).sort((a, b) => a.order - b.order);
+                filteredQuestions = section.questions
+                  .filter((q) => resolveSpeakingPartNumber(q) === speakingPart)
+                  .sort((a, b) => a.order - b.order);
                 // Auto-advance mode: show only the single question at speakingCurrentQuestionIndex
                 if (typeof speakingCurrentQuestionIndex === "number" && speakingCurrentQuestionIndex >= 0) {
                   const at = speakingCurrentQuestionIndex;

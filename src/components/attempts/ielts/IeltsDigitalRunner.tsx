@@ -16,7 +16,8 @@ import {
 } from "lucide-react";
 import FormattedText from "@/components/FormattedText";
 import QHtmlCss from "@/components/questions/QHtmlCss";
-import { QSpeakingRecording } from "@/components/questions/QSpeakingRecording";
+import { IeltsSpeakingFlow } from "@/components/attempts/ielts/IeltsSpeakingFlow";
+import { groupSpeakingQuestionsByPart } from "@/lib/ielts-speaking-questions";
 
 type Question = {
   id: string;
@@ -39,6 +40,8 @@ type Section = {
   passage?: any;
   audio?: string | null;
   introduction?: string | null;
+  image?: string | null;
+  image2?: string | null;
   questions: Question[];
 };
 
@@ -143,6 +146,37 @@ function getReadingPassage(section: Section, part: number) {
     return String(passage[`part${part}`] || "");
   }
   return typeof passage === "string" ? passage : "";
+}
+
+function writingPartFromSectionTitle(title: string): number {
+  const t = title.toLowerCase();
+  if (t.includes("task 2") || t.includes("task2")) return 2;
+  if (t.includes("task 1") || t.includes("task1")) return 1;
+  return 1;
+}
+
+/** IELTS Writing: Task 1 / Task 2 may be separate exam_section rows (each with its own image). */
+function findWritingTaskSection(sections: Section[], part: number): Section | null {
+  const writing = sections.filter((s) => s.type === "WRITING");
+  if (writing.length === 0) return null;
+
+  const byTitle = writing.find((s) => {
+    const t = s.title.toLowerCase();
+    return (
+      t.includes(`task ${part}`) ||
+      t.includes(`task${part}`) ||
+      t === `task ${part}`
+    );
+  });
+  if (byTitle) return byTitle;
+
+  const byQuestionTag = writing.filter((s) =>
+    (s.questions || []).some((q) => q.id.toLowerCase().includes(`task${part}`)),
+  );
+  if (byQuestionTag.length === 1) return byQuestionTag[0];
+
+  if (writing.length === 1) return writing[0];
+  return writing[part - 1] || writing[0];
 }
 
 function sectionIcon(type: string) {
@@ -497,8 +531,29 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
   }, [data?.sections]);
 
   const activeSection = sections.find((s) => s.id === activeSectionId) || sections[0] || null;
-  const activePart = activeSection ? parts[activeSection.id] || 1 : 1;
+  const activePart = activeSection
+    ? activeSection.type === "WRITING"
+      ? parts[activeSection.id] || writingPartFromSectionTitle(activeSection.title)
+      : parts[activeSection.id] || 1
+    : 1;
+  const writingTaskSection =
+    activeSection?.type === "WRITING"
+      ? findWritingTaskSection(sections, activePart) || activeSection
+      : null;
   const questions = activeSection ? filterQuestionsByPart(activeSection, activePart) : [];
+
+  const selectWritingPart = (part: number) => {
+    if (!activeSection || activeSection.type !== "WRITING") return;
+    const taskSection = findWritingTaskSection(sections, part);
+    if (taskSection && taskSection.id !== activeSection.id) {
+      setActiveSectionId(taskSection.id);
+    }
+    setParts((prev) => {
+      const next = { ...prev, [activeSection.id]: part };
+      if (taskSection) next[taskSection.id] = part;
+      return next;
+    });
+  };
 
   const currentSectionStats = useMemo(() => {
     if (!activeSection) return { answered: 0, unanswered: 0, total: 0 };
@@ -578,7 +633,12 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
         .find((section) => !locked.has(section.id)) || (json.sections || []).sort((a, b) => a.order - b.order)[0];
       setActiveSectionId(first?.id || "");
       const initialParts: Record<string, number> = {};
-      for (const section of json.sections || []) initialParts[section.id] = 1;
+      for (const section of json.sections || []) {
+        initialParts[section.id] =
+          section.type === "WRITING"
+            ? writingPartFromSectionTitle(section.title)
+            : 1;
+      }
       setParts(initialParts);
     } catch (e) {
       console.error(e);
@@ -591,6 +651,14 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
   useEffect(() => {
     void loadAttempt();
   }, [loadAttempt]);
+
+  useEffect(() => {
+    if (!activeSection || activeSection.type !== "WRITING") return;
+    const part = writingPartFromSectionTitle(activeSection.title);
+    setParts((prev) =>
+      prev[activeSection.id] === part ? prev : { ...prev, [activeSection.id]: part },
+    );
+  }, [activeSection?.id, activeSection?.type, activeSection?.title]);
 
   useEffect(() => {
     if (!activeSection) return;
@@ -740,11 +808,70 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
       );
     }
 
+    if (activeSection.type === "SPEAKING") {
+      const grouped = groupSpeakingQuestionsByPart(activeSection.questions);
+      const partCounts = `Part 1: ${grouped.part1.length} questions · Part 2: ${grouped.part2.length} · Part 3: ${grouped.part3.length}`;
+      return (
+        <div className="p-4 overflow-y-auto h-full space-y-3">
+          <h2 className="text-lg font-semibold text-slate-900">Speaking — Part {activePart}</h2>
+          <p className="text-sm text-slate-600 whitespace-pre-wrap">
+            {activeSection.instruction || "Answer each question when the timer reaches the dot on the progress bar."}
+          </p>
+          <p className="text-xs text-slate-500">{partCounts}</p>
+        </div>
+      );
+    }
+
+    if (activeSection.type === "WRITING" && writingTaskSection) {
+      const taskImage = writingTaskSection.image?.trim() || "";
+      return (
+        <div className="p-4 overflow-y-auto h-full space-y-4">
+          <h2 className="text-lg font-semibold text-slate-900">
+            {writingTaskSection.title || partLabel(activeSection, activePart)}
+          </h2>
+          {taskImage ? (
+            <div className="rounded-lg border border-slate-200 bg-slate-50 overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={taskImage}
+                alt={`${writingTaskSection.title || "Task"} visual`}
+                className="w-full h-auto max-h-[min(70vh,720px)] object-contain"
+              />
+            </div>
+          ) : activePart === 1 ? (
+            <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md p-3">
+              No chart or diagram image was uploaded for this task.
+            </p>
+          ) : null}
+          {writingTaskSection.instruction?.trim() ? (
+            <div className="text-sm leading-relaxed text-slate-700 whitespace-pre-wrap border-t border-slate-100 pt-4">
+              <FormattedText text={writingTaskSection.instruction} />
+            </div>
+          ) : null}
+        </div>
+      );
+    }
+
     return (
-      <div className="p-4">
+      <div className="p-4 overflow-y-auto h-full">
         <h2 className="text-lg font-semibold text-slate-900 mb-2">
           {activeSection.title}
         </h2>
+        {activeSection.image?.trim() ? (
+          <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 overflow-hidden">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={activeSection.image}
+              alt={activeSection.title}
+              className="w-full h-auto max-h-[min(70vh,720px)] object-contain"
+            />
+          </div>
+        ) : null}
+        {activeSection.introduction?.trim() ? (
+          <p className="text-sm text-slate-700 whitespace-pre-wrap mb-3">
+            <FormattedText text={activeSection.introduction} />
+          </p>
+        ) : null}
         <p className="text-sm text-slate-600 whitespace-pre-wrap">
           {activeSection.instruction || "Complete this section."}
         </p>
@@ -786,20 +913,6 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
       );
     }
 
-    if (question.qtype === "SPEAKING_RECORDING") {
-      return (
-        <QSpeakingRecording
-          key={question.id}
-          question={question as any}
-          value={typeof value === "string" ? value : ""}
-          onChange={(v) => setAnswer(question.id, v)}
-          readOnly={false}
-          attemptId={attemptId}
-          speakingPart={activePart}
-        />
-      );
-    }
-
     return (
       <div key={question.id} className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
         Unsupported IELTS Digital question type: {question.qtype}
@@ -828,7 +941,19 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
         </aside>
 
         <section className="min-h-0 overflow-hidden p-0">
-          {questions.length === 0 ? (
+          {activeSection.type === "SPEAKING" ? (
+            <IeltsSpeakingFlow
+              attemptId={attemptId}
+              sectionId={activeSection.id}
+              questions={activeSection.questions}
+              answers={answers[activeSection.id] || {}}
+              onAnswerChange={(questionId, value) => setAnswer(questionId, value)}
+              activePart={activePart}
+              onActivePartChange={(part) =>
+                setParts((prev) => ({ ...prev, [activeSection.id]: part }))
+              }
+            />
+          ) : questions.length === 0 ? (
             <div className="h-full flex items-center justify-center text-sm text-slate-500">
               No question in this part yet.
             </div>
@@ -855,7 +980,13 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
             return (
               <button
                 key={part}
-                onClick={() => setParts((prev) => ({ ...prev, [activeSection.id]: part }))}
+                onClick={() => {
+                  if (activeSection.type === "WRITING") {
+                    selectWritingPart(part);
+                  } else {
+                    setParts((prev) => ({ ...prev, [activeSection.id]: part }));
+                  }
+                }}
                 className={`px-4 py-2 text-sm border rounded-md ${
                   active
                     ? "bg-slate-900 text-white border-slate-900"
