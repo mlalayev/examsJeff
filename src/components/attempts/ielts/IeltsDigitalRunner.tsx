@@ -573,17 +573,40 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
 
   const saveSection = useCallback(
     async (section: Section, sectionAnswers: Record<string, any>) => {
-      await fetch(`/api/attempts/${attemptId}/save`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sectionType: section.type,
-          answers: sectionAnswers,
-        }),
-      });
+      try {
+        const res = await fetch(`/api/attempts/${attemptId}/save`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sectionType: section.type,
+            answers: sectionAnswers,
+          }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          console.error("Failed to save section answers:", json?.error || res.status);
+        }
+        return res.ok;
+      } catch (e) {
+        console.error("Save section network error:", e);
+        return false;
+      }
     },
-    [attemptId]
+    [attemptId],
   );
+
+  const flushPendingAutosave = useCallback(async () => {
+    if (autosaveRef.current) {
+      clearTimeout(autosaveRef.current);
+      autosaveRef.current = null;
+    }
+    const section = sections.find((s) => s.id === activeSectionId);
+    if (!section) return;
+    const snapshot = answersRef.current[section.id];
+    if (snapshot && Object.keys(snapshot).length > 0) {
+      await saveSection(section, snapshot);
+    }
+  }, [sections, activeSectionId, saveSection]);
 
   const loadAttempt = useCallback(async () => {
     setLoading(true);
@@ -722,13 +745,19 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
           [questionId]: value,
         },
       };
+      answersRef.current = next;
       if (typeof window !== "undefined") {
         localStorage.setItem(answersStorageKey(attemptId), JSON.stringify(next));
       }
-      if (autosaveRef.current) clearTimeout(autosaveRef.current);
-      autosaveRef.current = setTimeout(() => {
-        saveSection(activeSection, answersRef.current[activeSection.id] || {});
-      }, 1500);
+      const sectionSnapshot = next[activeSection.id] || {};
+      if (activeSection.type === "SPEAKING" && typeof value === "string" && value.trim()) {
+        void saveSection(activeSection, sectionSnapshot);
+      } else {
+        if (autosaveRef.current) clearTimeout(autosaveRef.current);
+        autosaveRef.current = setTimeout(() => {
+          void saveSection(activeSection, sectionSnapshot);
+        }, 800);
+      }
       return next;
     });
   };
@@ -737,8 +766,12 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
     if (!data) return;
     setSubmitting(true);
     try {
+      await flushPendingAutosave();
       for (const section of sections) {
-        await saveSection(section, answersRef.current[section.id] || {});
+        const snapshot = answersRef.current[section.id] || {};
+        if (Object.keys(snapshot).length > 0) {
+          await saveSection(section, snapshot);
+        }
       }
       const res = await fetch(`/api/attempts/${attemptId}/submit`, { method: "POST" });
       const json = await res.json().catch(() => ({}));
@@ -770,7 +803,11 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
 
   const confirmSectionChange = async () => {
     if (!activeSection || !pendingSectionId) return;
-    await saveSection(activeSection, answersRef.current[activeSection.id] || {});
+    await flushPendingAutosave();
+    const snapshot = answersRef.current[activeSection.id] || {};
+    if (Object.keys(snapshot).length > 0) {
+      await saveSection(activeSection, snapshot);
+    }
     setLockedSections((prev) => {
       const next = new Set([...prev, activeSection.id]);
       persistLockedSections(attemptId, next);
@@ -969,6 +1006,7 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
               questions={activeSection.questions}
               answers={answers[activeSection.id] || {}}
               onAnswerChange={(questionId, value) => setAnswer(questionId, value)}
+              onBeforeAdvance={flushPendingAutosave}
               activePart={activePart}
               onActivePartChange={(part) =>
                 setParts((prev) => ({ ...prev, [activeSection.id]: part }))

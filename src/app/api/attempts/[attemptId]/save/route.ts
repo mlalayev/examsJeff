@@ -62,13 +62,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
       let updatedAnswers = { ...currentAnswers };
       
       // Update section answers if provided
-      if (sectionType && answers) {
+      if (sectionType && answers && typeof answers === "object") {
         updatedAnswers = {
           ...updatedAnswers,
-          [sectionType]: { 
-            ...(currentAnswers[sectionType] || {}), 
-            ...answers 
-          }
+          [sectionType]: {
+            ...(typeof currentAnswers[sectionType] === "object" && currentAnswers[sectionType] !== null
+              ? currentAnswers[sectionType]
+              : {}),
+            ...(answers as Record<string, unknown>),
+          },
         };
       }
       
@@ -122,17 +124,26 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
 
       return NextResponse.json({ success: true, updated: 1 });
     } else {
-      // For DB exams, update attempt_section
-
-      // Ensure answers is not null/undefined
-      if (!answers) {
+      // For DB exams, merge into attempt_section.answers (never replace with a partial payload).
+      if (!answers || typeof answers !== "object") {
         console.warn('No answers to save for section:', sectionType);
         return NextResponse.json({ success: true, updated: 0 });
       }
-      
+
+      const existingSection = await prisma.attemptSection.findFirst({
+        where: { attemptId, type: sectionType as SectionType },
+        select: { id: true, answers: true },
+      });
+
+      const prior =
+        existingSection?.answers && typeof existingSection.answers === "object"
+          ? (existingSection.answers as Record<string, unknown>)
+          : {};
+      const mergedAnswers = { ...prior, ...(answers as Record<string, unknown>) };
+
       const updated = await prisma.attemptSection.updateMany({
         where: { attemptId, type: sectionType as any },
-        data: { answers },
+        data: { answers: mergedAnswers as object },
       });
 
       if (updated.count === 0) {
@@ -140,9 +151,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
       }
 
       // Also persist each question answer separately
-      if (sectionType && answers && typeof answers === "object") {
+      if (sectionType && typeof mergedAnswers === "object") {
         const sectionEnum = sectionType as SectionType;
-        const entries = Object.entries(answers as Record<string, any>);
+        const entries = Object.entries(mergedAnswers as Record<string, unknown>);
         try {
           await prisma.$transaction(
             entries.map(([questionId, answer]) =>
@@ -170,7 +181,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
           console.warn("AttemptAnswer table not available; skipping normalized save.");
         }
       }
-      
+
       return NextResponse.json({ success: true, updated: updated.count });
     }
   } catch (error) {

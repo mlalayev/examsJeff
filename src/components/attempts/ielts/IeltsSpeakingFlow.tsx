@@ -22,6 +22,8 @@ type Props = {
   questions: SpeakingQuestion[];
   answers: Record<string, unknown>;
   onAnswerChange: (questionId: string, value: string) => void;
+  /** Flush pending autosave before changing question (avoids losing transcripts). */
+  onBeforeAdvance?: () => void | Promise<void>;
   activePart: number;
   onActivePartChange: (part: number) => void;
 };
@@ -32,6 +34,7 @@ export function IeltsSpeakingFlow({
   questions,
   answers,
   onAnswerChange,
+  onBeforeAdvance,
   activePart,
   onActivePartChange,
 }: Props) {
@@ -41,6 +44,7 @@ export function IeltsSpeakingFlow({
     return localStorage.getItem(introKey) === "1";
   });
   const [questionIndex, setQuestionIndex] = useState(0);
+  const [advancing, setAdvancing] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(() =>
     totalSecondsForSpeakingPart(activePart),
   );
@@ -93,6 +97,17 @@ export function IeltsSpeakingFlow({
     grouped.part3.length,
     onActivePartChange,
   ]);
+
+  const handleNext = useCallback(async () => {
+    if (advancing) return;
+    setAdvancing(true);
+    try {
+      if (onBeforeAdvance) await onBeforeAdvance();
+    } finally {
+      setAdvancing(false);
+    }
+    advanceQuestion();
+  }, [advancing, onBeforeAdvance, advanceQuestion]);
 
   useEffect(() => {
     if (!introDismissed) return;
@@ -190,7 +205,7 @@ export function IeltsSpeakingFlow({
       </div>
 
       <QSpeakingRecording
-        key={`${currentQuestion.id}-${activePart}-${questionIndex}`}
+        key={currentQuestion.id}
         question={currentQuestion as Parameters<typeof QSpeakingRecording>[0]["question"]}
         value={textAnswer}
         onChange={(v) => onAnswerChange(currentQuestion.id, v)}
@@ -234,10 +249,11 @@ export function IeltsSpeakingFlow({
           </div>
           <button
             type="button"
-            onClick={advanceQuestion}
-            className="inline-flex shrink-0 items-center gap-1 rounded-lg px-3.5 py-2 text-sm font-semibold text-white shadow-sm bg-[#303380] hover:bg-[#252a6b]"
+            onClick={() => void handleNext()}
+            disabled={advancing}
+            className="inline-flex shrink-0 items-center gap-1 rounded-lg px-3.5 py-2 text-sm font-semibold text-white shadow-sm bg-[#303380] hover:bg-[#252a6b] disabled:opacity-60"
           >
-            Next
+            {advancing ? "Saving…" : "Next"}
             <ChevronRight className="h-4 w-4" aria-hidden />
           </button>
         </div>

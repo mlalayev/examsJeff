@@ -63,6 +63,12 @@ export function QSpeakingRecording({
   const streamRef = useRef<MediaStream | null>(null);
   const hasStartedRef = useRef<boolean>(false); // Prevent double-start in StrictMode
   const permissionRequestedRef = useRef<boolean>(false);
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  const attemptIdRef = useRef(attemptId);
+  attemptIdRef.current = attemptId;
+  const questionIdRef = useRef(question.id);
+  questionIdRef.current = question.id;
   /** Decrement source of truth — avoids Strict Mode double-invoking `setState(prev => prev - 1)` and skipping 2s per tick */
   const timeLeftRef = useRef(hasPreparation ? PREPARATION_DURATION : recordingDuration);
 
@@ -77,8 +83,15 @@ export function QSpeakingRecording({
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
       clearPhaseTimeout();
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
+      const mr = mediaRecorderRef.current;
+      if (mr && mr.state === "recording") {
+        try {
+          mr.stop();
+        } catch {
+          /* onstop still runs transcribe when possible */
+        }
+      } else if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
       }
     };
   }, []);
@@ -354,17 +367,29 @@ export function QSpeakingRecording({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [questionSecondsLeft, useParentTimer, speakCap, status]);
 
-  const transcribeAudio = async () => {
+  const transcribeAudio = useCallback(async () => {
     setStatus("transcribing");
 
     try {
-      const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-      
-      const formData = new FormData();
-      formData.append("file", audioBlob, `speaking-${question.id}.webm`);
-      formData.append("questionId", question.id);
+      const chunks = audioChunksRef.current;
+      if (!chunks.length) {
+        setStatus("idle");
+        if (useParentTimer) parentRecordingStartRef.current = false;
+        return;
+      }
 
-      const response = await fetch(`/api/attempts/${attemptId}/speaking/transcribe`, {
+      const audioBlob = new Blob(chunks, { type: "audio/webm" });
+      const qid = questionIdRef.current;
+      const aid = attemptIdRef.current;
+      if (!aid) {
+        throw new Error("Missing attempt id");
+      }
+
+      const formData = new FormData();
+      formData.append("file", audioBlob, `speaking-${qid}.webm`);
+      formData.append("questionId", qid);
+
+      const response = await fetch(`/api/attempts/${aid}/speaking/transcribe`, {
         method: "POST",
         body: formData,
       });
@@ -375,13 +400,10 @@ export function QSpeakingRecording({
       }
 
       const data = await response.json();
+      const text = (data.text as string) || "";
 
-      // Set status to completed FIRST, before calling onChange
       setStatus("completed");
-
-      if (onChange) {
-        onChange(data.text || "");
-      }
+      onChangeRef.current?.(text);
 
       if (onRecordingComplete) {
         onRecordingComplete();
@@ -392,7 +414,7 @@ export function QSpeakingRecording({
       setStatus("idle");
       if (useParentTimer) parentRecordingStartRef.current = false;
     }
-  };
+  }, [onRecordingComplete, useParentTimer]);
 
   const handleStart = async () => {
     if (hasStartedRef.current) return;

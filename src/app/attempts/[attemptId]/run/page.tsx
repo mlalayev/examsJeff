@@ -757,12 +757,18 @@ export default function AttemptRunnerPage() {
         localStorage.setItem(storageKey, JSON.stringify(newAnswers));
       }
 
-      if (autosaveTimerRef.current) {
-        clearTimeout(autosaveTimerRef.current);
+      const section = data?.sections?.find((s) => s.id === sectionId);
+      const sectionSnapshot = newAnswers[sectionId] || {};
+      if (section?.type === "SPEAKING" && typeof value === "string" && value.trim()) {
+        void saveSection(sectionId, sectionSnapshot);
+      } else {
+        if (autosaveTimerRef.current) {
+          clearTimeout(autosaveTimerRef.current);
+        }
+        autosaveTimerRef.current = setTimeout(() => {
+          void saveSection(sectionId, sectionSnapshot);
+        }, 800);
       }
-      autosaveTimerRef.current = setTimeout(() => {
-        saveSection(sectionId, newAnswers[sectionId]);
-      }, 3000);
 
       return newAnswers;
     });
