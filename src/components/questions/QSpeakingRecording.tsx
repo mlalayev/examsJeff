@@ -3,6 +3,11 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Mic, Clock, AlertCircle, Loader2 } from "lucide-react";
 import { speakSecondsForSpeakingPart } from "@/lib/ielts-speaking-timers";
+import {
+  type SpeakingAnswerPayload,
+  hasSpeakingAnswerContent,
+  speakingAnswerText,
+} from "@/lib/speaking-answer";
 
 interface QSpeakingRecordingProps {
   question: {
@@ -12,8 +17,8 @@ interface QSpeakingRecordingProps {
       part?: number;
     };
   };
-  value?: string; // Now stores TEXT not audio URL
-  onChange?: (value: string) => void; // Now passes TEXT
+  value?: string | SpeakingAnswerPayload;
+  onChange?: (value: SpeakingAnswerPayload) => void;
   readOnly?: boolean;
   attemptId?: string;
   speakingPart?: number;
@@ -34,7 +39,7 @@ const PREPARATION_DURATION = 60; // Part 2 internal prep when not using parent t
 
 export function QSpeakingRecording({
   question,
-  value = "",
+  value,
   onChange,
   readOnly = false,
   attemptId,
@@ -43,6 +48,9 @@ export function QSpeakingRecording({
   autoStart = false,
   questionSecondsLeft,
 }: QSpeakingRecordingProps) {
+  const savedText = speakingAnswerText(value);
+  const hasSavedAnswer = hasSpeakingAnswerContent(value);
+
   const part = speakingPart || question.prompt.part || 1;
   const recordingDuration = RECORDING_DURATIONS[part as keyof typeof RECORDING_DURATIONS] || 30;
   const hasPreparation = part === 2;
@@ -141,7 +149,7 @@ export function QSpeakingRecording({
     let cancelled = false;
 
     const run = async () => {
-      if (readOnly || value) {
+      if (readOnly || hasSavedAnswer) {
         setIsCheckingPermission(false);
         return;
       }
@@ -199,7 +207,7 @@ export function QSpeakingRecording({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- requestMicrophonePermission is stable for this flow
-  }, [readOnly, value]);
+  }, [readOnly, hasSavedAnswer]);
 
   const startPreparation = async () => {
     if (timerRef.current) {
@@ -401,9 +409,10 @@ export function QSpeakingRecording({
 
       const data = await response.json();
       const text = (data.text as string) || "";
+      const audioUrl = (data.audioUrl as string) || "";
 
       setStatus("completed");
-      onChangeRef.current?.(text);
+      onChangeRef.current?.({ text, audioUrl });
 
       if (onRecordingComplete) {
         onRecordingComplete();
@@ -445,7 +454,7 @@ export function QSpeakingRecording({
 
   useEffect(() => {
     // Auto-start recording flow after permission is granted
-    if (status === "idle" && !value && !readOnly && !hasStartedRef.current && permissionGranted) {
+    if (status === "idle" && !hasSavedAnswer && !readOnly && !hasStartedRef.current && permissionGranted) {
       const timer = setTimeout(() => {
         void handleStart();
       }, 500);
@@ -459,7 +468,7 @@ export function QSpeakingRecording({
       };
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [permissionGranted, status, value, readOnly]); // Trigger when permission is granted
+  }, [permissionGranted, status, hasSavedAnswer, readOnly]); // Trigger when permission is granted
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -566,7 +575,7 @@ export function QSpeakingRecording({
 
   // If completed with text answer - DON'T show transcription (just show recording complete message)
   // Transcription is saved but not displayed to the user
-  if (status === "completed" || (value && value.trim() && readOnly)) {
+  if (status === "completed" || (hasSavedAnswer && readOnly)) {
     return (
       <div className="space-y-3">
         <div className="rounded-lg border border-gray-200 bg-white px-5 py-4">

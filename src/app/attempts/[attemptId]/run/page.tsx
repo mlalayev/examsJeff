@@ -31,6 +31,7 @@ import { SubmitModuleModal } from "@/components/attempts/modals/SubmitModuleModa
 import { ResumeNotification } from "@/components/attempts/ResumeNotification";
 import { IELTSSectionChangeModal } from "@/components/attempts/modals/IELTSSectionChangeModal";
 import { SpeakingIntroModal } from "@/components/attempts/modals/SpeakingIntroModal";
+import { hasSpeakingAnswerContent } from "@/lib/speaking-answer";
 import { SpeakingTimeUpModal } from "@/components/attempts/modals/SpeakingTimeUpModal";
 import { totalSecondsForSpeakingPart } from "@/lib/ielts-speaking-timers";
 import { groupSpeakingQuestionsByPart } from "@/lib/ielts-speaking-questions";
@@ -759,7 +760,7 @@ export default function AttemptRunnerPage() {
 
       const section = data?.sections?.find((s) => s.id === sectionId);
       const sectionSnapshot = newAnswers[sectionId] || {};
-      if (section?.type === "SPEAKING" && typeof value === "string" && value.trim()) {
+      if (section?.type === "SPEAKING" && hasSpeakingAnswerContent(value)) {
         void saveSection(sectionId, sectionSnapshot);
       } else {
         if (autosaveTimerRef.current) {

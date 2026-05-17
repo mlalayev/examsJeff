@@ -19,6 +19,7 @@ import QHtmlCss from "@/components/questions/QHtmlCss";
 import { IELTSAudioPlayer } from "@/components/audio/IELTSAudioPlayer";
 import { IeltsSpeakingFlow } from "@/components/attempts/ielts/IeltsSpeakingFlow";
 import { groupSpeakingQuestionsByPart } from "@/lib/ielts-speaking-questions";
+import { hasSpeakingAnswerContent } from "@/lib/speaking-answer";
 import {
   filterListeningQuestionsByPart,
   getListeningSectionIds,
@@ -750,7 +751,7 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
         localStorage.setItem(answersStorageKey(attemptId), JSON.stringify(next));
       }
       const sectionSnapshot = next[activeSection.id] || {};
-      if (activeSection.type === "SPEAKING" && typeof value === "string" && value.trim()) {
+      if (activeSection.type === "SPEAKING" && hasSpeakingAnswerContent(value)) {
         void saveSection(activeSection, sectionSnapshot);
       } else {
         if (autosaveRef.current) clearTimeout(autosaveRef.current);

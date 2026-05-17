@@ -15,13 +15,17 @@ import {
   recordingMarkerPercent,
   totalSecondsForSpeakingPart,
 } from "@/lib/ielts-speaking-timers";
+import {
+  type SpeakingAnswerPayload,
+  speakingAnswerText,
+} from "@/lib/speaking-answer";
 
 type Props = {
   attemptId: string;
   sectionId: string;
   questions: SpeakingQuestion[];
   answers: Record<string, unknown>;
-  onAnswerChange: (questionId: string, value: string) => void;
+  onAnswerChange: (questionId: string, value: SpeakingAnswerPayload) => void;
   /** Flush pending autosave before changing question (avoids losing transcripts). */
   onBeforeAdvance?: () => void | Promise<void>;
   activePart: number;
@@ -190,8 +194,7 @@ export function IeltsSpeakingFlow({
   const fmt = (s: number) =>
     `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
 
-  const answerValue = answers[currentQuestion.id];
-  const textAnswer = typeof answerValue === "string" ? answerValue : "";
+  const textAnswer = speakingAnswerText(answers[currentQuestion.id]);
 
   return (
     <div className="h-full overflow-y-auto max-w-[980px] mx-auto p-6 space-y-4">

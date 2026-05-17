@@ -21,6 +21,11 @@ import {
 import Sidebar from "@/components/dashboard/Sidebar";
 import { WritingAiFeedbackCard } from "@/components/attempts/WritingAiFeedbackCard";
 import FormattedText from "@/components/FormattedText";
+import {
+  resolveSpeakingAudioSrc,
+  speakingAnswerAudioUrl,
+  speakingAnswerText,
+} from "@/lib/speaking-answer";
 
 interface ResultsData {
   attemptId: string;
@@ -1516,43 +1521,43 @@ export default function AttemptResultsPage() {
                           ) : (
                             <>
                               {q.qtype === "SPEAKING_RECORDING" &&
-                              typeof q.studentAnswer === "object" &&
-                              q.studentAnswer !== null &&
-                              "audioUrl" in q.studentAnswer &&
-                              (q.studentAnswer as { audioUrl?: string }).audioUrl ? (
-                                <div className="space-y-2">
-                                  <p className="text-xs text-gray-600">Recorded Answer:</p>
-                                  <audio
-                                    controls
-                                    src={(q.studentAnswer as { audioUrl: string }).audioUrl}
-                                    className="w-full"
-                                  >
-                                    Your browser does not support the audio element.
-                                  </audio>
+                              (speakingAnswerAudioUrl(q.studentAnswer) ||
+                                speakingAnswerText(q.studentAnswer)) ? (
+                                <div className="space-y-3">
+                                  {speakingAnswerAudioUrl(q.studentAnswer) ? (
+                                    <div className="space-y-1.5">
+                                      <p className="text-xs font-medium text-gray-600">
+                                        Recorded audio
+                                      </p>
+                                      <audio
+                                        controls
+                                        preload="metadata"
+                                        src={resolveSpeakingAudioSrc(
+                                          speakingAnswerAudioUrl(q.studentAnswer),
+                                        )}
+                                        className="w-full"
+                                      >
+                                        Your browser does not support the audio element.
+                                      </audio>
+                                    </div>
+                                  ) : null}
+                                  {speakingAnswerText(q.studentAnswer) ? (
+                                    <div className="space-y-1.5">
+                                      <p className="text-xs font-medium text-gray-600">
+                                        Transcript
+                                      </p>
+                                      <p
+                                        className={`text-sm leading-relaxed whitespace-pre-wrap ${
+                                          q.isCorrect ? "text-green-800" : "text-gray-900"
+                                        }`}
+                                      >
+                                        {speakingAnswerText(q.studentAnswer)}
+                                      </p>
+                                    </div>
+                                  ) : null}
                                 </div>
-                              ) : q.qtype === "SPEAKING_RECORDING" &&
-                                (typeof q.studentAnswer === "string"
-                                  ? q.studentAnswer.trim()
-                                  : typeof q.studentAnswer === "object" &&
-                                      q.studentAnswer !== null &&
-                                      typeof (q.studentAnswer as { text?: string }).text === "string" &&
-                                      (q.studentAnswer as { text: string }).text.trim()) ? (
-                                <div className="space-y-2">
-                                  <p className="text-xs font-medium text-gray-600">
-                                    Transcribed answer
-                                  </p>
-                                  <p
-                                    className={`text-sm leading-relaxed whitespace-pre-wrap ${
-                                      q.isCorrect ? "text-green-800" : "text-gray-900"
-                                    }`}
-                                  >
-                                    {typeof q.studentAnswer === "string"
-                                      ? q.studentAnswer
-                                      : (q.studentAnswer as { text: string }).text}
-                                  </p>
-                                </div>
-                              ) : q.qtype === "HTML_CSS" && 
-                                 typeof q.studentAnswer === "object" && 
+                              ) : q.qtype === "HTML_CSS" &&
+                                 typeof q.studentAnswer === "object" &&
                                  q.studentAnswer !== null &&
                                  Object.keys(q.studentAnswer).length > 0 ? (
                                 // Special rendering for HTML_CSS student answers
