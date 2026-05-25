@@ -35,9 +35,23 @@ export async function POST(request: Request) {
 
     const { schedule } = await request.json();
 
-    if (!schedule || !schedule.oddDays || !schedule.evenDays) {
+    if (
+      !schedule ||
+      !Array.isArray(schedule.oddDays) ||
+      !Array.isArray(schedule.evenDays)
+    ) {
       return NextResponse.json(
         { error: "Invalid schedule format" },
+        { status: 400 }
+      );
+    }
+
+    if (
+      schedule.dayOverrides &&
+      (typeof schedule.dayOverrides !== "object" || Array.isArray(schedule.dayOverrides))
+    ) {
+      return NextResponse.json(
+        { error: "Invalid dayOverrides format" },
         { status: 400 }
       );
     }

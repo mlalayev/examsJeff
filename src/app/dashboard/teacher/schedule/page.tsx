@@ -18,9 +18,28 @@ type Lesson = {
   hourlyRate: number;
 };
 
+type DayOverride = {
+  addedLessons: Lesson[];
+  hiddenLessonIds: string[];
+};
+
 type Schedule = {
   oddDays: Lesson[];
   evenDays: Lesson[];
+  dayOverrides?: Record<string, DayOverride>;
+};
+
+const dateKeyOf = (year: number, month: number, day: number) =>
+  `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+
+const formatDateLong = (year: number, month: number, day: number) => {
+  const d = new Date(year, month, day);
+  return d.toLocaleDateString(undefined, {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 };
 
 const TIME_SLOTS = [
@@ -53,7 +72,13 @@ export default function TeacherSchedulePage() {
   const [schedule, setSchedule] = useState<Schedule>({
     oddDays: [],
     evenDays: [],
+    dayOverrides: {},
   });
+  const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
+  const [extraLessonContext, setExtraLessonContext] = useState<{
+    dateKey: string;
+    editing: Lesson | null;
+  } | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [slideState, setSlideState] = useState<{
@@ -197,14 +222,90 @@ export default function TeacherSchedulePage() {
     setSlideState({ isAnimating: true, dir: "next", nextMonth, nextYear });
   };
 
-  const getLessonsForDay = (day: number, dayOfWeek: number) => {
+  const getBaseLessonsForDay = (day: number, dayOfWeek: number) => {
     if (dayOfWeek === 0) return [];
-    if (isOddDay(day)) {
-      return schedule.oddDays || [];
-    } else if (isEvenDay(day)) {
-      return schedule.evenDays || [];
-    }
+    if (isOddDay(day)) return schedule.oddDays || [];
+    if (isEvenDay(day)) return schedule.evenDays || [];
     return [];
+  };
+
+  const getOverrideForDate = (dateKey: string): DayOverride =>
+    schedule.dayOverrides?.[dateKey] || { addedLessons: [], hiddenLessonIds: [] };
+
+  const getLessonsForDay = (day: number, dayOfWeek: number, year: number, month: number) => {
+    const base = getBaseLessonsForDay(day, dayOfWeek);
+    const override = getOverrideForDate(dateKeyOf(year, month, day));
+    const hidden = new Set(override.hiddenLessonIds);
+    const visibleBase = base.filter((l) => !hidden.has(l.id));
+    return [...visibleBase, ...override.addedLessons];
+  };
+
+  const writeOverride = (dateKey: string, next: DayOverride) => {
+    const nextOverrides = { ...(schedule.dayOverrides || {}) };
+    const isEmpty =
+      next.addedLessons.length === 0 && next.hiddenLessonIds.length === 0;
+    if (isEmpty) delete nextOverrides[dateKey];
+    else nextOverrides[dateKey] = next;
+    const newSchedule = { ...schedule, dayOverrides: nextOverrides };
+    setSchedule(newSchedule);
+    autoSaveSchedule(newSchedule);
+    return newSchedule;
+  };
+
+  const hideInheritedForDate = (dateKey: string, lessonId: string) => {
+    const current = getOverrideForDate(dateKey);
+    if (current.hiddenLessonIds.includes(lessonId)) return;
+    writeOverride(dateKey, {
+      ...current,
+      hiddenLessonIds: [...current.hiddenLessonIds, lessonId],
+    });
+    showAlert("Lesson hidden for this day", "success");
+  };
+
+  const restoreInheritedForDate = (dateKey: string, lessonId: string) => {
+    const current = getOverrideForDate(dateKey);
+    writeOverride(dateKey, {
+      ...current,
+      hiddenLessonIds: current.hiddenLessonIds.filter((id) => id !== lessonId),
+    });
+    showAlert("Lesson restored for this day", "success");
+  };
+
+  const addExtraLessonForDate = (dateKey: string, lesson: Omit<Lesson, "id">) => {
+    const current = getOverrideForDate(dateKey);
+    const newLesson: Lesson = {
+      ...lesson,
+      id: `extra-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
+    };
+    writeOverride(dateKey, {
+      ...current,
+      addedLessons: [...current.addedLessons, newLesson],
+    });
+    showAlert("Extra lesson added for this day", "success");
+  };
+
+  const updateExtraLessonForDate = (
+    dateKey: string,
+    lessonId: string,
+    lesson: Omit<Lesson, "id">
+  ) => {
+    const current = getOverrideForDate(dateKey);
+    writeOverride(dateKey, {
+      ...current,
+      addedLessons: current.addedLessons.map((l) =>
+        l.id === lessonId ? { ...lesson, id: lessonId } : l
+      ),
+    });
+    showAlert("Extra lesson updated", "success");
+  };
+
+  const deleteExtraLessonForDate = (dateKey: string, lessonId: string) => {
+    const current = getOverrideForDate(dateKey);
+    writeOverride(dateKey, {
+      ...current,
+      addedLessons: current.addedLessons.filter((l) => l.id !== lessonId),
+    });
+    showAlert("Extra lesson removed", "success");
   };
 
   const addAllLessonsToCalendar = () => {
@@ -216,6 +317,10 @@ export default function TeacherSchedulePage() {
   const renderCalendar = (month = currentMonth, year = currentYear) => {
     const daysInMonth = getDaysInMonth(month, year);
     const firstDay = getFirstDayOfMonth(month, year);
+    const today = new Date();
+    const todayY = today.getFullYear();
+    const todayM = today.getMonth();
+    const todayD = today.getDate();
     const days = [];
 
     for (let i = 0; i < firstDay; i++) {
@@ -229,24 +334,63 @@ export default function TeacherSchedulePage() {
 
     for (let day = 1; day <= daysInMonth; day++) {
       const dayOfWeek = new Date(year, month, day).getDay();
-      const lessons = getLessonsForDay(day, dayOfWeek);
-      
+      const lessons = getLessonsForDay(day, dayOfWeek, year, month);
+      const dateKey = dateKeyOf(year, month, day);
+      const override = getOverrideForDate(dateKey);
+      const hasExtras = override.addedLessons.length > 0;
+      const hasHidden = override.hiddenLessonIds.length > 0;
+      const isToday = day === todayD && month === todayM && year === todayY;
+      const isSunday = dayOfWeek === 0;
+
       let bgClass = "bg-white";
-      if (dayOfWeek === 0) {
+      if (isSunday) {
         bgClass = "bg-[#fef9c3]";
       } else if (isOddDay(day)) {
         bgClass = "bg-[#bfdbfe]";
       }
-      
+
+      const ringClass = isToday
+        ? "ring-2 ring-[#303380] ring-offset-1 ring-offset-white relative z-10"
+        : "";
+
       days.push(
-        <div
+        <button
+          type="button"
           key={day}
-          className={`min-h-24 border border-slate-200 p-1.5 ${bgClass}`}
+          onClick={() => setSelectedDateKey(dateKey)}
+          className={`min-h-24 border border-slate-200 p-1.5 text-left transition hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-[#303380]/60 ${bgClass} ${ringClass}`}
+          aria-label={`Open schedule for ${formatDateLong(year, month, day)}`}
         >
-          <div className="text-[11px] font-semibold mb-1.5 text-slate-700">
-            {day}
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center gap-1.5">
+              <span
+                className={`text-[11px] font-semibold ${
+                  isToday
+                    ? "inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#303380] text-white tabular-nums"
+                    : "text-slate-700"
+                }`}
+              >
+                {day}
+              </span>
+              {isToday && (
+                <span className="text-[9px] font-semibold uppercase tracking-wide text-[#303380]">
+                  Today
+                </span>
+              )}
+            </div>
+            {(hasExtras || hasHidden) && (
+              <span
+                className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-white/70 border border-slate-300 text-slate-700"
+                title={`${hasExtras ? `${override.addedLessons.length} extra` : ""}${
+                  hasExtras && hasHidden ? " · " : ""
+                }${hasHidden ? `${override.hiddenLessonIds.length} hidden` : ""}`}
+              >
+                {hasExtras ? `+${override.addedLessons.length}` : ""}
+                {hasHidden ? `${hasExtras ? " " : ""}–${override.hiddenLessonIds.length}` : ""}
+              </span>
+            )}
           </div>
-          
+
           {lessons.length > 0 && (
             <div className="space-y-1">
               {lessons.map((lesson) => (
@@ -263,7 +407,7 @@ export default function TeacherSchedulePage() {
               ))}
             </div>
           )}
-        </div>
+        </button>
       );
     }
 
@@ -462,6 +606,64 @@ export default function TeacherSchedulePage() {
           dayType={modalDayType}
         />
       )}
+
+      {/* Per-day modal (opens when a calendar cell is clicked) */}
+      {selectedDateKey && (() => {
+        const [y, m, d] = selectedDateKey.split("-").map(Number);
+        const dayOfWeek = new Date(y, m - 1, d).getDay();
+        const baseLessons = getBaseLessonsForDay(d, dayOfWeek);
+        const override = getOverrideForDate(selectedDateKey);
+        const dayType: "odd" | "even" | "sunday" =
+          dayOfWeek === 0 ? "sunday" : isOddDay(d) ? "odd" : "even";
+
+        return (
+          <PerDayModal
+            dateLabel={formatDateLong(y, m - 1, d)}
+            dayType={dayType}
+            baseLessons={baseLessons}
+            override={override}
+            onClose={() => setSelectedDateKey(null)}
+            onHide={(lessonId) => hideInheritedForDate(selectedDateKey, lessonId)}
+            onRestore={(lessonId) =>
+              restoreInheritedForDate(selectedDateKey, lessonId)
+            }
+            onAddExtra={() =>
+              setExtraLessonContext({ dateKey: selectedDateKey, editing: null })
+            }
+            onEditExtra={(lesson) =>
+              setExtraLessonContext({ dateKey: selectedDateKey, editing: lesson })
+            }
+            onDeleteExtra={(lessonId) =>
+              deleteExtraLessonForDate(selectedDateKey, lessonId)
+            }
+          />
+        );
+      })()}
+
+      {/* Add/Edit EXTRA lesson modal (per-day) */}
+      {extraLessonContext && (
+        <LessonModal
+          lesson={extraLessonContext.editing}
+          onClose={() => setExtraLessonContext(null)}
+          onSave={(lesson) => {
+            if (extraLessonContext.editing) {
+              updateExtraLessonForDate(
+                extraLessonContext.dateKey,
+                extraLessonContext.editing.id,
+                lesson
+              );
+            } else {
+              addExtraLessonForDate(extraLessonContext.dateKey, lesson);
+            }
+            setExtraLessonContext(null);
+          }}
+          dayType="odd"
+          titleOverride={
+            extraLessonContext.editing ? "Edit extra lesson" : "Add extra lesson"
+          }
+          subtitleOverride="One-off lesson for this specific day"
+        />
+      )}
     </div>
   );
 }
@@ -610,11 +812,15 @@ function LessonModal({
   onClose,
   onSave,
   dayType,
+  titleOverride,
+  subtitleOverride,
 }: {
   lesson: Lesson | null;
   onClose: () => void;
   onSave: (lesson: Omit<Lesson, "id">) => void;
   dayType: "odd" | "even";
+  titleOverride?: string;
+  subtitleOverride?: string;
 }) {
   const ACCENT = "#303380";
   const [className, setClassName] = useState(lesson?.className || "");
@@ -664,11 +870,12 @@ function LessonModal({
             <div className="flex items-center gap-2">
               <span className="h-2 w-2 rounded-full" style={{ backgroundColor: ACCENT }} aria-hidden />
               <h2 className="text-lg font-semibold text-gray-900">
-                {lesson ? "Edit lesson" : "Add lesson"}
+                {titleOverride ?? (lesson ? "Edit lesson" : "Add lesson")}
               </h2>
             </div>
             <p className="text-sm text-gray-500 mt-0.5">
-              {dayType === "odd" ? "Odd days" : "Even days"} • 1-hour slot
+              {subtitleOverride ??
+                `${dayType === "odd" ? "Odd days" : "Even days"} \u2022 1-hour slot`}
             </p>
           </div>
           <button
@@ -854,6 +1061,231 @@ function LessonModal({
   );
 }
 
+function PerDayModal({
+  dateLabel,
+  dayType,
+  baseLessons,
+  override,
+  onClose,
+  onHide,
+  onRestore,
+  onAddExtra,
+  onEditExtra,
+  onDeleteExtra,
+}: {
+  dateLabel: string;
+  dayType: "odd" | "even" | "sunday";
+  baseLessons: Lesson[];
+  override: DayOverride;
+  onClose: () => void;
+  onHide: (lessonId: string) => void;
+  onRestore: (lessonId: string) => void;
+  onAddExtra: () => void;
+  onEditExtra: (lesson: Lesson) => void;
+  onDeleteExtra: (lessonId: string) => void;
+}) {
+  const ACCENT = "#303380";
+  const hidden = new Set(override.hiddenLessonIds);
+  const visibleBase = baseLessons.filter((l) => !hidden.has(l.id));
+  const hiddenBase = baseLessons.filter((l) => hidden.has(l.id));
+  const dayTypeLabel =
+    dayType === "sunday" ? "Sunday" : dayType === "odd" ? "Odd day" : "Even day";
 
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[1px] flex items-center justify-center p-4">
+      <div className="w-full max-w-3xl bg-white rounded-xl overflow-hidden max-h-[90vh] flex flex-col shadow-xl border border-slate-200">
+        <div className="px-5 py-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span
+                className="h-2 w-2 rounded-full"
+                style={{ backgroundColor: ACCENT }}
+                aria-hidden
+              />
+              <div className="text-lg font-semibold text-gray-900">
+                {dateLabel}
+              </div>
+            </div>
+            <div className="text-sm text-gray-500 mt-0.5">
+              {dayTypeLabel}
+              <span className="mx-1.5">•</span>
+              inherits from the{" "}
+              {dayType === "odd"
+                ? "Odd days"
+                : dayType === "even"
+                ? "Even days"
+                : "Sunday"}{" "}
+              pattern
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50"
+            aria-label="Close"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
 
+        <div className="p-5 overflow-y-auto space-y-6">
+          {/* Inherited lessons */}
+          <section>
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-sm font-semibold text-gray-900">
+                Inherited lessons
+                <span className="ml-2 text-xs font-normal text-gray-500">
+                  from the {dayTypeLabel.toLowerCase()} pattern
+                </span>
+              </div>
+              <span className="text-xs text-gray-500 tabular-nums">
+                {visibleBase.length}/{baseLessons.length} visible
+              </span>
+            </div>
 
+            {baseLessons.length === 0 ? (
+              <div className="text-center py-8 bg-slate-50/60 rounded-xl border border-slate-200 text-sm text-gray-500">
+                No {dayTypeLabel.toLowerCase()} lessons configured yet.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {baseLessons.map((lesson) => {
+                  const isHidden = hidden.has(lesson.id);
+                  return (
+                    <div
+                      key={lesson.id}
+                      className={`border rounded-xl p-3 transition ${
+                        isHidden
+                          ? "bg-slate-50 border-dashed border-slate-300 opacity-70"
+                          : "bg-white border-slate-200 shadow-sm"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="font-semibold text-gray-900 truncate">
+                            {lesson.className}
+                            {isHidden && (
+                              <span className="ml-2 text-[10px] uppercase tracking-wide font-semibold text-rose-700">
+                                hidden today
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-1 flex items-center gap-2 text-xs text-gray-500 tabular-nums">
+                            <Clock className="w-3.5 h-3.5" />
+                            {lesson.timeSlot}
+                          </div>
+                          {lesson.students && lesson.students.length > 0 && (
+                            <div className="mt-1 text-xs text-gray-500">
+                              {lesson.students.length} students
+                            </div>
+                          )}
+                        </div>
+                        {isHidden ? (
+                          <button
+                            type="button"
+                            onClick={() => onRestore(lesson.id)}
+                            className="text-xs px-2.5 py-1 rounded-md border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 shadow-sm"
+                          >
+                            Restore
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => onHide(lesson.id)}
+                            className="text-xs px-2.5 py-1 rounded-md border border-slate-200 bg-white text-rose-700 hover:bg-rose-50 shadow-sm"
+                          >
+                            Hide today
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {hiddenBase.length > 0 && (
+              <p className="mt-2 text-xs text-gray-500">
+                {hiddenBase.length} inherited lesson{hiddenBase.length === 1 ? "" : "s"} hidden for this day.
+              </p>
+            )}
+          </section>
+
+          {/* Extra lessons (per-day) */}
+          <section>
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-sm font-semibold text-gray-900">
+                Extra lessons for this day
+                <span className="ml-2 text-xs font-normal text-gray-500 tabular-nums">
+                  ({override.addedLessons.length})
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={onAddExtra}
+                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-white shadow-sm transition"
+                style={{ backgroundColor: ACCENT }}
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add extra lesson
+              </button>
+            </div>
+
+            {override.addedLessons.length === 0 ? (
+              <div className="text-center py-8 bg-slate-50/60 rounded-xl border border-slate-200 text-sm text-gray-500">
+                No extras yet. Add a one-off lesson that only appears on this date.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {override.addedLessons.map((lesson) => (
+                  <div
+                    key={lesson.id}
+                    className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-semibold text-gray-900 truncate">
+                          {lesson.className}
+                          <span className="ml-2 text-[10px] uppercase tracking-wide font-semibold text-emerald-700">
+                            extra
+                          </span>
+                        </div>
+                        <div className="mt-1 flex items-center gap-2 text-xs text-gray-500 tabular-nums">
+                          <Clock className="w-3.5 h-3.5" />
+                          {lesson.timeSlot}
+                        </div>
+                        <div className="mt-2 inline-flex items-center gap-1.5 text-xs text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
+                          <DollarSign className="w-3.5 h-3.5" />
+                          <span className="font-semibold tabular-nums">
+                            ${Number(lesson.hourlyRate || 0).toFixed(2)}/hr
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        <button
+                          type="button"
+                          onClick={() => onEditExtra(lesson)}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50"
+                          title="Edit"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onDeleteExtra(lesson.id)}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-rose-700 shadow-sm transition hover:bg-rose-50"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+}
