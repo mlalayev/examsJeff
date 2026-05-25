@@ -43,6 +43,12 @@ model User {
   writingSubmissionsAsGrader  WritingSubmission[] @relation("WritingGrader")
   writingSubmissionsAsStudent WritingSubmission[] @relation("WritingStudent")
   writingSubmissionsAsTeacher WritingSubmission[] @relation("WritingTeacher")
+  lessonsCreated              Lesson[]            @relation("LessonCreator")
+  lessonProgress              LessonProgress[]    @relation("StudentLessonProgress")
+  wordListsCreated            WordList[]          @relation("WordListCreator")
+  wordReviews                 WordReview[]        @relation("StudentWordReviews")
+  tricksCreated               Trick[]             @relation("TrickCreator")
+  trickSaves                  TrickSave[]         @relation("StudentTrickSaves")
 
   @@map("users")
 }
@@ -146,23 +152,23 @@ model ClassStudent {
 }
 
 model Attempt {
-  id           String           @id @default(cuid())
-  status       String           @default("IN_PROGRESS")
-  bandOverall  Float?
-  createdAt    DateTime         @default(now())
-  bookingId    String?          @unique
-  startedAt    DateTime?
-  submittedAt  DateTime?
-  branchId     String?
-  assignmentId String?          @unique
-  examId       String
-  studentId    String
-  answers      Json?
-  sections     AttemptSection[]
+  id             String           @id @default(cuid())
+  status         String           @default("IN_PROGRESS")
+  bandOverall    Float?
+  createdAt      DateTime         @default(now())
+  bookingId      String?          @unique
+  startedAt      DateTime?
+  submittedAt    DateTime?
+  branchId       String?
+  assignmentId   String?          @unique
+  examId         String
+  studentId      String
+  answers        Json?
+  sections       AttemptSection[]
   attemptAnswers AttemptAnswer[]
-  assignment   Assignment?      @relation(fields: [assignmentId], references: [id])
-  booking      Booking?         @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  branch       Branch?          @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  assignment     Assignment?      @relation(fields: [assignmentId], references: [id])
+  booking        Booking?         @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  branch         Branch?          @relation(fields: [branchId], references: [id], onDelete: Restrict)
 
   @@index([studentId, status])
   @@index([studentId, createdAt])
@@ -434,6 +440,7 @@ model Assignment {
   startAt    DateTime?
   dueAt      DateTime?
   status     String    @default("ASSIGNED")
+  isExtra    Boolean   @default(false)
   createdAt  DateTime  @default(now())
   branch     Branch?   @relation(fields: [branchId], references: [id], onDelete: Restrict)
   class      Class?    @relation(fields: [classId], references: [id])
@@ -444,6 +451,7 @@ model Assignment {
 
   @@index([studentId, startAt])
   @@index([teacherId, startAt])
+  @@index([studentId, isExtra, status])
   @@map("assignments")
 }
 
@@ -637,4 +645,181 @@ enum QuestionType {
 enum PaymentStatus {
   PAID
   UNPAID
+}
+
+// === Lessons ===
+
+enum LessonCategory {
+  IELTS
+  TOEFL
+  SAT
+  GENERAL_ENGLISH
+  KIDS
+}
+
+enum LessonProgressStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+model Lesson {
+  id          String           @id @default(cuid())
+  title       String
+  slug        String           @unique
+  category    LessonCategory
+  level       String?
+  summary     String?
+  content     Json?
+  coverImage  String?
+  videoUrl    String?
+  durationMin Int?
+  order       Int              @default(0)
+  isPublished Boolean          @default(false)
+  createdById String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  createdBy   User?            @relation("LessonCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  progress    LessonProgress[]
+
+  @@index([category, isPublished, order])
+  @@index([createdById])
+  @@map("lessons")
+}
+
+model LessonProgress {
+  id           String               @id @default(cuid())
+  lessonId     String
+  studentId    String
+  status       LessonProgressStatus @default(NOT_STARTED)
+  progressPct  Int                  @default(0)
+  startedAt    DateTime?
+  completedAt  DateTime?
+  lastViewedAt DateTime?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  lesson       Lesson               @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  student      User                 @relation("StudentLessonProgress", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([lessonId, studentId])
+  @@index([studentId, status])
+  @@map("lesson_progress")
+}
+
+// === Words ===
+
+enum WordListCategory {
+  GENERAL
+  SAT
+  IELTS
+}
+
+enum WordReviewStatus {
+  NEW
+  LEARNING
+  REVIEW
+  MASTERED
+}
+
+model WordList {
+  id          String           @id @default(cuid())
+  title       String
+  slug        String           @unique
+  category    WordListCategory
+  level       String?
+  description String?
+  isPublished Boolean          @default(false)
+  order       Int              @default(0)
+  createdById String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  createdBy   User?            @relation("WordListCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  words       Word[]
+
+  @@index([category, isPublished, order])
+  @@index([createdById])
+  @@map("word_lists")
+}
+
+model Word {
+  id           String       @id @default(cuid())
+  wordListId   String
+  term         String
+  definition   String
+  partOfSpeech String?
+  example      String?
+  synonyms     String[]     @default([])
+  audioUrl     String?
+  imageUrl     String?
+  order        Int          @default(0)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  wordList     WordList     @relation(fields: [wordListId], references: [id], onDelete: Cascade)
+  reviews      WordReview[]
+
+  @@index([wordListId, order])
+  @@index([term])
+  @@map("words")
+}
+
+model WordReview {
+  id             String           @id @default(cuid())
+  wordId         String
+  studentId      String
+  status         WordReviewStatus @default(NEW)
+  correctCount   Int              @default(0)
+  wrongCount     Int              @default(0)
+  nextReviewAt   DateTime?
+  lastReviewedAt DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  word           Word             @relation(fields: [wordId], references: [id], onDelete: Cascade)
+  student        User             @relation("StudentWordReviews", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([wordId, studentId])
+  @@index([studentId, status])
+  @@index([studentId, nextReviewAt])
+  @@map("word_reviews")
+}
+
+// === Tricks ===
+
+enum TrickCategory {
+  WRITING
+  DESMOS
+}
+
+model Trick {
+  id          String        @id @default(cuid())
+  title       String
+  slug        String        @unique
+  category    TrickCategory
+  summary     String?
+  content     Json?
+  coverImage  String?
+  videoUrl    String?
+  order       Int           @default(0)
+  isPublished Boolean       @default(false)
+  createdById String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  createdBy   User?         @relation("TrickCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  saves       TrickSave[]
+
+  @@index([category, isPublished, order])
+  @@index([createdById])
+  @@map("tricks")
+}
+
+model TrickSave {
+  id        String   @id @default(cuid())
+  trickId   String
+  studentId String
+  createdAt DateTime @default(now())
+  trick     Trick    @relation(fields: [trickId], references: [id], onDelete: Cascade)
+  student   User     @relation("StudentTrickSaves", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([trickId, studentId])
+  @@index([studentId])
+  @@map("trick_saves")
 }

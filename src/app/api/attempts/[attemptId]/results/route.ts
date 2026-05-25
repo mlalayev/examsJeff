@@ -1,6 +1,69 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-utils";
+import {
+  computeIeltsOverallBand,
+  getIeltsBandForSection,
+  type IeltsReadingType,
+} from "@/lib/ielts-band";
+
+/**
+ * Normalize a single text value for case-/punctuation-insensitive comparison.
+ * Mirrors the rules used in @/lib/scoring so the displayed correctness matches
+ * the auto-grader.
+ */
+function normalizeAnswerText(text: string): string {
+  return text
+    .trim()
+    .toLowerCase()
+    .replace(/[.,!?\\/\-_:;"'()]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Per-field grading for an HTML_CSS question. Returns the number of correct
+ * fields and the total number of fields in the answer key. Used so that a
+ * single HTML_CSS question with 10 inputs (e.g. an IELTS Listening part)
+ * contributes 10 raw points to the section score rather than all-or-nothing.
+ */
+function gradeHtmlCssFields(
+  studentAnswer: any,
+  answerKey: any,
+): { correct: number; total: number } {
+  if (!answerKey || typeof answerKey !== "object" || !answerKey.fields) {
+    return { correct: 0, total: 0 };
+  }
+  const fields = answerKey.fields as Record<
+    string,
+    { type?: string; accepted?: string[] }
+  >;
+  const names = Object.keys(fields);
+  if (names.length === 0) return { correct: 0, total: 0 };
+  const sa = studentAnswer && typeof studentAnswer === "object" ? studentAnswer : {};
+  let correct = 0;
+  for (const name of names) {
+    const spec = fields[name] || ({} as any);
+    const studentVal = (sa as Record<string, unknown>)[name];
+    if (spec.type === "checkbox") {
+      const expected = (spec.accepted?.[0] || "false").toLowerCase() === "true";
+      const got =
+        studentVal === true ||
+        studentVal === "true" ||
+        studentVal === 1 ||
+        studentVal === "1";
+      if (got === expected) correct += 1;
+      continue;
+    }
+    const gotStr = studentVal == null ? "" : String(studentVal);
+    if (!gotStr.trim()) continue;
+    const gotNorm = normalizeAnswerText(gotStr);
+    const accepted = spec.accepted || [];
+    const ok = accepted.some((a) => normalizeAnswerText(String(a)) === gotNorm);
+    if (ok) correct += 1;
+  }
+  return { correct, total: names.length };
+}
 
 /**
  * Helper function to check if a student answer is correct
@@ -92,6 +155,12 @@ function checkAnswerCorrectness(q: any, studentAnswer: any, answerKey: any): boo
       const correctAns = correctBlanks[idx] || "";
       return studentAns.trim().toLowerCase() === correctAns.trim().toLowerCase();
     });
+  } else if (q.qtype === "HTML_CSS") {
+    // HTML_CSS: marked overall-correct only if ALL fields match.
+    // Partial credit is computed separately via gradeHtmlCssFields when
+    // counting raw scores per section.
+    const { correct, total } = gradeHtmlCssFields(studentAnswer, answerKey);
+    return total > 0 && correct === total;
   }
   return false;
 }
@@ -210,41 +279,73 @@ export async function GET(
       // For JSON exams, we may not have attempt.sections in DB, so compute from answers
       // Structure: { sectionType: { questionId: answer } }
       const allStudentAnswers = (attempt.answers as any) || {};
-      
+      const isIelts = examWithSections.category === "IELTS";
+      const readingType: IeltsReadingType =
+        (examWithSections.readingType || "ACADEMIC").toUpperCase() === "GENERAL_TRAINING"
+          ? "GENERAL_TRAINING"
+          : "ACADEMIC";
+
       const perSection = parentSections.map((examSection: any) => {
         const attemptSec = attempt.sections.find((as) => as.type === examSection.type);
-        
-        // Collect all questions from this section and its subsections
-        let allQuestions = [...(examSection.questions || [])];
+
+        // Collect questions from this section + subsections, tagging which
+        // section each question originated from (subsections may reuse ids).
+        type QInfo = { q: any; sourceSectionType: string };
+        let allQuestions: QInfo[] = [
+          ...(examSection.questions || []).map((q: any) => ({
+            q,
+            sourceSectionType: String(examSection.type),
+          })),
+        ];
         const sectionSubsections = subsectionsByParent[examSection.id] || [];
         sectionSubsections.forEach((sub: any) => {
-          allQuestions = [...allQuestions, ...(sub.questions || [])];
+          allQuestions = [
+            ...allQuestions,
+            ...(sub.questions || []).map((q: any) => ({
+              q,
+              sourceSectionType: String(sub.type),
+            })),
+          ];
         });
-        
-        const totalQuestions = allQuestions.length;
-        
-        // Get answers for this specific section
-        const studentAnswers = (attemptSec?.answers as Record<string, any>) || allStudentAnswers[examSection.type] || {};
-        
+
+        // Count tasks: HTML_CSS contributes one task per field, every other
+        // qtype contributes one task per question.
         let correctCount = 0;
-        if (attemptSec && attemptSec.rawScore !== null) {
-          // Use DB score if available
-          correctCount = attemptSec.rawScore;
-        } else {
-          // Compute score from answers (for JSON exams) - using optimized helper function
-          correctCount = allQuestions.filter((q: any) => {
-            const studentAnswer = studentAnswers[q.id];
-            const answerKey = q.answerKey as any;
-            return checkAnswerCorrectness(q, studentAnswer, answerKey);
-          }).length;
+        let totalCount = 0;
+        for (const { q, sourceSectionType } of allQuestions) {
+          const studentAnswer = attemptSec?.answers
+            ? (attemptSec.answers as Record<string, any>)[q.id]
+            : (allStudentAnswers[sourceSectionType] || {})[q.id];
+          const answerKey = q.answerKey as any;
+
+          if (q.qtype === "HTML_CSS") {
+            const { correct, total } = gradeHtmlCssFields(studentAnswer, answerKey);
+            // Fallback for malformed answer keys: 1 task = 1 question.
+            if (total === 0) {
+              totalCount += 1;
+              if (checkAnswerCorrectness(q, studentAnswer, answerKey)) correctCount += 1;
+            } else {
+              totalCount += total;
+              correctCount += correct;
+            }
+            continue;
+          }
+
+          totalCount += 1;
+          if (checkAnswerCorrectness(q, studentAnswer, answerKey)) correctCount += 1;
         }
+
+        const bandScore = isIelts
+          ? getIeltsBandForSection(examSection.type, correctCount, totalCount, { readingType })
+          : null;
 
         return {
           type: examSection.type,
           title: examSection.title || examSection.type,
           correct: correctCount,
-          total: totalQuestions,
-          percentage: totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0,
+          total: totalCount,
+          percentage: totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0,
+          bandScore,
         };
       });
 
@@ -256,18 +357,41 @@ export async function GET(
       // Get writing submission if exists
       const writingSection = attempt.sections.find((s) => s.type === "WRITING");
       const writingSubmission = writingSection?.writingSubmission || null;
+      const speakingSectionStudent = attempt.sections.find((s) => s.type === "SPEAKING");
+      const speakingRubricStudent = speakingSectionStudent?.rubric as { ieltsSpeakingAi?: Record<string, unknown> } | null;
+      const speakingAiStudent = speakingRubricStudent?.ieltsSpeakingAi ?? null;
+
+      const writingBandForOverall =
+        writingSubmission?.overallBand ??
+        (writingSubmission?.aiTask1Overall != null &&
+        writingSubmission?.aiTask2Overall != null
+          ? (writingSubmission.aiTask1Overall + writingSubmission.aiTask2Overall) / 2
+          : null);
+      const speakingBandForOverall =
+        speakingAiStudent && typeof (speakingAiStudent as any).overallBand === "number"
+          ? ((speakingAiStudent as any).overallBand as number)
+          : null;
+      const overallBand = isIelts
+        ? computeIeltsOverallBand([
+            ...perSection.map((s) => s.bandScore),
+            writingBandForOverall ?? null,
+            speakingBandForOverall ?? null,
+          ])
+        : null;
 
       return NextResponse.json({
         attemptId: attempt.id,
         examTitle: booking.exam.title,
-        studentName: booking.student.name || booking.student.email,
+        examCategory: examWithSections.category,
         submittedAt: attempt.submittedAt,
+        studentName: booking.student.name || booking.student.email,
         status: attempt.status,
         role: isParent ? "PARENT" : "STUDENT",
         summary: {
           totalCorrect,
           totalQuestions,
           totalPercentage,
+          overallBand,
           perSection,
         },
         writingSubmission: writingSubmission ? {
@@ -299,6 +423,11 @@ export async function GET(
       // For JSON exams, answers are stored in attempt.answers, not in attempt_sections
       // Structure: { sectionType: { questionId: answer } }
       const allStudentAnswers = (attempt.answers as any) || {};
+      const isIelts = examWithSections.category === "IELTS";
+      const readingType: IeltsReadingType =
+        (examWithSections.readingType || "ACADEMIC").toUpperCase() === "GENERAL_TRAINING"
+          ? "GENERAL_TRAINING"
+          : "ACADEMIC";
       
       // Process only parent sections (subsections will be included in their parents)
       const fullSections = parentSections.map((examSection: any) => {
@@ -339,6 +468,24 @@ export async function GET(
 
           // Use optimized helper function for correctness check
           const isCorrect = checkAnswerCorrectness(q, studentAnswer, answerKey);
+
+          // Pre-compute task counts so the section can sum tasks (each HTML_CSS
+          // field, each DND_GAP blank) instead of just questions.
+          let taskCorrect: number;
+          let taskTotal: number;
+          if (q.qtype === "HTML_CSS") {
+            const graded = gradeHtmlCssFields(studentAnswer, answerKey);
+            if (graded.total > 0) {
+              taskCorrect = graded.correct;
+              taskTotal = graded.total;
+            } else {
+              taskCorrect = isCorrect ? 1 : 0;
+              taskTotal = 1;
+            }
+          } else {
+            taskCorrect = isCorrect ? 1 : 0;
+            taskTotal = 1;
+          }
 
             // Format answers for display
             let displayStudentAnswer = studentAnswer;
@@ -414,6 +561,8 @@ export async function GET(
               correctAnswer: displayCorrectAnswer,
               isCorrect,
               explanation: q.explanation,
+              taskCorrect,
+              taskTotal,
             };
           });
 
@@ -465,6 +614,10 @@ export async function GET(
                   }
                 }
               }
+            } else if (typeof q.taskTotal === "number" && q.taskTotal > 1) {
+              // HTML_CSS or other multi-field types: count each field as a task.
+              totalCount += q.taskTotal;
+              correctCount += typeof q.taskCorrect === "number" ? q.taskCorrect : 0;
             } else {
               // Regular question
               totalCount += 1;
@@ -474,12 +627,17 @@ export async function GET(
             }
           });
 
+          const bandScore = isIelts
+            ? getIeltsBandForSection(examSection.type, correctCount, totalCount, { readingType })
+            : null;
+
           return {
             type: examSection.type,
             title: examSection.title,
             correct: correctCount,
             total: totalCount,
             percentage: totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0,
+            bandScore,
             questions,
           };
         });
@@ -496,9 +654,30 @@ export async function GET(
       const speakingRubric = speakingSection?.rubric as { ieltsSpeakingAi?: Record<string, unknown> } | null;
       const speakingAi = speakingRubric?.ieltsSpeakingAi ?? null;
 
+      // Overall IELTS band: blend Listening/Reading raw→band with AI Writing
+      // and Speaking bands when available. Falls back to null for non-IELTS.
+      const writingBandForOverall =
+        writingSubmission?.overallBand ??
+        (writingSubmission?.aiTask1Overall != null &&
+        writingSubmission?.aiTask2Overall != null
+          ? (writingSubmission.aiTask1Overall + writingSubmission.aiTask2Overall) / 2
+          : null);
+      const speakingBandForOverall =
+        speakingAi && typeof (speakingAi as any).overallBand === "number"
+          ? ((speakingAi as any).overallBand as number)
+          : null;
+      const overallBand = isIelts
+        ? computeIeltsOverallBand([
+            ...fullSections.map((s) => s.bandScore),
+            writingBandForOverall ?? null,
+            speakingBandForOverall ?? null,
+          ])
+        : null;
+
       return NextResponse.json({
         attemptId: attempt.id,
         examTitle: booking.exam.title,
+        examCategory: examWithSections.category,
         studentName: booking.student.name || booking.student.email,
         submittedAt: attempt.submittedAt,
         status: attempt.status,
@@ -507,6 +686,7 @@ export async function GET(
           totalCorrect,
           totalQuestions,
           totalPercentage,
+          overallBand,
         },
         sections: fullSections,
         speakingAi,

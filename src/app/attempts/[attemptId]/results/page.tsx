@@ -30,6 +30,7 @@ import {
 interface ResultsData {
   attemptId: string;
   examTitle: string;
+  examCategory?: string;
   studentName: string;
   submittedAt: string;
   status: string;
@@ -38,12 +39,14 @@ interface ResultsData {
     totalCorrect: number;
     totalQuestions: number;
     totalPercentage: number;
+    overallBand?: number | null;
     perSection?: Array<{
       type: string;
       title: string;
       correct: number;
       total: number;
       percentage: number;
+      bandScore?: number | null;
       listeningParts?: {
         s1: number;
         s2: number;
@@ -58,6 +61,7 @@ interface ResultsData {
     correct: number;
     total: number;
     percentage: number;
+    bandScore?: number | null;
     listeningParts?: {
       s1: number;
       s2: number;
@@ -150,6 +154,42 @@ function readingPassageTextForQuestion(q: {
       .join("\n\n");
   }
   return String(passage);
+}
+
+/**
+ * Normalize a value for case-/punctuation-insensitive comparison.
+ * Mirrors the rules used in the API/scoring lib so a field shown as green
+ * here will also be counted correct on the server.
+ */
+function normalizeFieldValue(text: string): string {
+  return text
+    .trim()
+    .toLowerCase()
+    .replace(/[.,!?\\/\-_:;"'()]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Returns true if the studentVal matches one of the accepted answers for a HTML_CSS field. */
+function isHtmlCssFieldCorrect(
+  fieldSpec: { type?: string; accepted?: string[] } | undefined,
+  studentVal: unknown,
+): boolean {
+  if (!fieldSpec) return false;
+  if (fieldSpec.type === "checkbox") {
+    const expected = (fieldSpec.accepted?.[0] || "false").toLowerCase() === "true";
+    const got =
+      studentVal === true ||
+      studentVal === "true" ||
+      studentVal === 1 ||
+      studentVal === "1";
+    return got === expected;
+  }
+  const gotStr = studentVal == null ? "" : String(studentVal);
+  if (!gotStr.trim()) return false;
+  const gotNorm = normalizeFieldValue(gotStr);
+  const accepted = fieldSpec.accepted || [];
+  return accepted.some((a) => normalizeFieldValue(String(a)) === gotNorm);
 }
 
 /** Saved AI writing band (DB); prefers overallBand, else average of tasks */
@@ -745,28 +785,57 @@ export default function AttemptResultsPage() {
         <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-lg font-medium text-gray-900 mb-1">Overall Score</h2>
+              <h2 className="text-lg font-medium text-gray-900 mb-1">
+                {data.summary.overallBand != null ? "Overall Band Score" : "Overall Score"}
+              </h2>
               <p className="text-sm text-gray-600">
                 {data.summary.totalCorrect} out of {data.summary.totalQuestions} questions correct
+                {data.summary.overallBand != null && (
+                  <> · {data.summary.totalPercentage}%</>
+                )}
               </p>
             </div>
             <div className="text-right">
-              <div className="text-3xl font-bold text-gray-900">{data.summary.totalPercentage}%</div>
-              {data.summary.totalPercentage >= 75 && (
-                <div className="flex items-center gap-1 text-sm text-green-600 mt-1">
-                  <Award className="w-4 h-4" />
-                  Passed
-                </div>
+              {data.summary.overallBand != null ? (
+                <>
+                  <div className="text-4xl font-bold text-[#303380] tabular-nums">
+                    {data.summary.overallBand.toFixed(1)}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1 uppercase tracking-wide">
+                    IELTS Band
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="text-3xl font-bold text-gray-900">{data.summary.totalPercentage}%</div>
+                  {data.summary.totalPercentage >= 75 && (
+                    <div className="flex items-center gap-1 text-sm text-green-600 mt-1">
+                      <Award className="w-4 h-4" />
+                      Passed
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
-          
+
           <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
             <div
               className="h-full rounded-full transition-all duration-500"
               style={{
-                backgroundColor: data.summary.totalPercentage >= 75 ? '#22c55e' : '#303380',
-                width: `${data.summary.totalPercentage}%`
+                backgroundColor:
+                  data.summary.overallBand != null
+                    ? data.summary.overallBand >= 6.5
+                      ? "#22c55e"
+                      : "#303380"
+                    : data.summary.totalPercentage >= 75
+                      ? "#22c55e"
+                      : "#303380",
+                width: `${
+                  data.summary.overallBand != null
+                    ? Math.min(100, Math.round((data.summary.overallBand / 9) * 100))
+                    : data.summary.totalPercentage
+                }%`,
               }}
             ></div>
           </div>
@@ -782,12 +851,14 @@ export default function AttemptResultsPage() {
                 const showWritingAi = isWritingSectionType(section.type) && hasSavedAiWriting(data.writingSubmission);
                 const speakingBand = getPersistedSpeakingBand(data.speakingAi);
                 const showSpeakingAi = isSpeakingSectionType(section.type) && hasSavedAiSpeaking(data.speakingAi);
+                // IELTS band derived from raw correct/total (Listening / Reading)
+                const rawBand = section.bandScore;
                 const aiSectionBand =
                   showWritingAi && writingBand != null
                     ? writingBand
                     : showSpeakingAi && speakingBand != null
                       ? speakingBand
-                      : null;
+                      : rawBand ?? null;
                 const sectionBarPct =
                   aiSectionBand != null
                     ? Math.min(100, Math.round((aiSectionBand / 9) * 100))
@@ -856,6 +927,11 @@ export default function AttemptResultsPage() {
                               Band {speakingBand.toFixed(1)} (saved)
                             </span>
                           )}
+                          {rawBand != null && !showWritingAi && !showSpeakingAi && (
+                            <span className="inline-flex items-center rounded-full bg-[#303380]/10 px-2.5 py-0.5 text-xs font-semibold text-[#303380]">
+                              Band {rawBand.toFixed(1)}
+                            </span>
+                          )}
                         </div>
                         <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600 mt-1">
                           {showWritingAi && writingBand != null ? (
@@ -874,7 +950,10 @@ export default function AttemptResultsPage() {
                             </>
                           ) : (
                             <>
-                              <span>{section.correct} / {section.total} correct</span>
+                              <span>
+                                {section.correct} / {section.total} correct
+                                {rawBand != null && <> · Band {rawBand.toFixed(1)}</>}
+                              </span>
                               <span>•</span>
                               <span>{section.type}</span>
                             </>
@@ -1266,9 +1345,15 @@ export default function AttemptResultsPage() {
                     </div>
                     <div>
                       <p className="text-sm font-medium text-gray-600">Section Performance</p>
-                      <p className="text-2xl font-bold text-gray-900 mt-0.5">
-                        {selectedSection.percentage}%
-                      </p>
+                      {selectedSection.bandScore != null ? (
+                        <p className="text-2xl font-bold text-[#303380] mt-0.5 tabular-nums">
+                          Band {selectedSection.bandScore.toFixed(1)}
+                        </p>
+                      ) : (
+                        <p className="text-2xl font-bold text-gray-900 mt-0.5">
+                          {selectedSection.percentage}%
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="text-right">
@@ -1282,8 +1367,19 @@ export default function AttemptResultsPage() {
                   <div
                     className="h-full rounded-full transition-all duration-500 shadow-sm"
                     style={{
-                      backgroundColor: selectedSection.percentage >= 75 ? '#22c55e' : '#303380',
-                      width: `${selectedSection.percentage}%`
+                      backgroundColor:
+                        selectedSection.bandScore != null
+                          ? selectedSection.bandScore >= 6.5
+                            ? "#22c55e"
+                            : "#303380"
+                          : selectedSection.percentage >= 75
+                            ? "#22c55e"
+                            : "#303380",
+                      width: `${
+                        selectedSection.bandScore != null
+                          ? Math.min(100, Math.round((selectedSection.bandScore / 9) * 100))
+                          : selectedSection.percentage
+                      }%`,
                     }}
                   ></div>
                 </div>
@@ -1560,22 +1656,33 @@ export default function AttemptResultsPage() {
                                  typeof q.studentAnswer === "object" &&
                                  q.studentAnswer !== null &&
                                  Object.keys(q.studentAnswer).length > 0 ? (
-                                // Special rendering for HTML_CSS student answers
+                                // Special rendering for HTML_CSS student answers:
+                                // colour each field by its own correctness so
+                                // partial credit is visible (e.g. 9/10 correct).
                                 <div className="space-y-2">
-                                  {Object.entries(q.studentAnswer).map(([fieldName, value]) => (
-                                    <div key={fieldName} className="flex items-start gap-2">
-                                      <span className="text-xs font-mono bg-white px-2 py-1 rounded border border-gray-300">
-                                        {fieldName}
-                                      </span>
-                                      <span className={`text-sm font-medium ${
-                                        q.isCorrect ? "text-green-800" : "text-red-800"
-                                      }`}>
-                                        {value === null || value === undefined || String(value).trim() === '' 
-                                          ? "(empty)" 
-                                          : String(value)}
-                                      </span>
-                                    </div>
-                                  ))}
+                                  {Object.entries(q.studentAnswer).map(([fieldName, value]) => {
+                                    const fieldSpec = q.correctAnswer?.fields?.[fieldName];
+                                    const ok = isHtmlCssFieldCorrect(fieldSpec, value);
+                                    return (
+                                      <div key={fieldName} className="flex items-start gap-2">
+                                        <span className="text-xs font-mono bg-white px-2 py-1 rounded border border-gray-300">
+                                          {fieldName}
+                                        </span>
+                                        {ok ? (
+                                          <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
+                                        ) : (
+                                          <XCircle className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />
+                                        )}
+                                        <span className={`text-sm font-medium ${
+                                          ok ? "text-green-800" : "text-red-800"
+                                        }`}>
+                                          {value === null || value === undefined || String(value).trim() === ''
+                                            ? "(empty)"
+                                            : String(value)}
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                               ) : (
                                 <p

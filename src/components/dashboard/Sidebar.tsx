@@ -17,7 +17,6 @@ import {
   BarChart3,
   Settings,
   User,
-  History,
   Calendar,
   FileText,
   CreditCard,
@@ -27,6 +26,7 @@ import {
   Shield,
   Key,
 } from "lucide-react";
+import StudentNav from "@/components/dashboard/student/StudentNav";
 
 type NavItem = {
   label: string;
@@ -225,24 +225,8 @@ export default function Sidebar() {
     );
   }
 
-  // STUDENT Navigation
-  if (role === "STUDENT") {
-    navItems.push(
-      {
-        label: "My Exams",
-        href: "/dashboard/student/exams",
-        icon: BookOpen,
-        color: "from-purple-500 to-purple-600",
-      },
-      {
-        label: "History",
-        href: "/dashboard/student/history",
-        icon: History,
-        color: "from-emerald-500 to-emerald-600",
-        disabled: true,
-      }
-    );
-  }
+  // STUDENT Navigation is rendered via <StudentNav /> below
+  // (collapsible topics + clickable subtopics)
 
   return (
     <>
@@ -319,7 +303,7 @@ export default function Sidebar() {
         </div>
 
         {/* Navigation */}
-        <nav className="p-3 sm:p-4">
+        <nav className="p-3 sm:p-4 pb-20">
           <div className="space-y-1">
             {status === "loading" ? (
               <>
@@ -330,6 +314,8 @@ export default function Sidebar() {
                   </div>
                 ))}
               </>
+            ) : role === "STUDENT" ? (
+              <StudentNav onNavigate={() => setIsOpen(false)} />
             ) : (
               navItems.map((item) => {
                 // For CREATOR role, match exact paths only
