@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import StudentNavSection from "./StudentNavSection";
-import { studentNavSections } from "./studentNavConfig";
+import { getActiveSubHref, studentNavSections } from "./studentNavConfig";
 
 type Props = {
   onNavigate?: () => void;
@@ -13,10 +13,8 @@ export default function StudentNav({ onNavigate }: Props) {
   const pathname = usePathname();
 
   const activeId =
-    studentNavSections.find((sec) =>
-      sec.subs.some(
-        (s) => pathname === s.href || pathname.startsWith(s.href + "/")
-      )
+    studentNavSections.find(
+      (sec) => getActiveSubHref(pathname, sec.subs) !== null
     )?.id ?? null;
 
   const [openId, setOpenId] = useState<string | null>(activeId);

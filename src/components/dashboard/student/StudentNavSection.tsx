@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronRight } from "lucide-react";
-import type { StudentNavSectionItem } from "./studentNavConfig";
+import {
+  getActiveSubHref,
+  type StudentNavSectionItem,
+} from "./studentNavConfig";
 
 type Props = {
   section: StudentNavSectionItem;
@@ -23,6 +26,7 @@ export default function StudentNavSection({
 }: Props) {
   const pathname = usePathname();
   const { label, icon: Icon, subs } = section;
+  const activeHref = getActiveSubHref(pathname, subs);
 
   return (
     <div className="select-none">
@@ -49,8 +53,7 @@ export default function StudentNavSection({
         <div className="overflow-hidden">
           <div className="mt-0.5 ml-3 pl-3 border-l border-slate-200 space-y-0.5">
             {subs.map((sub) => {
-              const isActive =
-                pathname === sub.href || pathname.startsWith(sub.href + "/");
+              const isActive = sub.href === activeHref;
               return (
                 <Link
                   key={sub.href}

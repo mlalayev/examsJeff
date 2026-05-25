@@ -12,6 +12,22 @@ export type StudentSubItem = {
   href: string;
 };
 
+/** Among sibling subs, return the single best-matching href (longest prefix wins). */
+export function getActiveSubHref(
+  pathname: string,
+  subs: StudentSubItem[]
+): string | null {
+  let best: string | null = null;
+  for (const sub of subs) {
+    const matches =
+      pathname === sub.href || pathname.startsWith(sub.href + "/");
+    if (matches && (!best || sub.href.length > best.length)) {
+      best = sub.href;
+    }
+  }
+  return best;
+}
+
 export type StudentNavSectionItem = {
   id: string;
   label: string;
