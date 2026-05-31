@@ -7,7 +7,27 @@ import {
   percentForMonth,
   decimalToNumber,
   formatStudentName,
+  roundMoney,
 } from "@/lib/referrals";
+
+type PaymentLine = {
+  year: number;
+  month: number;
+  tuitionPaid: number;
+  monthIndex: number;
+  percent: number;
+  commission: number;
+  source: "tuition" | "schedule";
+};
+
+function paymentAmount(
+  paid: number,
+  monthlyPrice: number | null
+): number {
+  if (paid > 0) return paid;
+  if (monthlyPrice != null && monthlyPrice > 0) return monthlyPrice;
+  return 0;
+}
 
 export async function GET() {
   try {
@@ -28,19 +48,36 @@ export async function GET() {
       .map((r) => r.studentId)
       .filter((id): id is string => !!id);
 
-    const payments =
+    const [tuitionPayments, schedulePayments] =
       studentIds.length > 0
-        ? await prisma.tuitionPayment.findMany({
-            where: { studentId: { in: studentIds }, status: "PAID" },
-            orderBy: [{ year: "asc" }, { month: "asc" }],
-          })
-        : [];
+        ? await Promise.all([
+            prisma.tuitionPayment.findMany({
+              where: { studentId: { in: studentIds }, status: "PAID" },
+              orderBy: [{ year: "asc" }, { month: "asc" }],
+            }),
+            prisma.paymentSchedule.findMany({
+              where: {
+                studentId: { in: studentIds },
+                status: "PAID",
+                paidDate: { not: null },
+              },
+              orderBy: { paidDate: "asc" },
+            }),
+          ])
+        : [[], []];
 
-    const paymentsByStudent = new Map<string, typeof payments>();
-    for (const p of payments) {
-      const list = paymentsByStudent.get(p.studentId) ?? [];
+    const tuitionByStudent = new Map<string, typeof tuitionPayments>();
+    for (const p of tuitionPayments) {
+      const list = tuitionByStudent.get(p.studentId) ?? [];
       list.push(p);
-      paymentsByStudent.set(p.studentId, list);
+      tuitionByStudent.set(p.studentId, list);
+    }
+
+    const scheduleByStudent = new Map<string, typeof schedulePayments>();
+    for (const p of schedulePayments) {
+      const list = scheduleByStudent.get(p.studentId) ?? [];
+      list.push(p);
+      scheduleByStudent.set(p.studentId, list);
     }
 
     let totalEarned = 0;
@@ -48,25 +85,28 @@ export async function GET() {
       referralId: string;
       studentName: string;
       branchName: string;
-      lines: {
-        year: number;
-        month: number;
-        tuitionPaid: number;
-        monthIndex: number;
-        percent: number;
-        commission: number;
-      }[];
+      agreedMonthlyPrice: number | null;
+      lines: PaymentLine[];
       subtotal: number;
     }[] = [];
 
     for (const ref of referrals) {
       if (!ref.studentId || !ref.acceptedAt) continue;
-      const tiers = parseCommissionTiers(ref.commissionTiers);
-      const studentPayments = paymentsByStudent.get(ref.studentId) ?? [];
-      const lines: (typeof breakdown)[0]["lines"] = [];
-      let subtotal = 0;
 
-      for (const pay of studentPayments) {
+      const tiers = parseCommissionTiers(ref.commissionTiers);
+      const monthlyPrice =
+        ref.monthlyPrice != null ? decimalToNumber(ref.monthlyPrice) : null;
+      const linesByPeriod = new Map<string, PaymentLine>();
+
+      const addLine = (line: PaymentLine) => {
+        const key = `${line.year}-${line.month}`;
+        const existing = linesByPeriod.get(key);
+        if (!existing || line.tuitionPaid > existing.tuitionPaid) {
+          linesByPeriod.set(key, line);
+        }
+      };
+
+      for (const pay of tuitionByStudent.get(ref.studentId) ?? []) {
         const monthIndex = monthIndexSinceAcceptance(
           ref.acceptedAt,
           pay.year,
@@ -74,20 +114,50 @@ export async function GET() {
         );
         if (monthIndex < 1) continue;
         const percent = percentForMonth(tiers, monthIndex);
-        const tuitionPaid = decimalToNumber(pay.amount);
-        const commission = (tuitionPaid * percent) / 100;
-        lines.push({
+        const rawPaid = decimalToNumber(pay.amount);
+        const tuitionPaid = paymentAmount(rawPaid, monthlyPrice);
+        const commission = roundMoney((tuitionPaid * percent) / 100);
+        addLine({
           year: pay.year,
           month: pay.month,
-          tuitionPaid,
+          tuitionPaid: roundMoney(tuitionPaid),
           monthIndex,
           percent,
           commission,
+          source: "tuition",
         });
-        subtotal += commission;
       }
 
-      totalEarned += subtotal;
+      for (const pay of scheduleByStudent.get(ref.studentId) ?? []) {
+        if (!pay.paidDate) continue;
+        const year = pay.paidDate.getUTCFullYear();
+        const month = pay.paidDate.getUTCMonth() + 1;
+        const monthIndex = monthIndexSinceAcceptance(ref.acceptedAt, year, month);
+        if (monthIndex < 1) continue;
+        const percent = percentForMonth(tiers, monthIndex);
+        const rawPaid = decimalToNumber(pay.amount);
+        const tuitionPaid = paymentAmount(rawPaid, monthlyPrice);
+        const commission = roundMoney((tuitionPaid * percent) / 100);
+        addLine({
+          year,
+          month,
+          tuitionPaid: roundMoney(tuitionPaid),
+          monthIndex,
+          percent,
+          commission,
+          source: "schedule",
+        });
+      }
+
+      const lines = Array.from(linesByPeriod.values()).sort(
+        (a, b) => a.year - b.year || a.month - b.month
+      );
+
+      const subtotal = roundMoney(
+        lines.reduce((sum, l) => sum + l.commission, 0)
+      );
+      totalEarned = roundMoney(totalEarned + subtotal);
+
       breakdown.push({
         referralId: ref.id,
         studentName: ref.student
@@ -97,6 +167,7 @@ export async function GET() {
             ) || ref.student.email
           : formatStudentName(ref.studentFirstName, ref.studentLastName),
         branchName: ref.branch.name,
+        agreedMonthlyPrice: monthlyPrice,
         lines,
         subtotal,
       });

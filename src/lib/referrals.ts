@@ -26,15 +26,33 @@ export function parseCommissionTiers(raw: unknown): CommissionTier[] {
     .sort((a, b) => a.fromMonth - b.fromMonth);
 }
 
-/** Month index since acceptance (1 = first paid month). */
+/** Calendar month key (year * 12 + zero-based month). */
+export function calendarMonthKey(year: number, month: number): number {
+  return year * 12 + (month - 1);
+}
+
+/** UTC calendar parts for consistent month indexing (matches tuition year/month fields). */
+export function acceptanceMonthKey(acceptedAt: Date): number {
+  return calendarMonthKey(
+    acceptedAt.getUTCFullYear(),
+    acceptedAt.getUTCMonth() + 1
+  );
+}
+
+/** Month index since acceptance (1 = first commission month). */
 export function monthIndexSinceAcceptance(
   acceptedAt: Date,
   paymentYear: number,
   paymentMonth: number
 ): number {
-  const start = acceptedAt.getFullYear() * 12 + acceptedAt.getMonth();
-  const pay = paymentYear * 12 + (paymentMonth - 1);
+  const start = acceptanceMonthKey(acceptedAt);
+  const pay = calendarMonthKey(paymentYear, paymentMonth);
   return pay - start + 1;
+}
+
+/** Round to 2 decimal places for currency display. */
+export function roundMoney(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
 export function percentForMonth(tiers: CommissionTier[], monthIndex: number): number {
