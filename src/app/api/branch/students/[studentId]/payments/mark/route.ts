@@ -52,20 +52,43 @@ export async function POST(
       return NextResponse.json({ error: "Student must be assigned to a branch first" }, { status: 400 });
     }
 
-    // Determine amount (use provided amount, or default to monthlyFee, or 0)
-    const paymentAmount = validatedData.amount ?? student.studentProfile?.monthlyFee ?? 0;
+    const fallbackFee = Number(student.studentProfile?.monthlyFee ?? 0);
+    const paymentAmount =
+      validatedData.amount != null && Number.isFinite(validatedData.amount)
+        ? Number(validatedData.amount)
+        : fallbackFee;
 
-    // Upsert payment record
+    if (validatedData.paid && (!Number.isFinite(paymentAmount) || paymentAmount <= 0)) {
+      return NextResponse.json(
+        { error: "Set a payment amount before marking as paid" },
+        { status: 400 }
+      );
+    }
+
+    // Look up existing record to know whether we should bump paidAt now
+    const existing = await prisma.tuitionPayment.findUnique({
+      where: {
+        studentId_year_month: {
+          studentId,
+          year: validatedData.year,
+          month: validatedData.month,
+        },
+      },
+      select: { status: true, paidAt: true },
+    });
+
+    const becomesPaid = validatedData.paid && existing?.status !== "PAID";
+
     const payment = await prisma.tuitionPayment.upsert({
       where: {
         studentId_year_month: {
-          studentId: studentId,
+          studentId,
           year: validatedData.year,
           month: validatedData.month,
         },
       },
       create: {
-        studentId: studentId,
+        studentId,
         branchId: student.branchId,
         year: validatedData.year,
         month: validatedData.month,
@@ -77,9 +100,11 @@ export async function POST(
       update: {
         amount: paymentAmount,
         status: validatedData.paid ? "PAID" : "UNPAID",
-        paidAt: validatedData.paid 
-          ? (validatedData.paid && !student ? new Date() : undefined) // Only set if changing to paid
-          : null, // Clear if marking unpaid
+        paidAt: validatedData.paid
+          ? becomesPaid
+            ? new Date()
+            : existing?.paidAt ?? new Date()
+          : null,
         note: validatedData.note,
       },
     });

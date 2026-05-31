@@ -13,9 +13,11 @@ import {
   Search,
   MoreVertical,
   Edit,
-  Trash2
+  Trash2,
+  DollarSign,
 } from "lucide-react";
 import UnifiedLoading from "@/components/loading/UnifiedLoading";
+import StudentPaymentsModal from "@/components/modals/StudentPaymentsModal";
 
 type UserRole = "STUDENT" | "TEACHER" | "ADMIN" | "BRANCH_ADMIN" | "BRANCH_BOSS";
 type ViewMode = "all" | "branch" | "role";
@@ -55,6 +57,9 @@ export default function BossUsersPage() {
   const [selectedBranch, setSelectedBranch] = useState<string>("all");
   const [roleFilter, setRoleFilter] = useState<FilterType>("all");
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Payments modal
+  const [paymentsTarget, setPaymentsTarget] = useState<BossUserRow | null>(null);
 
   const load = async () => {
     if (!bossUsersCache) setLoading(true);

@@ -78,7 +78,12 @@ export async function requireBranchAdmin() {
   const role = (user as any).role;
   // CREATOR has full access
   if (role === "CREATOR") return user;
-  if (role !== "BRANCH_ADMIN" && role !== "BOSS") {
+  if (
+    role !== "BRANCH_ADMIN" &&
+    role !== "BRANCH_BOSS" &&
+    role !== "BOSS" &&
+    role !== "ADMIN"
+  ) {
     throw new Error("Forbidden: Branch admin or boss access required");
   }
   return user;
