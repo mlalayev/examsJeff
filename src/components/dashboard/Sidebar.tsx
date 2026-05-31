@@ -25,6 +25,8 @@ import {
   Library,
   Shield,
   Key,
+  UserPlus,
+  Wallet,
 } from "lucide-react";
 import StudentNav from "@/components/dashboard/student/StudentNav";
 
@@ -44,6 +46,24 @@ export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
 
   const navItems: NavItem[] = [];
+
+  // PARTNER Navigation
+  if (role === "PARTNER") {
+    navItems.push(
+      {
+        label: "Referrals",
+        href: "/dashboard/partner/referrals",
+        icon: UserPlus,
+        color: "from-blue-500 to-blue-600",
+      },
+      {
+        label: "Earnings",
+        href: "/dashboard/partner/earnings",
+        icon: Wallet,
+        color: "from-emerald-500 to-emerald-600",
+      }
+    );
+  }
 
   // CREATOR Navigation (Super Admin) - Everything in one dashboard
   if (role === "CREATOR") {
@@ -83,6 +103,12 @@ export default function Sidebar() {
         href: "/dashboard/creator/finance",
         icon: DollarSign,
         color: "from-emerald-500 to-emerald-600",
+      },
+      {
+        label: "Referrals",
+        href: "/dashboard/referrals",
+        icon: UserPlus,
+        color: "from-sky-500 to-sky-600",
       }
     );
   }
@@ -109,6 +135,12 @@ export default function Sidebar() {
         color: "from-emerald-500 to-emerald-600",
         disabled: true,
         comingSoon: true,
+      },
+      {
+        label: "Referrals",
+        href: "/dashboard/referrals",
+        icon: UserPlus,
+        color: "from-sky-500 to-sky-600",
       }
     );
   }
@@ -147,8 +179,24 @@ export default function Sidebar() {
         color: "from-green-500 to-green-600",
         disabled: true,
         comingSoon: true,
+      },
+      {
+        label: "Referrals",
+        href: "/dashboard/referrals",
+        icon: UserPlus,
+        color: "from-sky-500 to-sky-600",
       }
     );
+  }
+
+  // BRANCH_BOSS Navigation
+  if (role === "BRANCH_BOSS") {
+    navItems.push({
+      label: "Referrals",
+      href: "/dashboard/referrals",
+      icon: UserPlus,
+      color: "from-sky-500 to-sky-600",
+    });
   }
 
   // ADMIN Navigation
@@ -171,6 +219,12 @@ export default function Sidebar() {
         href: "/dashboard/admin/seed",
         icon: Settings,
         color: "from-orange-500 to-orange-600",
+      },
+      {
+        label: "Referrals",
+        href: "/dashboard/referrals",
+        icon: UserPlus,
+        color: "from-sky-500 to-sky-600",
       }
     );
   }

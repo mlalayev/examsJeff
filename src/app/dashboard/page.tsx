@@ -45,6 +45,9 @@ export default function DashboardPage() {
       case "CREATOR":
         router.push("/dashboard/creator");
         break;
+      case "PARTNER":
+        router.push("/dashboard/partner");
+        break;
       default:
         router.push("/");
     }

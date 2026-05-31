@@ -430,6 +430,7 @@ export default function CreatorUsersPage() {
     BRANCH_BOSS: "bg-pink-100 text-pink-700",
     CREATOR: "bg-gray-100 text-gray-700",
     PARENT: "bg-indigo-100 text-indigo-700",
+    PARTNER: "bg-cyan-100 text-cyan-700",
   };
 
   return (
@@ -511,6 +512,7 @@ export default function CreatorUsersPage() {
             <option value="BRANCH_ADMIN">Branch Admins</option>
             <option value="CREATOR">Creators</option>
             <option value="PARENT">Parents</option>
+            <option value="PARTNER">Partners</option>
           </select>
         </div>
         <div className="relative sm:w-56">
@@ -861,6 +863,7 @@ export default function CreatorUsersPage() {
                   <option value="BOSS">Boss</option>
                   <option value="CREATOR">Creator (Super Admin)</option>
                   <option value="PARENT">Parent</option>
+                  <option value="PARTNER">Partner</option>
                 </select>
               </div>
 

@@ -5,14 +5,14 @@ declare module "next-auth" {
   interface Session {
     user: {
       id: string;
-      role: "STUDENT" | "TEACHER" | "ADMIN" | "BOSS" | "BRANCH_ADMIN" | "BRANCH_BOSS" | "CREATOR" | "PARENT";
+      role: "STUDENT" | "TEACHER" | "ADMIN" | "BOSS" | "BRANCH_ADMIN" | "BRANCH_BOSS" | "CREATOR" | "PARENT" | "PARTNER";
       approved?: boolean;
       branchId?: string | null;
     } & DefaultSession["user"];
   }
 
   interface User extends DefaultUser {
-    role: "STUDENT" | "TEACHER" | "ADMIN" | "BOSS" | "BRANCH_ADMIN" | "BRANCH_BOSS" | "CREATOR" | "PARENT";
+    role: "STUDENT" | "TEACHER" | "ADMIN" | "BOSS" | "BRANCH_ADMIN" | "BRANCH_BOSS" | "CREATOR" | "PARENT" | "PARTNER";
     approved?: boolean;
     branchId?: string | null;
   }
@@ -21,7 +21,7 @@ declare module "next-auth" {
 declare module "next-auth/jwt" {
   interface JWT extends DefaultJWT {
     id: string;
-    role: "STUDENT" | "TEACHER" | "ADMIN" | "BOSS" | "BRANCH_ADMIN" | "BRANCH_BOSS" | "CREATOR" | "PARENT";
+    role: "STUDENT" | "TEACHER" | "ADMIN" | "BOSS" | "BRANCH_ADMIN" | "BRANCH_BOSS" | "CREATOR" | "PARENT" | "PARTNER";
     approved?: boolean;
     branchId?: string | null;
   }

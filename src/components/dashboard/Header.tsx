@@ -37,6 +37,10 @@ export default function Header() {
         return "bg-green-100 text-green-700";
       case "STUDENT":
         return "bg-gray-100 text-gray-700";
+      case "PARTNER":
+        return "bg-cyan-100 text-cyan-700";
+      case "CREATOR":
+        return "bg-gray-800 text-white";
       default:
         return "bg-gray-100 text-gray-700";
     }
@@ -54,6 +58,14 @@ export default function Header() {
         return "Teacher";
       case "STUDENT":
         return "Student";
+      case "PARTNER":
+        return "Partner";
+      case "CREATOR":
+        return "Creator";
+      case "BRANCH_BOSS":
+        return "Branch Boss";
+      case "PARENT":
+        return "Parent";
       default:
         return role;
     }

@@ -177,3 +177,39 @@ export async function requireAdminOrBranchAdmin() {
   return user;
 }
 
+export async function requirePartner() {
+  const user = await requireAuth();
+  const role = (user as any).role;
+  if (role === "CREATOR") return user;
+  if (role !== "PARTNER") {
+    throw new Error("Forbidden: Partner access required");
+  }
+  return user;
+}
+
+/** Branch staff + leadership who can view/act on referrals */
+export async function requireReferralManager() {
+  const user = await requireAuth();
+  const role = (user as any).role;
+  if (role === "CREATOR") return user;
+  const allowed = ["BOSS", "ADMIN", "BRANCH_ADMIN", "BRANCH_BOSS"];
+  if (!allowed.includes(role)) {
+    throw new Error("Forbidden: Referral manager access required");
+  }
+  return user;
+}
+
+export function canManageReferrals(role: string | undefined): boolean {
+  return (
+    role === "CREATOR" ||
+    role === "BOSS" ||
+    role === "ADMIN" ||
+    role === "BRANCH_ADMIN" ||
+    role === "BRANCH_BOSS"
+  );
+}
+
+export function canCreatePartnerAccount(role: string | undefined): boolean {
+  return canManageReferrals(role);
+}
+

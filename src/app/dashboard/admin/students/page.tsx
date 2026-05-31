@@ -1065,6 +1065,7 @@ export default function AdminStudentsPage() {
                     <option value="TEACHER">Teacher</option>
                     <option value="ADMIN">Admin</option>
                     <option value="PARENT">Parent</option>
+                    <option value="PARTNER">Partner</option>
                   </select>
                 </div>
 

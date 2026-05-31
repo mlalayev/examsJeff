@@ -120,9 +120,26 @@ export default async function middleware(req: NextRequest) {
     }
   }
 
-  // Branch Admin dashboard routes (BRANCH_ADMIN or BOSS)
+  // Branch Admin dashboard routes (BRANCH_ADMIN, BRANCH_BOSS, or BOSS)
   if (path.startsWith("/dashboard/branch-admin")) {
-    if ((token as any).role !== "BRANCH_ADMIN" && (token as any).role !== "BOSS") {
+    const role = (token as any).role;
+    if (role !== "BRANCH_ADMIN" && role !== "BRANCH_BOSS" && role !== "BOSS") {
+      return NextResponse.redirect(new URL("/auth/login?error=unauthorized", req.url));
+    }
+  }
+
+  // Partner dashboard routes
+  if (path.startsWith("/dashboard/partner")) {
+    if ((token as any).role !== "PARTNER") {
+      return NextResponse.redirect(new URL("/auth/login?error=unauthorized", req.url));
+    }
+  }
+
+  // Shared referrals management (branch leadership)
+  if (path.startsWith("/dashboard/referrals")) {
+    const role = (token as any).role;
+    const allowed = ["BOSS", "ADMIN", "BRANCH_ADMIN", "BRANCH_BOSS", "CREATOR"];
+    if (!allowed.includes(role)) {
       return NextResponse.redirect(new URL("/auth/login?error=unauthorized", req.url));
     }
   }

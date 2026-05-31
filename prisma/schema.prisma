@@ -49,6 +49,9 @@ model User {
   wordReviews                 WordReview[]        @relation("StudentWordReviews")
   tricksCreated               Trick[]             @relation("TrickCreator")
   trickSaves                  TrickSave[]         @relation("StudentTrickSaves")
+  referralsAsPartner          Referral[]          @relation("PartnerReferrals")
+  referralsAsStudent          Referral[]          @relation("StudentReferrals")
+  referralsDecided            Referral[]          @relation("ReferralDecidedBy")
 
   @@map("users")
 }
@@ -82,6 +85,7 @@ model Branch {
   studentProfiles StudentProfile[]
   tuitionPayments TuitionPayment[]
   users           User[]
+  referrals       Referral[]          @relation("BranchReferrals")
 
   @@map("branches")
 }
@@ -601,6 +605,45 @@ enum Role {
   BRANCH_BOSS
   CREATOR
   PARENT
+  PARTNER
+}
+
+enum ReferralStatus {
+  IN_PROGRESS
+  ACCEPTED
+  DECLINED
+}
+
+model Referral {
+  id                String         @id @default(cuid())
+  partnerId         String
+  branchId          String
+  studentFirstName  String
+  studentLastName   String?
+  studentEmail      String?
+  studentPhone      String?
+  program           String?
+  notes             String?
+  status            ReferralStatus @default(IN_PROGRESS)
+  monthlyPrice      Decimal?       @db.Decimal(10, 2)
+  commissionTiers   Json?
+  studentId         String?
+  decidedById       String?
+  decidedAt         DateTime?
+  decisionNotes     String?
+  acceptedAt        DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  partner   User    @relation("PartnerReferrals", fields: [partnerId], references: [id], onDelete: Cascade)
+  branch    Branch  @relation("BranchReferrals", fields: [branchId], references: [id], onDelete: Restrict)
+  decidedBy User?   @relation("ReferralDecidedBy", fields: [decidedById], references: [id], onDelete: SetNull)
+  student   User?   @relation("StudentReferrals", fields: [studentId], references: [id], onDelete: SetNull)
+
+  @@index([partnerId, status])
+  @@index([branchId, status])
+  @@index([studentId])
+  @@map("referrals")
 }
 
 enum ExamCategory {

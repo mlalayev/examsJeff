@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth-utils";
+import { requireAuth, canCreatePartnerAccount } from "@/lib/auth-utils";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
@@ -9,7 +9,7 @@ const createUserSchema = z.object({
   lastName: z.string().min(2, "Last name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  role: z.enum(["STUDENT", "TEACHER", "ADMIN", "PARENT"]),
+  role: z.enum(["STUDENT", "TEACHER", "ADMIN", "PARENT", "PARTNER"]),
   branchId: z.string().nullable(),
   approved: z.boolean().optional(),
   childIds: z.array(z.string().min(1)).optional(),
@@ -25,19 +25,28 @@ const createUserSchema = z.object({
     .optional(),
 });
 
-// POST /api/admin/users/create - Create a user manually (ADMIN only)
+// POST /api/admin/users/create — ADMIN (most roles) or leadership (PARTNER only)
 export async function POST(request: Request) {
   try {
-    const user = await requireAdmin();
-    const role = (user as any).role;
-
-    // Only ADMIN can access this endpoint
-    if (role !== "ADMIN") {
-      return NextResponse.json({ error: "Forbidden: ADMIN access required" }, { status: 403 });
-    }
-
+    const user = await requireAuth();
+    const callerRole = (user as any).role;
     const body = await request.json();
     const validatedData = createUserSchema.parse(body);
+
+    if (callerRole === "CREATOR") {
+      return NextResponse.json(
+        { error: "Use creator user management for this account" },
+        { status: 403 }
+      );
+    }
+
+    if (validatedData.role === "PARTNER") {
+      if (!canCreatePartnerAccount(callerRole)) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    } else if (callerRole !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden: ADMIN access required" }, { status: 403 });
+    }
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
@@ -80,8 +89,8 @@ export async function POST(request: Request) {
         email: validatedData.email,
         passwordHash,
         role: validatedData.role,
-        approved: true,
-        branchId: validatedData.branchId,
+        approved: validatedData.role === "PARTNER" ? true : (validatedData.approved ?? true),
+        branchId: validatedData.role === "PARTNER" ? null : validatedData.branchId,
         tags: validatedData.tags ?? [],
         ...(validatedData.role === "STUDENT" && validatedData.branchId && validatedData.studentProfile && {
           studentProfile: {
