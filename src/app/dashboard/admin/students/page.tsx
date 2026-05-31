@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Users, Search, BookOpen, X, Calendar, ChevronRight, ChevronLeft, Target, FileText, CheckCircle, UserPlus, ListChecks, Check, DollarSign, Trash2, Phone } from "lucide-react";
+import { Users, Search, BookOpen, X, Calendar, ChevronRight, ChevronLeft, Target, FileText, CheckCircle, UserPlus, ListChecks, Check, DollarSign, Trash2, Phone, Pause, Play } from "lucide-react";
 import { AlertModal } from "@/components/modals/AlertModal";
 import StudentExamsModal from "@/components/dashboard/StudentExamsModal";
 import StudentPaymentsModal from "@/components/modals/StudentPaymentsModal";
@@ -24,6 +24,8 @@ interface Student {
   dateOfBirth?: string | null;
   program?: string | null;
   monthlyFee?: number | null;
+  lessonsStopped?: boolean;
+  lessonsStoppedAt?: string | null;
   currentMonth?: {
     year: number;
     month: number;
@@ -86,6 +88,7 @@ export default function AdminStudentsPage() {
   const [examsModalStudent, setExamsModalStudent] = useState<Student | null>(null);
   const [paymentsModalStudent, setPaymentsModalStudent] = useState<Student | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [lessonUpdating, setLessonUpdating] = useState<string | null>(null);
 
   const assignExamStepActive =
     showAssignModal && assignStep === 3 && !!selectedStudent;
@@ -148,6 +151,39 @@ export default function AdminStudentsPage() {
       setAlertModal({ isOpen: true, title: "Error", message: "Failed to delete student", type: "error" });
     } finally {
       setDeleting(null);
+    }
+  };
+
+  const handleToggleLessons = async (student: Student) => {
+    const nextStopped = !student.lessonsStopped;
+    const confirmMsg = nextStopped
+      ? `Mark this student's lessons as STOPPED?\n\n${student.name || student.email}`
+      : `Mark this student's lessons as CONTINUING?\n\n${student.name || student.email}`;
+    if (!confirm(confirmMsg)) return;
+
+    setLessonUpdating(student.id);
+    try {
+      const res = await fetch(`/api/admin/students/${student.id}/lesson-status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stopped: nextStopped }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setAlertModal({ isOpen: true, title: "Error", message: data.error || "Failed to update lesson status", type: "error" });
+        return;
+      }
+      setStudents((prev) =>
+        prev.map((s) =>
+          s.id === student.id
+            ? { ...s, lessonsStopped: nextStopped, lessonsStoppedAt: nextStopped ? new Date().toISOString() : null }
+            : s
+        )
+      );
+    } catch (error) {
+      setAlertModal({ isOpen: true, title: "Error", message: "Failed to update lesson status", type: "error" });
+    } finally {
+      setLessonUpdating(null);
     }
   };
 
@@ -571,7 +607,7 @@ export default function AdminStudentsPage() {
       <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
         {loading ? (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1500px] text-sm">
+            <table className="w-full min-w-[1650px] text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Student</th>
@@ -582,6 +618,7 @@ export default function AdminStudentsPage() {
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Branch</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Monthly fee</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">This month</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Lessons</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Status</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Joined</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Actions</th>
@@ -596,7 +633,7 @@ export default function AdminStudentsPage() {
                         <div className="h-4 bg-gray-200 rounded w-24 animate-pulse"></div>
                       </div>
                     </td>
-                    {Array.from({ length: 10 }).map((_, j) => (
+                    {Array.from({ length: 11 }).map((_, j) => (
                       <td key={j} className="px-3 sm:px-4 py-3">
                         <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
                       </td>
@@ -613,7 +650,7 @@ export default function AdminStudentsPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1500px] text-sm">
+            <table className="w-full min-w-[1650px] text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700 sticky left-0 bg-gray-50 z-10 shadow-[1px_0_0_0_rgb(229,231,235)]">Student</th>
@@ -624,6 +661,7 @@ export default function AdminStudentsPage() {
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Branch</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Monthly fee</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">This month</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Lessons</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Status</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Joined</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Actions</th>
@@ -696,6 +734,22 @@ export default function AdminStudentsPage() {
                         )}
                       </td>
                       <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
+                        <span
+                          className={`px-2 py-1 text-xs font-medium rounded-full ${
+                            student.lessonsStopped
+                              ? "bg-red-100 text-red-700"
+                              : "bg-emerald-100 text-emerald-700"
+                          }`}
+                        >
+                          {student.lessonsStopped ? "Stopped" : "Continues"}
+                        </span>
+                        {student.lessonsStopped && student.lessonsStoppedAt && (
+                          <span className="ml-2 text-xs text-gray-500">
+                            since {new Date(student.lessonsStoppedAt).toLocaleDateString()}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
                         <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                           student.approved
                             ? "bg-green-100 text-green-700"
@@ -717,6 +771,29 @@ export default function AdminStudentsPage() {
                           >
                             <DollarSign className="w-3 h-3" />
                             Payments
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleLessons(student)}
+                            disabled={lessonUpdating === student.id}
+                            className={`px-2 py-1 text-xs font-medium rounded flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed ${
+                              student.lessonsStopped
+                                ? "text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
+                                : "text-red-700 bg-red-50 hover:bg-red-100"
+                            }`}
+                            title={student.lessonsStopped ? "Resume lessons" : "Stop lessons"}
+                          >
+                            {student.lessonsStopped ? (
+                              <>
+                                <Play className="w-3 h-3" />
+                                {lessonUpdating === student.id ? "Saving..." : "Resume"}
+                              </>
+                            ) : (
+                              <>
+                                <Pause className="w-3 h-3" />
+                                {lessonUpdating === student.id ? "Saving..." : "Stop"}
+                              </>
+                            )}
                           </button>
                           <button
                             type="button"

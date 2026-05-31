@@ -538,19 +538,21 @@ model FinanceTxn {
 }
 
 model StudentProfile {
-  id            String    @id @default(cuid())
-  studentId     String    @unique
-  branchId      String
-  teacherId     String?
-  firstEnrollAt DateTime?
-  monthlyFee    Decimal?  @db.Decimal(10, 2)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  dateOfBirth   DateTime?
-  paymentAmount Decimal?  @db.Decimal(10, 2)
-  paymentDate   DateTime?
-  phoneNumber   String?
-  program       String?
+  id              String    @id @default(cuid())
+  studentId       String    @unique
+  branchId        String
+  teacherId       String?
+  firstEnrollAt   DateTime?
+  monthlyFee      Decimal?  @db.Decimal(10, 2)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  dateOfBirth     DateTime?
+  paymentAmount   Decimal?  @db.Decimal(10, 2)
+  paymentDate     DateTime?
+  phoneNumber     String?
+  program         String?
+  lessonsStopped  Boolean   @default(false)
+  lessonsStoppedAt DateTime?
   branch        Branch    @relation(fields: [branchId], references: [id])
   student       User      @relation("StudentProfileUser", fields: [studentId], references: [id], onDelete: Cascade)
   teacher       User?     @relation("TeacherOfStudent", fields: [teacherId], references: [id])

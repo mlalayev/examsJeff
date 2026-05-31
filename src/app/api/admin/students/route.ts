@@ -43,6 +43,8 @@ export async function GET(request: Request) {
             monthlyFee: true,
             paymentAmount: true,
             paymentDate: true,
+            lessonsStopped: true,
+            lessonsStoppedAt: true,
           },
         },
       },
@@ -85,6 +87,8 @@ export async function GET(request: Request) {
         dateOfBirth: sp?.dateOfBirth ?? null,
         program: sp?.program ?? null,
         monthlyFee: sp?.monthlyFee != null ? Number(sp.monthlyFee) : null,
+        lessonsStopped: sp?.lessonsStopped ?? false,
+        lessonsStoppedAt: sp?.lessonsStoppedAt ?? null,
         currentMonth: {
           year,
           month,
