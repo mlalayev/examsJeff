@@ -5,11 +5,12 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { 
   Users, Key, Search, Filter, CheckCircle, XCircle, Plus,
-  Eye, X, Check, Edit, UserPlus, Loader2, Trash2
+  Eye, X, Check, Edit, UserPlus, Loader2, Trash2, DollarSign
 } from "lucide-react";
 import UnifiedLoading from "@/components/loading/UnifiedLoading";
 import { AlertModal } from "@/components/modals/AlertModal";
 import { UserDetailsModal } from "@/components/modals/UserDetailsModal";
+import StudentPaymentsModal from "@/components/modals/StudentPaymentsModal";
 
 type CreatorUserRow = {
   id: string;
@@ -31,6 +32,7 @@ export default function CreatorUsersPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [users, setUsers] = useState<CreatorUserRow[]>(creatorUsersCache?.users ?? []);
+  const [paymentsTarget, setPaymentsTarget] = useState<CreatorUserRow | null>(null);
   const [searchUsers, setSearchUsers] = useState("");
   const [roleFilter, setRoleFilter] = useState("ALL");
   const [tagFilter, setTagFilter] = useState("ALL");
@@ -673,6 +675,15 @@ export default function CreatorUsersPage() {
                         >
                           <Key className="w-4 h-4" />
                         </button>
+                        {user.role === "STUDENT" && (
+                          <button
+                            onClick={() => setPaymentsTarget(user)}
+                            className="inline-flex items-center justify-center p-1.5 text-emerald-600 hover:text-emerald-700 transition-colors"
+                            title="Manage monthly payments"
+                          >
+                            <DollarSign className="w-4 h-4" />
+                          </button>
+                        )}
                         <button
                           onClick={() => handleDeleteUser(user.id, user.email)}
                           className="inline-flex items-center justify-center p-1.5 text-red-600 hover:text-red-700 transition-colors"
@@ -1139,6 +1150,18 @@ export default function CreatorUsersPage() {
         message={alertModal.message}
         type={alertModal.type}
       />
+
+      {paymentsTarget && (
+        <StudentPaymentsModal
+          studentId={paymentsTarget.id}
+          studentName={
+            [paymentsTarget.firstName, paymentsTarget.lastName].filter(Boolean).join(" ").trim() ||
+            paymentsTarget.email
+          }
+          open={!!paymentsTarget}
+          onClose={() => setPaymentsTarget(null)}
+        />
+      )}
     </div>
   );
 }

@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Search, Trash2 } from "lucide-react";
+import { Search, Trash2, DollarSign } from "lucide-react";
 import UnifiedLoading from "@/components/loading/UnifiedLoading";
+import StudentPaymentsModal from "@/components/modals/StudentPaymentsModal";
 
 interface User {
   id: string;
@@ -28,6 +29,7 @@ export default function UsersTab() {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [tagFilter, setTagFilter] = useState("");
+  const [paymentsTarget, setPaymentsTarget] = useState<User | null>(null);
 
   useEffect(() => {
     fetchUsers();
@@ -197,6 +199,16 @@ export default function UsersTab() {
                       <option value="TEACHER">TEACHER</option>
                       <option value="ADMIN">ADMIN</option>
                     </select>
+                    {user.role === "STUDENT" && (
+                      <button
+                        type="button"
+                        onClick={() => setPaymentsTarget(user)}
+                        className="inline-flex items-center justify-center p-1.5 text-emerald-600 hover:text-emerald-700"
+                        title="Manage monthly payments"
+                      >
+                        <DollarSign className="w-4 h-4" />
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => handleDeleteUser(user.id, user.email)}
@@ -217,6 +229,18 @@ export default function UsersTab() {
         <div className="text-center py-8 text-gray-600">
           No users found
         </div>
+      )}
+
+      {paymentsTarget && (
+        <StudentPaymentsModal
+          studentId={paymentsTarget.id}
+          studentName={
+            [paymentsTarget.firstName, paymentsTarget.lastName].filter(Boolean).join(" ").trim() ||
+            paymentsTarget.email
+          }
+          open={!!paymentsTarget}
+          onClose={() => setPaymentsTarget(null)}
+        />
       )}
     </div>
   );

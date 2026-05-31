@@ -338,9 +338,19 @@ export default function BossUsersPage() {
                       <button
                         onClick={() => openUserModal(user)}
                         className="text-gray-400 hover:text-gray-600"
+                        title="Edit user"
                       >
                         <Edit className="w-4 h-4" />
                       </button>
+                      {user.role === "STUDENT" && (
+                        <button
+                          onClick={() => setPaymentsTarget(user)}
+                          className="ml-3 text-emerald-600 hover:text-emerald-800"
+                          title="Manage payments"
+                        >
+                          <DollarSign className="w-4 h-4" />
+                        </button>
+                      )}
                       <button
                         onClick={() => handleDeleteUser(user.id, user.email)}
                         className="ml-3 text-red-500 hover:text-red-700"
@@ -478,8 +488,19 @@ export default function BossUsersPage() {
           </div>
         </div>
       )}
+
+      {paymentsTarget && (
+        <StudentPaymentsModal
+          studentId={paymentsTarget.id}
+          studentName={
+            [paymentsTarget.firstName, paymentsTarget.lastName].filter(Boolean).join(" ").trim() ||
+            paymentsTarget.name ||
+            paymentsTarget.email
+          }
+          open={!!paymentsTarget}
+          onClose={() => setPaymentsTarget(null)}
+        />
+      )}
     </div>
   );
 }
-
-

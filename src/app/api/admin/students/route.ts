@@ -35,6 +35,16 @@ export async function GET(request: Request) {
             name: true,
           },
         },
+        studentProfile: {
+          select: {
+            phoneNumber: true,
+            dateOfBirth: true,
+            program: true,
+            monthlyFee: true,
+            paymentAmount: true,
+            paymentDate: true,
+          },
+        },
       },
       orderBy: {
         createdAt: "desc",
@@ -42,15 +52,48 @@ export async function GET(request: Request) {
       take: 5000,
     });
 
-    const students = rows.map((u) => ({
-      id: u.id,
-      name: [u.firstName, u.lastName].filter(Boolean).join(" ").trim() || null,
-      email: u.email,
-      approved: u.approved,
-      branchId: u.branchId,
-      createdAt: u.createdAt,
-      branch: u.branch,
-    }));
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+
+    const studentIds = rows.map((u) => u.id);
+    const currentPayments =
+      studentIds.length > 0
+        ? await prisma.tuitionPayment.findMany({
+            where: { studentId: { in: studentIds }, year, month },
+            select: { studentId: true, status: true, amount: true, paidAt: true },
+          })
+        : [];
+    const paymentByStudent = new Map(
+      currentPayments.map((p) => [p.studentId, p])
+    );
+
+    const students = rows.map((u) => {
+      const sp = u.studentProfile;
+      const pay = paymentByStudent.get(u.id);
+      return {
+        id: u.id,
+        name: [u.firstName, u.lastName].filter(Boolean).join(" ").trim() || null,
+        firstName: u.firstName,
+        lastName: u.lastName,
+        email: u.email,
+        approved: u.approved,
+        branchId: u.branchId,
+        createdAt: u.createdAt,
+        branch: u.branch,
+        phoneNumber: sp?.phoneNumber ?? null,
+        dateOfBirth: sp?.dateOfBirth ?? null,
+        program: sp?.program ?? null,
+        monthlyFee: sp?.monthlyFee != null ? Number(sp.monthlyFee) : null,
+        currentMonth: {
+          year,
+          month,
+          status: pay?.status ?? "NO_RECORD",
+          amount: pay ? Number(pay.amount) : null,
+          paidAt: pay?.paidAt ?? null,
+        },
+      };
+    });
 
     return NextResponse.json({ students });
   } catch (error) {
