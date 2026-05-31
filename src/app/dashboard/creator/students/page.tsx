@@ -1,14 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Users, Search, BookOpen, X, ChevronRight, ChevronLeft, Target, FileText, CheckCircle, ListChecks, Check } from "lucide-react";
+import { Users, Search, BookOpen, X, ChevronRight, ChevronLeft, Target, FileText, CheckCircle, ListChecks, Check, DollarSign, Trash2, Phone } from "lucide-react";
 import { AlertModal } from "@/components/modals/AlertModal";
 import StudentExamsModal from "@/components/dashboard/StudentExamsModal";
+import StudentPaymentsModal from "@/components/modals/StudentPaymentsModal";
 import { useStudentSubmittedExamIds } from "@/hooks/useStudentSubmittedExamIds";
 
 interface Student {
   id: string;
   name: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
   email: string;
   approved: boolean;
   createdAt: string;
@@ -17,6 +20,17 @@ interface Student {
     id: string;
     name: string;
   } | null;
+  phoneNumber?: string | null;
+  dateOfBirth?: string | null;
+  program?: string | null;
+  monthlyFee?: number | null;
+  currentMonth?: {
+    year: number;
+    month: number;
+    status: "PAID" | "UNPAID" | "NO_RECORD" | string;
+    amount: number | null;
+    paidAt: string | null;
+  };
 }
 
 interface Exam {
@@ -51,6 +65,26 @@ export default function CreatorStudentsPage() {
     type: "info",
   });
   const [examsModalStudent, setExamsModalStudent] = useState<Student | null>(null);
+  const [paymentsModalStudent, setPaymentsModalStudent] = useState<Student | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+
+  const handleDelete = async (student: Student) => {
+    if (!confirm(`Delete this student?\n\n${student.email}\n\nThis cannot be undone.`)) return;
+    setDeleting(student.id);
+    try {
+      const res = await fetch(`/api/admin/users/${student.id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setAlertModal({ isOpen: true, title: "Error", message: data.error || "Failed to delete student", type: "error" });
+        return;
+      }
+      setStudents((prev) => prev.filter((s) => s.id !== student.id));
+    } catch {
+      setAlertModal({ isOpen: true, title: "Error", message: "Failed to delete student", type: "error" });
+    } finally {
+      setDeleting(null);
+    }
+  };
 
   const assignExamStepActive =
     showAssignModal && assignStep === 3 && !!selectedStudent;
@@ -382,15 +416,20 @@ export default function CreatorStudentsPage() {
       <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
         {loading ? (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[800px]">
+            <table className="w-full min-w-[1500px] text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Student</th>
-                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Email</th>
-                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Branch</th>
-                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Status</th>
-                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Joined</th>
-                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Actions</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Student</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Email</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Phone</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Date of birth</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Program</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Branch</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Monthly fee</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">This month</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Status</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Joined</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -398,25 +437,15 @@ export default function CreatorStudentsPage() {
                   <tr key={i}>
                     <td className="px-3 sm:px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-gray-400 rounded-full animate-pulse"></div>
-                        <div className="h-4 bg-gray-400 rounded w-24 animate-pulse"></div>
+                        <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse"></div>
+                        <div className="h-4 bg-gray-200 rounded w-24 animate-pulse"></div>
                       </div>
                     </td>
-                    <td className="px-3 sm:px-4 py-3">
-                      <div className="h-4 bg-gray-400 rounded w-32 animate-pulse"></div>
-                    </td>
-                    <td className="px-3 sm:px-4 py-3">
-                      <div className="h-4 bg-gray-400 rounded w-20 animate-pulse"></div>
-                    </td>
-                    <td className="px-3 sm:px-4 py-3">
-                      <div className="h-6 bg-gray-400 rounded-full w-16 animate-pulse"></div>
-                    </td>
-                    <td className="px-3 sm:px-4 py-3">
-                      <div className="h-4 bg-gray-400 rounded w-20 animate-pulse"></div>
-                    </td>
-                    <td className="px-3 sm:px-4 py-3">
-                      <div className="h-6 bg-gray-400 rounded w-16 animate-pulse"></div>
-                    </td>
+                    {Array.from({ length: 10 }).map((_, j) => (
+                      <td key={j} className="px-3 sm:px-4 py-3">
+                        <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
+                      </td>
+                    ))}
                   </tr>
                 ))}
               </tbody>
@@ -429,88 +458,160 @@ export default function CreatorStudentsPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[800px]">
+            <table className="w-full min-w-[1500px] text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Student</th>
-                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Email</th>
-                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Branch</th>
-                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Status</th>
-                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Joined</th>
-                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Actions</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700 sticky left-0 bg-gray-50 z-10 shadow-[1px_0_0_0_rgb(229,231,235)]">Student</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Email</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Phone</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Date of birth</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Program</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Branch</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Monthly fee</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">This month</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Status</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Joined</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {filteredStudents.map((student) => (
-                  <tr key={student.id} className="hover:bg-gray-50">
-                    <td className="px-3 sm:px-4 py-3 text-sm">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-700 font-medium text-xs flex-shrink-0">
-                          {student.name?.charAt(0).toUpperCase() || student.email.charAt(0).toUpperCase()}
+                {filteredStudents.map((student) => {
+                  const cm = student.currentMonth;
+                  const cmStatus =
+                    cm?.status === "PAID"
+                      ? "Paid"
+                      : cm?.status === "UNPAID"
+                        ? "Unpaid"
+                        : "—";
+                  const cmBadge =
+                    cm?.status === "PAID"
+                      ? "bg-green-100 text-green-700"
+                      : cm?.status === "UNPAID"
+                        ? "bg-orange-100 text-orange-700"
+                        : "bg-gray-100 text-gray-600";
+                  return (
+                    <tr key={student.id} className="hover:bg-gray-50">
+                      <td className="px-3 sm:px-4 py-3 sticky left-0 bg-white hover:bg-gray-50 z-10 shadow-[1px_0_0_0_rgb(229,231,235)]">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-700 font-medium text-xs flex-shrink-0">
+                            {student.name?.charAt(0).toUpperCase() || student.email.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="font-medium text-gray-900 whitespace-nowrap">
+                            {student.name || "No name"}
+                          </div>
                         </div>
-                        <div className="font-medium text-gray-900">
-                          {student.name || "No name"}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-3 sm:px-4 py-3 text-sm text-gray-600">
-                      {student.email}
-                    </td>
-                    <td className="px-3 sm:px-4 py-3 text-sm text-gray-600">
-                      {student.branch?.name || "No branch"}
-                    </td>
-                    <td className="px-3 sm:px-4 py-3 text-sm">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        student.approved
-                          ? "bg-green-100 text-green-700"
-                          : "bg-orange-100 text-orange-700"
-                      }`}>
-                        {student.approved ? "Approved" : "Pending"}
-                      </span>
-                    </td>
-                    <td className="px-3 sm:px-4 py-3 text-sm text-gray-600">
-                      {new Date(student.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-3 sm:px-4 py-3 text-sm">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setExamsModalStudent(student)}
-                          className="px-2 py-1 text-xs font-medium text-slate-700 bg-slate-100 rounded hover:bg-slate-200 flex items-center gap-1"
-                        >
-                          <ListChecks className="w-3 h-3" />
-                          Exams
-                        </button>
-                        {student.approved ? (
-                          <>
-                            <button
-                              onClick={() => openAssignModal(student)}
-                              className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100 flex items-center gap-1"
-                            >
-                              <BookOpen className="w-3 h-3" />
-                              Assign Exam
-                            </button>
-                            <button
-                              onClick={() => handleApprove(student.id, false)}
-                              disabled={updating === student.id}
-                              className="px-2 py-1 text-xs font-medium text-orange-700 bg-orange-50 rounded hover:bg-orange-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {updating === student.id ? "Updating..." : "Revoke"}
-                            </button>
-                          </>
+                      </td>
+                      <td className="px-3 sm:px-4 py-3 text-gray-600 whitespace-nowrap">
+                        {student.email}
+                      </td>
+                      <td className="px-3 sm:px-4 py-3 text-gray-600 whitespace-nowrap">
+                        {student.phoneNumber ? (
+                          <span className="inline-flex items-center gap-1">
+                            <Phone className="w-3 h-3 text-gray-400" />
+                            {student.phoneNumber}
+                          </span>
                         ) : (
-                          <button
-                            onClick={() => handleApprove(student.id, true)}
-                            disabled={updating === student.id}
-                            className="px-2 py-1 text-xs font-medium text-green-700 bg-green-50 rounded hover:bg-green-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {updating === student.id ? "Updating..." : "Approve"}
-                          </button>
+                          "—"
                         )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-3 sm:px-4 py-3 text-gray-600 whitespace-nowrap">
+                        {student.dateOfBirth
+                          ? new Date(student.dateOfBirth).toLocaleDateString()
+                          : "—"}
+                      </td>
+                      <td className="px-3 sm:px-4 py-3 text-gray-600 whitespace-nowrap">
+                        {student.program || "—"}
+                      </td>
+                      <td className="px-3 sm:px-4 py-3 text-gray-600 whitespace-nowrap">
+                        {student.branch?.name || "No branch"}
+                      </td>
+                      <td className="px-3 sm:px-4 py-3 text-gray-600 whitespace-nowrap">
+                        {student.monthlyFee != null && student.monthlyFee > 0
+                          ? `${student.monthlyFee.toFixed(2)} AZN`
+                          : "—"}
+                      </td>
+                      <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${cmBadge}`}>
+                          {cmStatus}
+                        </span>
+                        {cm?.status === "PAID" && cm.amount != null && (
+                          <span className="ml-2 text-xs text-gray-500">
+                            {Number(cm.amount).toFixed(2)} AZN
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                          student.approved
+                            ? "bg-green-100 text-green-700"
+                            : "bg-orange-100 text-orange-700"
+                        }`}>
+                          {student.approved ? "Approved" : "Pending"}
+                        </span>
+                      </td>
+                      <td className="px-3 sm:px-4 py-3 text-gray-600 whitespace-nowrap">
+                        {new Date(student.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
+                        <div className="flex flex-nowrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setPaymentsModalStudent(student)}
+                            className="px-2 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 rounded hover:bg-emerald-100 flex items-center gap-1"
+                            title="Manage monthly payments"
+                          >
+                            <DollarSign className="w-3 h-3" />
+                            Payments
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setExamsModalStudent(student)}
+                            className="px-2 py-1 text-xs font-medium text-slate-700 bg-slate-100 rounded hover:bg-slate-200 flex items-center gap-1"
+                          >
+                            <ListChecks className="w-3 h-3" />
+                            Exams
+                          </button>
+                          {student.approved ? (
+                            <>
+                              <button
+                                onClick={() => openAssignModal(student)}
+                                className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100 flex items-center gap-1"
+                              >
+                                <BookOpen className="w-3 h-3" />
+                                Assign Exam
+                              </button>
+                              <button
+                                onClick={() => handleApprove(student.id, false)}
+                                disabled={updating === student.id}
+                                className="px-2 py-1 text-xs font-medium text-orange-700 bg-orange-50 rounded hover:bg-orange-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {updating === student.id ? "Updating..." : "Revoke"}
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              onClick={() => handleApprove(student.id, true)}
+                              disabled={updating === student.id}
+                              className="px-2 py-1 text-xs font-medium text-green-700 bg-green-50 rounded hover:bg-green-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {updating === student.id ? "Updating..." : "Approve"}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(student)}
+                            disabled={deleting === student.id}
+                            className="px-2 py-1 text-xs font-medium text-red-700 bg-red-50 rounded hover:bg-red-100 disabled:opacity-50 flex items-center gap-1"
+                            title="Delete student"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            {deleting === student.id ? "Deleting..." : "Delete"}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -522,6 +623,18 @@ export default function CreatorStudentsPage() {
         onClose={() => setExamsModalStudent(null)}
         student={examsModalStudent}
       />
+
+      {paymentsModalStudent && (
+        <StudentPaymentsModal
+          studentId={paymentsModalStudent.id}
+          studentName={paymentsModalStudent.name || paymentsModalStudent.email}
+          open={!!paymentsModalStudent}
+          onClose={() => setPaymentsModalStudent(null)}
+          onChanged={() => {
+            fetchStudents();
+          }}
+        />
+      )}
 
       {/* Assign Exam Modal */}
       {showAssignModal && selectedStudent && (

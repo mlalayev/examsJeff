@@ -123,6 +123,12 @@ export default function Sidebar() {
         color: "from-purple-500 to-purple-600",
       },
       {
+        label: "Students",
+        href: "/dashboard/admin/students",
+        icon: GraduationCap,
+        color: "from-green-500 to-green-600",
+      },
+      {
         label: "Manage Branches",
         href: "/dashboard/boss/branches",
         icon: Building2,
