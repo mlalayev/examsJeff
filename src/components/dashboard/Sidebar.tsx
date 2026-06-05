@@ -26,6 +26,7 @@ import {
   Shield,
   Key,
   UserPlus,
+  UserCheck,
   Wallet,
 } from "lucide-react";
 import StudentNav from "@/components/dashboard/student/StudentNav";
@@ -114,6 +115,7 @@ export default function Sidebar() {
   }
 
   // BOSS Navigation
+  // Bosses can do everything admins can do, plus boss-only sections.
   if (role === "BOSS") {
     navItems.push(
       {
@@ -123,16 +125,34 @@ export default function Sidebar() {
         color: "from-purple-500 to-purple-600",
       },
       {
+        label: "Teachers",
+        href: "/dashboard/boss/teachers",
+        icon: UserCheck,
+        color: "from-teal-500 to-teal-600",
+      },
+      {
         label: "Students",
         href: "/dashboard/admin/students",
         icon: GraduationCap,
         color: "from-green-500 to-green-600",
       },
       {
+        label: "Exams",
+        href: "/dashboard/admin/exams",
+        icon: BookOpen,
+        color: "from-emerald-500 to-emerald-600",
+      },
+      {
         label: "Manage Branches",
         href: "/dashboard/boss/branches",
         icon: Building2,
         color: "from-orange-500 to-orange-600",
+      },
+      {
+        label: "Seed Demo Data",
+        href: "/dashboard/admin/seed",
+        icon: Settings,
+        color: "from-amber-500 to-amber-600",
       },
       {
         label: "Finance",
