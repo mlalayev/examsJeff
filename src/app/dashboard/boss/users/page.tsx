@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import UnifiedLoading from "@/components/loading/UnifiedLoading";
 import StudentPaymentsModal from "@/components/modals/StudentPaymentsModal";
+import EditAccountModal from "@/components/modals/EditAccountModal";
 
 type UserRole = "STUDENT" | "TEACHER" | "ADMIN" | "BRANCH_ADMIN" | "BRANCH_BOSS";
 type ViewMode = "all" | "branch" | "role";
@@ -45,12 +46,7 @@ export default function BossUsersPage() {
   const [branches, setBranches] = useState<BossBranchRow[]>(bossUsersCache?.branches ?? []);
   const [branchMap, setBranchMap] = useState<Record<string, string>>(bossUsersCache?.branchMap ?? {});
   const [loading, setLoading] = useState(bossUsersCache == null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<any | null>(null);
-  const [selectedRole, setSelectedRole] = useState<string>("");
-  const [selectedBranchId, setSelectedBranchId] = useState<string>("");
-  const [approvedDesired, setApprovedDesired] = useState<boolean>(false);
-  const [saving, setSaving] = useState(false);
+  const [editUserId, setEditUserId] = useState<string | null>(null);
   
   // New state for filtering and view modes
   const [viewMode, setViewMode] = useState<ViewMode>("all");
@@ -150,54 +146,6 @@ export default function BossUsersPage() {
       body: JSON.stringify({ branchId }),
     });
     load();
-  };
-
-  const openUserModal = (user: any) => {
-    setSelectedUser(user);
-    setSelectedRole(user.role);
-    setSelectedBranchId(user.branchId || "");
-    setApprovedDesired(!!user.approved);
-    setModalOpen(true);
-    // Prevent body scroll when modal is open
-    document.body.style.overflow = 'hidden';
-  };
-
-  const saveUser = async () => {
-    if (!selectedUser) return;
-    setSaving(true);
-    try {
-      // Single unified call to update approval, role, and branch
-      const res = await fetch(`/api/admin/users/${selectedUser.id}/approve`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          approved: approvedDesired,
-          role: selectedRole,
-          branchId: selectedBranchId || null,
-        }),
-      });
-
-      if (!res.ok) {
-        const error = await res.json();
-        alert(error.error || "Failed to update user");
-        setSaving(false);
-        return;
-      }
-
-      setModalOpen(false);
-      setSelectedUser(null);
-      // Restore body scroll when modal is closed
-      document.body.style.overflow = 'unset';
-      await load();
-      
-      // Show success message and remind to refresh
-      alert("User updated successfully! If the user was approved, they should logout and login again to access their dashboard.");
-    } catch (error) {
-      console.error("Failed to save user:", error);
-      alert("Failed to update user");
-    } finally {
-      setSaving(false);
-    }
   };
 
   const handleDeleteUser = async (userId: string, email?: string) => {
@@ -325,7 +273,7 @@ export default function BossUsersPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600">
-                      {branchMap[user.branchId] || "—"}
+                      {(user.branchId && branchMap[user.branchId]) || "—"}
                     </td>
                     <td className="px-4 py-3 text-sm">
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
@@ -336,7 +284,7 @@ export default function BossUsersPage() {
                     </td>
                     <td className="px-4 py-3 text-sm">
                       <button
-                        onClick={() => openUserModal(user)}
+                        onClick={() => setEditUserId(user.id)}
                         className="text-gray-400 hover:text-gray-600"
                         title="Edit user"
                       >
@@ -372,122 +320,13 @@ export default function BossUsersPage() {
         </div>
       )}
       </div>
-      {modalOpen && selectedUser && (
-        <div 
-          className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setModalOpen(false);
-              setSelectedUser(null);
-              document.body.style.overflow = 'unset';
-            }
-          }}
-        >
-          <div className="bg-white w-full max-w-md border border-gray-200 rounded-md shadow-lg">
-            {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">Edit User</h3>
-              <p className="text-sm text-gray-500 mt-1">Update user information</p>
-            </div>
-
-            {/* Modal Content */}
-            <div className="px-6 py-4 space-y-4">
-              {/* User Info */}
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Name:</span>
-                  <span className="font-medium">{selectedUser.name || "—"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Email:</span>
-                  <span className="font-medium">{selectedUser.email}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Current Branch:</span>
-                  <span className="font-medium">{branchMap[selectedUser.branchId] || "—"}</span>
-                </div>
-            </div>
-
-              {/* Form Fields */}
-              <div className="space-y-4 pt-4 border-t border-gray-200">
-              <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
-                  <select 
-                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400" 
-                    value={selectedRole} 
-                    onChange={(e) => setSelectedRole(e.target.value)}
-                  >
-                    <option value="STUDENT">Student</option>
-                    <option value="TEACHER">Teacher</option>
-                    <option value="ADMIN">Admin</option>
-                    <option value="BRANCH_ADMIN">Branch Admin</option>
-                    <option value="BRANCH_BOSS">Branch Boss</option>
-                </select>
-              </div>
-
-              <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Branch</label>
-                  <select 
-                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400" 
-                    value={selectedBranchId} 
-                    onChange={(e) => setSelectedBranchId(e.target.value)}
-                  >
-                    <option value="">Select branch</option>
-                  {branches.map((b: any) => (
-                    <option key={b.id} value={b.id}>{b.name}</option>
-                  ))}
-                </select>
-                  <p className="text-xs text-gray-500 mt-1">Required for Branch Admin role</p>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <input 
-                    id="approve" 
-                    type="checkbox" 
-                    className="w-4 h-4 text-gray-600 border-gray-300 rounded focus:ring-gray-500" 
-                    checked={approvedDesired} 
-                    onChange={(e) => setApprovedDesired(e.target.checked)} 
-                  />
-                  <label htmlFor="approve" className="text-sm font-medium text-gray-700">Approved</label>
-              </div>
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-              <button 
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500" 
-                onClick={() => { 
-                  setModalOpen(false); 
-                  setSelectedUser(null); 
-                  // Restore body scroll when modal is closed
-                  document.body.style.overflow = 'unset';
-                }}
-              >
-                Cancel
-              </button>
-              <button 
-                disabled={saving} 
-                className="px-4 py-2 text-sm font-medium text-white border border-transparent rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ backgroundColor: "#303380" }}
-                onMouseEnter={(e) => {
-                  if (!e.currentTarget.disabled) {
-                    e.currentTarget.style.backgroundColor = "#252a6b";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!e.currentTarget.disabled) {
-                    e.currentTarget.style.backgroundColor = "#303380";
-                  }
-                }} 
-                onClick={saveUser}
-              >
-                {saving ? "Saving..." : "Save Changes"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <EditAccountModal
+        open={!!editUserId}
+        userId={editUserId}
+        branches={branches}
+        onClose={() => setEditUserId(null)}
+        onSaved={load}
+      />
 
       {paymentsTarget && (
         <StudentPaymentsModal

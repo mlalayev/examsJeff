@@ -23,6 +23,8 @@ import {
   validateIELTSListeningUniqueness,
 } from "@/components/admin/exams/create/constants";
 import { getDefaultPrompt, getDefaultOptions, getDefaultAnswerKey } from "@/components/admin/exams/create/questionHelpers";
+import SatDigitalBuilder, { type SatDigitalBuilderInitial } from "@/components/admin/exams/create/SatDigitalBuilder";
+import IeltsDigitalBuilder, { type IeltsDigitalBuilderInitial } from "@/components/admin/exams/create/IeltsDigitalBuilder";
 
 // Types and constants are now imported from shared files
 
@@ -45,7 +47,7 @@ const getSATSectionTitle = (
   return `${getSectionLabel(type, "SAT")} Section`;
 };
 
-export default function EditExamPage() {
+function LegacyEditExamPage() {
   const router = useRouter();
   const params = useParams();
   const examId = params.id as string;
@@ -2437,6 +2439,153 @@ export default function EditExamPage() {
           }
         }}
       />
+    </div>
+  );
+}
+
+// --- Shared-builder edit dispatcher -----------------------------------------
+// SAT and IELTS exams are edited with the exact same builder UI used to create
+// them. Other categories keep the legacy editor above.
+
+function parseInstruction(raw: any): any {
+  if (!raw) return { text: "" };
+  if (typeof raw === "object") return raw;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return { text: String(raw) };
+  }
+}
+
+function mapDbQuestion(q: any): Question {
+  const prompt = q.prompt && typeof q.prompt === "object" ? q.prompt : { text: q.prompt || "" };
+  const image = prompt.imageUrl || prompt.image || q.image || undefined;
+  return {
+    id: q.id,
+    qtype: q.qtype,
+    order: q.order,
+    prompt,
+    options: q.options,
+    answerKey: q.answerKey,
+    maxScore: q.maxScore ?? 1,
+    explanation: q.explanation,
+    image,
+  } as Question;
+}
+
+function buildSatInitial(exam: any): SatDigitalBuilderInitial {
+  const sections: Section[] = (exam.sections || []).map((s: any) => {
+    const instr = parseInstruction(s.instruction);
+    return {
+      id: s.id,
+      type: s.type,
+      title: s.title,
+      instruction: instr.text || "",
+      durationMin: s.durationMin,
+      order: s.order,
+      questions: (s.questions || []).map(mapDbQuestion),
+      passage: typeof instr.passage === "string" ? instr.passage : "",
+    } as Section;
+  });
+  return {
+    title: exam.title || "",
+    track: exam.track || "",
+    durationMin: exam.durationMin ?? null,
+    sections,
+  };
+}
+
+function buildIeltsInitial(exam: any): IeltsDigitalBuilderInitial {
+  const sections: Section[] = (exam.sections || []).map((s: any) => {
+    const instr = parseInstruction(s.instruction);
+    const base: Section = {
+      id: s.id,
+      type: s.type,
+      title: s.title,
+      instruction: instr.text || "",
+      durationMin: s.durationMin,
+      order: s.order,
+      questions: (s.questions || []).map(mapDbQuestion),
+    } as Section;
+
+    if (s.type === "LISTENING" && instr.audio) {
+      base.audio = instr.audio;
+    }
+    if (s.type === "READING") {
+      (base as any).passage =
+        instr.passage && typeof instr.passage === "object"
+          ? instr.passage
+          : { part1: "", part2: "", part3: "" };
+    }
+    return base;
+  });
+  return {
+    title: exam.title || "",
+    track: exam.track || "",
+    durationMin: exam.durationMin ?? null,
+    sections,
+  };
+}
+
+export default function EditExamPage() {
+  const params = useParams();
+  const examId = params.id as string;
+
+  const [loading, setLoading] = useState(true);
+  const [exam, setExam] = useState<any | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/admin/exams/${examId}`);
+        if (!res.ok) throw new Error("Failed to load exam");
+        const data = await res.json();
+        if (active) setExam(data.exam);
+      } catch {
+        if (active) setFailed(true);
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [examId]);
+
+  // SAT and IELTS use the dedicated builders (identical to their create pages),
+  // but only when the exam matches the modern flat structure those builders expect.
+  // Legacy-shaped exams (e.g. IELTS with separate Listening subsection rows) keep
+  // using the legacy editor so no data is lost.
+  if (!loading && exam) {
+    const sectionList: any[] = exam.sections || [];
+    const isDigitalSat = exam.category === "SAT" && sectionList.length === 4;
+    const ieltsTypes = new Set(sectionList.map((s) => s.type));
+    const isDigitalIelts =
+      exam.category === "IELTS" &&
+      sectionList.length === 4 &&
+      ieltsTypes.has("LISTENING") &&
+      ieltsTypes.has("READING") &&
+      ieltsTypes.has("WRITING") &&
+      ieltsTypes.has("SPEAKING");
+
+    if (isDigitalSat) {
+      return <SatDigitalBuilder mode="edit" examId={examId} initial={buildSatInitial(exam)} />;
+    }
+    if (isDigitalIelts) {
+      return <IeltsDigitalBuilder mode="edit" examId={examId} initial={buildIeltsInitial(exam)} />;
+    }
+    return <LegacyEditExamPage />;
+  }
+  if (!loading && failed) {
+    return <LegacyEditExamPage />;
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center text-gray-500">
+      Loading exam...
     </div>
   );
 }

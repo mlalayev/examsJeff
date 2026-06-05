@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Users, Search, BookOpen, X, Calendar, ChevronRight, ChevronLeft, Target, FileText, CheckCircle, UserPlus, ListChecks, Check, DollarSign, Trash2, Phone, Pause, Play } from "lucide-react";
+import { Users, Search, BookOpen, X, Calendar, ChevronRight, ChevronLeft, Target, FileText, CheckCircle, UserPlus, ListChecks, Check, DollarSign, Trash2, Phone, Pause, Play, Globe, Languages, Award, Baby, Calculator, Layers, Pencil } from "lucide-react";
 import { AlertModal } from "@/components/modals/AlertModal";
 import StudentExamsModal from "@/components/dashboard/StudentExamsModal";
 import StudentPaymentsModal from "@/components/modals/StudentPaymentsModal";
+import EditAccountModal from "@/components/modals/EditAccountModal";
 import { useStudentSubmittedExamIds } from "@/hooks/useStudentSubmittedExamIds";
 
 interface Student {
@@ -42,12 +43,53 @@ interface Exam {
   isActive: boolean;
 }
 
+type StudentCategory = {
+  id: string;
+  label: string;
+  keywords: string[];
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+  accent: string; // text/icon color
+  bg: string; // soft background for chips
+};
+
+// Student "category" is derived from their program (free text). Keywords are
+// matched case-insensitively, in order — first match wins, so put the more
+// specific programs first.
+const STUDENT_CATEGORIES: StudentCategory[] = [
+  { id: "IELTS", label: "IELTS", keywords: ["ielts"], icon: Globe, accent: "#0284c7", bg: "bg-sky-50 text-sky-700 ring-sky-200" },
+  { id: "DUOLINGO", label: "Duolingo", keywords: ["duolingo", "duo", "det"], icon: Languages, accent: "#16a34a", bg: "bg-green-50 text-green-700 ring-green-200" },
+  { id: "TOEFL", label: "TOEFL", keywords: ["toefl"], icon: Award, accent: "#4f46e5", bg: "bg-indigo-50 text-indigo-700 ring-indigo-200" },
+  { id: "SAT", label: "SAT", keywords: ["sat"], icon: Target, accent: "#d97706", bg: "bg-amber-50 text-amber-700 ring-amber-200" },
+  { id: "MATH", label: "Math", keywords: ["math", "riyaziyyat", "riyazi"], icon: Calculator, accent: "#0d9488", bg: "bg-teal-50 text-teal-700 ring-teal-200" },
+  { id: "KIDS", label: "Kids", keywords: ["kid", "kids", "junior", "young", "uşaq", "usaq"], icon: Baby, accent: "#db2777", bg: "bg-pink-50 text-pink-700 ring-pink-200" },
+  { id: "GENERAL_ENGLISH", label: "General English", keywords: ["general english", "general", "english", "ingilis"], icon: BookOpen, accent: "#7c3aed", bg: "bg-violet-50 text-violet-700 ring-violet-200" },
+];
+
+const OTHER_CATEGORY: StudentCategory = {
+  id: "OTHER",
+  label: "Other",
+  keywords: [],
+  icon: Layers,
+  accent: "#64748b",
+  bg: "bg-slate-100 text-slate-600 ring-slate-200",
+};
+
+function getStudentCategory(program?: string | null): StudentCategory {
+  if (!program) return OTHER_CATEGORY;
+  const p = program.toLowerCase();
+  for (const cat of STUDENT_CATEGORIES) {
+    if (cat.keywords.some((kw) => p.includes(kw))) return cat;
+  }
+  return OTHER_CATEGORY;
+}
+
 export default function AdminStudentsPage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterApproved, setFilterApproved] = useState<boolean | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
   const [updating, setUpdating] = useState<string | null>(null);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -89,6 +131,7 @@ export default function AdminStudentsPage() {
   const [paymentsModalStudent, setPaymentsModalStudent] = useState<Student | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [lessonUpdating, setLessonUpdating] = useState<string | null>(null);
+  const [editUserId, setEditUserId] = useState<string | null>(null);
 
   const assignExamStepActive =
     showAssignModal && assignStep === 3 && !!selectedStudent;
@@ -354,14 +397,30 @@ export default function AdminStudentsPage() {
   const selectedExamData = filteredExams.find(e => e.id === selectedExamId);
 
   const filteredStudents = students.filter(student => {
-    const matchesSearch = 
+    const matchesSearch =
       student.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       student.email.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesSearch;
+    const matchesCategory =
+      categoryFilter === "ALL" ||
+      getStudentCategory(student.program).id === categoryFilter;
+    return matchesSearch && matchesCategory;
   });
 
   const pendingCount = students.filter(s => !s.approved).length;
   const approvedCount = students.filter(s => s.approved).length;
+
+  // Live count of students per category (based on the currently loaded set).
+  const categoryCounts = students.reduce<Record<string, number>>((acc, s) => {
+    const id = getStudentCategory(s.program).id;
+    acc[id] = (acc[id] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  // Only show category chips that actually have students, plus "Other" when used.
+  const visibleCategories = [
+    ...STUDENT_CATEGORIES.filter((c) => (categoryCounts[c.id] ?? 0) > 0),
+    ...((categoryCounts[OTHER_CATEGORY.id] ?? 0) > 0 ? [OTHER_CATEGORY] : []),
+  ];
 
   const openCreateModal = () => {
     setFormData({
@@ -603,6 +662,91 @@ export default function AdminStudentsPage() {
         </div>
       </div>
 
+      {/* Category filter bar */}
+      {!loading && visibleCategories.length > 0 && (
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Layers className="w-4 h-4 text-gray-400" />
+            <span className="text-sm font-medium text-gray-700">Categories</span>
+            <span className="text-xs text-gray-400">— filter students by program</span>
+          </div>
+          <div className="flex flex-wrap gap-2.5">
+            {/* All */}
+            <button
+              type="button"
+              onClick={() => setCategoryFilter("ALL")}
+              className={`group flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 transition ${
+                categoryFilter === "ALL"
+                  ? "border-transparent text-white shadow-sm"
+                  : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
+              }`}
+              style={categoryFilter === "ALL" ? { backgroundColor: "#303380" } : {}}
+            >
+              <span
+                className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+                  categoryFilter === "ALL" ? "bg-white/20" : "bg-gray-100"
+                }`}
+              >
+                <Users
+                  className={`w-4 h-4 ${categoryFilter === "ALL" ? "text-white" : "text-gray-600"}`}
+                />
+              </span>
+              <span className="text-left">
+                <span className="block text-sm font-semibold leading-tight">All students</span>
+                <span
+                  className={`block text-xs leading-tight ${
+                    categoryFilter === "ALL" ? "text-white/80" : "text-gray-500"
+                  }`}
+                >
+                  {students.length} total
+                </span>
+              </span>
+            </button>
+
+            {visibleCategories.map((cat) => {
+              const Icon = cat.icon;
+              const active = categoryFilter === cat.id;
+              const count = categoryCounts[cat.id] ?? 0;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setCategoryFilter(active ? "ALL" : cat.id)}
+                  className={`group flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 transition ${
+                    active
+                      ? "border-transparent text-white shadow-sm"
+                      : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
+                  }`}
+                  style={active ? { backgroundColor: cat.accent } : {}}
+                >
+                  <span
+                    className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+                      active ? "bg-white/20" : ""
+                    }`}
+                    style={!active ? { backgroundColor: `${cat.accent}1a` } : {}}
+                  >
+                    <Icon
+                      className="w-4 h-4"
+                      style={active ? undefined : { color: cat.accent }}
+                    />
+                  </span>
+                  <span className="text-left">
+                    <span className="block text-sm font-semibold leading-tight">{cat.label}</span>
+                    <span
+                      className={`block text-xs leading-tight ${
+                        active ? "text-white/80" : "text-gray-500"
+                      }`}
+                    >
+                      {count} student{count === 1 ? "" : "s"}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Simple Table */}
       <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
         {loading ? (
@@ -713,7 +857,26 @@ export default function AdminStudentsPage() {
                           : "—"}
                       </td>
                       <td className="px-3 sm:px-4 py-3 text-gray-600 whitespace-nowrap">
-                        {student.program || "—"}
+                        {(() => {
+                          const cat = getStudentCategory(student.program);
+                          const CatIcon = cat.icon;
+                          return (
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ring-1 ${cat.bg}`}
+                                title={`Category: ${cat.label}`}
+                              >
+                                <CatIcon className="w-3 h-3" />
+                                {cat.label}
+                              </span>
+                              {student.program && (
+                                <span className="text-gray-500 text-xs truncate max-w-[160px]">
+                                  {student.program}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td className="px-3 sm:px-4 py-3 text-gray-600 whitespace-nowrap">
                         {student.branch?.name || "No branch"}
@@ -763,6 +926,15 @@ export default function AdminStudentsPage() {
                       </td>
                       <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
                         <div className="flex flex-nowrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setEditUserId(student.id)}
+                            className="px-2 py-1 text-xs font-medium text-[#303380] bg-[#303380]/10 rounded hover:bg-[#303380]/20 flex items-center gap-1"
+                            title="Edit account"
+                          >
+                            <Pencil className="w-3 h-3" />
+                            Edit
+                          </button>
                           <button
                             type="button"
                             onClick={() => setPaymentsModalStudent(student)}
@@ -849,6 +1021,14 @@ export default function AdminStudentsPage() {
           </div>
         )}
       </div>
+
+      <EditAccountModal
+        open={!!editUserId}
+        userId={editUserId}
+        branches={branches}
+        onClose={() => setEditUserId(null)}
+        onSaved={fetchStudents}
+      />
 
       <StudentExamsModal
         open={!!examsModalStudent}

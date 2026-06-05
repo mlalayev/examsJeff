@@ -4,6 +4,7 @@ import type { Section, Question, ExamCategory } from "./types";
  * Flattened section for API
  */
 export interface FlattenedSection {
+  id?: string; // Preserve DB section id so edit can upsert in place
   type: string;
   title: string;
   instruction: string;
@@ -160,6 +161,9 @@ function serializeSection(
   );
 
   return {
+    // Forward the section id. The create API (POST) ignores it via zod, while
+    // the edit API (PATCH) uses it to upsert the section in place.
+    ...(section.id ? { id: section.id } : {}),
     type: section.type,
     title: section.title,
     instruction: JSON.stringify(instructionData),
