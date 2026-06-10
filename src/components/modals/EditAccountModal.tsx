@@ -3,7 +3,12 @@
 import { useEffect, useState } from "react";
 import { X, User as UserIcon, Loader2, KeyRound } from "lucide-react";
 import ToggleChips from "@/components/forms/ToggleChips";
-import { STUDY_TYPES, LESSON_MODES } from "@/lib/study-types";
+import {
+  STUDY_TYPES,
+  LESSON_MODES,
+  STUDENT_KIND_OPTIONS,
+  STUDENT_STATUS_OPTIONS,
+} from "@/lib/study-types";
 
 type Branch = { id: string; name: string };
 
@@ -25,10 +30,11 @@ type FormState = {
   password: string;
   phoneNumber: string;
   dateOfBirth: string;
-  program: string;
   monthlyFee: string;
   studyTypes: string[];
   lessonModes: string[];
+  studentKind: string;
+  studyStatus: string;
 };
 
 const ROLE_OPTIONS = [
@@ -54,10 +60,11 @@ const emptyForm: FormState = {
   password: "",
   phoneNumber: "",
   dateOfBirth: "",
-  program: "",
   monthlyFee: "",
   studyTypes: [],
   lessonModes: [],
+  studentKind: "STUDENT",
+  studyStatus: "CONTINUES",
 };
 
 const toDateInput = (value: string | null | undefined) => {
@@ -104,11 +111,12 @@ export default function EditAccountModal({
           password: "",
           phoneNumber: u.profile?.phoneNumber ?? "",
           dateOfBirth: toDateInput(u.profile?.dateOfBirth),
-          program: u.profile?.program ?? "",
           monthlyFee:
             u.profile?.monthlyFee != null ? String(u.profile.monthlyFee) : "",
           studyTypes: Array.isArray(u.profile?.studyTypes) ? u.profile.studyTypes : [],
           lessonModes: Array.isArray(u.profile?.lessonModes) ? u.profile.lessonModes : [],
+          studentKind: u.profile?.studentKind ?? "STUDENT",
+          studyStatus: u.profile?.studyStatus ?? "CONTINUES",
         });
       } catch {
         if (!cancelled) setError("Failed to load account");
@@ -166,12 +174,13 @@ export default function EditAccountModal({
         payload.profile = {
           phoneNumber: form.phoneNumber || null,
           dateOfBirth: form.dateOfBirth || null,
-          program: form.program || null,
           ...(form.role === "STUDENT"
             ? {
                 monthlyFee: form.monthlyFee === "" ? null : form.monthlyFee,
                 studyTypes: form.studyTypes,
                 lessonModes: form.lessonModes,
+                studentKind: form.studentKind,
+                studyStatus: form.studyStatus,
               }
             : {}),
         };
@@ -332,15 +341,6 @@ export default function EditAccountModal({
                         className={inputCls}
                       />
                     </Field>
-                    <Field label="Program">
-                      <input
-                        type="text"
-                        value={form.program}
-                        onChange={(e) => set("program", e.target.value)}
-                        className={inputCls}
-                        placeholder="e.g., IELTS Preparation, Duolingo"
-                      />
-                    </Field>
                     {form.role === "STUDENT" && (
                       <Field label="Monthly fee (AZN)">
                         <input
@@ -352,6 +352,36 @@ export default function EditAccountModal({
                           className={inputCls}
                           placeholder="0.00"
                         />
+                      </Field>
+                    )}
+                    {form.role === "STUDENT" && (
+                      <Field label="Account type">
+                        <select
+                          value={form.studentKind}
+                          onChange={(e) => set("studentKind", e.target.value)}
+                          className={inputCls}
+                        >
+                          {STUDENT_KIND_OPTIONS.map((o) => (
+                            <option key={o.id} value={o.id}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                    )}
+                    {form.role === "STUDENT" && (
+                      <Field label="Status">
+                        <select
+                          value={form.studyStatus}
+                          onChange={(e) => set("studyStatus", e.target.value)}
+                          className={inputCls}
+                        >
+                          {STUDENT_STATUS_OPTIONS.map((o) => (
+                            <option key={o.id} value={o.id}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
                       </Field>
                     )}
                   </div>

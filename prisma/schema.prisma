@@ -553,6 +553,8 @@ model StudentProfile {
   program         String?
   studyTypes      String[]  @default([])
   lessonModes     String[]  @default([])
+  studentKind     String    @default("STUDENT")
+  studyStatus     String    @default("CONTINUES")
   lessonsStopped  Boolean   @default(false)
   lessonsStoppedAt DateTime?
   branch        Branch    @relation(fields: [branchId], references: [id])

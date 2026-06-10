@@ -3,7 +3,12 @@
 import { useState } from "react";
 import { X, UserPlus, Loader2 } from "lucide-react";
 import ToggleChips from "@/components/forms/ToggleChips";
-import { STUDY_TYPES, LESSON_MODES } from "@/lib/study-types";
+import {
+  STUDY_TYPES,
+  LESSON_MODES,
+  STUDENT_KIND_OPTIONS,
+  STUDENT_STATUS_OPTIONS,
+} from "@/lib/study-types";
 
 type Branch = { id: string; name: string };
 type ChildOption = { id: string; label: string };
@@ -27,11 +32,12 @@ type FormState = {
   approved: boolean;
   phoneNumber: string;
   dateOfBirth: string;
-  program: string;
   paymentDate: string;
   paymentAmount: string;
   studyTypes: string[];
   lessonModes: string[];
+  studentKind: string;
+  studyStatus: string;
   childIds: string[];
 };
 
@@ -55,11 +61,12 @@ const emptyForm: FormState = {
   approved: true,
   phoneNumber: "",
   dateOfBirth: "",
-  program: "",
   paymentDate: "",
   paymentAmount: "",
   studyTypes: [],
   lessonModes: [],
+  studentKind: "STUDENT",
+  studyStatus: "CONTINUES",
   childIds: [],
 };
 
@@ -110,8 +117,12 @@ export default function CreateUserModal({
       return;
     }
     if (form.role === "STUDENT") {
-      if (!form.phoneNumber || !form.dateOfBirth || !form.program) {
-        setError("Phone number, date of birth, and program are required for students");
+      if (!form.phoneNumber || !form.dateOfBirth) {
+        setError("Phone number and date of birth are required for students");
+        return;
+      }
+      if (form.studyTypes.length === 0) {
+        setError("Select at least one study type for the student");
         return;
       }
       if (!form.branchId) {
@@ -139,11 +150,12 @@ export default function CreateUserModal({
         payload.studentProfile = {
           phoneNumber: form.phoneNumber,
           dateOfBirth: form.dateOfBirth,
-          program: form.program,
           paymentDate: form.paymentDate || null,
           paymentAmount: form.paymentAmount || null,
           studyTypes: form.studyTypes,
           lessonModes: form.lessonModes,
+          studentKind: form.studentKind,
+          studyStatus: form.studyStatus,
         };
       }
       if (form.role === "PARENT") {
@@ -284,6 +296,32 @@ export default function CreateUserModal({
             <div className="mt-5 pt-5 border-t border-gray-100">
               <h3 className="text-sm font-semibold text-gray-900 mb-3">Student details</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field label="Account type">
+                  <select
+                    value={form.studentKind}
+                    onChange={(e) => set("studentKind", e.target.value)}
+                    className={inputCls}
+                  >
+                    {STUDENT_KIND_OPTIONS.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Status">
+                  <select
+                    value={form.studyStatus}
+                    onChange={(e) => set("studyStatus", e.target.value)}
+                    className={inputCls}
+                  >
+                    {STUDENT_STATUS_OPTIONS.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
                 <Field label="Phone number" required>
                   <input
                     type="tel"
@@ -299,15 +337,6 @@ export default function CreateUserModal({
                     value={form.dateOfBirth}
                     onChange={(e) => set("dateOfBirth", e.target.value)}
                     className={inputCls}
-                  />
-                </Field>
-                <Field label="Program" required>
-                  <input
-                    type="text"
-                    value={form.program}
-                    onChange={(e) => set("program", e.target.value)}
-                    className={inputCls}
-                    placeholder="e.g., IELTS Preparation, Duolingo"
                   />
                 </Field>
                 <Field label="Monthly fee (AZN)">

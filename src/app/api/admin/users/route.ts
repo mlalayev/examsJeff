@@ -49,7 +49,7 @@ export async function GET(request: Request) {
         }
       },
       orderBy: { createdAt: "desc" },
-      take: 100
+      take: 5000
     });
     
     return NextResponse.json({ users });

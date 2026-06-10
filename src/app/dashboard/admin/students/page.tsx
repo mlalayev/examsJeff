@@ -6,11 +6,18 @@ import { AlertModal } from "@/components/modals/AlertModal";
 import StudentExamsModal from "@/components/dashboard/StudentExamsModal";
 import StudentPaymentsModal from "@/components/modals/StudentPaymentsModal";
 import EditAccountModal from "@/components/modals/EditAccountModal";
+import ToggleChips from "@/components/forms/ToggleChips";
 import {
   STUDY_TYPES,
   STUDY_TYPE_MAP,
+  LESSON_MODES,
   LESSON_MODE_MAP,
   resolveStudyTypes,
+  STUDENT_BUCKETS,
+  STUDENT_BUCKET_MAP,
+  resolveStudentBucket,
+  STUDENT_KIND_OPTIONS,
+  STUDENT_STATUS_OPTIONS,
 } from "@/lib/study-types";
 import { useStudentSubmittedExamIds } from "@/hooks/useStudentSubmittedExamIds";
 
@@ -32,6 +39,8 @@ interface Student {
   program?: string | null;
   studyTypes?: string[];
   lessonModes?: string[];
+  studentKind?: string;
+  studyStatus?: string;
   monthlyFee?: number | null;
   lessonsStopped?: boolean;
   lessonsStoppedAt?: string | null;
@@ -63,6 +72,7 @@ export default function AdminStudentsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterApproved, setFilterApproved] = useState<boolean | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [updating, setUpdating] = useState<string | null>(null);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -93,9 +103,12 @@ export default function AdminStudentsPage() {
     approved: true,
     phoneNumber: "",
     dateOfBirth: "",
-    program: "",
     paymentDate: "",
     paymentAmount: "",
+    studyTypes: [] as string[],
+    lessonModes: [] as string[],
+    studentKind: "STUDENT",
+    studyStatus: "CONTINUES",
     childIds: [] as string[],
   });
   const [creating, setCreating] = useState(false);
@@ -377,7 +390,9 @@ export default function AdminStudentsPage() {
     const matchesCategory =
       categoryFilter === "ALL" ||
       studentStudyTypes(student).includes(categoryFilter);
-    return matchesSearch && matchesCategory;
+    const matchesStatus =
+      statusFilter === "ALL" || resolveStudentBucket(student) === statusFilter;
+    return matchesSearch && matchesCategory && matchesStatus;
   });
 
   const pendingCount = students.filter(s => !s.approved).length;
@@ -388,6 +403,13 @@ export default function AdminStudentsPage() {
     for (const id of studentStudyTypes(s)) {
       acc[id] = (acc[id] ?? 0) + 1;
     }
+    return acc;
+  }, {});
+
+  // Live count per lifecycle bucket (continues / finished / stopped / exam takers).
+  const bucketCounts = students.reduce<Record<string, number>>((acc, s) => {
+    const b = resolveStudentBucket(s);
+    acc[b] = (acc[b] ?? 0) + 1;
     return acc;
   }, {});
 
@@ -407,9 +429,12 @@ export default function AdminStudentsPage() {
       approved: true,
       phoneNumber: "",
       dateOfBirth: "",
-      program: "",
       paymentDate: "",
       paymentAmount: "",
+      studyTypes: [],
+      lessonModes: [],
+      studentKind: "STUDENT",
+      studyStatus: "CONTINUES",
       childIds: [],
     });
     setCreateError("");
@@ -439,8 +464,12 @@ export default function AdminStudentsPage() {
 
     // Validate student-specific fields
     if (formData.role === "STUDENT") {
-      if (!formData.phoneNumber || !formData.dateOfBirth || !formData.program) {
-        setCreateError("Phone number, date of birth, and program are required for students");
+      if (!formData.phoneNumber || !formData.dateOfBirth) {
+        setCreateError("Phone number and date of birth are required for students");
+        return;
+      }
+      if (formData.studyTypes.length === 0) {
+        setCreateError("Select at least one study type for the student");
         return;
       }
       if (!formData.branchId) {
@@ -474,9 +503,12 @@ export default function AdminStudentsPage() {
         payload.studentProfile = {
           phoneNumber: formData.phoneNumber,
           dateOfBirth: formData.dateOfBirth,
-          program: formData.program,
           paymentDate: formData.paymentDate || null,
           paymentAmount: formData.paymentAmount || null,
+          studyTypes: formData.studyTypes,
+          lessonModes: formData.lessonModes,
+          studentKind: formData.studentKind,
+          studyStatus: formData.studyStatus,
         };
       }
 
@@ -694,6 +726,64 @@ export default function AdminStudentsPage() {
         </div>
       )}
 
+      {/* Status / kind filter bar */}
+      {!loading && students.length > 0 && (
+        <div className="mb-6 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setStatusFilter("ALL")}
+            className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${
+              statusFilter === "ALL"
+                ? "border-transparent text-white"
+                : "bg-white border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50"
+            }`}
+            style={statusFilter === "ALL" ? { backgroundColor: "#303380" } : {}}
+          >
+            Everyone
+            <span
+              className={`text-xs rounded-full px-1.5 py-0.5 tabular-nums ${
+                statusFilter === "ALL" ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"
+              }`}
+            >
+              {students.length}
+            </span>
+          </button>
+
+          {STUDENT_BUCKETS.map((b) => {
+            const active = statusFilter === b.id;
+            const count = bucketCounts[b.id] ?? 0;
+            return (
+              <button
+                key={b.id}
+                type="button"
+                onClick={() => setStatusFilter(active ? "ALL" : b.id)}
+                className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${
+                  active
+                    ? "border-transparent text-white"
+                    : "bg-white border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50"
+                }`}
+                style={active ? { backgroundColor: b.accent } : {}}
+              >
+                {!active && (
+                  <span
+                    className="h-1.5 w-1.5 rounded-full"
+                    style={{ backgroundColor: b.accent }}
+                  />
+                )}
+                {b.label}
+                <span
+                  className={`text-xs rounded-full px-1.5 py-0.5 tabular-nums ${
+                    active ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"
+                  }`}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Simple Table */}
       <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
         {loading ? (
@@ -705,12 +795,12 @@ export default function AdminStudentsPage() {
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Email</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Phone</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Date of birth</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Program</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Study type</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Lesson mode</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Branch</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Monthly fee</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">This month</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Lessons</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Lifecycle</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Status</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Joined</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Actions</th>
@@ -749,12 +839,12 @@ export default function AdminStudentsPage() {
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Email</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Phone</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Date of birth</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Program</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Study type</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Lesson mode</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Branch</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Monthly fee</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">This month</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Lessons</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Lifecycle</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Status</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Joined</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Actions</th>
@@ -828,11 +918,6 @@ export default function AdminStudentsPage() {
                                   <span className="text-gray-400 text-xs">No type</span>
                                 )}
                               </div>
-                              {student.program && (
-                                <span className="text-gray-500 text-xs truncate max-w-[200px]">
-                                  {student.program}
-                                </span>
-                              )}
                             </div>
                           );
                         })()}
@@ -876,15 +961,20 @@ export default function AdminStudentsPage() {
                         )}
                       </td>
                       <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
-                        <span
-                          className={`px-2 py-1 text-xs font-medium rounded-full ${
-                            student.lessonsStopped
-                              ? "bg-red-100 text-red-700"
-                              : "bg-emerald-100 text-emerald-700"
-                          }`}
-                        >
-                          {student.lessonsStopped ? "Stopped" : "Continues"}
-                        </span>
+                        {(() => {
+                          const bucket = resolveStudentBucket(student);
+                          const meta = STUDENT_BUCKET_MAP[bucket];
+                          const label =
+                            bucket === "EXAM_TAKER" ? "Exam taker" : meta?.label ?? bucket;
+                          return (
+                            <span
+                              className="px-2 py-1 text-xs font-medium rounded-full text-white"
+                              style={{ backgroundColor: meta?.accent ?? "#6b7280" }}
+                            >
+                              {label}
+                            </span>
+                          );
+                        })()}
                         {student.lessonsStopped && student.lessonsStoppedAt && (
                           <span className="ml-2 text-xs text-gray-500">
                             since {new Date(student.lessonsStoppedAt).toLocaleDateString()}
@@ -1519,18 +1609,77 @@ export default function AdminStudentsPage() {
                         />
                       </div>
 
-                      {/* Program */}
+                      {/* Account type + status */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Account type
+                          </label>
+                          <select
+                            value={formData.studentKind}
+                            onChange={(e) => setFormData({ ...formData, studentKind: e.target.value })}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent"
+                          >
+                            {STUDENT_KIND_OPTIONS.map((o) => (
+                              <option key={o.id} value={o.id}>
+                                {o.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Status
+                          </label>
+                          <select
+                            value={formData.studyStatus}
+                            onChange={(e) => setFormData({ ...formData, studyStatus: e.target.value })}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent"
+                          >
+                            {STUDENT_STATUS_OPTIONS.map((o) => (
+                              <option key={o.id} value={o.id}>
+                                {o.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Study types */}
                       <div className="mb-4">
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Program *
+                          Study types <span className="text-gray-400 font-normal">(choose one or more) *</span>
                         </label>
-                        <input
-                          type="text"
-                          required
-                          value={formData.program}
-                          onChange={(e) => setFormData({ ...formData, program: e.target.value })}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent"
-                          placeholder="e.g., General English A2, IELTS Preparation"
+                        <ToggleChips
+                          options={STUDY_TYPES.map((t) => ({ id: t.id, label: t.label, accent: t.accent }))}
+                          selected={formData.studyTypes}
+                          onToggle={(id) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              studyTypes: prev.studyTypes.includes(id)
+                                ? prev.studyTypes.filter((x) => x !== id)
+                                : [...prev.studyTypes, id],
+                            }))
+                          }
+                        />
+                      </div>
+
+                      {/* Lesson modes */}
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Lesson modes <span className="text-gray-400 font-normal">(choose one or more)</span>
+                        </label>
+                        <ToggleChips
+                          options={LESSON_MODES.map((m) => ({ id: m.id, label: m.label }))}
+                          selected={formData.lessonModes}
+                          onToggle={(id) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              lessonModes: prev.lessonModes.includes(id)
+                                ? prev.lessonModes.filter((x) => x !== id)
+                                : [...prev.lessonModes, id],
+                            }))
+                          }
                         />
                       </div>
 

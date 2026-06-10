@@ -35,11 +35,18 @@ export const STUDY_TYPES: StudyTypeMeta[] = [
     keywords: ["duolingo", "duo", "det"],
   },
   {
-    id: "SAT",
-    label: "SAT",
+    id: "SAT_VERBAL",
+    label: "SAT Verbal",
     accent: "#d97706",
     chip: "bg-amber-50 text-amber-700 ring-amber-200",
-    keywords: ["sat"],
+    keywords: ["sat verbal", "sat reading", "sat english"],
+  },
+  {
+    id: "SAT_MATH",
+    label: "SAT Math",
+    accent: "#ea580c",
+    chip: "bg-orange-50 text-orange-700 ring-orange-200",
+    keywords: ["sat math", "sat riyaziyyat"],
   },
   {
     id: "MATH",
@@ -88,6 +95,49 @@ export const LESSON_MODE_IDS = LESSON_MODES.map((m) => m.id);
 export const LESSON_MODE_MAP: Record<string, LessonModeMeta> = Object.fromEntries(
   LESSON_MODES.map((m) => [m.id, m])
 );
+
+// ---------------------------------------------------------------------------
+// Student kind (regular vs exam-taker) + lifecycle status
+// ---------------------------------------------------------------------------
+
+export const STUDENT_KIND_OPTIONS = [
+  { id: "STUDENT", label: "Student" },
+  { id: "EXAM_TAKER", label: "Exam taker" },
+] as const;
+
+export const STUDENT_STATUS_OPTIONS = [
+  { id: "CONTINUES", label: "Continues" },
+  { id: "FINISHED", label: "Finished" },
+  { id: "STOPPED", label: "Stopped" },
+] as const;
+
+export type StudentBucketMeta = { id: string; label: string; accent: string };
+
+/** Mutually-exclusive buckets used by the students filter bar. */
+export const STUDENT_BUCKETS: StudentBucketMeta[] = [
+  { id: "CONTINUES", label: "Continues", accent: "#16a34a" },
+  { id: "FINISHED", label: "Finished", accent: "#2563eb" },
+  { id: "STOPPED", label: "Stopped", accent: "#dc2626" },
+  { id: "EXAM_TAKER", label: "Exam takers", accent: "#7c3aed" },
+];
+
+export const STUDENT_BUCKET_MAP: Record<string, StudentBucketMeta> =
+  Object.fromEntries(STUDENT_BUCKETS.map((b) => [b.id, b]));
+
+/**
+ * Resolve the single lifecycle bucket a student belongs to. Exam-takers always
+ * win; a stopped/paused student is "STOPPED"; otherwise the stored status.
+ */
+export function resolveStudentBucket(s: {
+  studentKind?: string | null;
+  studyStatus?: string | null;
+  lessonsStopped?: boolean | null;
+}): string {
+  if (s.studentKind === "EXAM_TAKER") return "EXAM_TAKER";
+  if (s.lessonsStopped || s.studyStatus === "STOPPED") return "STOPPED";
+  if (s.studyStatus === "FINISHED") return "FINISHED";
+  return "CONTINUES";
+}
 
 /** Infer study types from a legacy free-text program string. */
 export function inferStudyTypesFromProgram(program?: string | null): string[] {

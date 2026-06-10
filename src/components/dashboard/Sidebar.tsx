@@ -159,8 +159,6 @@ export default function Sidebar() {
         href: "/dashboard/boss/finance",
         icon: DollarSign,
         color: "from-emerald-500 to-emerald-600",
-        disabled: true,
-        comingSoon: true,
       },
       {
         label: "Referrals",

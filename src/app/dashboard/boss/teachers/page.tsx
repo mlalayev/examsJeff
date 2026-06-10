@@ -191,11 +191,6 @@ export default function BossTeachersPage() {
                     {t.branch.name}
                   </span>
                 )}
-                {t.program && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-indigo-50 text-indigo-700">
-                    {t.program}
-                  </span>
-                )}
               </div>
 
               <div className="grid grid-cols-3 gap-2 text-center border-t border-gray-100 pt-3">

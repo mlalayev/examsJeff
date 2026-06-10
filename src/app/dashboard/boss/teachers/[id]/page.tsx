@@ -252,11 +252,6 @@ export default function BossTeacherDetailPage() {
                   {teacher.branch.name}
                 </span>
               )}
-              {teacher.program && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-indigo-50 text-indigo-700">
-                  {teacher.program}
-                </span>
-              )}
             </div>
           </div>
         </div>

@@ -39,6 +39,8 @@ export async function GET(
             monthlyFee: true,
             studyTypes: true,
             lessonModes: true,
+            studentKind: true,
+            studyStatus: true,
           },
         },
         teacherProfile: {
@@ -79,6 +81,8 @@ export async function GET(
                   : null,
               studyTypes: user.studentProfile?.studyTypes ?? [],
               lessonModes: user.studentProfile?.lessonModes ?? [],
+              studentKind: user.studentProfile?.studentKind ?? "STUDENT",
+              studyStatus: user.studentProfile?.studyStatus ?? "CONTINUES",
             }
           : null,
       },
@@ -116,6 +120,8 @@ const updateSchema = z.object({
       monthlyFee: z.union([z.string(), z.number()]).nullable().optional(),
       studyTypes: z.array(z.string()).optional(),
       lessonModes: z.array(z.string()).optional(),
+      studentKind: z.enum(["STUDENT", "EXAM_TAKER"]).optional(),
+      studyStatus: z.enum(["CONTINUES", "FINISHED", "STOPPED"]).optional(),
     })
     .optional(),
 });
@@ -224,6 +230,8 @@ export async function PATCH(
               ...(fee !== undefined ? { monthlyFee: fee } : {}),
               ...(p.studyTypes !== undefined ? { studyTypes: p.studyTypes } : {}),
               ...(p.lessonModes !== undefined ? { lessonModes: p.lessonModes } : {}),
+              ...(p.studentKind !== undefined ? { studentKind: p.studentKind } : {}),
+              ...(p.studyStatus !== undefined ? { studyStatus: p.studyStatus } : {}),
             },
           });
         } else if (effectiveBranchId) {
@@ -237,6 +245,8 @@ export async function PATCH(
               monthlyFee: fee ?? null,
               studyTypes: p.studyTypes ?? [],
               lessonModes: p.lessonModes ?? [],
+              studentKind: p.studentKind ?? "STUDENT",
+              studyStatus: p.studyStatus ?? "CONTINUES",
             },
           });
         }

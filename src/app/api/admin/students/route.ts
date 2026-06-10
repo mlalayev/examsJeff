@@ -47,6 +47,8 @@ export async function GET(request: Request) {
             lessonsStoppedAt: true,
             studyTypes: true,
             lessonModes: true,
+            studentKind: true,
+            studyStatus: true,
           },
         },
       },
@@ -93,6 +95,8 @@ export async function GET(request: Request) {
         monthlyFee: sp?.monthlyFee != null ? Number(sp.monthlyFee) : null,
         lessonsStopped: sp?.lessonsStopped ?? false,
         lessonsStoppedAt: sp?.lessonsStoppedAt ?? null,
+        studentKind: sp?.studentKind ?? "STUDENT",
+        studyStatus: sp?.studyStatus ?? "CONTINUES",
         currentMonth: {
           year,
           month,

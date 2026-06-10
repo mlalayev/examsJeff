@@ -23,6 +23,8 @@ const createUserSchema = z.object({
       paymentAmount: z.string().nullable().optional(),
       studyTypes: z.array(z.string()).optional(),
       lessonModes: z.array(z.string()).optional(),
+      studentKind: z.enum(["STUDENT", "EXAM_TAKER"]).optional(),
+      studyStatus: z.enum(["CONTINUES", "FINISHED", "STOPPED"]).optional(),
     })
     .optional(),
 });
@@ -105,6 +107,8 @@ export async function POST(request: Request) {
               paymentAmount: validatedData.studentProfile.paymentAmount ? parseFloat(validatedData.studentProfile.paymentAmount) : null,
               studyTypes: validatedData.studentProfile.studyTypes ?? [],
               lessonModes: validatedData.studentProfile.lessonModes ?? [],
+              studentKind: validatedData.studentProfile.studentKind ?? "STUDENT",
+              studyStatus: validatedData.studentProfile.studyStatus ?? "CONTINUES",
             }
           }
         }),
