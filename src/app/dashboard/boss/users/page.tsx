@@ -15,10 +15,12 @@ import {
   Edit,
   Trash2,
   DollarSign,
+  UserPlus,
 } from "lucide-react";
 import UnifiedLoading from "@/components/loading/UnifiedLoading";
 import StudentPaymentsModal from "@/components/modals/StudentPaymentsModal";
 import EditAccountModal from "@/components/modals/EditAccountModal";
+import CreateUserModal from "@/components/modals/CreateUserModal";
 
 type UserRole = "STUDENT" | "TEACHER" | "ADMIN" | "BRANCH_ADMIN" | "BRANCH_BOSS";
 type ViewMode = "all" | "branch" | "role";
@@ -47,6 +49,7 @@ export default function BossUsersPage() {
   const [branchMap, setBranchMap] = useState<Record<string, string>>(bossUsersCache?.branchMap ?? {});
   const [loading, setLoading] = useState(bossUsersCache == null);
   const [editUserId, setEditUserId] = useState<string | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
   
   // New state for filtering and view modes
   const [viewMode, setViewMode] = useState<ViewMode>("all");
@@ -208,7 +211,7 @@ export default function BossUsersPage() {
       </div>
 
       {/* Simple Filters */}
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex flex-wrap items-center gap-4 mb-6">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
@@ -241,6 +244,16 @@ export default function BossUsersPage() {
             <option key={branch.id} value={branch.id}>{branch.name}</option>
           ))}
         </select>
+        <button
+          onClick={() => setShowCreate(true)}
+          className="ml-auto inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium text-white rounded-md transition"
+          style={{ backgroundColor: "#303380" }}
+          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#252a6b"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#303380"; }}
+        >
+          <UserPlus className="w-4 h-4" />
+          Create User
+        </button>
       </div>
 
       {/* Simple Table */}
@@ -326,6 +339,22 @@ export default function BossUsersPage() {
         branches={branches}
         onClose={() => setEditUserId(null)}
         onSaved={load}
+      />
+
+      <CreateUserModal
+        open={showCreate}
+        branches={branches}
+        students={users
+          .filter((u) => u.role === "STUDENT")
+          .map((u) => ({
+            id: u.id,
+            label:
+              [u.firstName, u.lastName].filter(Boolean).join(" ").trim() ||
+              u.name ||
+              u.email,
+          }))}
+        onClose={() => setShowCreate(false)}
+        onCreated={load}
       />
 
       {paymentsTarget && (

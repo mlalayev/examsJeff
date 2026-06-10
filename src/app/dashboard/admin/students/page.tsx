@@ -664,86 +664,59 @@ export default function AdminStudentsPage() {
 
       {/* Category filter bar */}
       {!loading && visibleCategories.length > 0 && (
-        <div className="mb-6">
-          <div className="flex items-center gap-2 mb-3">
-            <Layers className="w-4 h-4 text-gray-400" />
-            <span className="text-sm font-medium text-gray-700">Categories</span>
-            <span className="text-xs text-gray-400">— filter students by program</span>
-          </div>
-          <div className="flex flex-wrap gap-2.5">
-            {/* All */}
-            <button
-              type="button"
-              onClick={() => setCategoryFilter("ALL")}
-              className={`group flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 transition ${
-                categoryFilter === "ALL"
-                  ? "border-transparent text-white shadow-sm"
-                  : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
+        <div className="mb-6 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setCategoryFilter("ALL")}
+            className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${
+              categoryFilter === "ALL"
+                ? "border-transparent text-white"
+                : "bg-white border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50"
+            }`}
+            style={categoryFilter === "ALL" ? { backgroundColor: "#303380" } : {}}
+          >
+            All
+            <span
+              className={`text-xs rounded-full px-1.5 py-0.5 tabular-nums ${
+                categoryFilter === "ALL" ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"
               }`}
-              style={categoryFilter === "ALL" ? { backgroundColor: "#303380" } : {}}
             >
-              <span
-                className={`flex h-8 w-8 items-center justify-center rounded-lg ${
-                  categoryFilter === "ALL" ? "bg-white/20" : "bg-gray-100"
-                }`}
-              >
-                <Users
-                  className={`w-4 h-4 ${categoryFilter === "ALL" ? "text-white" : "text-gray-600"}`}
-                />
-              </span>
-              <span className="text-left">
-                <span className="block text-sm font-semibold leading-tight">All students</span>
-                <span
-                  className={`block text-xs leading-tight ${
-                    categoryFilter === "ALL" ? "text-white/80" : "text-gray-500"
-                  }`}
-                >
-                  {students.length} total
-                </span>
-              </span>
-            </button>
+              {students.length}
+            </span>
+          </button>
 
-            {visibleCategories.map((cat) => {
-              const Icon = cat.icon;
-              const active = categoryFilter === cat.id;
-              const count = categoryCounts[cat.id] ?? 0;
-              return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => setCategoryFilter(active ? "ALL" : cat.id)}
-                  className={`group flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 transition ${
-                    active
-                      ? "border-transparent text-white shadow-sm"
-                      : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
-                  }`}
-                  style={active ? { backgroundColor: cat.accent } : {}}
-                >
+          {visibleCategories.map((cat) => {
+            const active = categoryFilter === cat.id;
+            const count = categoryCounts[cat.id] ?? 0;
+            return (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => setCategoryFilter(active ? "ALL" : cat.id)}
+                className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${
+                  active
+                    ? "border-transparent text-white"
+                    : "bg-white border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50"
+                }`}
+                style={active ? { backgroundColor: cat.accent } : {}}
+              >
+                {!active && (
                   <span
-                    className={`flex h-8 w-8 items-center justify-center rounded-lg ${
-                      active ? "bg-white/20" : ""
-                    }`}
-                    style={!active ? { backgroundColor: `${cat.accent}1a` } : {}}
-                  >
-                    <Icon
-                      className="w-4 h-4"
-                      style={active ? undefined : { color: cat.accent }}
-                    />
-                  </span>
-                  <span className="text-left">
-                    <span className="block text-sm font-semibold leading-tight">{cat.label}</span>
-                    <span
-                      className={`block text-xs leading-tight ${
-                        active ? "text-white/80" : "text-gray-500"
-                      }`}
-                    >
-                      {count} student{count === 1 ? "" : "s"}
-                    </span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+                    className="h-1.5 w-1.5 rounded-full"
+                    style={{ backgroundColor: cat.accent }}
+                  />
+                )}
+                {cat.label}
+                <span
+                  className={`text-xs rounded-full px-1.5 py-0.5 tabular-nums ${
+                    active ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"
+                  }`}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
       )}
 

@@ -44,8 +44,8 @@ export async function POST(request: Request) {
       if (!canCreatePartnerAccount(callerRole)) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
-    } else if (callerRole !== "ADMIN") {
-      return NextResponse.json({ error: "Forbidden: ADMIN access required" }, { status: 403 });
+    } else if (callerRole !== "ADMIN" && callerRole !== "BOSS") {
+      return NextResponse.json({ error: "Forbidden: ADMIN or BOSS access required" }, { status: 403 });
     }
 
     // Check if user already exists
@@ -131,7 +131,7 @@ export async function POST(request: Request) {
 
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.errors[0].message }, { status: 400 });
+      return NextResponse.json({ error: error.issues[0].message }, { status: 400 });
     }
 
     console.error("Create user error:", error);
