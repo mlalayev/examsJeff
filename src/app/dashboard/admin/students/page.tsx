@@ -668,119 +668,62 @@ export default function AdminStudentsPage() {
         </div>
       </div>
 
-      {/* Category filter bar */}
-      {!loading && visibleCategories.length > 0 && (
-        <div className="mb-6 flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setCategoryFilter("ALL")}
-            className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${
-              categoryFilter === "ALL"
-                ? "border-transparent text-white"
-                : "bg-white border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50"
-            }`}
-            style={categoryFilter === "ALL" ? { backgroundColor: "#303380" } : {}}
-          >
-            All
-            <span
-              className={`text-xs rounded-full px-1.5 py-0.5 tabular-nums ${
-                categoryFilter === "ALL" ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"
-              }`}
-            >
-              {students.length}
-            </span>
-          </button>
-
-          {visibleCategories.map((cat) => {
-            const active = categoryFilter === cat.id;
-            const count = categoryCounts[cat.id] ?? 0;
-            return (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => setCategoryFilter(active ? "ALL" : cat.id)}
-                className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${
-                  active
-                    ? "border-transparent text-white"
-                    : "bg-white border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50"
-                }`}
-                style={active ? { backgroundColor: cat.accent } : {}}
-              >
-                {!active && (
-                  <span
-                    className="h-1.5 w-1.5 rounded-full"
-                    style={{ backgroundColor: cat.accent }}
-                  />
-                )}
-                {cat.label}
-                <span
-                  className={`text-xs rounded-full px-1.5 py-0.5 tabular-nums ${
-                    active ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"
-                  }`}
-                >
-                  {count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Status / kind filter bar */}
+      {/* Minimalistic filter bar */}
       {!loading && students.length > 0 && (
-        <div className="mb-6 flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setStatusFilter("ALL")}
-            className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${
-              statusFilter === "ALL"
-                ? "border-transparent text-white"
-                : "bg-white border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50"
-            }`}
-            style={statusFilter === "ALL" ? { backgroundColor: "#303380" } : {}}
-          >
-            Everyone
-            <span
-              className={`text-xs rounded-full px-1.5 py-0.5 tabular-nums ${
-                statusFilter === "ALL" ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"
-              }`}
-            >
-              {students.length}
-            </span>
-          </button>
-
-          {STUDENT_BUCKETS.map((b) => {
-            const active = statusFilter === b.id;
-            const count = bucketCounts[b.id] ?? 0;
-            return (
-              <button
-                key={b.id}
-                type="button"
-                onClick={() => setStatusFilter(active ? "ALL" : b.id)}
-                className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${
-                  active
-                    ? "border-transparent text-white"
-                    : "bg-white border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50"
-                }`}
-                style={active ? { backgroundColor: b.accent } : {}}
-              >
-                {!active && (
-                  <span
-                    className="h-1.5 w-1.5 rounded-full"
-                    style={{ backgroundColor: b.accent }}
+        <div className="mb-6 border-b border-gray-100 pb-4 space-y-3">
+          {visibleCategories.length > 0 && (
+            <div className="flex items-start gap-3 sm:gap-4">
+              <span className="mt-1.5 w-12 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                Type
+              </span>
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5">
+                <FilterTab
+                  label="All"
+                  count={students.length}
+                  active={categoryFilter === "ALL"}
+                  accent="#303380"
+                  onClick={() => setCategoryFilter("ALL")}
+                />
+                {visibleCategories.map((cat) => (
+                  <FilterTab
+                    key={cat.id}
+                    label={cat.label}
+                    count={categoryCounts[cat.id] ?? 0}
+                    active={categoryFilter === cat.id}
+                    accent={cat.accent}
+                    onClick={() =>
+                      setCategoryFilter(categoryFilter === cat.id ? "ALL" : cat.id)
+                    }
                   />
-                )}
-                {b.label}
-                <span
-                  className={`text-xs rounded-full px-1.5 py-0.5 tabular-nums ${
-                    active ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"
-                  }`}
-                >
-                  {count}
-                </span>
-              </button>
-            );
-          })}
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-start gap-3 sm:gap-4">
+            <span className="mt-1.5 w-12 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+              Status
+            </span>
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5">
+              <FilterTab
+                label="Everyone"
+                count={students.length}
+                active={statusFilter === "ALL"}
+                accent="#303380"
+                onClick={() => setStatusFilter("ALL")}
+              />
+              {STUDENT_BUCKETS.map((b) => (
+                <FilterTab
+                  key={b.id}
+                  label={b.label}
+                  count={bucketCounts[b.id] ?? 0}
+                  active={statusFilter === b.id}
+                  accent={b.accent}
+                  onClick={() => setStatusFilter(statusFilter === b.id ? "ALL" : b.id)}
+                />
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
@@ -1786,5 +1729,46 @@ export default function AdminStudentsPage() {
         type={alertModal.type}
       />
     </div>
+  );
+}
+
+function FilterTab({
+  label,
+  count,
+  active,
+  accent,
+  onClick,
+}: {
+  label: string;
+  count: number;
+  active: boolean;
+  accent: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group relative flex items-center gap-1.5 pb-1 text-sm transition-colors"
+    >
+      <span
+        className={
+          active ? "font-semibold text-gray-900" : "text-gray-500 group-hover:text-gray-800"
+        }
+      >
+        {label}
+      </span>
+      <span
+        className={`text-xs tabular-nums ${
+          active ? "text-gray-500" : "text-gray-300 group-hover:text-gray-400"
+        }`}
+      >
+        {count}
+      </span>
+      <span
+        className="absolute -bottom-px left-0 h-0.5 rounded-full transition-all duration-200"
+        style={{ width: active ? "100%" : "0%", backgroundColor: accent }}
+      />
+    </button>
   );
 }
