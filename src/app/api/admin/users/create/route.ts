@@ -21,6 +21,8 @@ const createUserSchema = z.object({
       program: z.string().optional(),
       paymentDate: z.string().nullable().optional(),
       paymentAmount: z.string().nullable().optional(),
+      studyTypes: z.array(z.string()).optional(),
+      lessonModes: z.array(z.string()).optional(),
     })
     .optional(),
 });
@@ -101,6 +103,8 @@ export async function POST(request: Request) {
               program: validatedData.studentProfile.program || null,
               paymentDate: validatedData.studentProfile.paymentDate ? new Date(validatedData.studentProfile.paymentDate) : null,
               paymentAmount: validatedData.studentProfile.paymentAmount ? parseFloat(validatedData.studentProfile.paymentAmount) : null,
+              studyTypes: validatedData.studentProfile.studyTypes ?? [],
+              lessonModes: validatedData.studentProfile.lessonModes ?? [],
             }
           }
         }),

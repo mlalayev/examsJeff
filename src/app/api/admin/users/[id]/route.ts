@@ -37,6 +37,8 @@ export async function GET(
             dateOfBirth: true,
             program: true,
             monthlyFee: true,
+            studyTypes: true,
+            lessonModes: true,
           },
         },
         teacherProfile: {
@@ -75,6 +77,8 @@ export async function GET(
                 user.studentProfile?.monthlyFee != null
                   ? Number(user.studentProfile.monthlyFee)
                   : null,
+              studyTypes: user.studentProfile?.studyTypes ?? [],
+              lessonModes: user.studentProfile?.lessonModes ?? [],
             }
           : null,
       },
@@ -110,6 +114,8 @@ const updateSchema = z.object({
       dateOfBirth: z.string().nullable().optional(),
       program: z.string().nullable().optional(),
       monthlyFee: z.union([z.string(), z.number()]).nullable().optional(),
+      studyTypes: z.array(z.string()).optional(),
+      lessonModes: z.array(z.string()).optional(),
     })
     .optional(),
 });
@@ -216,6 +222,8 @@ export async function PATCH(
               ...(dob !== undefined ? { dateOfBirth: dob } : {}),
               ...(p.program !== undefined ? { program: p.program } : {}),
               ...(fee !== undefined ? { monthlyFee: fee } : {}),
+              ...(p.studyTypes !== undefined ? { studyTypes: p.studyTypes } : {}),
+              ...(p.lessonModes !== undefined ? { lessonModes: p.lessonModes } : {}),
             },
           });
         } else if (effectiveBranchId) {
@@ -227,6 +235,8 @@ export async function PATCH(
               dateOfBirth: dob ?? null,
               program: p.program ?? null,
               monthlyFee: fee ?? null,
+              studyTypes: p.studyTypes ?? [],
+              lessonModes: p.lessonModes ?? [],
             },
           });
         }

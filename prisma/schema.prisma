@@ -551,6 +551,8 @@ model StudentProfile {
   paymentDate     DateTime?
   phoneNumber     String?
   program         String?
+  studyTypes      String[]  @default([])
+  lessonModes     String[]  @default([])
   lessonsStopped  Boolean   @default(false)
   lessonsStoppedAt DateTime?
   branch        Branch    @relation(fields: [branchId], references: [id])

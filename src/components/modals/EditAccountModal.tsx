@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { X, User as UserIcon, Loader2, KeyRound } from "lucide-react";
+import ToggleChips from "@/components/forms/ToggleChips";
+import { STUDY_TYPES, LESSON_MODES } from "@/lib/study-types";
 
 type Branch = { id: string; name: string };
 
@@ -25,6 +27,8 @@ type FormState = {
   dateOfBirth: string;
   program: string;
   monthlyFee: string;
+  studyTypes: string[];
+  lessonModes: string[];
 };
 
 const ROLE_OPTIONS = [
@@ -52,6 +56,8 @@ const emptyForm: FormState = {
   dateOfBirth: "",
   program: "",
   monthlyFee: "",
+  studyTypes: [],
+  lessonModes: [],
 };
 
 const toDateInput = (value: string | null | undefined) => {
@@ -101,6 +107,8 @@ export default function EditAccountModal({
           program: u.profile?.program ?? "",
           monthlyFee:
             u.profile?.monthlyFee != null ? String(u.profile.monthlyFee) : "",
+          studyTypes: Array.isArray(u.profile?.studyTypes) ? u.profile.studyTypes : [],
+          lessonModes: Array.isArray(u.profile?.lessonModes) ? u.profile.lessonModes : [],
         });
       } catch {
         if (!cancelled) setError("Failed to load account");
@@ -116,6 +124,14 @@ export default function EditAccountModal({
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
+
+  const toggleIn = (key: "studyTypes" | "lessonModes", id: string) =>
+    setForm((prev) => ({
+      ...prev,
+      [key]: prev[key].includes(id)
+        ? prev[key].filter((x) => x !== id)
+        : [...prev[key], id],
+    }));
 
   const showProfileFields = form.role === "STUDENT" || form.role === "TEACHER";
 
@@ -152,7 +168,11 @@ export default function EditAccountModal({
           dateOfBirth: form.dateOfBirth || null,
           program: form.program || null,
           ...(form.role === "STUDENT"
-            ? { monthlyFee: form.monthlyFee === "" ? null : form.monthlyFee }
+            ? {
+                monthlyFee: form.monthlyFee === "" ? null : form.monthlyFee,
+                studyTypes: form.studyTypes,
+                lessonModes: form.lessonModes,
+              }
             : {}),
         };
       }
@@ -335,6 +355,38 @@ export default function EditAccountModal({
                       </Field>
                     )}
                   </div>
+
+                  {form.role === "STUDENT" && (
+                    <>
+                      <div className="mt-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Study types{" "}
+                          <span className="text-gray-400 font-normal">(choose one or more)</span>
+                        </label>
+                        <ToggleChips
+                          options={STUDY_TYPES.map((t) => ({
+                            id: t.id,
+                            label: t.label,
+                            accent: t.accent,
+                          }))}
+                          selected={form.studyTypes}
+                          onToggle={(id) => toggleIn("studyTypes", id)}
+                        />
+                      </div>
+
+                      <div className="mt-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Lesson modes{" "}
+                          <span className="text-gray-400 font-normal">(choose one or more)</span>
+                        </label>
+                        <ToggleChips
+                          options={LESSON_MODES.map((m) => ({ id: m.id, label: m.label }))}
+                          selected={form.lessonModes}
+                          onToggle={(id) => toggleIn("lessonModes", id)}
+                        />
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 

@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { X, UserPlus, Loader2 } from "lucide-react";
+import ToggleChips from "@/components/forms/ToggleChips";
+import { STUDY_TYPES, LESSON_MODES } from "@/lib/study-types";
 
 type Branch = { id: string; name: string };
 type ChildOption = { id: string; label: string };
@@ -28,6 +30,8 @@ type FormState = {
   program: string;
   paymentDate: string;
   paymentAmount: string;
+  studyTypes: string[];
+  lessonModes: string[];
   childIds: string[];
 };
 
@@ -54,6 +58,8 @@ const emptyForm: FormState = {
   program: "",
   paymentDate: "",
   paymentAmount: "",
+  studyTypes: [],
+  lessonModes: [],
   childIds: [],
 };
 
@@ -73,6 +79,14 @@ export default function CreateUserModal({
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
+
+  const toggleIn = (key: "studyTypes" | "lessonModes", id: string) =>
+    setForm((prev) => ({
+      ...prev,
+      [key]: prev[key].includes(id)
+        ? prev[key].filter((x) => x !== id)
+        : [...prev[key], id],
+    }));
 
   const reset = () => {
     setForm(emptyForm);
@@ -128,6 +142,8 @@ export default function CreateUserModal({
           program: form.program,
           paymentDate: form.paymentDate || null,
           paymentAmount: form.paymentAmount || null,
+          studyTypes: form.studyTypes,
+          lessonModes: form.lessonModes,
         };
       }
       if (form.role === "PARENT") {
@@ -313,6 +329,28 @@ export default function CreateUserModal({
                     className={inputCls}
                   />
                 </Field>
+              </div>
+
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Study types <span className="text-gray-400 font-normal">(choose one or more)</span>
+                </label>
+                <ToggleChips
+                  options={STUDY_TYPES.map((t) => ({ id: t.id, label: t.label, accent: t.accent }))}
+                  selected={form.studyTypes}
+                  onToggle={(id) => toggleIn("studyTypes", id)}
+                />
+              </div>
+
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Lesson modes <span className="text-gray-400 font-normal">(choose one or more)</span>
+                </label>
+                <ToggleChips
+                  options={LESSON_MODES.map((m) => ({ id: m.id, label: m.label }))}
+                  selected={form.lessonModes}
+                  onToggle={(id) => toggleIn("lessonModes", id)}
+                />
               </div>
             </div>
           )}
