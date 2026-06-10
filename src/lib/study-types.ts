@@ -143,8 +143,16 @@ export function resolveStudentBucket(s: {
 export function inferStudyTypesFromProgram(program?: string | null): string[] {
   if (!program) return [];
   const p = program.toLowerCase();
-  const found = STUDY_TYPES.filter((t) => t.keywords.some((kw) => p.includes(kw)));
-  return found.map((t) => t.id);
+  const found = new Set(
+    STUDY_TYPES.filter((t) => t.keywords.some((kw) => p.includes(kw))).map((t) => t.id)
+  );
+
+  // Disambiguate substring overlaps so e.g. "SAT Math" is not also tagged as the
+  // standalone "Math" type, and "SAT English/Reading" is not tagged "General English".
+  if (found.has("SAT_MATH")) found.delete("MATH");
+  if (found.has("SAT_VERBAL")) found.delete("GENERAL_ENGLISH");
+
+  return STUDY_TYPES.filter((t) => found.has(t.id)).map((t) => t.id);
 }
 
 /**
@@ -156,7 +164,8 @@ export function resolveStudyTypes(
   program?: string | null
 ): string[] {
   if (studyTypes && studyTypes.length > 0) {
-    return studyTypes.filter((id) => STUDY_TYPE_MAP[id]);
+    const valid = studyTypes.filter((id) => STUDY_TYPE_MAP[id]);
+    if (valid.length > 0) return valid;
   }
   return inferStudyTypesFromProgram(program);
 }

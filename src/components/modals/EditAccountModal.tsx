@@ -8,6 +8,7 @@ import {
   LESSON_MODES,
   STUDENT_KIND_OPTIONS,
   STUDENT_STATUS_OPTIONS,
+  resolveStudyTypes,
 } from "@/lib/study-types";
 
 type Branch = { id: string; name: string };
@@ -113,7 +114,7 @@ export default function EditAccountModal({
           dateOfBirth: toDateInput(u.profile?.dateOfBirth),
           monthlyFee:
             u.profile?.monthlyFee != null ? String(u.profile.monthlyFee) : "",
-          studyTypes: Array.isArray(u.profile?.studyTypes) ? u.profile.studyTypes : [],
+          studyTypes: resolveStudyTypes(u.profile?.studyTypes, u.profile?.program),
           lessonModes: Array.isArray(u.profile?.lessonModes) ? u.profile.lessonModes : [],
           studentKind: u.profile?.studentKind ?? "STUDENT",
           studyStatus: u.profile?.studyStatus ?? "CONTINUES",
