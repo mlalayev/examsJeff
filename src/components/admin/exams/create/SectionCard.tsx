@@ -269,7 +269,8 @@ export default function SectionCard({
               />
             </div>
 
-              {/* Duration */}
+              {/* Duration - hidden for General English (single exam-level timer is used instead) */}
+              {selectedCategory !== "GENERAL_ENGLISH" && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   Duration (minutes) *
@@ -293,6 +294,7 @@ export default function SectionCard({
                   min="1"
                 />
               </div>
+              )}
 
               {/* Reading Passages (IELTS - 3 parts) */}
               {section.type === "READING" && selectedCategory === "IELTS" && (

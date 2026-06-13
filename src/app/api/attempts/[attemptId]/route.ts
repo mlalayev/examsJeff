@@ -75,6 +75,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ atte
       id: attempt.id,
       examTitle: exam.title,
       examCategory: exam.category,
+      // Single exam-level timer (used for General English whole-test countdown)
+      examDurationMin: exam.durationMin ?? null,
+      startedAt: (attempt.startedAt ?? attempt.createdAt)?.toISOString() ?? null,
       status: attempt.status,
       sections: exam.sections.map((s: any) => ({
         id: s.id,

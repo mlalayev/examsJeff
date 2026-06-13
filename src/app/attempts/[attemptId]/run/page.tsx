@@ -67,6 +67,8 @@ interface AttemptData {
   id: string;
   examTitle: string;
   examCategory?: string;
+  examDurationMin?: number | null; // Single whole-exam timer (General English)
+  startedAt?: string | null; // Anchor for the whole-exam countdown
   status: string;
   sections: Section[];
   savedAnswers: Record<string, Record<string, any>>;
@@ -1392,6 +1394,41 @@ export default function AttemptRunnerPage() {
   // Hooks must run before any conditional return (same count every render — React #310)
   const currentSection = data?.sections?.find((s: { id: string }) => s.id === activeSection) ?? null;
   const isSAT = data?.examCategory === "SAT";
+  const isGeneralEnglish = data?.examCategory === "GENERAL_ENGLISH";
+
+  // General English: single whole-exam countdown anchored to the attempt start time.
+  const geDeadline = useMemo(() => {
+    if (!isGeneralEnglish) return null;
+    if (data?.status && data.status !== "IN_PROGRESS") return null; // Already submitted
+    const mins = data?.examDurationMin;
+    if (!mins || mins <= 0) return null; // No duration set => untimed
+    const start = data?.startedAt ? new Date(data.startedAt).getTime() : null;
+    if (!start || Number.isNaN(start)) return null;
+    return start + mins * 60_000;
+  }, [isGeneralEnglish, data?.examDurationMin, data?.startedAt, data?.status]);
+
+  const [geSecondsLeft, setGeSecondsLeft] = useState<number | null>(null);
+  const geAutoSubmittedRef = useRef(false);
+  const submitFnRef = useRef<() => void>(() => {});
+  submitFnRef.current = handleSubmitConfirm;
+
+  useEffect(() => {
+    if (geDeadline == null) {
+      setGeSecondsLeft(null);
+      return;
+    }
+    const tick = () => {
+      const remaining = Math.max(0, Math.round((geDeadline - Date.now()) / 1000));
+      setGeSecondsLeft(remaining);
+      if (remaining <= 0 && !geAutoSubmittedRef.current) {
+        geAutoSubmittedRef.current = true;
+        submitFnRef.current?.();
+      }
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [geDeadline]);
 
   // Clear IELTS timer state when section changes
   useEffect(() => {
@@ -1621,6 +1658,32 @@ export default function AttemptRunnerPage() {
             onTimeExpired={() => handleTimeExpired(currentSection.id)}
             attemptId={attemptId}
           />
+        )}
+
+        {/* General English: single whole-exam countdown */}
+        {isGeneralEnglish && geSecondsLeft !== null && (
+          <div className="fixed top-3 right-3 z-50">
+            <div
+              className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 shadow-sm font-semibold tabular-nums ${
+                geSecondsLeft <= 60
+                  ? "bg-red-50 border-red-300 text-red-700 animate-pulse"
+                  : geSecondsLeft <= 300
+                  ? "bg-amber-50 border-amber-300 text-amber-700"
+                  : "bg-white border-slate-200 text-slate-800"
+              }`}
+            >
+              <Clock className="h-4 w-4" />
+              <span>
+                {(() => {
+                  const h = Math.floor(geSecondsLeft / 3600);
+                  const m = Math.floor((geSecondsLeft % 3600) / 60);
+                  const s = geSecondsLeft % 60;
+                  const pad = (n: number) => String(n).padStart(2, "0");
+                  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+                })()}
+              </span>
+            </div>
+          </div>
         )}
 
         <div className="w-full flex-1 flex flex-col min-h-0 px-4 sm:px-6 lg:px-12 xl:px-16 pt-3 pb-3">

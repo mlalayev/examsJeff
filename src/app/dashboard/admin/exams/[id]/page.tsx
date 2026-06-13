@@ -35,6 +35,7 @@ interface Exam {
   title: string;
   category: string;
   track: string | null;
+  durationMin: number | null;
   isActive: boolean;
   createdAt: string;
   createdBy: {
@@ -236,7 +237,11 @@ export default function AdminExamDetailPage() {
   }
 
   const totalQuestions = exam.sections.reduce((sum, sec) => sum + sec.questions.length, 0);
-  const totalDuration = exam.sections.reduce((sum, sec) => sum + (sec.durationMin || 0), 0);
+  const isGeneralEnglish = exam.category === "GENERAL_ENGLISH";
+  // General English uses a single exam-level timer; everything else sums section durations.
+  const totalDuration = isGeneralEnglish
+    ? exam.durationMin ?? 0
+    : exam.sections.reduce((sum, sec) => sum + (sec.durationMin || 0), 0);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
@@ -330,8 +335,10 @@ export default function AdminExamDetailPage() {
               <Clock className="w-5 h-5 text-orange-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Total Duration</p>
-              <p className="font-semibold text-gray-900">{totalDuration} min</p>
+              <p className="text-sm text-gray-500">{isGeneralEnglish ? "Duration" : "Total Duration"}</p>
+              <p className="font-semibold text-gray-900">
+                {isGeneralEnglish && !exam.durationMin ? "Untimed" : `${totalDuration} min`}
+              </p>
               <p className="text-xs text-gray-500">{exam._count.bookings} bookings</p>
             </div>
           </div>
@@ -411,10 +418,12 @@ export default function AdminExamDetailPage() {
                       </div>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500">
-                    <Clock className="w-4 h-4" />
-                    {section.durationMin} min
-                  </div>
+                  {!isGeneralEnglish && (
+                    <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500">
+                      <Clock className="w-4 h-4" />
+                      {section.durationMin} min
+                    </div>
+                  )}
                 </div>
 
                 {/* Questions */}
