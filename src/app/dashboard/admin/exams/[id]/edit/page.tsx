@@ -25,6 +25,7 @@ import {
 import { getDefaultPrompt, getDefaultOptions, getDefaultAnswerKey } from "@/components/admin/exams/create/questionHelpers";
 import SatDigitalBuilder, { type SatDigitalBuilderInitial } from "@/components/admin/exams/create/SatDigitalBuilder";
 import IeltsDigitalBuilder, { type IeltsDigitalBuilderInitial } from "@/components/admin/exams/create/IeltsDigitalBuilder";
+import GenericExamBuilder, { type GenericExamBuilderInitial } from "@/components/admin/exams/create/GenericExamBuilder";
 import { getPromptDisplayText, parseSectionInstruction } from "@/lib/exam-display-utils";
 
 // Types and constants are now imported from shared files
@@ -2511,6 +2512,41 @@ function buildIeltsInitial(exam: any): IeltsDigitalBuilderInitial {
   };
 }
 
+function buildGenericInitial(exam: any): GenericExamBuilderInitial {
+  const sections: Section[] = (exam.sections || []).map((s: any) => {
+    const instr = parseInstruction(s.instruction);
+    const section: Section = {
+      id: s.id,
+      type: s.type,
+      title: s.title,
+      instruction: instr.text || "",
+      durationMin: s.durationMin,
+      order: s.order,
+      questions: (s.questions || []).map(mapDbQuestion),
+    } as Section;
+
+    if (typeof instr.passage === "string" && instr.passage) {
+      section.passage = instr.passage;
+    }
+    if (instr.audio) {
+      section.audio = instr.audio;
+    }
+    if (instr.introduction) {
+      section.introduction = instr.introduction;
+    }
+    if (s.image || instr.image) {
+      section.image = s.image || instr.image;
+    }
+    return section;
+  });
+  return {
+    title: exam.title || "",
+    track: exam.track || "",
+    durationMin: exam.durationMin ?? null,
+    sections,
+  };
+}
+
 export default function EditExamPage() {
   const params = useParams();
   const examId = params.id as string;
@@ -2539,10 +2575,12 @@ export default function EditExamPage() {
     };
   }, [examId]);
 
-  // SAT and IELTS use the dedicated builders (identical to their create pages),
-  // but only when the exam matches the modern flat structure those builders expect.
-  // Legacy-shaped exams (e.g. IELTS with separate Listening subsection rows) keep
-  // using the legacy editor so no data is lost.
+  // Every category is edited with the same builder UI used to create it, pre-filled
+  // with the existing exam's sections and questions:
+  //   - SAT (4 modules)            -> SatDigitalBuilder
+  //   - IELTS (flat L/R/W/S)       -> IeltsDigitalBuilder
+  //   - IELTS (legacy subsections) -> LegacyEditExamPage (it reconstructs subsections)
+  //   - everything else            -> GenericExamBuilder (same as create/[category])
   if (!loading && exam) {
     const sectionList: any[] = exam.sections || [];
     const isDigitalSat = exam.category === "SAT" && sectionList.length === 4;
@@ -2561,7 +2599,19 @@ export default function EditExamPage() {
     if (isDigitalIelts) {
       return <IeltsDigitalBuilder mode="edit" examId={examId} initial={buildIeltsInitial(exam)} />;
     }
-    return <LegacyEditExamPage />;
+    // Legacy IELTS (Listening split into "Part" subsection rows) needs the legacy
+    // editor which knows how to regroup those subsections.
+    if (exam.category === "IELTS") {
+      return <LegacyEditExamPage />;
+    }
+    return (
+      <GenericExamBuilder
+        mode="edit"
+        category={exam.category}
+        examId={examId}
+        initial={buildGenericInitial(exam)}
+      />
+    );
   }
   if (!loading && failed) {
     return <LegacyEditExamPage />;
