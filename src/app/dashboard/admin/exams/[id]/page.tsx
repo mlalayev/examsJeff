@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, BookOpen, Clock, FileText, Edit, Trash2, CheckCircle, XCircle } from "lucide-react";
+import { ArrowLeft, BookOpen, Clock, FileText, Edit, Trash2, CheckCircle, XCircle, PlayCircle } from "lucide-react";
 import AudioPlayer from "@/components/audio/AudioPlayer";
 import { DeleteExamModal } from "@/components/modals/DeleteExamModal";
 import { AlertModal } from "@/components/modals/AlertModal";
 import { getPromptDisplayText, parseSectionInstruction } from "@/lib/exam-display-utils";
+import { attemptRunnerPath } from "@/lib/attempt-runner-path";
 
 interface ExamSection {
   id: string;
@@ -58,6 +59,7 @@ export default function AdminExamDetailPage() {
   const [loading, setLoading] = useState(true);
   const [exam, setExam] = useState<Exam | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [startingTest, setStartingTest] = useState(false);
   const [deleteExamModal, setDeleteExamModal] = useState(false);
   const [alertModal, setAlertModal] = useState<{ isOpen: boolean; title: string; message: string; type?: "success" | "error" | "warning" | "info" }>({
     isOpen: false,
@@ -88,6 +90,26 @@ export default function AdminExamDetailPage() {
       router.push("/dashboard/admin/exams");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleTakeTest = async () => {
+    setStartingTest(true);
+    try {
+      const res = await fetch(`/api/admin/exams/${examId}/test-attempt`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showAlert("Failed to Start Test", data.error || "Failed to start test attempt", "error");
+        return;
+      }
+      router.push(attemptRunnerPath(data.attemptId, data.examCategory));
+    } catch (error) {
+      console.error("Error starting test attempt:", error);
+      showAlert("Failed to Start Test", "Failed to start test attempt", "error");
+    } finally {
+      setStartingTest(false);
     }
   };
 
@@ -281,6 +303,16 @@ export default function AdminExamDetailPage() {
                   Activate
                 </>
               )}
+            </button>
+            <button
+              onClick={handleTakeTest}
+              disabled={startingTest}
+              className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-white rounded-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ backgroundColor: "#303380" }}
+              title="Take this exam yourself to test it (results show correct answers)"
+            >
+              <PlayCircle className="w-4 h-4" />
+              {startingTest ? "Starting..." : "Take Exam (Test)"}
             </button>
             <button
               onClick={() => router.push(`/dashboard/admin/exams/${examId}/edit`)}

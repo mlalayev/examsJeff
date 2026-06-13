@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BookOpen, Plus, Search, Edit, Upload, Trash2 } from "lucide-react";
+import { BookOpen, Plus, Search, Edit, Upload, Trash2, PlayCircle } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { DeleteExamModal } from "@/components/modals/DeleteExamModal";
 import { AlertModal } from "@/components/modals/AlertModal";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
+import { attemptRunnerPath } from "@/lib/attempt-runner-path";
 
 interface Exam {
   id: string;
@@ -21,12 +23,14 @@ interface Exam {
 }
 
 export default function AdminExamsPage() {
+  const router = useRouter();
   const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
   const [filterActive, setFilterActive] = useState<boolean | null>(null);
   const [togglingExamId, setTogglingExamId] = useState<string | null>(null);
+  const [startingTestId, setStartingTestId] = useState<string | null>(null);
   const [creatingSample, setCreatingSample] = useState(false);
   const [deleteExamModal, setDeleteExamModal] = useState<{ isOpen: boolean; examId: string | null; examTitle: string }>({
     isOpen: false,
@@ -90,6 +94,26 @@ export default function AdminExamsPage() {
       showAlert("Failed to Update Status", "Failed to update exam status", "error");
     } finally {
       setTogglingExamId(null);
+    }
+  };
+
+  const handleTakeTest = async (examId: string) => {
+    setStartingTestId(examId);
+    try {
+      const res = await fetch(`/api/admin/exams/${examId}/test-attempt`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showAlert("Failed to Start Test", data.error || "Failed to start test attempt", "error");
+        return;
+      }
+      router.push(attemptRunnerPath(data.attemptId, data.examCategory));
+    } catch (error) {
+      console.error("Error starting test attempt:", error);
+      showAlert("Failed to Start Test", "Failed to start test attempt", "error");
+    } finally {
+      setStartingTestId(null);
     }
   };
 
@@ -386,6 +410,15 @@ export default function AdminExamsPage() {
                           } disabled:opacity-50 disabled:cursor-not-allowed`}
                         >
                           {togglingExamId === exam.id ? "Updating..." : exam.isActive ? "Deactivate" : "Activate"}
+                        </button>
+                        <button
+                          onClick={() => handleTakeTest(exam.id)}
+                          disabled={startingTestId === exam.id}
+                          className="px-2 py-1 text-xs font-medium text-indigo-700 bg-indigo-50 rounded hover:bg-indigo-100 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Take this exam to test it"
+                        >
+                          <PlayCircle className="w-3 h-3" />
+                          {startingTestId === exam.id ? "Starting..." : "Test"}
                         </button>
                         <Link
                           href={`/dashboard/admin/exams/${exam.id}`}
