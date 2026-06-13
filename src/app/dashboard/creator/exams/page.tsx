@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BookOpen, Plus, Search, Edit, Upload, Trash2 } from "lucide-react";
+import { BookOpen, Plus, Search, Edit, Upload, Trash2, PlayCircle } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { attemptRunnerPath } from "@/lib/attempt-runner-path";
 
 interface Exam {
   id: string;
@@ -18,12 +20,14 @@ interface Exam {
 }
 
 export default function CreatorExamsPage() {
+  const router = useRouter();
   const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
   const [filterActive, setFilterActive] = useState<boolean | null>(null);
   const [togglingExamId, setTogglingExamId] = useState<string | null>(null);
+  const [startingTestId, setStartingTestId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchExams();
@@ -67,6 +71,26 @@ export default function CreatorExamsPage() {
       alert("Failed to update exam status");
     } finally {
       setTogglingExamId(null);
+    }
+  };
+
+  const handleTakeTest = async (examId: string) => {
+    setStartingTestId(examId);
+    try {
+      const res = await fetch(`/api/admin/exams/${examId}/test-attempt`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "Failed to start test attempt");
+        return;
+      }
+      router.push(attemptRunnerPath(data.attemptId, data.examCategory));
+    } catch (error) {
+      console.error("Error starting test attempt:", error);
+      alert("Failed to start test attempt");
+    } finally {
+      setStartingTestId(null);
     }
   };
 
@@ -303,6 +327,15 @@ export default function CreatorExamsPage() {
                           } disabled:opacity-50 disabled:cursor-not-allowed`}
                         >
                           {togglingExamId === exam.id ? "Updating..." : exam.isActive ? "Deactivate" : "Activate"}
+                        </button>
+                        <button
+                          onClick={() => handleTakeTest(exam.id)}
+                          disabled={startingTestId === exam.id}
+                          className="px-2 py-1 text-xs font-medium text-indigo-700 bg-indigo-50 rounded hover:bg-indigo-100 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Take this exam to test it"
+                        >
+                          <PlayCircle className="w-3 h-3" />
+                          {startingTestId === exam.id ? "Starting..." : "Test"}
                         </button>
                         <Link
                           href={`/dashboard/admin/exams/${exam.id}`}
