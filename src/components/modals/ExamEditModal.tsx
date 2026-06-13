@@ -7,6 +7,7 @@ import QuestionTypeModal from "@/components/admin/exams/create/QuestionTypeModal
 import { QuestionEditModal } from "@/components/admin/exams/create/questionModal/QuestionEditModal";
 import { getDefaultPrompt, getDefaultOptions, getDefaultAnswerKey } from "@/components/admin/exams/create/questionHelpers";
 import type { QuestionType } from "@/components/admin/exams/create/types";
+import { getPromptDisplayText } from "@/lib/exam-display-utils";
 
 interface Question {
   id: string;
@@ -375,7 +376,7 @@ export default function ExamEditModal({
                     {/* Question Preview */}
                     <div className="text-sm text-gray-700">
                       {typeof q.prompt === "object" && q.prompt?.text ? (
-                        <p className="line-clamp-2">{q.prompt.text}</p>
+                        <p className="line-clamp-2">{getPromptDisplayText(q.prompt)}</p>
                       ) : (
                         <p className="text-gray-400 italic">No question text</p>
                       )}
@@ -466,9 +467,7 @@ export default function ExamEditModal({
                       </span>
                     </div>
                     <p className="text-sm text-gray-700 line-clamp-2">
-                      {typeof deletingQuestion.prompt === "object" && deletingQuestion.prompt?.text
-                        ? deletingQuestion.prompt.text
-                        : "No question text"}
+                      {getPromptDisplayText(deletingQuestion.prompt) || "No question text"}
                     </p>
                   </div>
 

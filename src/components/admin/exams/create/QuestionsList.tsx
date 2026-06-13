@@ -3,6 +3,7 @@
 import { Edit, X, BookOpen } from "lucide-react";
 import type { Question, ExamCategory, SectionType } from "./types";
 import { QUESTION_TYPE_LABELS } from "./constants";
+import { getPromptDisplayText } from "@/lib/exam-display-utils";
 import { filterQuestionsByPart, getIELTSPartLabel, calculateIELTSGlobalQuestionNumber } from "./ieltsHelpers";
 
 interface QuestionsListProps {
@@ -102,11 +103,7 @@ export default function QuestionsList({
               </div>
             </div>
             <div className="text-xs sm:text-sm text-gray-600">
-              {typeof q.prompt === "object" && q.prompt.text
-                ? q.prompt.text
-                : typeof q.prompt === "string"
-                  ? q.prompt
-                  : JSON.stringify(q.prompt)}
+              {getPromptDisplayText(q.prompt) || JSON.stringify(q.prompt)}
             </div>
             {q.image && (
               <div className="mt-2 text-xs text-gray-500">

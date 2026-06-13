@@ -6,6 +6,7 @@ import { ArrowLeft, BookOpen, Clock, FileText, Edit, Trash2, CheckCircle, XCircl
 import AudioPlayer from "@/components/audio/AudioPlayer";
 import { DeleteExamModal } from "@/components/modals/DeleteExamModal";
 import { AlertModal } from "@/components/modals/AlertModal";
+import { getPromptDisplayText, parseSectionInstruction } from "@/lib/exam-display-utils";
 
 interface ExamSection {
   id: string;
@@ -237,15 +238,6 @@ export default function AdminExamDetailPage() {
   const totalQuestions = exam.sections.reduce((sum, sec) => sum + sec.questions.length, 0);
   const totalDuration = exam.sections.reduce((sum, sec) => sum + (sec.durationMin || 0), 0);
 
-  const parseInstruction = (instruction: string | null) => {
-    if (!instruction) return { text: "", passage: null, audio: null };
-    try {
-      return JSON.parse(instruction);
-    } catch {
-      return { text: instruction, passage: null, audio: null };
-    }
-  };
-
   return (
     <div className="p-4 sm:p-6 lg:p-8">
       {/* Header */}
@@ -378,7 +370,7 @@ export default function AdminExamDetailPage() {
           </div>
         ) : (
           exam.sections.map((section, sIdx) => {
-            const instructionData = parseInstruction(section.instruction);
+            const instructionData = parseSectionInstruction(section.instruction);
             return (
               <div key={section.id} className="bg-white border border-gray-200 rounded-md p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4">
@@ -457,12 +449,8 @@ export default function AdminExamDetailPage() {
                                   ))}
                                 </ul>
                               </div>
-                            ) : typeof question.prompt === "object" && question.prompt.text ? (
-                              question.prompt.text
-                            ) : typeof question.prompt === "string" ? (
-                              question.prompt
                             ) : (
-                              JSON.stringify(question.prompt)
+                              getPromptDisplayText(question.prompt) || JSON.stringify(question.prompt)
                             )}
                           </div>
                           {question.options && (

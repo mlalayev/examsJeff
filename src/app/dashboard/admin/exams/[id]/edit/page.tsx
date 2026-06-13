@@ -25,6 +25,7 @@ import {
 import { getDefaultPrompt, getDefaultOptions, getDefaultAnswerKey } from "@/components/admin/exams/create/questionHelpers";
 import SatDigitalBuilder, { type SatDigitalBuilderInitial } from "@/components/admin/exams/create/SatDigitalBuilder";
 import IeltsDigitalBuilder, { type IeltsDigitalBuilderInitial } from "@/components/admin/exams/create/IeltsDigitalBuilder";
+import { getPromptDisplayText, parseSectionInstruction } from "@/lib/exam-display-utils";
 
 // Types and constants are now imported from shared files
 
@@ -106,14 +107,7 @@ function LegacyEditExamPage() {
         const listeningParts: any[] = [];
         
         exam.sections.forEach((s: any) => {
-          let instructionData: any = { text: "" };
-          if (s.instruction) {
-            try {
-              instructionData = typeof s.instruction === "string" ? JSON.parse(s.instruction) : s.instruction;
-            } catch {
-              instructionData = { text: s.instruction || "" };
-            }
-          }
+          const instructionData = parseSectionInstruction(s.instruction);
           
           // SAT üçün avtomatik duration təyin et
           let durationMin = s.durationMin;
@@ -1169,11 +1163,7 @@ function LegacyEditExamPage() {
                       </div>
                     </div>
                     <div className="text-sm text-gray-600">
-                      {typeof q.prompt === "object" && q.prompt.text
-                        ? q.prompt.text
-                        : typeof q.prompt === "string"
-                        ? q.prompt
-                        : JSON.stringify(q.prompt)}
+                      {getPromptDisplayText(q.prompt) || JSON.stringify(q.prompt)}
                     </div>
                   </div>
                 );
@@ -2448,13 +2438,7 @@ function LegacyEditExamPage() {
 // them. Other categories keep the legacy editor above.
 
 function parseInstruction(raw: any): any {
-  if (!raw) return { text: "" };
-  if (typeof raw === "object") return raw;
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return { text: String(raw) };
-  }
+  return parseSectionInstruction(raw);
 }
 
 function mapDbQuestion(q: any): Question {
