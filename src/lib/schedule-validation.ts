@@ -66,6 +66,7 @@ export const lessonTypeSchema = z.enum([
   "GENERAL_ENGLISH",
   "MATH",
   "IT",
+  "SPEAKING",
 ]);
 
 export type LessonType = z.infer<typeof lessonTypeSchema>;
@@ -78,6 +79,7 @@ export const LESSON_TYPE_LABELS: Record<LessonType, string> = {
   GENERAL_ENGLISH: "General English",
   MATH: "Math",
   IT: "IT",
+  SPEAKING: "Speaking",
 };
 
 export const LESSON_TYPE_OPTIONS = (

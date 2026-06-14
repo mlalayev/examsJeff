@@ -3,9 +3,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Calendar as CalendarIcon,
+  Check,
   ChevronLeft,
   ChevronRight,
   Clock,
+  Copy,
+  FileText,
   Loader2,
   Plus,
   Search,
@@ -14,9 +17,82 @@ import {
   X,
 } from "lucide-react";
 import {
+  LESSON_TYPE_LABELS,
   LESSON_TYPE_OPTIONS,
   type LessonType,
 } from "@/lib/schedule-validation";
+
+// Azerbaijani labels for the shareable monthly report (keyed by the stored
+// English class name, which equals LESSON_TYPE_LABELS[...]).
+const AZ_LESSON_LABELS: Record<string, string> = {
+  [LESSON_TYPE_LABELS.IELTS]: "IELTS",
+  [LESSON_TYPE_LABELS.TOEFL]: "TOEFL",
+  [LESSON_TYPE_LABELS.SAT]: "SAT",
+  [LESSON_TYPE_LABELS.KIDS]: "Kids",
+  [LESSON_TYPE_LABELS.GENERAL_ENGLISH]: "İngilis dili",
+  [LESSON_TYPE_LABELS.MATH]: "Riyaziyyat",
+  [LESSON_TYPE_LABELS.IT]: "İT dərsləri",
+  [LESSON_TYPE_LABELS.SPEAKING]: "Speaking",
+};
+
+type ReportClassRow = {
+  id: string;
+  name: string;
+  students: string[];
+  lessonCount: number;
+};
+
+// Builds the shareable monthly summary text grouped by lesson type, then by
+// number of students per class. Matches the teacher's expected format:
+//   *Lesson type*
+//   `N nəfər (TOTAL dərs)`
+//   Student names (X dərs)
+function buildMonthlyReport(rows: ReportClassRow[]): string {
+  const typeOrder = LESSON_TYPE_OPTIONS.map((o) => o.label);
+
+  const byType = new Map<string, ReportClassRow[]>();
+  for (const r of rows) {
+    const list = byType.get(r.name) ?? [];
+    list.push(r);
+    byType.set(r.name, list);
+  }
+
+  const sortedTypes = [...byType.keys()].sort((a, b) => {
+    const ia = typeOrder.indexOf(a);
+    const ib = typeOrder.indexOf(b);
+    return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib) || a.localeCompare(b);
+  });
+
+  const blocks: string[] = [];
+  for (const type of sortedTypes) {
+    const classes = byType.get(type)!;
+    const lines: string[] = [`*${AZ_LESSON_LABELS[type] ?? type}*`];
+
+    const bySize = new Map<number, ReportClassRow[]>();
+    for (const c of classes) {
+      const n = c.students.length;
+      const list = bySize.get(n) ?? [];
+      list.push(c);
+      bySize.set(n, list);
+    }
+
+    for (const size of [...bySize.keys()].sort((a, b) => a - b)) {
+      const group = bySize
+        .get(size)!
+        .sort((a, b) => a.students.join(", ").localeCompare(b.students.join(", ")));
+      const total = group.reduce((s, c) => s + c.lessonCount, 0);
+      lines.push(`\`${size} nəfər (${total} dərs)\``);
+      for (const c of group) {
+        const roster = c.students.length > 0 ? c.students.join(", ") : "—";
+        lines.push(`${roster} (${c.lessonCount} dərs)`);
+      }
+    }
+
+    blocks.push(lines.join("\n"));
+  }
+
+  return blocks.join("\n\n");
+}
 
 const ACCENT = "#303380";
 
@@ -335,6 +411,35 @@ export default function TeacherSchedulePage() {
     setAddOpen(true);
   };
 
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportText, setReportText] = useState("");
+
+  const openReport = useCallback(async () => {
+    setReportOpen(true);
+    setReportLoading(true);
+    setReportText("");
+    try {
+      const res = await fetch(
+        `/api/teacher/schedule/month/report?year=${currentYear}&month=${
+          currentMonth + 1
+        }`
+      );
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Failed to build report");
+      const rows: ReportClassRow[] = body.classes ?? [];
+      setReportText(
+        rows.length > 0
+          ? buildMonthlyReport(rows)
+          : "No lessons this month yet."
+      );
+    } catch (err) {
+      setReportText((err as Error).message || "Failed to build report");
+    } finally {
+      setReportLoading(false);
+    }
+  }, [currentMonth, currentYear]);
+
   const [applying, setApplying] = useState(false);
 
   const applyMonth = useCallback(async () => {
@@ -531,6 +636,16 @@ export default function TeacherSchedulePage() {
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={openReport}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-slate-50"
+            title="Build this month's lesson summary"
+          >
+            <FileText className="h-4 w-4" />
+            Monthly report
+          </button>
+
           <button
             type="button"
             onClick={applyMonth}
@@ -736,6 +851,16 @@ export default function TeacherSchedulePage() {
           preset={addPreset}
           onClose={() => setAddOpen(false)}
           onCreate={createClassWithSchedule}
+        />
+      )}
+
+      {/* Monthly report modal */}
+      {reportOpen && (
+        <ReportModal
+          title={`${MONTHS[currentMonth]} ${currentYear} — Lesson summary`}
+          loading={reportLoading}
+          text={reportText}
+          onClose={() => setReportOpen(false)}
         />
       )}
     </div>
@@ -1309,6 +1434,95 @@ function SlotsListModal({
 }
 
 type RosterDraft = { id: string; name: string; email: string };
+
+function ReportModal({
+  title,
+  loading,
+  text,
+  onClose,
+}: {
+  title: string;
+  loading: boolean;
+  text: string;
+  onClose: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // ignore clipboard failures
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-[1px]">
+      <div className="my-8 flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white px-6 py-4">
+          <div className="flex items-center gap-2">
+            <span
+              className="h-2 w-2 rounded-full"
+              style={{ backgroundColor: ACCENT }}
+              aria-hidden
+            />
+            <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50"
+            aria-label="Close"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-5">
+          {loading ? (
+            <div className="flex items-center gap-2 py-8 text-sm text-slate-500">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Building report…
+            </div>
+          ) : (
+            <textarea
+              readOnly
+              value={text}
+              onFocus={(e) => e.currentTarget.select()}
+              className="h-72 w-full resize-none rounded-lg border border-slate-200 bg-slate-50 p-3 font-mono text-sm leading-relaxed text-gray-800 outline-none focus:border-[#303380] focus:ring-2 focus:ring-[#303380]/30"
+            />
+          )}
+        </div>
+
+        <div className="flex items-center justify-end gap-2 border-t border-slate-100 px-6 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-slate-50"
+          >
+            Close
+          </button>
+          <button
+            type="button"
+            onClick={copy}
+            disabled={loading || !text}
+            className="inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:opacity-90 disabled:opacity-50"
+            style={{ backgroundColor: ACCENT }}
+          >
+            {copied ? (
+              <Check className="h-4 w-4" />
+            ) : (
+              <Copy className="h-4 w-4" />
+            )}
+            {copied ? "Copied" : "Copy"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function AddScheduleModal({
   preset,
