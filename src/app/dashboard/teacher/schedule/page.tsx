@@ -332,6 +332,34 @@ export default function TeacherSchedulePage() {
     setAddOpen(true);
   };
 
+  const [applying, setApplying] = useState(false);
+
+  const applyMonth = useCallback(async () => {
+    setApplying(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/teacher/schedule/month/apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ year: currentYear, month: currentMonth + 1 }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Failed to apply schedule");
+      await loadMonth(currentYear, currentMonth);
+      showToast(
+        body.created > 0
+          ? `Added ${body.created} class${body.created === 1 ? "" : "es"} to ${
+              MONTHS[currentMonth]
+            }`
+          : "No new classes to add this month"
+      );
+    } catch (err) {
+      setError((err as Error).message || "Failed to apply schedule");
+    } finally {
+      setApplying(false);
+    }
+  }, [currentMonth, currentYear, loadMonth, showToast]);
+
   const [clearing, setClearing] = useState(false);
 
   const clearMonth = useCallback(async () => {
@@ -368,15 +396,13 @@ export default function TeacherSchedulePage() {
   const firstDayOfWeek = new Date(currentYear, currentMonth, 1).getDay();
 
   const classesForDay = useCallback(
-    (day: number, dayOfWeek: number): DayClass[] => {
+    (day: number, _dayOfWeek: number): DayClass[] => {
       if (!data) return [];
 
-      const base =
-        dayOfWeek === 0 ? [] : isOddDay(day) ? data.oddDays : data.evenDays;
-
-      // Concrete lessons already created for this date (these take precedence
-      // and carry their own materialised state / records). Cancelled ones are
-      // hidden (used to "remove" a recurring occurrence for a single day).
+      // Only concrete lessons that have been applied to this month are shown.
+      // Recurring odd/even slots are templates; they appear on the calendar
+      // only after the teacher applies them to the selected month. Cancelled
+      // lessons are hidden (used to "remove" a single day's occurrence).
       const lessonChips: DayClass[] = data.lessons
         .filter(
           (l) =>
@@ -394,29 +420,7 @@ export default function TeacherSchedulePage() {
           status: l.status,
         }));
 
-      // Recurring slots: skip ones already materialised into a lesson for this
-      // date+slot so a class isn't listed twice.
-      const materialisedSlotIds = new Set(
-        data.lessons
-          .filter((l) => new Date(l.date).getUTCDate() === day)
-          .map((l) => l.scheduleSlotId)
-          .filter(Boolean) as string[]
-      );
-
-      const slotChips: DayClass[] = base
-        .filter((s) => !materialisedSlotIds.has(s.id))
-        .map((s) => ({
-          key: `slot-${s.id}-${day}`,
-          kind: "slot",
-          title: s.title,
-          timeSlot: s.timeSlot,
-          className: s.class?.name ?? null,
-          classId: s.class?.id ?? null,
-          studentCount: s.class?._count?.classStudents ?? 0,
-          slotId: s.id,
-        }));
-
-      return [...lessonChips, ...slotChips].sort(sortByTime);
+      return lessonChips.sort(sortByTime);
     },
     [data]
   );
@@ -523,20 +527,38 @@ export default function TeacherSchedulePage() {
           </button>
         </div>
 
-        <button
-          type="button"
-          onClick={clearMonth}
-          disabled={clearing}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-white px-3 py-2 text-sm font-medium text-rose-700 shadow-sm transition hover:bg-rose-50 disabled:opacity-50"
-          title="Delete this month's lessons and feedback"
-        >
-          {clearing ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Trash2 className="h-4 w-4" />
-          )}
-          Clear month
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={applyMonth}
+            disabled={applying}
+            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:opacity-90 disabled:opacity-50"
+            style={{ backgroundColor: ACCENT }}
+            title="Add your odd/even day schedule to this month"
+          >
+            {applying ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Plus className="h-4 w-4" />
+            )}
+            Add schedule to this month
+          </button>
+
+          <button
+            type="button"
+            onClick={clearMonth}
+            disabled={clearing}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-white px-3 py-2 text-sm font-medium text-rose-700 shadow-sm transition hover:bg-rose-50 disabled:opacity-50"
+            title="Delete this month's lessons and feedback"
+          >
+            {clearing ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Trash2 className="h-4 w-4" />
+            )}
+            Clear month
+          </button>
+        </div>
       </div>
 
       {toast && (
