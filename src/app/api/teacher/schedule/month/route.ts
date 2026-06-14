@@ -69,3 +69,35 @@ export async function GET(request: Request) {
     return handleApiError(error, "Get monthly schedule error");
   }
 }
+
+// DELETE /api/teacher/schedule/month?year=2026&month=6
+// Clears this month's concrete lessons and their saved feedback for the
+// teacher. The recurring odd/even schedule slots are left untouched.
+export async function DELETE(request: Request) {
+  try {
+    const user = await requireTeacher();
+    const { searchParams } = new URL(request.url);
+    const { year, month } = querySchema.parse({
+      year: searchParams.get("year"),
+      month: searchParams.get("month"),
+    });
+
+    const start = new Date(Date.UTC(year, month - 1, 1));
+    const end = new Date(Date.UTC(year, month, 1));
+
+    // Student records cascade-delete with their lesson sessions.
+    const result = await prisma.lessonSession.deleteMany({
+      where: {
+        teacherId: (user as any).id,
+        date: { gte: start, lt: end },
+      },
+    });
+
+    return NextResponse.json({
+      message: "Month cleared",
+      deleted: result.count,
+    });
+  } catch (error) {
+    return handleApiError(error, "Clear monthly schedule error");
+  }
+}

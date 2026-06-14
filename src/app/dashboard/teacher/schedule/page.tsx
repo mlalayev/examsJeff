@@ -332,6 +332,38 @@ export default function TeacherSchedulePage() {
     setAddOpen(true);
   };
 
+  const [clearing, setClearing] = useState(false);
+
+  const clearMonth = useCallback(async () => {
+    if (
+      !window.confirm(
+        `Clear all lessons and saved feedback for ${MONTHS[currentMonth]} ${currentYear}? Your recurring odd/even classes will stay. This cannot be undone.`
+      )
+    )
+      return;
+    setClearing(true);
+    try {
+      const res = await fetch(
+        `/api/teacher/schedule/month?year=${currentYear}&month=${
+          currentMonth + 1
+        }`,
+        { method: "DELETE" }
+      );
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Failed to clear month");
+      await loadMonth(currentYear, currentMonth);
+      showToast(
+        body.deleted > 0
+          ? `Cleared ${body.deleted} lesson${body.deleted === 1 ? "" : "s"}`
+          : "Nothing to clear this month"
+      );
+    } catch (err) {
+      setError((err as Error).message || "Failed to clear month");
+    } finally {
+      setClearing(false);
+    }
+  }, [currentMonth, currentYear, loadMonth, showToast]);
+
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
   const firstDayOfWeek = new Date(currentYear, currentMonth, 1).getDay();
 
@@ -490,6 +522,21 @@ export default function TeacherSchedulePage() {
             Even Days Classes
           </button>
         </div>
+
+        <button
+          type="button"
+          onClick={clearMonth}
+          disabled={clearing}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-white px-3 py-2 text-sm font-medium text-rose-700 shadow-sm transition hover:bg-rose-50 disabled:opacity-50"
+          title="Delete this month's lessons and feedback"
+        >
+          {clearing ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Trash2 className="h-4 w-4" />
+          )}
+          Clear month
+        </button>
       </div>
 
       {toast && (
