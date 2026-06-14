@@ -116,18 +116,47 @@ export async function POST(request: Request) {
         })
       : [];
 
-    const students = roster.map((r) => ({
-      id: r.student.id,
-      email: r.student.email,
-      name:
-        [r.student.firstName, r.student.lastName].filter(Boolean).join(" ").trim() ||
-        r.student.email,
-    }));
-
-    // Existing saved records for this lesson
+    // Existing saved records for this lesson (with student details so that
+    // students who have since left the class still appear for past lessons)
     const records = await prisma.lessonStudentRecord.findMany({
       where: { lessonSessionId: lessonRow.id },
+      include: {
+        student: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+      },
     });
+
+    const nameOf = (s: {
+      firstName: string | null;
+      lastName: string | null;
+      email: string;
+    }) =>
+      [s.firstName, s.lastName].filter(Boolean).join(" ").trim() || s.email;
+
+    // Student list = current roster ∪ anyone who already has a record here.
+    const studentMap = new Map<
+      string,
+      { id: string; email: string; name: string }
+    >();
+    for (const r of roster) {
+      studentMap.set(r.student.id, {
+        id: r.student.id,
+        email: r.student.email,
+        name: nameOf(r.student),
+      });
+    }
+    for (const rec of records) {
+      if (!studentMap.has(rec.studentId)) {
+        studentMap.set(rec.studentId, {
+          id: rec.student.id,
+          email: rec.student.email,
+          name: nameOf(rec.student),
+        });
+      }
+    }
+
+    const students = Array.from(studentMap.values());
 
     return NextResponse.json({ lesson, students, records });
   } catch (error) {

@@ -136,10 +136,32 @@ export default function TeacherSchedulePage() {
     dayClass: DayClass;
   } | null>(null);
 
+  const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
+
   const showToast = useCallback((message: string) => {
     setToast(message);
     setTimeout(() => setToast(null), 2200);
   }, []);
+
+  const fetchClasses = useCallback(async () => {
+    try {
+      const res = await fetch("/api/classes");
+      if (!res.ok) return;
+      const json = await res.json();
+      setClasses(
+        (json.classes ?? []).map((c: { id: string; name: string }) => ({
+          id: c.id,
+          name: c.name,
+        }))
+      );
+    } catch (err) {
+      console.error("Load classes error:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchClasses();
+  }, [fetchClasses]);
 
   const loadMonth = useCallback(
     async (year: number, month: number, signal?: AbortSignal) => {
@@ -219,12 +241,71 @@ export default function TeacherSchedulePage() {
       if (!res.ok) {
         throw new Error(body.error || "Failed to create class");
       }
-      await loadMonth(currentYear, currentMonth);
+      await Promise.all([loadMonth(currentYear, currentMonth), fetchClasses()]);
       showToast(
         `Class added to all ${
           input.scheduleType === "ODD_DAYS" ? "odd" : "even"
         } days`
       );
+    },
+    [currentMonth, currentYear, fetchClasses, loadMonth, showToast]
+  );
+
+  // Add a one-off extra lesson (outside the recurring schedule) on a given date.
+  const addDayLesson = useCallback(
+    async (
+      date: string,
+      input: { classId: string; startTime: string; endTime: string }
+    ) => {
+      const cls = classes.find((c) => c.id === input.classId);
+      const res = await fetch("/api/teacher/lessons", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: cls?.name ?? "Lesson",
+          date,
+          timeSlot: `${input.startTime} - ${input.endTime}`,
+          classId: input.classId,
+        }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Failed to add lesson");
+      await loadMonth(currentYear, currentMonth);
+      showToast("Lesson added");
+    },
+    [classes, currentMonth, currentYear, loadMonth, showToast]
+  );
+
+  // Remove a class from a single day: delete a concrete lesson, or cancel a
+  // recurring occurrence (so it disappears for that date only).
+  const removeDayClass = useCallback(
+    async (date: string, dayClass: DayClass) => {
+      if (dayClass.lessonId) {
+        const res = await fetch(`/api/teacher/lessons/${dayClass.lessonId}`, {
+          method: "DELETE",
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.error || "Failed to remove lesson");
+      } else if (dayClass.slotId) {
+        const res = await fetch("/api/teacher/lessons", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: dayClass.className ?? dayClass.title,
+            date,
+            timeSlot: dayClass.timeSlot,
+            classId: dayClass.classId,
+            scheduleSlotId: dayClass.slotId,
+            status: "CANCELLED",
+          }),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.error || "Failed to remove lesson");
+      } else {
+        return;
+      }
+      await loadMonth(currentYear, currentMonth);
+      showToast("Lesson removed for this day");
     },
     [currentMonth, currentYear, loadMonth, showToast]
   );
@@ -261,9 +342,13 @@ export default function TeacherSchedulePage() {
         dayOfWeek === 0 ? [] : isOddDay(day) ? data.oddDays : data.evenDays;
 
       // Concrete lessons already created for this date (these take precedence
-      // and carry their own materialised state / records).
+      // and carry their own materialised state / records). Cancelled ones are
+      // hidden (used to "remove" a recurring occurrence for a single day).
       const lessonChips: DayClass[] = data.lessons
-        .filter((l) => new Date(l.date).getUTCDate() === day)
+        .filter(
+          (l) =>
+            new Date(l.date).getUTCDate() === day && l.status !== "CANCELLED"
+        )
         .map((l) => ({
           key: `lesson-${l.id}`,
           kind: "lesson",
@@ -531,13 +616,17 @@ export default function TeacherSchedulePage() {
             ]
           }
           dateLabel={`${MONTHS[currentMonth]} ${selectedDay}, ${currentYear}`}
+          date={dateKey(currentYear, currentMonth, selectedDay)}
           classes={selectedDayClasses}
+          classOptions={classes}
           onSelectClass={(dayClass) =>
             setFeedbackCtx({
               date: dateKey(currentYear, currentMonth, selectedDay),
               dayClass,
             })
           }
+          onAddLesson={addDayLesson}
+          onRemoveClass={removeDayClass}
           onClose={() => setSelectedDay(null)}
         />
       )}
@@ -611,16 +700,84 @@ function CalendarSkeleton() {
 function DayDetailModal({
   weekday,
   dateLabel,
+  date,
   classes,
+  classOptions,
   onSelectClass,
+  onAddLesson,
+  onRemoveClass,
   onClose,
 }: {
   weekday: string;
   dateLabel: string;
+  date: string;
   classes: DayClass[];
+  classOptions: { id: string; name: string }[];
   onSelectClass: (dayClass: DayClass) => void;
+  onAddLesson: (
+    date: string,
+    input: { classId: string; startTime: string; endTime: string }
+  ) => Promise<void>;
+  onRemoveClass: (date: string, dayClass: DayClass) => Promise<void>;
   onClose: () => void;
 }) {
+  const [adding, setAdding] = useState(false);
+  const [addClassId, setAddClassId] = useState("");
+  const [addStart, setAddStart] = useState("");
+  const [addEnd, setAddEnd] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [removingKey, setRemovingKey] = useState<string | null>(null);
+
+  const handleAdd = async () => {
+    setError(null);
+    if (!addClassId) {
+      setError("Choose a class.");
+      return;
+    }
+    if (!addStart || !addEnd) {
+      setError("Set both a start and end time.");
+      return;
+    }
+    if (addEnd <= addStart) {
+      setError("End time must be after start time.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await onAddLesson(date, {
+        classId: addClassId,
+        startTime: addStart,
+        endTime: addEnd,
+      });
+      setAdding(false);
+      setAddClassId("");
+      setAddStart("");
+      setAddEnd("");
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleRemove = async (c: DayClass) => {
+    if (
+      !window.confirm(
+        "Remove this lesson from this day? Any saved feedback for it will be deleted."
+      )
+    )
+      return;
+    setRemovingKey(c.key);
+    try {
+      await onRemoveClass(date, c);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setRemovingKey(null);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-[1px]">
       <div className="flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
@@ -649,41 +806,139 @@ function DayDetailModal({
         </div>
 
         <div className="space-y-2 overflow-y-auto p-5">
+          {error && (
+            <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
+              {error}
+            </div>
+          )}
+
           {classes.length === 0 ? (
-            <div className="rounded-xl border border-slate-200 bg-slate-50/60 py-10 text-center text-sm text-gray-500">
+            <div className="rounded-xl border border-slate-200 bg-slate-50/60 py-8 text-center text-sm text-gray-500">
               No classes scheduled for this day.
             </div>
           ) : (
             classes.map((c) => (
-              <button
-                type="button"
+              <div
                 key={c.key}
-                onClick={() => onSelectClass(c)}
-                className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:border-[#303380]/40 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#303380]/40"
+                className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-[#303380]/40"
               >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate font-semibold text-gray-900">
-                      {c.className ?? c.title}
-                    </span>
-                    {c.kind === "lesson" && c.status && (
-                      <StatusBadge status={c.status} />
-                    )}
+                <button
+                  type="button"
+                  onClick={() => onSelectClass(c)}
+                  className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left focus:outline-none"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate font-semibold text-gray-900">
+                        {c.className ?? c.title}
+                      </span>
+                      {c.kind === "lesson" && c.status && (
+                        <StatusBadge status={c.status} />
+                      )}
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs tabular-nums text-slate-500">
+                      <span className="flex items-center gap-1.5">
+                        <Clock className="h-3.5 w-3.5" />
+                        {c.timeSlot}
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <Users className="h-3.5 w-3.5" />
+                        {c.studentCount} student{c.studentCount === 1 ? "" : "s"}
+                      </span>
+                    </div>
                   </div>
-                  <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs tabular-nums text-slate-500">
-                    <span className="flex items-center gap-1.5">
-                      <Clock className="h-3.5 w-3.5" />
-                      {c.timeSlot}
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <Users className="h-3.5 w-3.5" />
-                      {c.studentCount} student{c.studentCount === 1 ? "" : "s"}
-                    </span>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleRemove(c)}
+                  disabled={removingKey === c.key}
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-rose-700 transition hover:bg-rose-50 disabled:opacity-50"
+                  title="Remove from this day"
+                >
+                  {removingKey === c.key ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+            ))
+          )}
+
+          {/* Add an extra lesson for this day */}
+          {adding ? (
+            <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+              <div className="mb-2 text-sm font-medium text-gray-700">
+                Add a lesson
+              </div>
+              {classOptions.length === 0 ? (
+                <p className="text-xs text-gray-500">
+                  You have no classes yet. Create one with the Odd/Even Days
+                  buttons first.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  <select
+                    value={addClassId}
+                    onChange={(e) => setAddClassId(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#303380] focus:ring-2 focus:ring-[#303380]/30"
+                  >
+                    <option value="">Select a class</option>
+                    {classOptions.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="time"
+                      value={addStart}
+                      onChange={(e) => setAddStart(e.target.value)}
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#303380] focus:ring-2 focus:ring-[#303380]/30"
+                    />
+                    <input
+                      type="time"
+                      value={addEnd}
+                      onChange={(e) => setAddEnd(e.target.value)}
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#303380] focus:ring-2 focus:ring-[#303380]/30"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAdding(false);
+                        setError(null);
+                      }}
+                      className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-white"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAdd}
+                      disabled={busy}
+                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:brightness-110 disabled:opacity-50"
+                      style={{ backgroundColor: ACCENT }}
+                    >
+                      {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+                      Add lesson
+                    </button>
                   </div>
                 </div>
-                <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
-              </button>
-            ))
+              )}
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setAdding(true)}
+              className="mt-1 inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300 px-3 py-2.5 text-sm font-medium text-slate-600 transition hover:border-[#303380]/50 hover:text-[#303380]"
+            >
+              <Plus className="h-4 w-4" />
+              Add a lesson for this day
+            </button>
           )}
         </div>
       </div>
@@ -1161,9 +1416,16 @@ function LessonFeedbackModal({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lessonId, setLessonId] = useState<string | null>(null);
+  const [classId, setClassId] = useState<string | null>(null);
   const [topic, setTopic] = useState("");
   const [rows, setRows] = useState<StudentRow[]>([]);
   const [saving, setSaving] = useState(false);
+
+  // Roster editing
+  const [newName, setNewName] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [rosterError, setRosterError] = useState<string | null>(null);
+  const [rosterBusy, setRosterBusy] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -1186,6 +1448,7 @@ function LessonFeedbackModal({
 
         const resolved = data as ResolvedLesson;
         setLessonId(resolved.lesson.id);
+        setClassId(resolved.lesson.class?.id ?? null);
         setTopic(resolved.lesson.topic ?? "");
 
         const byStudent = new Map(
@@ -1227,6 +1490,79 @@ function LessonFeedbackModal({
     setRows((prev) =>
       prev.map((r) => (r.studentId === id ? { ...r, ...patch } : r))
     );
+
+  const blankRow = (s: { id: string; name: string }): StudentRow => ({
+    studentId: s.id,
+    name: s.name,
+    attendance: "PRESENT",
+    lateMinutes: "",
+    performance: "",
+    homeworkStatus: "NOT_ASSIGNED",
+    feedback: "",
+    behaviorNote: "",
+  });
+
+  const addStudent = async () => {
+    setRosterError(null);
+    if (!classId) {
+      setRosterError("This lesson has no class to add students to.");
+      return;
+    }
+    const name = newName.trim();
+    const email = newEmail.trim();
+    if (name.length < 2) {
+      setRosterError("Enter the student's name.");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setRosterError("Enter a valid student email.");
+      return;
+    }
+    setRosterBusy(true);
+    try {
+      const res = await fetch(`/api/classes/${classId}/add-student`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentName: name, studentEmail: email }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to add student");
+      const added = data.classStudent?.student as
+        | { id: string; name: string | null; email: string }
+        | undefined;
+      if (added) {
+        setRows((prev) =>
+          prev.some((r) => r.studentId === added.id)
+            ? prev
+            : [...prev, blankRow({ id: added.id, name: added.name || added.email })]
+        );
+      }
+      setNewName("");
+      setNewEmail("");
+    } catch (err) {
+      setRosterError((err as Error).message);
+    } finally {
+      setRosterBusy(false);
+    }
+  };
+
+  const removeStudent = async (studentId: string) => {
+    if (!classId) return;
+    if (!window.confirm("Remove this student from the class?")) return;
+    setRosterError(null);
+    try {
+      const res = await fetch(`/api/classes/${classId}/remove-student`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to remove student");
+      setRows((prev) => prev.filter((r) => r.studentId !== studentId));
+    } catch (err) {
+      setRosterError((err as Error).message);
+    }
+  };
 
   const handleSave = async () => {
     if (!lessonId || rows.length === 0) return;
@@ -1332,10 +1668,58 @@ function LessonFeedbackModal({
                 />
               </div>
 
+              {/* Roster editor */}
+              {classId && (
+                <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+                  <div className="mb-2 text-sm font-medium text-gray-700">
+                    Add a student to this class
+                  </div>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <input
+                      type="text"
+                      value={newName}
+                      onChange={(e) => setNewName(e.target.value)}
+                      placeholder="Full name"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#303380] focus:ring-2 focus:ring-[#303380]/30 sm:w-2/5"
+                    />
+                    <input
+                      type="email"
+                      value={newEmail}
+                      onChange={(e) => setNewEmail(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          addStudent();
+                        }
+                      }}
+                      placeholder="student@example.com"
+                      className="w-full flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#303380] focus:ring-2 focus:ring-[#303380]/30"
+                    />
+                    <button
+                      type="button"
+                      onClick={addStudent}
+                      disabled={rosterBusy}
+                      className="inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:brightness-110 disabled:opacity-50"
+                      style={{ backgroundColor: ACCENT }}
+                    >
+                      {rosterBusy ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Plus className="h-4 w-4" />
+                      )}
+                      Add
+                    </button>
+                  </div>
+                  {rosterError && (
+                    <p className="mt-1.5 text-xs text-rose-600">{rosterError}</p>
+                  )}
+                </div>
+              )}
+
               {rows.length === 0 ? (
                 <div className="rounded-xl border border-slate-200 bg-slate-50/60 py-10 text-center text-sm text-gray-500">
-                  No students enrolled in this class yet. Add students to the
-                  class to record attendance and feedback.
+                  No students in this class yet. Add a student above to record
+                  attendance and feedback.
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -1344,6 +1728,7 @@ function LessonFeedbackModal({
                       key={r.studentId}
                       row={r}
                       onChange={(patch) => updateRow(r.studentId, patch)}
+                      onRemove={() => removeStudent(r.studentId)}
                     />
                   ))}
                 </div>
@@ -1380,13 +1765,25 @@ function LessonFeedbackModal({
 function StudentFeedbackCard({
   row,
   onChange,
+  onRemove,
 }: {
   row: StudentRow;
   onChange: (patch: Partial<StudentRow>) => void;
+  onRemove: () => void;
 }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="mb-3 font-semibold text-gray-900">{row.name}</div>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="font-semibold text-gray-900">{row.name}</div>
+        <button
+          type="button"
+          onClick={onRemove}
+          className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-rose-700 transition hover:bg-rose-50"
+          title="Remove student from class"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {/* Attendance */}

@@ -9,12 +9,12 @@ export const classNameSchema = z
   .min(1, "Class name is required")
   .max(100, "Class name is too long");
 
-// Student full name is required and must include first + last name.
+// Student name is required (full name preferred, single names allowed).
 export const studentFullNameSchema = z
   .string()
   .trim()
-  .min(2, "Student full name is required")
-  .regex(/\s/, "Please enter the student's full name (first and last name)");
+  .min(2, "Student name is required")
+  .max(120, "Student name is too long");
 
 // A valid student email is required.
 export const studentEmailSchema = z
