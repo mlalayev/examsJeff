@@ -243,6 +243,9 @@ export default function TeacherSchedulePage() {
         throw new Error(body.error || "Failed to create class");
       }
       await Promise.all([loadMonth(currentYear, currentMonth), fetchClasses()]);
+      // Keep the Odd/Even Days Classes list open so the teacher can review or
+      // add more; only the "Add ... Class" modal closes.
+      setSlotsModal(input.scheduleType === "ODD_DAYS" ? "ODD" : "EVEN");
       showToast(
         `Class added to all ${
           input.scheduleType === "ODD_DAYS" ? "odd" : "even"
@@ -875,7 +878,7 @@ function StudentSearchField({
   };
 
   return (
-    <div className="relative">
+    <div>
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
         <input
@@ -886,7 +889,6 @@ function StudentSearchField({
             setOpen(true);
           }}
           onFocus={() => setOpen(true)}
-          onBlur={() => setTimeout(() => setOpen(false), 150)}
           placeholder="Search students by name or email"
           disabled={busy}
           className="w-full rounded-lg border border-gray-300 px-3 py-2 pl-9 text-sm outline-none focus:border-[#303380] focus:ring-2 focus:ring-[#303380]/30 disabled:opacity-50"
@@ -897,7 +899,7 @@ function StudentSearchField({
       </div>
 
       {open && q.trim().length >= 2 && (
-        <div className="absolute z-30 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+        <div className="mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-sm">
           {loading ? (
             <div className="flex items-center gap-2 px-3 py-3 text-sm text-slate-500">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -912,9 +914,8 @@ function StudentSearchField({
               <button
                 key={s.id}
                 type="button"
-                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => pick(s)}
-                className="flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left transition hover:bg-slate-50"
+                className="flex w-full flex-col items-start gap-0.5 border-b border-slate-100 px-3 py-2 text-left transition last:border-b-0 hover:bg-slate-50"
               >
                 <span className="text-sm font-medium text-gray-900">
                   {s.name}
