@@ -1002,3 +1002,22 @@ model LessonStudentRecord {
   @@index([classId])
   @@map("lesson_student_records")
 }
+
+// Cached AI-generated weekly parent report for one student in one subject.
+// Keyed by teacher + class + student + week so the same week isn't regenerated.
+model WeeklyReport {
+  id          String   @id @default(cuid())
+  teacherId   String
+  classId     String
+  studentId   String
+  weekStart   DateTime @db.Date
+  subject     String
+  studentName String
+  text        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([teacherId, classId, studentId, weekStart])
+  @@index([teacherId, weekStart])
+  @@map("weekly_reports")
+}

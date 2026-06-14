@@ -454,8 +454,11 @@ export default function TeacherSchedulePage() {
   const [weekReportError, setWeekReportError] = useState<string | null>(null);
   const [weekReports, setWeekReports] = useState<WeekReportItem[]>([]);
   const [weekReportEmptyMsg, setWeekReportEmptyMsg] = useState<string>("");
+  const [weekReportCached, setWeekReportCached] = useState(false);
+  const [weekReportSunday, setWeekReportSunday] = useState<Date | null>(null);
 
-  const openWeekReports = useCallback(async (sunday: Date) => {
+  const openWeekReports = useCallback(
+    async (sunday: Date, regenerate = false) => {
     const saturday = new Date(sunday);
     saturday.setDate(saturday.getDate() + 6);
     const end = new Date(sunday);
@@ -475,18 +478,25 @@ export default function TeacherSchedulePage() {
     setWeekReportError(null);
     setWeekReports([]);
     setWeekReportEmptyMsg("");
+    setWeekReportCached(false);
+    setWeekReportSunday(sunday);
     setWeekReportTitle(`Weekly reports · ${fmtRange(sunday, saturday)}`);
 
     try {
       const res = await fetch("/api/teacher/schedule/week/reports", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ start: isoDay(sunday), end: isoDay(end) }),
+        body: JSON.stringify({
+          start: isoDay(sunday),
+          end: isoDay(end),
+          regenerate,
+        }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || "Failed to generate reports");
       const list: WeekReportItem[] = body.reports ?? [];
       setWeekReports(list);
+      setWeekReportCached(Boolean(body.cached));
       if (list.length === 0) {
         const candidates = body.candidates ?? 0;
         const lessonsFound = body.lessonsFound ?? 0;
@@ -990,6 +1000,12 @@ export default function TeacherSchedulePage() {
           error={weekReportError}
           reports={weekReports}
           emptyMessage={weekReportEmptyMsg}
+          cached={weekReportCached}
+          onRegenerate={
+            weekReportSunday
+              ? () => openWeekReports(weekReportSunday, true)
+              : undefined
+          }
           onClose={() => setWeekReportOpen(false)}
         />
       )}
@@ -1704,6 +1720,8 @@ function WeekReportModal({
   error,
   reports,
   emptyMessage,
+  cached,
+  onRegenerate,
   onClose,
 }: {
   title: string;
@@ -1711,6 +1729,8 @@ function WeekReportModal({
   error: string | null;
   reports: WeekReportItem[];
   emptyMessage: string;
+  cached: boolean;
+  onRegenerate?: () => void;
   onClose: () => void;
 }) {
   const [copiedAll, setCopiedAll] = useState(false);
@@ -1774,8 +1794,12 @@ function WeekReportModal({
 
         <div className="flex items-center justify-between gap-2 border-t border-slate-100 px-6 py-4">
           <span className="text-xs text-slate-500">
-            {!loading && !error && reports.length > 0
-              ? `${reports.length} report${reports.length === 1 ? "" : "s"}`
+            {loading
+              ? ""
+              : reports.length > 0
+              ? `${reports.length} report${reports.length === 1 ? "" : "s"}${
+                  cached ? " · saved earlier" : ""
+                }`
               : ""}
           </span>
           <div className="flex items-center gap-2">
@@ -1786,6 +1810,22 @@ function WeekReportModal({
             >
               Close
             </button>
+            {onRegenerate && (
+              <button
+                type="button"
+                onClick={onRegenerate}
+                disabled={loading}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
+                title="Generate fresh reports with AI (replaces the saved ones)"
+              >
+                {loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <FileText className="h-4 w-4" />
+                )}
+                Regenerate
+              </button>
+            )}
             <button
               type="button"
               onClick={copyAll}

@@ -18,6 +18,7 @@ export const maxDuration = 60;
 const bodySchema = z.object({
   start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "start must be YYYY-MM-DD"),
   end: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "end must be YYYY-MM-DD"),
+  regenerate: z.boolean().optional().default(false),
 });
 
 function toUtc(date: string) {
@@ -73,6 +74,33 @@ export async function POST(request: Request) {
     const user = await requireTeacher();
     const teacherId = (user as any).id as string;
 
+    const { start, end, regenerate } = bodySchema.parse(await request.json());
+    const startUtc = toUtc(start);
+    const endUtc = toUtc(end);
+
+    // Return previously saved reports for this week unless a fresh run is asked.
+    if (!regenerate) {
+      const cached = await prisma.weeklyReport.findMany({
+        where: { teacherId, weekStart: startUtc },
+        orderBy: [{ subject: "asc" }, { studentName: "asc" }],
+      });
+      if (cached.length > 0) {
+        return NextResponse.json({
+          reports: cached.map((r) => ({
+            classId: r.classId,
+            subject: r.subject,
+            studentId: r.studentId,
+            studentName: r.studentName,
+            text: r.text,
+          })),
+          cached: true,
+          candidates: cached.length,
+          lessonsFound: cached.length,
+          recordsFound: cached.length,
+        });
+      }
+    }
+
     const limit = RATE_LIMITS.GENERIC_AI_SCORE;
     const rl = checkRateLimit(
       `weekly-report:${teacherId}`,
@@ -95,10 +123,6 @@ export async function POST(request: Request) {
         { status: 503 }
       );
     }
-
-    const { start, end } = bodySchema.parse(await request.json());
-    const startUtc = toUtc(start);
-    const endUtc = toUtc(end);
 
     const lessons = await prisma.lessonSession.findMany({
       where: {
@@ -287,12 +311,34 @@ export async function POST(request: Request) {
       0
     );
 
+    // Persist so the same week isn't regenerated next time. On a regenerate
+    // request we replace any previously saved rows for this week.
+    if (results.length > 0) {
+      await prisma.$transaction([
+        prisma.weeklyReport.deleteMany({
+          where: { teacherId, weekStart: startUtc },
+        }),
+        prisma.weeklyReport.createMany({
+          data: results.map((r) => ({
+            teacherId,
+            classId: r.classId,
+            studentId: r.studentId,
+            weekStart: startUtc,
+            subject: r.subject,
+            studentName: r.studentName,
+            text: r.text,
+          })),
+        }),
+      ]);
+    }
+
     console.log(
-      `[weekly-report] ${start}..${end} teacher=${teacherId} lessons=${lessons.length} records=${recordsFound} candidates=${candidates} generated=${results.length}`
+      `[weekly-report] ${start}..${end} teacher=${teacherId} lessons=${lessons.length} records=${recordsFound} candidates=${candidates} generated=${results.length} regenerate=${regenerate}`
     );
 
     return NextResponse.json({
       reports: results,
+      cached: false,
       candidates,
       lessonsFound: lessons.length,
       recordsFound,
