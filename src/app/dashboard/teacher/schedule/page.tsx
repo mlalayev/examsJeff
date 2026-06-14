@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import {
   Calendar as CalendarIcon,
   Check,
@@ -40,6 +40,14 @@ type ReportClassRow = {
   name: string;
   students: string[];
   lessonCount: number;
+};
+
+type WeekReportItem = {
+  classId: string;
+  subject: string;
+  studentId: string;
+  studentName: string;
+  text: string;
 };
 
 // Builds the shareable monthly summary text grouped by lesson type, then by
@@ -440,6 +448,49 @@ export default function TeacherSchedulePage() {
     }
   }, [currentMonth, currentYear]);
 
+  const [weekReportOpen, setWeekReportOpen] = useState(false);
+  const [weekReportLoading, setWeekReportLoading] = useState(false);
+  const [weekReportTitle, setWeekReportTitle] = useState("");
+  const [weekReportError, setWeekReportError] = useState<string | null>(null);
+  const [weekReports, setWeekReports] = useState<WeekReportItem[]>([]);
+
+  const openWeekReports = useCallback(async (sunday: Date) => {
+    const saturday = new Date(sunday);
+    saturday.setDate(saturday.getDate() + 6);
+    const end = new Date(sunday);
+    end.setDate(end.getDate() + 7);
+
+    const fmtRange = (a: Date, b: Date) => {
+      const m = (d: Date) => MONTHS[d.getMonth()].slice(0, 3);
+      return a.getMonth() === b.getMonth()
+        ? `${m(a)} ${a.getDate()} – ${b.getDate()}, ${b.getFullYear()}`
+        : `${m(a)} ${a.getDate()} – ${m(b)} ${b.getDate()}, ${b.getFullYear()}`;
+    };
+    const isoDay = (d: Date) =>
+      `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+
+    setWeekReportOpen(true);
+    setWeekReportLoading(true);
+    setWeekReportError(null);
+    setWeekReports([]);
+    setWeekReportTitle(`Weekly reports · ${fmtRange(sunday, saturday)}`);
+
+    try {
+      const res = await fetch("/api/teacher/schedule/week/reports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ start: isoDay(sunday), end: isoDay(end) }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Failed to generate reports");
+      setWeekReports(body.reports ?? []);
+    } catch (err) {
+      setWeekReportError((err as Error).message || "Failed to generate reports");
+    } finally {
+      setWeekReportLoading(false);
+    }
+  }, []);
+
   const [applying, setApplying] = useState(false);
 
   const applyMonth = useCallback(async () => {
@@ -502,6 +553,17 @@ export default function TeacherSchedulePage() {
 
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
   const firstDayOfWeek = new Date(currentYear, currentMonth, 1).getDay();
+
+  // Calendar split into Sun–Sat rows (null = blank padding cell).
+  const weeks = useMemo(() => {
+    const cells: (number | null)[] = [];
+    for (let i = 0; i < firstDayOfWeek; i++) cells.push(null);
+    for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+    while (cells.length % 7 !== 0) cells.push(null);
+    const out: (number | null)[][] = [];
+    for (let i = 0; i < cells.length; i += 7) out.push(cells.slice(i, i + 7));
+    return out;
+  }, [firstDayOfWeek, daysInMonth]);
 
   const classesForDay = useCallback(
     (day: number, _dayOfWeek: number): DayClass[] => {
@@ -710,85 +772,121 @@ export default function TeacherSchedulePage() {
           <CalendarSkeleton />
         ) : (
           <div className="grid grid-cols-7">
-            {/* Leading blanks */}
-            {Array.from({ length: firstDayOfWeek }).map((_, i) => (
-              <div
-                key={`blank-${i}`}
-                className="min-h-20 border-b border-r border-slate-200 bg-slate-50/40 last:border-r-0 sm:min-h-28"
-              />
-            ))}
-
-            {Array.from({ length: daysInMonth }).map((_, idx) => {
-              const day = idx + 1;
-              const dayOfWeek = new Date(
+            {weeks.map((week, wi) => {
+              const sunday = new Date(
                 currentYear,
                 currentMonth,
-                day
-              ).getDay();
-              const dayClasses = classesForDay(day, dayOfWeek);
-              const todayCell = isToday(day);
-              const visible = dayClasses.slice(0, MAX_VISIBLE_CHIPS);
-              const overflow = dayClasses.length - visible.length;
+                1 - firstDayOfWeek + wi * 7
+              );
+              const saturday = new Date(sunday);
+              saturday.setDate(saturday.getDate() + 6);
+              const rangeLabel =
+                sunday.getMonth() === saturday.getMonth()
+                  ? `${MONTHS[sunday.getMonth()].slice(0, 3)} ${sunday.getDate()} – ${saturday.getDate()}`
+                  : `${MONTHS[sunday.getMonth()].slice(0, 3)} ${sunday.getDate()} – ${MONTHS[
+                      saturday.getMonth()
+                    ].slice(0, 3)} ${saturday.getDate()}`;
 
               return (
-                <button
-                  type="button"
-                  key={day}
-                  onClick={() => setSelectedDay(day)}
-                  className={`relative min-h-20 border-b border-r border-slate-200 p-1.5 text-left align-top transition last:border-r-0 hover:brightness-[0.97] focus:outline-none focus:ring-2 focus:ring-[#303380]/50 sm:min-h-28 ${cellBackground(
-                    day,
-                    dayOfWeek
-                  )} ${todayCell ? "z-10 ring-2 ring-inset ring-[#303380]" : ""}`}
-                  aria-label={`${MONTHS[currentMonth]} ${day}, ${currentYear}`}
-                >
-                  {/* Day number */}
-                  <div className="mb-1 flex items-center justify-between">
-                    <span
-                      className={
-                        todayCell
-                          ? "inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold tabular-nums text-white"
-                          : "px-1 text-xs font-semibold tabular-nums text-slate-700"
-                      }
-                      style={
-                        todayCell ? { backgroundColor: ACCENT } : undefined
-                      }
-                    >
-                      {day}
-                    </span>
+                <Fragment key={`week-${wi}`}>
+                  {week.map((day, ci) => {
+                    if (day === null) {
+                      return (
+                        <div
+                          key={`blank-${wi}-${ci}`}
+                          className="min-h-20 border-b border-r border-slate-200 bg-slate-50/40 last:border-r-0 sm:min-h-28"
+                        />
+                      );
+                    }
+                    const dayOfWeek = ci;
+                    const dayClasses = classesForDay(day, dayOfWeek);
+                    const todayCell = isToday(day);
+                    const visible = dayClasses.slice(0, MAX_VISIBLE_CHIPS);
+                    const overflow = dayClasses.length - visible.length;
 
-                    {/* Mobile: count badge */}
-                    {dayClasses.length > 0 && (
-                      <span className="inline-flex items-center justify-center rounded-full bg-white/80 px-1.5 text-[10px] font-semibold text-slate-600 sm:hidden">
-                        {dayClasses.length}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* sm+ : class chips */}
-                  <div className="hidden space-y-1 sm:block">
-                    {visible.map((c) => (
-                      <div
-                        key={c.key}
-                        className="truncate rounded border border-slate-200 bg-white/80 px-1.5 py-1 text-[11px] text-slate-800"
-                        title={`${c.title}${
-                          c.className ? ` · ${c.className}` : ""
-                        } (${c.timeSlot})`}
+                    return (
+                      <button
+                        type="button"
+                        key={day}
+                        onClick={() => setSelectedDay(day)}
+                        className={`relative min-h-20 border-b border-r border-slate-200 p-1.5 text-left align-top transition last:border-r-0 hover:brightness-[0.97] focus:outline-none focus:ring-2 focus:ring-[#303380]/50 sm:min-h-28 ${cellBackground(
+                          day,
+                          dayOfWeek
+                        )} ${
+                          todayCell ? "z-10 ring-2 ring-inset ring-[#303380]" : ""
+                        }`}
+                        aria-label={`${MONTHS[currentMonth]} ${day}, ${currentYear}`}
                       >
-                        <div className="truncate font-semibold">{c.title}</div>
-                        <div className="flex items-center gap-1 text-[10px] tabular-nums text-slate-500">
-                          <Clock className="h-3 w-3 shrink-0" />
-                          <span className="truncate">{c.timeSlot}</span>
-                        </div>
-                      </div>
-                    ))}
+                        {/* Day number */}
+                        <div className="mb-1 flex items-center justify-between">
+                          <span
+                            className={
+                              todayCell
+                                ? "inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold tabular-nums text-white"
+                                : "px-1 text-xs font-semibold tabular-nums text-slate-700"
+                            }
+                            style={
+                              todayCell ? { backgroundColor: ACCENT } : undefined
+                            }
+                          >
+                            {day}
+                          </span>
 
-                    {overflow > 0 && (
-                      <div className="px-1 text-[11px] font-medium text-slate-500">
-                        +{overflow} more
-                      </div>
-                    )}
+                          {/* Mobile: count badge */}
+                          {dayClasses.length > 0 && (
+                            <span className="inline-flex items-center justify-center rounded-full bg-white/80 px-1.5 text-[10px] font-semibold text-slate-600 sm:hidden">
+                              {dayClasses.length}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* sm+ : class chips */}
+                        <div className="hidden space-y-1 sm:block">
+                          {visible.map((c) => (
+                            <div
+                              key={c.key}
+                              className="truncate rounded border border-slate-200 bg-white/80 px-1.5 py-1 text-[11px] text-slate-800"
+                              title={`${c.title}${
+                                c.className ? ` · ${c.className}` : ""
+                              } (${c.timeSlot})`}
+                            >
+                              <div className="truncate font-semibold">
+                                {c.title}
+                              </div>
+                              <div className="flex items-center gap-1 text-[10px] tabular-nums text-slate-500">
+                                <Clock className="h-3 w-3 shrink-0" />
+                                <span className="truncate">{c.timeSlot}</span>
+                              </div>
+                            </div>
+                          ))}
+
+                          {overflow > 0 && (
+                            <div className="px-1 text-[11px] font-medium text-slate-500">
+                              +{overflow} more
+                            </div>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+
+                  {/* Per-week report action bar */}
+                  <div className="col-span-7 flex items-center justify-between gap-2 border-b border-slate-200 bg-slate-50/70 px-3 py-1.5">
+                    <span className="text-[11px] font-medium text-slate-500">
+                      {rangeLabel}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => openWeekReports(sunday)}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold shadow-sm transition hover:bg-slate-50"
+                      style={{ color: ACCENT }}
+                      title="Generate weekly parent reports for this week"
+                    >
+                      <FileText className="h-3.5 w-3.5" />
+                      Weekly reports
+                    </button>
                   </div>
-                </button>
+                </Fragment>
               );
             })}
           </div>
@@ -861,6 +959,17 @@ export default function TeacherSchedulePage() {
           loading={reportLoading}
           text={reportText}
           onClose={() => setReportOpen(false)}
+        />
+      )}
+
+      {/* Weekly AI reports modal */}
+      {weekReportOpen && (
+        <WeekReportModal
+          title={weekReportTitle}
+          loading={weekReportLoading}
+          error={weekReportError}
+          reports={weekReports}
+          onClose={() => setWeekReportOpen(false)}
         />
       )}
     </div>
@@ -1518,6 +1627,157 @@ function ReportModal({
             )}
             {copied ? "Copied" : "Copy"}
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WeekReportCard({ report }: { report: WeekReportItem }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(report.text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // ignore
+    }
+  };
+
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-semibold text-gray-900">
+            {report.studentName}
+          </div>
+          <div className="truncate text-xs text-slate-500">{report.subject}</div>
+        </div>
+        <button
+          type="button"
+          onClick={copy}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm transition hover:bg-slate-50"
+        >
+          {copied ? (
+            <Check className="h-3.5 w-3.5" />
+          ) : (
+            <Copy className="h-3.5 w-3.5" />
+          )}
+          {copied ? "Copied" : "Copy"}
+        </button>
+      </div>
+      <textarea
+        readOnly
+        value={report.text}
+        onFocus={(e) => e.currentTarget.select()}
+        className="h-44 w-full resize-none rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm leading-relaxed text-gray-800 outline-none focus:border-[#303380] focus:ring-2 focus:ring-[#303380]/30"
+      />
+    </div>
+  );
+}
+
+function WeekReportModal({
+  title,
+  loading,
+  error,
+  reports,
+  onClose,
+}: {
+  title: string;
+  loading: boolean;
+  error: string | null;
+  reports: WeekReportItem[];
+  onClose: () => void;
+}) {
+  const [copiedAll, setCopiedAll] = useState(false);
+
+  const copyAll = async () => {
+    const all = reports
+      .map((r) => `— ${r.studentName} (${r.subject}) —\n${r.text}`)
+      .join("\n\n\n");
+    try {
+      await navigator.clipboard.writeText(all);
+      setCopiedAll(true);
+      setTimeout(() => setCopiedAll(false), 1500);
+    } catch {
+      // ignore
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-[1px]">
+      <div className="my-8 flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white px-6 py-4">
+          <div className="flex items-center gap-2">
+            <span
+              className="h-2 w-2 rounded-full"
+              style={{ backgroundColor: ACCENT }}
+              aria-hidden
+            />
+            <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50"
+            aria-label="Close"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="flex-1 space-y-3 overflow-y-auto bg-slate-50/40 p-5">
+          {loading ? (
+            <div className="flex items-center gap-2 py-10 text-sm text-slate-500">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Generating reports with AI…
+            </div>
+          ) : error ? (
+            <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+              {error}
+            </div>
+          ) : reports.length === 0 ? (
+            <div className="py-10 text-center text-sm text-slate-500">
+              No graded lessons found for this week. Save lesson feedback first,
+              then generate reports.
+            </div>
+          ) : (
+            reports.map((r) => (
+              <WeekReportCard key={`${r.classId}-${r.studentId}`} report={r} />
+            ))
+          )}
+        </div>
+
+        <div className="flex items-center justify-between gap-2 border-t border-slate-100 px-6 py-4">
+          <span className="text-xs text-slate-500">
+            {!loading && !error && reports.length > 0
+              ? `${reports.length} report${reports.length === 1 ? "" : "s"}`
+              : ""}
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-slate-50"
+            >
+              Close
+            </button>
+            <button
+              type="button"
+              onClick={copyAll}
+              disabled={loading || !!error || reports.length === 0}
+              className="inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:opacity-90 disabled:opacity-50"
+              style={{ backgroundColor: ACCENT }}
+            >
+              {copiedAll ? (
+                <Check className="h-4 w-4" />
+              ) : (
+                <Copy className="h-4 w-4" />
+              )}
+              {copiedAll ? "Copied all" : "Copy all"}
+            </button>
+          </div>
         </div>
       </div>
     </div>
