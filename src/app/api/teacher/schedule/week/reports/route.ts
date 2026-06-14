@@ -116,6 +116,7 @@ export async function POST(request: Request) {
           select: {
             studentId: true,
             attendance: true,
+            lateMinutes: true,
             homeworkStatus: true,
             performance: true,
             feedback: true,
@@ -166,6 +167,8 @@ export async function POST(request: Request) {
       type Agg = {
         name: string;
         attended: number;
+        lateCount: number;
+        lateMinutesTotal: number;
         hw: Record<string, number>;
         teacherNotes: string[];
         behaviorNotes: string[];
@@ -180,6 +183,8 @@ export async function POST(request: Request) {
             ({
               name: nameOf(r.student),
               attended: 0,
+              lateCount: 0,
+              lateMinutesTotal: 0,
               hw: {},
               teacherNotes: [],
               behaviorNotes: [],
@@ -188,6 +193,10 @@ export async function POST(request: Request) {
 
           if (r.attendance === "PRESENT" || r.attendance === "LATE") {
             agg.attended += 1;
+          }
+          if (r.attendance === "LATE") {
+            agg.lateCount += 1;
+            agg.lateMinutesTotal += r.lateMinutes ?? 0;
           }
           const hwKey = r.homeworkStatus;
           if (hwKey && hwKey !== "NOT_ASSIGNED") {
@@ -216,6 +225,8 @@ export async function POST(request: Request) {
             lessonsHeld: held,
             lessonsAttended: a.attended,
             hadAbsence: held - a.attended > 0,
+            lateCount: a.lateCount,
+            lateMinutesTotal: a.lateMinutesTotal,
             topics,
             homeworkSummary,
             teacherNotes: a.teacherNotes,

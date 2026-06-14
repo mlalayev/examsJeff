@@ -10,6 +10,8 @@ export type WeeklyReportStudent = {
   lessonsHeld: number;
   lessonsAttended: number;
   hadAbsence: boolean;
+  lateCount: number;
+  lateMinutesTotal: number;
   topics: string[];
   homeworkSummary: string;
   teacherNotes: string[];
@@ -65,6 +67,7 @@ Qaydalar:
 - Ev tapşırığı vəziyyətini (tam/qismən/natamam) verilən məlumata uyğun seç.
 - [Əlavə qeyd] hissəsini müəllimin qeydləri və tələbənin nəticələri əsasında doldur. Əgər heç bir qeyd verilməyibsə, şablonun tonuna uyğun məntiqli və müsbət bir qeyd özün yaz. Mötərizələri ([ ]) son mətndə saxlama.
 - Əgər tələbə bu həftə hər hansı dərsdə iştirak etməyibsə (buraxılış varsa), "Buraxılmış dərs həftə ərzində əvəz ediləcəkdir." cümləsini birinci abzasa əlavə et.
+- Əgər tələbə dərs(lər)ə gecikibsə (gecikmə sayı > 0), bunu təbii şəkildə qeyd et: neçə dəfə və ümumilikdə neçə dəqiqə gecikdiyini yaz (məsələn "bu həftə dərsə 1 dəfə, ümumilikdə 10 dəqiqə gecikmişdir") və vaxtında gəlməsinin vacibliyini nəzakətlə xatırlat. Gecikmə yoxdursa, gecikmədən ümumiyyətlə bəhs etmə.
 - Cavabı YALNIZ etibarlı JSON kimi qaytar: {"reports":[{"studentId":"...","text":"..."}]}. text sahəsində abzaslar üçün \\n istifadə et.`;
 
 export async function generateWeeklyReports(
@@ -83,6 +86,8 @@ export async function generateWeeklyReports(
       keçirilən_dərs: s.lessonsHeld,
       iştirak: s.lessonsAttended,
       buraxılış_var: s.hadAbsence,
+      gecikmə_sayı: s.lateCount,
+      gecikmə_dəqiqə_cəmi: s.lateMinutesTotal,
       mövzular: s.topics,
       ev_tapşırığı: s.homeworkSummary,
       müəllim_qeydləri: s.teacherNotes,
