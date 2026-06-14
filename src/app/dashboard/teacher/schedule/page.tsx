@@ -8,6 +8,7 @@ import {
   Clock,
   Loader2,
   Plus,
+  Search,
   Trash2,
   Users,
   X,
@@ -697,6 +698,168 @@ function CalendarSkeleton() {
   );
 }
 
+// 24-hour time picker (HH:MM), no AM/PM. Minutes in 5-minute steps.
+function TimeSelect({
+  value,
+  onChange,
+  ariaLabel,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  ariaLabel?: string;
+}) {
+  const [h, m] = value && value.includes(":") ? value.split(":") : ["", ""];
+  const hours = Array.from({ length: 24 }, (_, i) => pad2(i));
+  const minutes = Array.from({ length: 12 }, (_, i) => pad2(i * 5));
+  const selectCls =
+    "rounded-lg border border-gray-300 bg-white px-2 py-2 text-sm tabular-nums outline-none focus:border-[#303380] focus:ring-2 focus:ring-[#303380]/30";
+
+  return (
+    <div className="flex items-center gap-1.5" aria-label={ariaLabel}>
+      <select
+        value={h}
+        onChange={(e) => onChange(`${e.target.value}:${m || "00"}`)}
+        className={selectCls}
+        aria-label={`${ariaLabel ?? ""} hour`.trim()}
+      >
+        <option value="" disabled>
+          HH
+        </option>
+        {hours.map((hh) => (
+          <option key={hh} value={hh}>
+            {hh}
+          </option>
+        ))}
+      </select>
+      <span className="text-sm font-semibold text-slate-400">:</span>
+      <select
+        value={m}
+        onChange={(e) => onChange(`${h || "00"}:${e.target.value}`)}
+        className={selectCls}
+        aria-label={`${ariaLabel ?? ""} minute`.trim()}
+      >
+        <option value="" disabled>
+          MM
+        </option>
+        {minutes.map((mm) => (
+          <option key={mm} value={mm}>
+            {mm}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+type StudentHit = { id: string; name: string; email: string };
+
+// Type-ahead that searches existing student accounts by name or email.
+function StudentSearchField({
+  onSelect,
+  excludeIds = [],
+  busy = false,
+}: {
+  onSelect: (s: StudentHit) => void;
+  excludeIds?: string[];
+  busy?: boolean;
+}) {
+  const [q, setQ] = useState("");
+  const [results, setResults] = useState<StudentHit[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const query = q.trim();
+    if (query.length < 2) {
+      setResults([]);
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `/api/teacher/students/search?q=${encodeURIComponent(query)}`
+        );
+        const data = await res.json().catch(() => ({}));
+        if (!cancelled) setResults(res.ok ? data.students ?? [] : []);
+      } catch {
+        if (!cancelled) setResults([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [q]);
+
+  const visible = results.filter((r) => !excludeIds.includes(r.id));
+
+  const pick = (s: StudentHit) => {
+    onSelect(s);
+    setQ("");
+    setResults([]);
+    setOpen(false);
+  };
+
+  return (
+    <div className="relative">
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <input
+          type="text"
+          value={q}
+          onChange={(e) => {
+            setQ(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          placeholder="Search students by name or email"
+          disabled={busy}
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 pl-9 text-sm outline-none focus:border-[#303380] focus:ring-2 focus:ring-[#303380]/30 disabled:opacity-50"
+        />
+        {(loading || busy) && (
+          <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-slate-400" />
+        )}
+      </div>
+
+      {open && q.trim().length >= 2 && (
+        <div className="absolute z-30 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+          {loading ? (
+            <div className="flex items-center gap-2 px-3 py-3 text-sm text-slate-500">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Searching…
+            </div>
+          ) : visible.length === 0 ? (
+            <div className="px-3 py-3 text-sm text-slate-500">
+              No students found.
+            </div>
+          ) : (
+            visible.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => pick(s)}
+                className="flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left transition hover:bg-slate-50"
+              >
+                <span className="text-sm font-medium text-gray-900">
+                  {s.name}
+                </span>
+                <span className="text-xs text-slate-500">{s.email}</span>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DayDetailModal({
   weekday,
   dateLabel,
@@ -891,18 +1054,17 @@ function DayDetailModal({
                       </option>
                     ))}
                   </select>
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      type="time"
+                  <div className="flex flex-wrap items-center gap-3">
+                    <TimeSelect
                       value={addStart}
-                      onChange={(e) => setAddStart(e.target.value)}
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#303380] focus:ring-2 focus:ring-[#303380]/30"
+                      onChange={setAddStart}
+                      ariaLabel="Start time"
                     />
-                    <input
-                      type="time"
+                    <span className="text-xs text-slate-400">to</span>
+                    <TimeSelect
                       value={addEnd}
-                      onChange={(e) => setAddEnd(e.target.value)}
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#303380] focus:ring-2 focus:ring-[#303380]/30"
+                      onChange={setAddEnd}
+                      ariaLabel="End time"
                     />
                   </div>
                   <div className="flex gap-2">
@@ -1076,7 +1238,7 @@ function SlotsListModal({
   );
 }
 
-type RosterDraft = { name: string; email: string };
+type RosterDraft = { id: string; name: string; email: string };
 
 function AddScheduleModal({
   preset,
@@ -1090,7 +1252,7 @@ function AddScheduleModal({
     scheduleType: ScheduleType;
     startTime: string;
     endTime: string;
-    students: RosterDraft[];
+    students: { name: string; email: string }[];
   }) => Promise<void>;
 }) {
   const dayLabel = preset === "ODD_DAYS" ? "Odd Days" : "Even Days";
@@ -1099,37 +1261,16 @@ function AddScheduleModal({
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [students, setStudents] = useState<RosterDraft[]>([]);
-  const [studentName, setStudentName] = useState("");
-  const [studentEmail, setStudentEmail] = useState("");
-  const [rosterError, setRosterError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const emailIsValid = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const addStudent = (s: StudentHit) =>
+    setStudents((prev) =>
+      prev.some((x) => x.id === s.id) ? prev : [...prev, s]
+    );
 
-  const addStudent = () => {
-    setRosterError(null);
-    const name = studentName.trim();
-    const email = studentEmail.trim();
-    if (!name) {
-      setRosterError("Enter the student's name.");
-      return;
-    }
-    if (!emailIsValid(email)) {
-      setRosterError("Enter a valid student email.");
-      return;
-    }
-    if (students.some((s) => s.email.toLowerCase() === email.toLowerCase())) {
-      setRosterError("That student is already in the list.");
-      return;
-    }
-    setStudents((prev) => [...prev, { name, email }]);
-    setStudentName("");
-    setStudentEmail("");
-  };
-
-  const removeStudent = (email: string) =>
-    setStudents((prev) => prev.filter((s) => s.email !== email));
+  const removeStudent = (id: string) =>
+    setStudents((prev) => prev.filter((s) => s.id !== id));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1221,24 +1362,20 @@ function AddScheduleModal({
               <label className="mb-1 block text-sm font-medium text-gray-700">
                 Start time *
               </label>
-              <input
-                type="time"
+              <TimeSelect
                 value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-[#303380] focus:ring-2 focus:ring-[#303380]/30"
-                required
+                onChange={setStartTime}
+                ariaLabel="Start time"
               />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">
                 End time *
               </label>
-              <input
-                type="time"
+              <TimeSelect
                 value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-[#303380] focus:ring-2 focus:ring-[#303380]/30"
-                required
+                onChange={setEndTime}
+                ariaLabel="End time"
               />
             </div>
           </div>
@@ -1249,50 +1386,19 @@ function AddScheduleModal({
               Students
             </label>
             <p className="mb-2 text-xs text-gray-500">
-              Add students by name and the email of their existing student
-              account.
+              Search and pick students who already have an account.
             </p>
 
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <input
-                type="text"
-                value={studentName}
-                onChange={(e) => setStudentName(e.target.value)}
-                placeholder="Full name"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#303380] focus:ring-2 focus:ring-[#303380]/30 sm:w-2/5"
-              />
-              <input
-                type="email"
-                value={studentEmail}
-                onChange={(e) => setStudentEmail(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    addStudent();
-                  }
-                }}
-                placeholder="student@example.com"
-                className="w-full flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#303380] focus:ring-2 focus:ring-[#303380]/30"
-              />
-              <button
-                type="button"
-                onClick={addStudent}
-                className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-              >
-                <Plus className="h-4 w-4" />
-                Add
-              </button>
-            </div>
-
-            {rosterError && (
-              <p className="mt-1.5 text-xs text-rose-600">{rosterError}</p>
-            )}
+            <StudentSearchField
+              onSelect={addStudent}
+              excludeIds={students.map((s) => s.id)}
+            />
 
             {students.length > 0 && (
               <ul className="mt-3 space-y-2">
                 {students.map((s) => (
                   <li
-                    key={s.email}
+                    key={s.id}
                     className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2"
                   >
                     <div className="min-w-0">
@@ -1305,7 +1411,7 @@ function AddScheduleModal({
                     </div>
                     <button
                       type="button"
-                      onClick={() => removeStudent(s.email)}
+                      onClick={() => removeStudent(s.id)}
                       className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-rose-700 transition hover:bg-rose-50"
                       title="Remove"
                     >
@@ -1422,8 +1528,6 @@ function LessonFeedbackModal({
   const [saving, setSaving] = useState(false);
 
   // Roster editing
-  const [newName, setNewName] = useState("");
-  const [newEmail, setNewEmail] = useState("");
   const [rosterError, setRosterError] = useState<string | null>(null);
   const [rosterBusy, setRosterBusy] = useState(false);
 
@@ -1502,43 +1606,27 @@ function LessonFeedbackModal({
     behaviorNote: "",
   });
 
-  const addStudent = async () => {
+  const addStudent = async (s: StudentHit) => {
     setRosterError(null);
     if (!classId) {
       setRosterError("This lesson has no class to add students to.");
       return;
     }
-    const name = newName.trim();
-    const email = newEmail.trim();
-    if (name.length < 2) {
-      setRosterError("Enter the student's name.");
-      return;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setRosterError("Enter a valid student email.");
-      return;
-    }
+    if (rows.some((r) => r.studentId === s.id)) return;
     setRosterBusy(true);
     try {
       const res = await fetch(`/api/classes/${classId}/add-student`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ studentName: name, studentEmail: email }),
+        body: JSON.stringify({ studentName: s.name, studentEmail: s.email }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Failed to add student");
-      const added = data.classStudent?.student as
-        | { id: string; name: string | null; email: string }
-        | undefined;
-      if (added) {
-        setRows((prev) =>
-          prev.some((r) => r.studentId === added.id)
-            ? prev
-            : [...prev, blankRow({ id: added.id, name: added.name || added.email })]
-        );
-      }
-      setNewName("");
-      setNewEmail("");
+      setRows((prev) =>
+        prev.some((r) => r.studentId === s.id)
+          ? prev
+          : [...prev, blankRow({ id: s.id, name: s.name })]
+      );
     } catch (err) {
       setRosterError((err as Error).message);
     } finally {
@@ -1674,42 +1762,11 @@ function LessonFeedbackModal({
                   <div className="mb-2 text-sm font-medium text-gray-700">
                     Add a student to this class
                   </div>
-                  <div className="flex flex-col gap-2 sm:flex-row">
-                    <input
-                      type="text"
-                      value={newName}
-                      onChange={(e) => setNewName(e.target.value)}
-                      placeholder="Full name"
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#303380] focus:ring-2 focus:ring-[#303380]/30 sm:w-2/5"
-                    />
-                    <input
-                      type="email"
-                      value={newEmail}
-                      onChange={(e) => setNewEmail(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          addStudent();
-                        }
-                      }}
-                      placeholder="student@example.com"
-                      className="w-full flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#303380] focus:ring-2 focus:ring-[#303380]/30"
-                    />
-                    <button
-                      type="button"
-                      onClick={addStudent}
-                      disabled={rosterBusy}
-                      className="inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:brightness-110 disabled:opacity-50"
-                      style={{ backgroundColor: ACCENT }}
-                    >
-                      {rosterBusy ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Plus className="h-4 w-4" />
-                      )}
-                      Add
-                    </button>
-                  </div>
+                  <StudentSearchField
+                    onSelect={addStudent}
+                    excludeIds={rows.map((r) => r.studentId)}
+                    busy={rosterBusy}
+                  />
                   {rosterError && (
                     <p className="mt-1.5 text-xs text-rose-600">{rosterError}</p>
                   )}
