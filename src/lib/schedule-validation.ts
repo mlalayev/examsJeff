@@ -56,3 +56,52 @@ export const addStudentSchema = z.object({
   studentName: studentFullNameSchema,
   studentEmail: studentEmailSchema,
 });
+
+// Lesson type is a fixed set of class categories.
+export const lessonTypeSchema = z.enum([
+  "IELTS",
+  "TOEFL",
+  "SAT",
+  "KIDS",
+  "GENERAL_ENGLISH",
+  "MATH",
+]);
+
+export type LessonType = z.infer<typeof lessonTypeSchema>;
+
+export const LESSON_TYPE_LABELS: Record<LessonType, string> = {
+  IELTS: "IELTS",
+  TOEFL: "TOEFL",
+  SAT: "SAT",
+  KIDS: "Kids",
+  GENERAL_ENGLISH: "General English",
+  MATH: "Math",
+};
+
+export const LESSON_TYPE_OPTIONS = (
+  Object.keys(LESSON_TYPE_LABELS) as LessonType[]
+).map((value) => ({ value, label: LESSON_TYPE_LABELS[value] }));
+
+// One student row in the inline roster (linked by existing email).
+export const rosterStudentSchema = z.object({
+  name: z.string().trim().min(1, "Student name is required"),
+  email: studentEmailSchema,
+});
+
+// Create a class + recurring schedule + (optionally) its student roster in one go.
+export const createClassWithScheduleSchema = z
+  .object({
+    lessonType: lessonTypeSchema,
+    scheduleType: scheduleTypeSchema,
+    startTime: timeOfDaySchema,
+    endTime: timeOfDaySchema,
+    students: z.array(rosterStudentSchema).max(200).optional().default([]),
+  })
+  .refine((d) => d.endTime > d.startTime, {
+    message: "End time must be after start time",
+    path: ["endTime"],
+  });
+
+export type CreateClassWithScheduleInput = z.infer<
+  typeof createClassWithScheduleSchema
+>;

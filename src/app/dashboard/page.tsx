@@ -37,7 +37,7 @@ export default function DashboardPage() {
         router.push("/dashboard/branch-admin/students");
         break;
       case "TEACHER":
-        router.push("/dashboard/teacher/classes");
+        router.push("/dashboard/teacher/schedule");
         break;
       case "STUDENT":
         router.push("/dashboard/student/exams");

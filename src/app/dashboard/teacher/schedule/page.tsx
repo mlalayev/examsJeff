@@ -12,12 +12,14 @@ import {
   Users,
   X,
 } from "lucide-react";
+import {
+  LESSON_TYPE_OPTIONS,
+  type LessonType,
+} from "@/lib/schedule-validation";
 
 const ACCENT = "#303380";
 
 type ScheduleType = "ODD_DAYS" | "EVEN_DAYS";
-
-type ClassOption = { id: string; name: string };
 
 const WEEKDAYS_FULL = [
   "Sunday",
@@ -125,7 +127,6 @@ export default function TeacherSchedulePage() {
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
   // Schedule controls
-  const [classes, setClasses] = useState<ClassOption[]>([]);
   const [slotsModal, setSlotsModal] = useState<"ODD" | "EVEN" | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [addPreset, setAddPreset] = useState<ScheduleType>("ODD_DAYS");
@@ -139,26 +140,6 @@ export default function TeacherSchedulePage() {
     setToast(message);
     setTimeout(() => setToast(null), 2200);
   }, []);
-
-  const fetchClasses = useCallback(async () => {
-    try {
-      const res = await fetch("/api/classes");
-      if (!res.ok) return;
-      const json = await res.json();
-      setClasses(
-        (json.classes ?? []).map((c: { id: string; name: string }) => ({
-          id: c.id,
-          name: c.name,
-        }))
-      );
-    } catch (err) {
-      console.error("Load classes error:", err);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchClasses();
-  }, [fetchClasses]);
 
   const loadMonth = useCallback(
     async (year: number, month: number, signal?: AbortSignal) => {
@@ -221,25 +202,26 @@ export default function TeacherSchedulePage() {
     setCurrentYear(today.getFullYear());
   };
 
-  const createSlot = useCallback(
+  const createClassWithSchedule = useCallback(
     async (input: {
-      classId: string;
+      lessonType: LessonType;
       scheduleType: ScheduleType;
       startTime: string;
       endTime: string;
+      students: { name: string; email: string }[];
     }) => {
-      const res = await fetch("/api/teacher/schedule/slots", {
+      const res = await fetch("/api/teacher/schedule/classes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(input),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(body.error || "Failed to create schedule");
+        throw new Error(body.error || "Failed to create class");
       }
       await loadMonth(currentYear, currentMonth);
       showToast(
-        `Schedule added to all ${
+        `Class added to all ${
           input.scheduleType === "ODD_DAYS" ? "odd" : "even"
         } days`
       );
@@ -422,16 +404,6 @@ export default function TeacherSchedulePage() {
             Even Days Classes
           </button>
         </div>
-
-        <button
-          type="button"
-          onClick={() => openAdd("ODD_DAYS")}
-          className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:brightness-110"
-          style={{ backgroundColor: ACCENT }}
-        >
-          <Plus className="h-4 w-4" />
-          Add Your Schedule
-        </button>
       </div>
 
       {toast && (
@@ -599,10 +571,9 @@ export default function TeacherSchedulePage() {
       {/* Add schedule modal */}
       {addOpen && (
         <AddScheduleModal
-          classes={classes}
           preset={addPreset}
           onClose={() => setAddOpen(false)}
-          onCreate={createSlot}
+          onCreate={createClassWithSchedule}
         />
       )}
     </div>
@@ -850,35 +821,67 @@ function SlotsListModal({
   );
 }
 
+type RosterDraft = { name: string; email: string };
+
 function AddScheduleModal({
-  classes,
   preset,
   onClose,
   onCreate,
 }: {
-  classes: ClassOption[];
   preset: ScheduleType;
   onClose: () => void;
   onCreate: (input: {
-    classId: string;
+    lessonType: LessonType;
     scheduleType: ScheduleType;
     startTime: string;
     endTime: string;
+    students: RosterDraft[];
   }) => Promise<void>;
 }) {
-  const [classId, setClassId] = useState("");
-  const [scheduleType, setScheduleType] = useState<ScheduleType>(preset);
+  const dayLabel = preset === "ODD_DAYS" ? "Odd Days" : "Even Days";
+
+  const [lessonType, setLessonType] = useState<LessonType | "">("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
+  const [students, setStudents] = useState<RosterDraft[]>([]);
+  const [studentName, setStudentName] = useState("");
+  const [studentEmail, setStudentEmail] = useState("");
+  const [rosterError, setRosterError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const emailIsValid = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+  const addStudent = () => {
+    setRosterError(null);
+    const name = studentName.trim();
+    const email = studentEmail.trim();
+    if (!name) {
+      setRosterError("Enter the student's name.");
+      return;
+    }
+    if (!emailIsValid(email)) {
+      setRosterError("Enter a valid student email.");
+      return;
+    }
+    if (students.some((s) => s.email.toLowerCase() === email.toLowerCase())) {
+      setRosterError("That student is already in the list.");
+      return;
+    }
+    setStudents((prev) => [...prev, { name, email }]);
+    setStudentName("");
+    setStudentEmail("");
+  };
+
+  const removeStudent = (email: string) =>
+    setStudents((prev) => prev.filter((s) => s.email !== email));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
 
-    if (!classId) {
-      setFormError("Please select a class.");
+    if (!lessonType) {
+      setFormError("Please choose a lesson type.");
       return;
     }
     if (!startTime || !endTime) {
@@ -892,10 +895,16 @@ function AddScheduleModal({
 
     setSaving(true);
     try {
-      await onCreate({ classId, scheduleType, startTime, endTime });
+      await onCreate({
+        lessonType,
+        scheduleType: preset,
+        startTime,
+        endTime,
+        students,
+      });
       onClose();
     } catch (err) {
-      setFormError((err as Error).message || "Failed to create schedule");
+      setFormError((err as Error).message || "Failed to create class");
     } finally {
       setSaving(false);
     }
@@ -911,9 +920,14 @@ function AddScheduleModal({
               style={{ backgroundColor: ACCENT }}
               aria-hidden
             />
-            <h2 className="text-lg font-semibold text-gray-900">
-              Add Your Schedule
-            </h2>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">
+                Add {dayLabel} Class
+              </h2>
+              <p className="text-xs text-gray-500">
+                Applies to every {dayLabel.toLowerCase()} of the month.
+              </p>
+            </div>
           </div>
           <button
             type="button"
@@ -926,56 +940,24 @@ function AddScheduleModal({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 p-6">
-          {/* Class */}
+          {/* Lesson type */}
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">
-              Class *
+              Lesson type *
             </label>
-            {classes.length === 0 ? (
-              <p className="rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2 text-sm text-gray-500">
-                You have no classes yet. Create a class first.
-              </p>
-            ) : (
-              <select
-                value={classId}
-                onChange={(e) => setClassId(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none focus:border-[#303380] focus:ring-2 focus:ring-[#303380]/30"
-                required
-              >
-                <option value="">Select a class</option>
-                {classes.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-
-          {/* Schedule type */}
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
-              Schedule type *
-            </label>
-            <div className="inline-flex w-full rounded-lg border border-gray-200 bg-white p-1">
-              {(["ODD_DAYS", "EVEN_DAYS"] as ScheduleType[]).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setScheduleType(t)}
-                  className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition ${
-                    scheduleType === t
-                      ? "text-white shadow-sm"
-                      : "text-gray-700 hover:bg-slate-50"
-                  }`}
-                  style={
-                    scheduleType === t ? { backgroundColor: ACCENT } : undefined
-                  }
-                >
-                  {t === "ODD_DAYS" ? "Odd Days" : "Even Days"}
-                </button>
+            <select
+              value={lessonType}
+              onChange={(e) => setLessonType(e.target.value as LessonType | "")}
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none focus:border-[#303380] focus:ring-2 focus:ring-[#303380]/30"
+              required
+            >
+              <option value="">Select a lesson type</option>
+              {LESSON_TYPE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
               ))}
-            </div>
+            </select>
           </div>
 
           {/* Times */}
@@ -1006,6 +988,80 @@ function AddScheduleModal({
             </div>
           </div>
 
+          {/* Students */}
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Students
+            </label>
+            <p className="mb-2 text-xs text-gray-500">
+              Add students by name and the email of their existing student
+              account.
+            </p>
+
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <input
+                type="text"
+                value={studentName}
+                onChange={(e) => setStudentName(e.target.value)}
+                placeholder="Full name"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#303380] focus:ring-2 focus:ring-[#303380]/30 sm:w-2/5"
+              />
+              <input
+                type="email"
+                value={studentEmail}
+                onChange={(e) => setStudentEmail(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addStudent();
+                  }
+                }}
+                placeholder="student@example.com"
+                className="w-full flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#303380] focus:ring-2 focus:ring-[#303380]/30"
+              />
+              <button
+                type="button"
+                onClick={addStudent}
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              >
+                <Plus className="h-4 w-4" />
+                Add
+              </button>
+            </div>
+
+            {rosterError && (
+              <p className="mt-1.5 text-xs text-rose-600">{rosterError}</p>
+            )}
+
+            {students.length > 0 && (
+              <ul className="mt-3 space-y-2">
+                {students.map((s) => (
+                  <li
+                    key={s.email}
+                    className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2"
+                  >
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium text-gray-900">
+                        {s.name}
+                      </div>
+                      <div className="truncate text-xs text-gray-500">
+                        {s.email}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeStudent(s.email)}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-rose-700 transition hover:bg-rose-50"
+                      title="Remove"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
           {formError && (
             <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
               {formError}
@@ -1022,12 +1078,12 @@ function AddScheduleModal({
             </button>
             <button
               type="submit"
-              disabled={saving || classes.length === 0}
+              disabled={saving}
               className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:brightness-110 disabled:opacity-50"
               style={{ backgroundColor: ACCENT }}
             >
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-              {saving ? "Saving..." : "Add Schedule"}
+              {saving ? "Saving..." : `Add ${dayLabel} Class`}
             </button>
           </div>
         </form>

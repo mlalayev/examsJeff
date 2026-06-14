@@ -257,12 +257,6 @@ export default function Sidebar() {
   if (role === "TEACHER") {
     navItems.push(
       {
-        label: "Classes",
-        href: "/dashboard/teacher/classes",
-        icon: BookOpen,
-        color: "from-purple-500 to-purple-600",
-      },
-      {
         label: "Schedule",
         href: "/dashboard/teacher/schedule",
         icon: Calendar,
