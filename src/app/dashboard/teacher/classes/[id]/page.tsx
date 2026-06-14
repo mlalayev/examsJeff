@@ -47,6 +47,7 @@ export default function ClassRosterPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [studentName, setStudentName] = useState("");
   const [studentEmail, setStudentEmail] = useState("");
   const [adding, setAdding] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -114,7 +115,7 @@ export default function ClassRosterPage() {
       const response = await fetch(`/api/classes/${classId}/add-student`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ studentEmail }),
+        body: JSON.stringify({ studentName, studentEmail }),
       });
 
       let data;
@@ -140,6 +141,7 @@ export default function ClassRosterPage() {
 
       // Refresh roster
       await fetchRoster();
+      setStudentName("");
       setStudentEmail("");
       setEmailError("");
       setShowAddModal(false);
@@ -205,6 +207,7 @@ export default function ClassRosterPage() {
 
   const closeAddModal = () => {
     setShowAddModal(false);
+    setStudentName("");
     setStudentEmail("");
     setEmailError("");
     document.body.style.overflow = 'unset';
@@ -450,7 +453,20 @@ export default function ClassRosterPage() {
             
             {/* Modal Content */}
             <form onSubmit={handleAddStudent}>
-              <div className="px-6 py-6">
+              <div className="px-6 py-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Student Full Name
+                  </label>
+                  <input
+                    type="text"
+                    value={studentName}
+                    onChange={(e) => setStudentName(e.target.value)}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#303380]/20 focus:border-[#303380] transition-colors"
+                    placeholder="e.g., John Smith"
+                    required
+                  />
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Student Email
@@ -501,7 +517,7 @@ export default function ClassRosterPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={adding || !studentEmail.trim()}
+                  disabled={adding || !studentEmail.trim() || !studentName.trim()}
                   className="px-4 py-2.5 text-sm font-medium text-white bg-[#303380] border border-transparent rounded-lg hover:bg-[#252a6b] focus:outline-none focus:ring-2 focus:ring-[#303380]/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm hover:shadow-md"
                 >
                   {adding ? (

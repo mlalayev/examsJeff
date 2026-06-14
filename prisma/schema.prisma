@@ -8,50 +8,54 @@ datasource db {
 }
 
 model User {
-  id                          String              @id @default(cuid())
+  id                          String                @id @default(cuid())
   firstName                   String?
   lastName                    String?
-  email                       String              @unique
+  email                       String                @unique
   emailVerified               DateTime?
   image                       String?
   passwordHash                String
-  role                        Role                @default(STUDENT)
-  tags                        String[]            @default([])
-  createdAt                   DateTime            @default(now())
-  updatedAt                   DateTime            @updatedAt
-  approved                    Boolean             @default(false)
+  role                        Role                  @default(STUDENT)
+  tags                        String[]              @default([])
+  createdAt                   DateTime              @default(now())
+  updatedAt                   DateTime              @updatedAt
+  approved                    Boolean               @default(false)
   branchId                    String?
   accounts                    Account[]
-  childrenAsParent            ParentChild[]       @relation("ParentChildParent")
-  parentsAsChild              ParentChild[]       @relation("ParentChildChild")
-  assignmentsAsStudent        Assignment[]        @relation("AssignmentStudent")
-  assignmentsAsTeacher        Assignment[]        @relation("AssignmentTeacher")
-  bookingsAsStudent           Booking[]           @relation("StudentBookings")
-  bookingsAsTeacher           Booking[]           @relation("TeacherBookings")
+  childrenAsParent            ParentChild[]         @relation("ParentChildParent")
+  parentsAsChild              ParentChild[]         @relation("ParentChildChild")
+  assignmentsAsStudent        Assignment[]          @relation("AssignmentStudent")
+  assignmentsAsTeacher        Assignment[]          @relation("AssignmentTeacher")
+  bookingsAsStudent           Booking[]             @relation("StudentBookings")
+  bookingsAsTeacher           Booking[]             @relation("TeacherBookings")
   classEnrollments            ClassStudent[]
   classesTeaching             Class[]
   examsCreated                Exam[]
   notifications               Notification[]
-  payments                    PaymentSchedule[]   @relation("StudentPayments")
+  payments                    PaymentSchedule[]     @relation("StudentPayments")
   sessions                    Session[]
-  enrollments                 StudentEnrollment[] @relation("StudentEnrollments")
-  studentProfile              StudentProfile?     @relation("StudentProfileUser")
-  studentsTeaching            StudentProfile[]    @relation("TeacherOfStudent")
-  teacherProfile              TeacherProfile?     @relation("TeacherProfileUser")
-  tuitionPayments             TuitionPayment[]    @relation("StudentTuitionPayments")
-  branch                      Branch?             @relation(fields: [branchId], references: [id])
-  writingSubmissionsAsGrader  WritingSubmission[] @relation("WritingGrader")
-  writingSubmissionsAsStudent WritingSubmission[] @relation("WritingStudent")
-  writingSubmissionsAsTeacher WritingSubmission[] @relation("WritingTeacher")
-  lessonsCreated              Lesson[]            @relation("LessonCreator")
-  lessonProgress              LessonProgress[]    @relation("StudentLessonProgress")
-  wordListsCreated            WordList[]          @relation("WordListCreator")
-  wordReviews                 WordReview[]        @relation("StudentWordReviews")
-  tricksCreated               Trick[]             @relation("TrickCreator")
-  trickSaves                  TrickSave[]         @relation("StudentTrickSaves")
-  referralsAsPartner          Referral[]          @relation("PartnerReferrals")
-  referralsAsStudent          Referral[]          @relation("StudentReferrals")
-  referralsDecided            Referral[]          @relation("ReferralDecidedBy")
+  enrollments                 StudentEnrollment[]   @relation("StudentEnrollments")
+  studentProfile              StudentProfile?       @relation("StudentProfileUser")
+  studentsTeaching            StudentProfile[]      @relation("TeacherOfStudent")
+  teacherProfile              TeacherProfile?       @relation("TeacherProfileUser")
+  tuitionPayments             TuitionPayment[]      @relation("StudentTuitionPayments")
+  branch                      Branch?               @relation(fields: [branchId], references: [id])
+  writingSubmissionsAsGrader  WritingSubmission[]   @relation("WritingGrader")
+  writingSubmissionsAsStudent WritingSubmission[]   @relation("WritingStudent")
+  writingSubmissionsAsTeacher WritingSubmission[]   @relation("WritingTeacher")
+  lessonsCreated              Lesson[]              @relation("LessonCreator")
+  lessonProgress              LessonProgress[]      @relation("StudentLessonProgress")
+  wordListsCreated            WordList[]            @relation("WordListCreator")
+  wordReviews                 WordReview[]          @relation("StudentWordReviews")
+  tricksCreated               Trick[]               @relation("TrickCreator")
+  trickSaves                  TrickSave[]           @relation("StudentTrickSaves")
+  referralsAsPartner          Referral[]            @relation("PartnerReferrals")
+  referralsAsStudent          Referral[]            @relation("StudentReferrals")
+  referralsDecided            Referral[]            @relation("ReferralDecidedBy")
+  scheduleSlots               ScheduleSlot[]        @relation("TeacherScheduleSlots")
+  lessonSessions              LessonSession[]       @relation("TeacherLessonSessions")
+  lessonRecordsAsStudent      LessonStudentRecord[] @relation("StudentLessonRecords")
+  lessonRecordsAsTeacher      LessonStudentRecord[] @relation("TeacherLessonRecords")
 
   @@map("users")
 }
@@ -86,6 +90,8 @@ model Branch {
   tuitionPayments TuitionPayment[]
   users           User[]
   referrals       Referral[]          @relation("BranchReferrals")
+  scheduleSlots   ScheduleSlot[]
+  lessonSessions  LessonSession[]
 
   @@map("branches")
 }
@@ -129,16 +135,19 @@ model VerificationToken {
 }
 
 model Class {
-  id                 String              @id @default(cuid())
+  id                 String                @id @default(cuid())
   name               String
   teacherId          String
-  createdAt          DateTime            @default(now())
+  createdAt          DateTime              @default(now())
   branchId           String?
   assignments        Assignment[]
   classStudents      ClassStudent[]
-  branch             Branch?             @relation(fields: [branchId], references: [id], onDelete: Restrict)
-  teacher            User                @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  branch             Branch?               @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  teacher            User                  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   writingSubmissions WritingSubmission[]
+  scheduleSlots      ScheduleSlot[]
+  lessonSessions     LessonSession[]
+  lessonRecords      LessonStudentRecord[]
 
   @@map("classes")
 }
@@ -538,28 +547,28 @@ model FinanceTxn {
 }
 
 model StudentProfile {
-  id              String    @id @default(cuid())
-  studentId       String    @unique
-  branchId        String
-  teacherId       String?
-  firstEnrollAt   DateTime?
-  monthlyFee      Decimal?  @db.Decimal(10, 2)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  dateOfBirth     DateTime?
-  paymentAmount   Decimal?  @db.Decimal(10, 2)
-  paymentDate     DateTime?
-  phoneNumber     String?
-  program         String?
-  studyTypes      String[]  @default([])
-  lessonModes     String[]  @default([])
-  studentKind     String    @default("STUDENT")
-  studyStatus     String    @default("CONTINUES")
-  lessonsStopped  Boolean   @default(false)
+  id               String    @id @default(cuid())
+  studentId        String    @unique
+  branchId         String
+  teacherId        String?
+  firstEnrollAt    DateTime?
+  monthlyFee       Decimal?  @db.Decimal(10, 2)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  dateOfBirth      DateTime?
+  paymentAmount    Decimal?  @db.Decimal(10, 2)
+  paymentDate      DateTime?
+  phoneNumber      String?
+  program          String?
+  studyTypes       String[]  @default([])
+  lessonModes      String[]  @default([])
+  studentKind      String    @default("STUDENT")
+  studyStatus      String    @default("CONTINUES")
+  lessonsStopped   Boolean   @default(false)
   lessonsStoppedAt DateTime?
-  branch        Branch    @relation(fields: [branchId], references: [id])
-  student       User      @relation("StudentProfileUser", fields: [studentId], references: [id], onDelete: Cascade)
-  teacher       User?     @relation("TeacherOfStudent", fields: [teacherId], references: [id])
+  branch           Branch    @relation(fields: [branchId], references: [id])
+  student          User      @relation("StudentProfileUser", fields: [studentId], references: [id], onDelete: Cascade)
+  teacher          User?     @relation("TeacherOfStudent", fields: [teacherId], references: [id])
 
   @@index([branchId])
   @@index([teacherId])
@@ -621,30 +630,30 @@ enum ReferralStatus {
 }
 
 model Referral {
-  id                String         @id @default(cuid())
-  partnerId         String
-  branchId          String
-  studentFirstName  String
-  studentLastName   String?
-  studentEmail      String?
-  studentPhone      String?
-  program           String?
-  notes             String?
-  status            ReferralStatus @default(IN_PROGRESS)
-  monthlyPrice      Decimal?       @db.Decimal(10, 2)
-  commissionTiers   Json?
-  studentId         String?
-  decidedById       String?
-  decidedAt         DateTime?
-  decisionNotes     String?
-  acceptedAt        DateTime?
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
+  id               String         @id @default(cuid())
+  partnerId        String
+  branchId         String
+  studentFirstName String
+  studentLastName  String?
+  studentEmail     String?
+  studentPhone     String?
+  program          String?
+  notes            String?
+  status           ReferralStatus @default(IN_PROGRESS)
+  monthlyPrice     Decimal?       @db.Decimal(10, 2)
+  commissionTiers  Json?
+  studentId        String?
+  decidedById      String?
+  decidedAt        DateTime?
+  decisionNotes    String?
+  acceptedAt       DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
-  partner   User    @relation("PartnerReferrals", fields: [partnerId], references: [id], onDelete: Cascade)
-  branch    Branch  @relation("BranchReferrals", fields: [branchId], references: [id], onDelete: Restrict)
-  decidedBy User?   @relation("ReferralDecidedBy", fields: [decidedById], references: [id], onDelete: SetNull)
-  student   User?   @relation("StudentReferrals", fields: [studentId], references: [id], onDelete: SetNull)
+  partner   User   @relation("PartnerReferrals", fields: [partnerId], references: [id], onDelete: Cascade)
+  branch    Branch @relation("BranchReferrals", fields: [branchId], references: [id], onDelete: Restrict)
+  decidedBy User?  @relation("ReferralDecidedBy", fields: [decidedById], references: [id], onDelete: SetNull)
+  student   User?  @relation("StudentReferrals", fields: [studentId], references: [id], onDelete: SetNull)
 
   @@index([partnerId, status])
   @@index([branchId, status])
@@ -871,4 +880,125 @@ model TrickSave {
   @@unique([trickId, studentId])
   @@index([studentId])
   @@map("trick_saves")
+}
+
+// === Teacher Schedule Dashboard ===
+
+enum ScheduleDayType {
+  ODD
+  EVEN
+}
+
+enum LessonSessionStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+}
+
+enum HomeworkStatus {
+  NOT_ASSIGNED
+  ASSIGNED
+  COMPLETED
+  INCOMPLETE
+  NOT_DONE
+}
+
+enum PerformanceRating {
+  EXCELLENT
+  GOOD
+  AVERAGE
+  WEAK
+  DID_NOT_PARTICIPATE
+}
+
+// Recurring odd/even-day lesson template for a teacher.
+model ScheduleSlot {
+  id         String          @id @default(cuid())
+  teacherId  String
+  classId    String?
+  branchId   String?
+  dayType    ScheduleDayType
+  title      String
+  timeSlot   String
+  hourlyRate Decimal?        @db.Decimal(10, 2)
+  active     Boolean         @default(true)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  teacher        User            @relation("TeacherScheduleSlots", fields: [teacherId], references: [id], onDelete: Cascade)
+  class          Class?          @relation(fields: [classId], references: [id], onDelete: SetNull)
+  branch         Branch?         @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  lessonSessions LessonSession[]
+
+  @@index([teacherId, dayType])
+  @@index([classId])
+  @@index([branchId])
+  @@map("schedule_slots")
+}
+
+// A concrete lesson occurrence on a specific date.
+model LessonSession {
+  id             String              @id @default(cuid())
+  teacherId      String
+  classId        String?
+  branchId       String?
+  scheduleSlotId String?
+  title          String
+  date           DateTime            @db.Date
+  timeSlot       String
+  status         LessonSessionStatus @default(SCHEDULED)
+  hourlyRate     Decimal?            @db.Decimal(10, 2)
+  topic          String?
+  notes          String?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  teacher        User                  @relation("TeacherLessonSessions", fields: [teacherId], references: [id], onDelete: Cascade)
+  class          Class?                @relation(fields: [classId], references: [id], onDelete: SetNull)
+  branch         Branch?               @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  scheduleSlot   ScheduleSlot?         @relation(fields: [scheduleSlotId], references: [id], onDelete: SetNull)
+  studentRecords LessonStudentRecord[]
+
+  @@index([teacherId, date])
+  @@index([classId, date])
+  @@index([branchId, date])
+  @@index([scheduleSlotId])
+  @@map("lesson_sessions")
+}
+
+// Per-student record for a lesson: attendance, feedback, homework, behavior.
+// Linked to student + lesson + class + teacher so parents can view it later.
+model LessonStudentRecord {
+  id              String           @id @default(cuid())
+  lessonSessionId String
+  studentId       String
+  classId         String?
+  teacherId       String
+  attendance      AttendanceStatus  @default(PRESENT)
+  lateMinutes     Int               @default(0)
+  performance     PerformanceRating?
+  homeworkStatus  HomeworkStatus    @default(NOT_ASSIGNED)
+  feedback        String?
+  teacherNote     String?
+  behaviorNote    String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  lessonSession LessonSession @relation(fields: [lessonSessionId], references: [id], onDelete: Cascade)
+  student       User          @relation("StudentLessonRecords", fields: [studentId], references: [id], onDelete: Cascade)
+  class         Class?        @relation(fields: [classId], references: [id], onDelete: SetNull)
+  teacher       User          @relation("TeacherLessonRecords", fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@unique([lessonSessionId, studentId])
+  @@index([studentId, createdAt])
+  @@index([teacherId, createdAt])
+  @@index([classId])
+  @@map("lesson_student_records")
 }

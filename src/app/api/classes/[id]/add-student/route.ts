@@ -2,10 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireTeacher } from "@/lib/auth-utils";
 import { z } from "zod";
-
-const addStudentSchema = z.object({
-  studentEmail: z.string().email("Invalid email address"),
-});
+import { addStudentSchema } from "@/lib/schedule-validation";
 
 // POST /api/classes/[id]/add-student - Add a student to a class
 export async function POST(
