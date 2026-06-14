@@ -109,20 +109,44 @@ export async function generateWeeklyReports(
   });
 
   const raw = completion.choices[0]?.message?.content ?? "{}";
-  let parsed: { reports?: WeeklyReportResult[] };
+  let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
   } catch {
     parsed = {};
   }
 
+  // The model should return { reports: [...] }, but be tolerant of other
+  // shapes (a bare array, or a differently-named array property).
+  const arr = extractReports(parsed);
+
+  const validId = new Set(students.map((s) => s.studentId));
   const byId = new Map<string, string>();
-  for (const r of parsed.reports ?? []) {
-    if (r?.studentId && typeof r.text === "string") byId.set(r.studentId, r.text);
-  }
+  arr.forEach((item, i) => {
+    if (!item || typeof item.text !== "string" || !item.text.trim()) return;
+    // Prefer a matching studentId; otherwise fall back to positional mapping.
+    const id =
+      item.studentId && validId.has(item.studentId)
+        ? item.studentId
+        : students[i]?.studentId;
+    if (id && !byId.has(id)) byId.set(id, item.text.trim());
+  });
 
   // Preserve input order; drop any the model failed to return.
   return students
     .filter((s) => byId.has(s.studentId))
     .map((s) => ({ studentId: s.studentId, text: byId.get(s.studentId)! }));
+}
+
+function extractReports(parsed: unknown): { studentId?: string; text?: string }[] {
+  if (Array.isArray(parsed)) return parsed;
+  if (parsed && typeof parsed === "object") {
+    const obj = parsed as Record<string, unknown>;
+    if (Array.isArray(obj.reports)) return obj.reports;
+    // first array-valued property, whatever it's called
+    for (const v of Object.values(obj)) {
+      if (Array.isArray(v)) return v as { studentId?: string; text?: string }[];
+    }
+  }
+  return [];
 }

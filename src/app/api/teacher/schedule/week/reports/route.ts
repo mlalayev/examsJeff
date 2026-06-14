@@ -270,7 +270,22 @@ export async function POST(request: Request) {
         a.studentName.localeCompare(b.studentName)
     );
 
-    return NextResponse.json({ reports: results });
+    const candidates = jobs.reduce((n, j) => n + j.students.length, 0);
+    const recordsFound = lessons.reduce(
+      (n, l) => n + l.studentRecords.length,
+      0
+    );
+
+    console.log(
+      `[weekly-report] ${start}..${end} teacher=${teacherId} lessons=${lessons.length} records=${recordsFound} candidates=${candidates} generated=${results.length}`
+    );
+
+    return NextResponse.json({
+      reports: results,
+      candidates,
+      lessonsFound: lessons.length,
+      recordsFound,
+    });
   } catch (error) {
     return handleApiError(error, "Weekly reports error");
   }

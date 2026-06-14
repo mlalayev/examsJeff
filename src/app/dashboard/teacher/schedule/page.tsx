@@ -453,6 +453,7 @@ export default function TeacherSchedulePage() {
   const [weekReportTitle, setWeekReportTitle] = useState("");
   const [weekReportError, setWeekReportError] = useState<string | null>(null);
   const [weekReports, setWeekReports] = useState<WeekReportItem[]>([]);
+  const [weekReportEmptyMsg, setWeekReportEmptyMsg] = useState<string>("");
 
   const openWeekReports = useCallback(async (sunday: Date) => {
     const saturday = new Date(sunday);
@@ -473,6 +474,7 @@ export default function TeacherSchedulePage() {
     setWeekReportLoading(true);
     setWeekReportError(null);
     setWeekReports([]);
+    setWeekReportEmptyMsg("");
     setWeekReportTitle(`Weekly reports · ${fmtRange(sunday, saturday)}`);
 
     try {
@@ -483,7 +485,25 @@ export default function TeacherSchedulePage() {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || "Failed to generate reports");
-      setWeekReports(body.reports ?? []);
+      const list: WeekReportItem[] = body.reports ?? [];
+      setWeekReports(list);
+      if (list.length === 0) {
+        const candidates = body.candidates ?? 0;
+        const lessonsFound = body.lessonsFound ?? 0;
+        if (candidates > 0) {
+          setWeekReportEmptyMsg(
+            "The AI didn't return reports this time. Please try again."
+          );
+        } else if (lessonsFound > 0) {
+          setWeekReportEmptyMsg(
+            "Lessons were found for this week, but no student feedback has been saved yet. Open a day, click a class, save attendance/feedback, then try again. (Speaking lessons are excluded.)"
+          );
+        } else {
+          setWeekReportEmptyMsg(
+            "No lessons found for this week. Make sure the schedule is applied to this month and feedback is saved."
+          );
+        }
+      }
     } catch (err) {
       setWeekReportError((err as Error).message || "Failed to generate reports");
     } finally {
@@ -969,6 +989,7 @@ export default function TeacherSchedulePage() {
           loading={weekReportLoading}
           error={weekReportError}
           reports={weekReports}
+          emptyMessage={weekReportEmptyMsg}
           onClose={() => setWeekReportOpen(false)}
         />
       )}
@@ -1682,12 +1703,14 @@ function WeekReportModal({
   loading,
   error,
   reports,
+  emptyMessage,
   onClose,
 }: {
   title: string;
   loading: boolean;
   error: string | null;
   reports: WeekReportItem[];
+  emptyMessage: string;
   onClose: () => void;
 }) {
   const [copiedAll, setCopiedAll] = useState(false);
@@ -1738,9 +1761,9 @@ function WeekReportModal({
               {error}
             </div>
           ) : reports.length === 0 ? (
-            <div className="py-10 text-center text-sm text-slate-500">
-              No graded lessons found for this week. Save lesson feedback first,
-              then generate reports.
+            <div className="px-4 py-10 text-center text-sm text-slate-500">
+              {emptyMessage ||
+                "No reports generated for this week."}
             </div>
           ) : (
             reports.map((r) => (
