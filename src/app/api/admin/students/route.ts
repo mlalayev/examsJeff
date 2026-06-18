@@ -1,22 +1,30 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-utils";
+import { studentProfileWhereForBucket } from "@/lib/study-types";
 
 export async function GET(request: Request) {
   try {
     const user = await requireAdmin();
     const { searchParams } = new URL(request.url);
     const approved = searchParams.get("approved");
+    const bucket = searchParams.get("bucket");
 
     const where: {
       role: "STUDENT";
       approved?: boolean;
+      studentProfile?: Record<string, unknown>;
     } = {
       role: "STUDENT",
     };
 
     if (approved !== null) {
       where.approved = approved === "true";
+    }
+
+    const profileWhere = bucket ? studentProfileWhereForBucket(bucket) : null;
+    if (profileWhere) {
+      where.studentProfile = { is: profileWhere };
     }
 
     const rows = await prisma.user.findMany({

@@ -74,7 +74,7 @@ export default function CreatorStudentsPage() {
   const handleToggleLessons = async (student: Student) => {
     const nextStopped = !student.lessonsStopped;
     const confirmMsg = nextStopped
-      ? `Mark this student's lessons as STOPPED?\n\n${student.name || student.email}`
+      ? `Mark this student's lessons as STOPPED?\n\n${student.name || student.email}\n\nThey will move to the Stopped students dashboard.`
       : `Mark this student's lessons as CONTINUING?\n\n${student.name || student.email}`;
     if (!confirm(confirmMsg)) return;
 
@@ -90,13 +90,17 @@ export default function CreatorStudentsPage() {
         setAlertModal({ isOpen: true, title: "Error", message: data.error || "Failed to update lesson status", type: "error" });
         return;
       }
-      setStudents((prev) =>
-        prev.map((s) =>
-          s.id === student.id
-            ? { ...s, lessonsStopped: nextStopped, lessonsStoppedAt: nextStopped ? new Date().toISOString() : null }
-            : s
-        )
-      );
+      if (nextStopped) {
+        setStudents((prev) => prev.filter((s) => s.id !== student.id));
+      } else {
+        setStudents((prev) =>
+          prev.map((s) =>
+            s.id === student.id
+              ? { ...s, lessonsStopped: false, lessonsStoppedAt: null }
+              : s
+          )
+        );
+      }
     } catch {
       setAlertModal({ isOpen: true, title: "Error", message: "Failed to update lesson status", type: "error" });
     } finally {
@@ -135,6 +139,7 @@ export default function CreatorStudentsPage() {
   const fetchStudents = async () => {
     try {
       const params = new URLSearchParams();
+      params.append("bucket", "ACTIVE");
       if (filterApproved !== null) {
         params.append("approved", filterApproved.toString());
       }

@@ -137,6 +137,7 @@ export default function AdminStudentsPage() {
   const fetchStudents = async () => {
     try {
       const params = new URLSearchParams();
+      params.append("bucket", "ACTIVE");
       if (filterApproved !== null) {
         params.append("approved", filterApproved.toString());
       }
@@ -186,7 +187,7 @@ export default function AdminStudentsPage() {
   const handleToggleLessons = async (student: Student) => {
     const nextStopped = !student.lessonsStopped;
     const confirmMsg = nextStopped
-      ? `Mark this student's lessons as STOPPED?\n\n${student.name || student.email}`
+      ? `Mark this student's lessons as STOPPED?\n\n${student.name || student.email}\n\nThey will move to the Stopped students dashboard.`
       : `Mark this student's lessons as CONTINUING?\n\n${student.name || student.email}`;
     if (!confirm(confirmMsg)) return;
 
@@ -202,15 +203,56 @@ export default function AdminStudentsPage() {
         setAlertModal({ isOpen: true, title: "Error", message: data.error || "Failed to update lesson status", type: "error" });
         return;
       }
-      setStudents((prev) =>
-        prev.map((s) =>
-          s.id === student.id
-            ? { ...s, lessonsStopped: nextStopped, lessonsStoppedAt: nextStopped ? new Date().toISOString() : null }
-            : s
-        )
-      );
+      if (nextStopped) {
+        setStudents((prev) => prev.filter((s) => s.id !== student.id));
+      } else {
+        setStudents((prev) =>
+          prev.map((s) =>
+            s.id === student.id
+              ? { ...s, lessonsStopped: false, lessonsStoppedAt: null, studyStatus: "CONTINUES" }
+              : s
+          )
+        );
+      }
     } catch (error) {
       setAlertModal({ isOpen: true, title: "Error", message: "Failed to update lesson status", type: "error" });
+    } finally {
+      setLessonUpdating(null);
+    }
+  };
+
+  const handleMarkFinished = async (student: Student) => {
+    if (
+      !confirm(
+        `Mark ${student.name || student.email} as FINISHED?\n\nThey will move to the Finished students dashboard.`
+      )
+    )
+      return;
+    setLessonUpdating(student.id);
+    try {
+      const res = await fetch(`/api/admin/users/${student.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ profile: { studyStatus: "FINISHED" } }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setAlertModal({
+          isOpen: true,
+          title: "Error",
+          message: data.error || "Failed to mark as finished",
+          type: "error",
+        });
+        return;
+      }
+      setStudents((prev) => prev.filter((s) => s.id !== student.id));
+    } catch {
+      setAlertModal({
+        isOpen: true,
+        title: "Error",
+        message: "Failed to mark as finished",
+        type: "error",
+      });
     } finally {
       setLessonUpdating(null);
     }
@@ -712,7 +754,9 @@ export default function AdminStudentsPage() {
                 accent="#303380"
                 onClick={() => setStatusFilter("ALL")}
               />
-              {STUDENT_BUCKETS.map((b) => (
+              {STUDENT_BUCKETS.filter(
+                (b) => b.id === "CONTINUES" || b.id === "EXAM_TAKER"
+              ).map((b) => (
                 <FilterTab
                   key={b.id}
                   label={b.label}
@@ -979,6 +1023,18 @@ export default function AdminStudentsPage() {
                               </>
                             )}
                           </button>
+                          {!student.lessonsStopped && (
+                            <button
+                              type="button"
+                              onClick={() => handleMarkFinished(student)}
+                              disabled={lessonUpdating === student.id}
+                              className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100 flex items-center gap-1 disabled:opacity-50"
+                              title="Mark course as finished"
+                            >
+                              <CheckCircle className="w-3 h-3" />
+                              Finished
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={() => setExamsModalStudent(student)}

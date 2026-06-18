@@ -28,6 +28,8 @@ import {
   UserPlus,
   UserCheck,
   Wallet,
+  Pause,
+  CircleCheck,
 } from "lucide-react";
 import StudentNav from "@/components/dashboard/student/StudentNav";
 
@@ -82,6 +84,18 @@ export default function Sidebar() {
         color: "from-green-500 to-green-600",
       },
       {
+        label: "Finished",
+        href: "/dashboard/creator/students/finished",
+        icon: CircleCheck,
+        color: "from-blue-500 to-blue-600",
+      },
+      {
+        label: "Stopped",
+        href: "/dashboard/creator/students/stopped",
+        icon: Pause,
+        color: "from-red-500 to-red-600",
+      },
+      {
         label: "Exams",
         href: "/dashboard/creator/exams",
         icon: BookOpen,
@@ -104,6 +118,18 @@ export default function Sidebar() {
         href: "/dashboard/creator/finance",
         icon: DollarSign,
         color: "from-emerald-500 to-emerald-600",
+      },
+      {
+        label: "Teacher salary",
+        href: "/dashboard/boss/salary",
+        icon: Wallet,
+        color: "from-green-500 to-green-600",
+      },
+      {
+        label: "Weekly reports",
+        href: "/dashboard/boss/reports",
+        icon: FileText,
+        color: "from-cyan-500 to-cyan-600",
       },
       {
         label: "Referrals",
@@ -137,6 +163,18 @@ export default function Sidebar() {
         color: "from-green-500 to-green-600",
       },
       {
+        label: "Finished",
+        href: "/dashboard/admin/students/finished",
+        icon: CircleCheck,
+        color: "from-blue-500 to-blue-600",
+      },
+      {
+        label: "Stopped",
+        href: "/dashboard/admin/students/stopped",
+        icon: Pause,
+        color: "from-red-500 to-red-600",
+      },
+      {
         label: "Exams",
         href: "/dashboard/admin/exams",
         icon: BookOpen,
@@ -159,6 +197,18 @@ export default function Sidebar() {
         href: "/dashboard/boss/finance",
         icon: DollarSign,
         color: "from-emerald-500 to-emerald-600",
+      },
+      {
+        label: "Teacher salary",
+        href: "/dashboard/boss/salary",
+        icon: Wallet,
+        color: "from-green-500 to-green-600",
+      },
+      {
+        label: "Weekly reports",
+        href: "/dashboard/boss/reports",
+        icon: FileText,
+        color: "from-cyan-500 to-cyan-600",
       },
       {
         label: "Referrals",
@@ -231,6 +281,18 @@ export default function Sidebar() {
         href: "/dashboard/admin/students",
         icon: Users,
         color: "from-purple-500 to-purple-600",
+      },
+      {
+        label: "Finished",
+        href: "/dashboard/admin/students/finished",
+        icon: CircleCheck,
+        color: "from-blue-500 to-blue-600",
+      },
+      {
+        label: "Stopped",
+        href: "/dashboard/admin/students/stopped",
+        icon: Pause,
+        color: "from-red-500 to-red-600",
       },
       {
         label: "Exams",

@@ -139,6 +139,47 @@ export function resolveStudentBucket(s: {
   return "CONTINUES";
 }
 
+/** Prisma `studentProfile` filter for lifecycle dashboards / active list. */
+export function studentProfileWhereForBucket(
+  bucket: string
+): Record<string, unknown> | null {
+  switch (bucket) {
+    case "FINISHED":
+      return {
+        studentKind: { not: "EXAM_TAKER" },
+        lessonsStopped: false,
+        studyStatus: "FINISHED",
+      };
+    case "STOPPED":
+      return {
+        studentKind: { not: "EXAM_TAKER" },
+        OR: [{ lessonsStopped: true }, { studyStatus: "STOPPED" }],
+      };
+    case "CONTINUES":
+      return {
+        studentKind: { not: "EXAM_TAKER" },
+        lessonsStopped: false,
+        studyStatus: "CONTINUES",
+      };
+    case "EXAM_TAKER":
+      return { studentKind: "EXAM_TAKER" };
+    case "ACTIVE":
+      // Main students list: continuing + exam takers (not finished/stopped).
+      return {
+        OR: [
+          { studentKind: "EXAM_TAKER" },
+          {
+            studentKind: { not: "EXAM_TAKER" },
+            lessonsStopped: false,
+            studyStatus: { notIn: ["FINISHED", "STOPPED"] },
+          },
+        ],
+      };
+    default:
+      return null;
+  }
+}
+
 /** Infer study types from a legacy free-text program string. */
 export function inferStudyTypesFromProgram(program?: string | null): string[] {
   if (!program) return [];

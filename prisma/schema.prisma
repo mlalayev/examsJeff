@@ -1003,6 +1003,26 @@ model LessonStudentRecord {
   @@map("lesson_student_records")
 }
 
+// How a teacher is paid. Configured per teacher by a boss.
+enum TeacherPayType {
+  PER_LESSON
+  HOURLY
+  FIXED
+}
+
+// Per-teacher pay configuration used to estimate monthly salary.
+model TeacherPaySetting {
+  id          String         @id @default(cuid())
+  teacherId   String         @unique
+  payType     TeacherPayType @default(PER_LESSON)
+  rate        Decimal?       @db.Decimal(10, 2) // per-lesson or hourly rate
+  fixedAmount Decimal?       @db.Decimal(10, 2) // monthly amount when FIXED
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@map("teacher_pay_settings")
+}
+
 // Cached AI-generated weekly parent report for one student in one subject.
 // Keyed by teacher + class + student + week so the same week isn't regenerated.
 model WeeklyReport {

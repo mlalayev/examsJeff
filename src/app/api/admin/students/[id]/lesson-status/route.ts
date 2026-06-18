@@ -57,10 +57,12 @@ export async function POST(
         branchId: student.branchId,
         lessonsStopped: stopped,
         lessonsStoppedAt: stopped ? now : null,
+        studyStatus: stopped ? "STOPPED" : "CONTINUES",
       },
       update: {
         lessonsStopped: stopped,
         lessonsStoppedAt: stopped ? now : null,
+        studyStatus: stopped ? "STOPPED" : "CONTINUES",
       },
       select: {
         studentId: true,
