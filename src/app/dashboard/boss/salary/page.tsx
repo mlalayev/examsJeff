@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  Calendar,
   ChevronLeft,
   ChevronRight,
   Loader2,
   Pencil,
+  Search,
   X,
 } from "lucide-react";
 import { PAY_TYPE_LABELS } from "@/lib/teacher-salary";
@@ -30,25 +32,41 @@ type TeacherSalaryRow = {
   id: string;
   name: string;
   email: string;
+  approved: boolean;
   branch: { id: string; name: string } | null;
+  recurringSlotCount: number;
   lessonCount: number;
+  projectedLessons: number;
   totalHours: number;
+  projectedHours: number;
   studentCount: number;
   payType: "PER_LESSON" | "HOURLY" | "FIXED";
   rate: number | null;
   fixedAmount: number | null;
   estimatedPay: number | null;
+  payBasedOnActual: boolean;
 };
 
-type LessonRow = {
+type RecurringSlot = {
   id: string;
   title: string;
-  date: string;
   timeSlot: string;
-  hours: number;
-  topic: string | null;
   className: string | null;
-  studentRecordCount: number;
+  studentCount: number;
+};
+
+type ScheduleData = {
+  recurring: { oddDays: RecurringSlot[]; evenDays: RecurringSlot[] };
+  classes: { id: string; name: string; studentCount: number }[];
+  lessons: {
+    id: string;
+    title: string;
+    date: string;
+    timeSlot: string;
+    hours: number;
+    topic: string | null;
+    className: string | null;
+  }[];
 };
 
 export default function BossSalaryPage() {
@@ -57,6 +75,7 @@ export default function BossSalaryPage() {
   const [month, setMonth] = useState(today.getMonth());
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<TeacherSalaryRow[]>([]);
+  const [search, setSearch] = useState("");
   const [totals, setTotals] = useState({
     lessons: 0,
     hours: 0,
@@ -71,11 +90,13 @@ export default function BossSalaryPage() {
   const [fixedAmount, setFixedAmount] = useState("");
   const [savingPay, setSavingPay] = useState(false);
 
-  const [detailTeacher, setDetailTeacher] = useState<TeacherSalaryRow | null>(
-    null
+  const [scheduleTeacher, setScheduleTeacher] =
+    useState<TeacherSalaryRow | null>(null);
+  const [scheduleData, setScheduleData] = useState<ScheduleData | null>(null);
+  const [scheduleLoading, setScheduleLoading] = useState(false);
+  const [scheduleTab, setScheduleTab] = useState<"recurring" | "lessons">(
+    "recurring"
   );
-  const [detailLessons, setDetailLessons] = useState<LessonRow[]>([]);
-  const [detailLoading, setDetailLoading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -98,6 +119,17 @@ export default function BossSalaryPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter(
+      (t) =>
+        t.name.toLowerCase().includes(q) ||
+        t.email.toLowerCase().includes(q) ||
+        (t.branch?.name ?? "").toLowerCase().includes(q)
+    );
+  }, [rows, search]);
 
   const prevMonth = () => {
     if (month === 0) {
@@ -130,7 +162,11 @@ export default function BossSalaryPage() {
           payType,
           rate: payType === "FIXED" ? null : rate ? Number(rate) : null,
           fixedAmount:
-            payType === "FIXED" ? (fixedAmount ? Number(fixedAmount) : null) : null,
+            payType === "FIXED"
+              ? fixedAmount
+                ? Number(fixedAmount)
+                : null
+              : null,
         }),
       });
       if (!res.ok) {
@@ -146,33 +182,53 @@ export default function BossSalaryPage() {
     }
   };
 
-  const openDetails = async (t: TeacherSalaryRow) => {
-    setDetailTeacher(t);
-    setDetailLoading(true);
-    setDetailLessons([]);
+  const openSchedule = async (t: TeacherSalaryRow) => {
+    setScheduleTeacher(t);
+    setScheduleTab("recurring");
+    setScheduleLoading(true);
+    setScheduleData(null);
     try {
       const res = await fetch(
-        `/api/boss/teachers/${t.id}/lessons?year=${year}&month=${month + 1}`
+        `/api/boss/teachers/${t.id}/schedule?year=${year}&month=${month + 1}`
       );
       const data = await res.json();
-      if (res.ok) setDetailLessons(data.lessons ?? []);
+      if (res.ok) {
+        setScheduleData({
+          recurring: data.recurring,
+          classes: data.classes ?? [],
+          lessons: data.lessons ?? [],
+        });
+      }
     } catch (e) {
       console.error(e);
     } finally {
-      setDetailLoading(false);
+      setScheduleLoading(false);
     }
   };
 
   const fmtAzn = (n: number | null) =>
     n != null ? `${n.toFixed(2)} AZN` : "—";
 
+  const lessonsLabel = (t: TeacherSalaryRow) => {
+    if (t.lessonCount > 0) return String(t.lessonCount);
+    if (t.projectedLessons > 0)
+      return `0 (${t.projectedLessons} scheduled)`;
+    return "0";
+  };
+
+  const hoursLabel = (t: TeacherSalaryRow) => {
+    if (t.totalHours > 0) return t.totalHours.toFixed(1);
+    if (t.projectedHours > 0) return `0 (${t.projectedHours.toFixed(1)} sched.)`;
+    return "0";
+  };
+
   return (
     <div className="p-4 sm:p-6 lg:p-8">
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Teacher salary</h1>
           <p className="mt-1 text-sm text-gray-600">
-            Monthly lessons and estimated pay per teacher
+            All teacher accounts — monthly lessons, schedules, and pay
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -196,10 +252,18 @@ export default function BossSalaryPage() {
         </div>
       </div>
 
-      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-4">
         <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
           <div className="text-xs font-medium uppercase text-slate-500">
-            Total lessons
+            Teachers
+          </div>
+          <div className="mt-1 text-2xl font-bold text-gray-900">
+            {rows.length}
+          </div>
+        </div>
+        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="text-xs font-medium uppercase text-slate-500">
+            Lessons held
           </div>
           <div className="mt-1 text-2xl font-bold text-gray-900">
             {totals.lessons}
@@ -207,7 +271,7 @@ export default function BossSalaryPage() {
         </div>
         <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
           <div className="text-xs font-medium uppercase text-slate-500">
-            Total hours
+            Hours taught
           </div>
           <div className="mt-1 text-2xl font-bold text-gray-900">
             {totals.hours.toFixed(1)}
@@ -215,7 +279,7 @@ export default function BossSalaryPage() {
         </div>
         <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
           <div className="text-xs font-medium uppercase text-slate-500">
-            Estimated pay
+            Total estimated pay
           </div>
           <div className="mt-1 text-2xl font-bold" style={{ color: ACCENT }}>
             {fmtAzn(totals.estimatedPay)}
@@ -223,19 +287,32 @@ export default function BossSalaryPage() {
         </div>
       </div>
 
+      <div className="relative mb-4 max-w-md">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search teachers…"
+          className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm outline-none focus:border-[#303380] focus:ring-2 focus:ring-[#303380]/30"
+        />
+      </div>
+
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         {loading ? (
           <div className="flex items-center justify-center gap-2 py-16 text-sm text-slate-500">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Loading…
+            Loading teachers…
           </div>
-        ) : rows.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div className="py-16 text-center text-sm text-slate-500">
-            No teachers found
+            {rows.length === 0
+              ? "No teacher accounts yet"
+              : "No teachers match your search"}
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1000px] text-sm">
+            <table className="w-full min-w-[1100px] text-sm">
               <thead className="border-b border-slate-200 bg-slate-50">
                 <tr>
                   <th className="px-4 py-3 text-left font-medium text-gray-700">
@@ -244,14 +321,17 @@ export default function BossSalaryPage() {
                   <th className="px-4 py-3 text-left font-medium text-gray-700">
                     Branch
                   </th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-700">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 text-right font-medium text-gray-700">
+                    Schedule
+                  </th>
                   <th className="px-4 py-3 text-right font-medium text-gray-700">
                     Lessons
                   </th>
                   <th className="px-4 py-3 text-right font-medium text-gray-700">
                     Hours
-                  </th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-700">
-                    Students
                   </th>
                   <th className="px-4 py-3 text-left font-medium text-gray-700">
                     Pay type
@@ -260,7 +340,7 @@ export default function BossSalaryPage() {
                     Rate
                   </th>
                   <th className="px-4 py-3 text-right font-medium text-gray-700">
-                    Est. pay
+                    Est. salary
                   </th>
                   <th className="px-4 py-3 text-left font-medium text-gray-700">
                     Actions
@@ -268,7 +348,7 @@ export default function BossSalaryPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {rows.map((t) => (
+                {filtered.map((t) => (
                   <tr key={t.id} className="hover:bg-slate-50/80">
                     <td className="px-4 py-3">
                       <div className="font-medium text-gray-900">{t.name}</div>
@@ -277,14 +357,27 @@ export default function BossSalaryPage() {
                     <td className="px-4 py-3 text-gray-600">
                       {t.branch?.name ?? "—"}
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums">
-                      {t.lessonCount}
+                    <td className="px-4 py-3">
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                          t.approved
+                            ? "bg-green-100 text-green-700"
+                            : "bg-orange-100 text-orange-700"
+                        }`}
+                      >
+                        {t.approved ? "Approved" : "Pending"}
+                      </span>
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums">
-                      {t.totalHours.toFixed(1)}
+                    <td className="px-4 py-3 text-right tabular-nums text-gray-600">
+                      {t.recurringSlotCount > 0
+                        ? `${t.recurringSlotCount} class${t.recurringSlotCount === 1 ? "" : "es"}`
+                        : "—"}
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums">
-                      {t.studentCount}
+                    <td className="px-4 py-3 text-right tabular-nums text-gray-900">
+                      {lessonsLabel(t)}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums text-gray-600">
+                      {hoursLabel(t)}
                     </td>
                     <td className="px-4 py-3 text-gray-600">
                       {PAY_TYPE_LABELS[t.payType]}
@@ -296,17 +389,25 @@ export default function BossSalaryPage() {
                         ? `${t.rate.toFixed(2)} AZN`
                         : "—"}
                     </td>
-                    <td className="px-4 py-3 text-right font-semibold tabular-nums">
-                      {fmtAzn(t.estimatedPay)}
+                    <td className="px-4 py-3 text-right">
+                      <div className="font-semibold tabular-nums">
+                        {fmtAzn(t.estimatedPay)}
+                      </div>
+                      {!t.payBasedOnActual && t.projectedLessons > 0 && (
+                        <div className="text-[10px] text-slate-400">
+                          from schedule
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => openDetails(t)}
-                          className="text-xs font-medium text-[#303380] hover:underline"
+                          onClick={() => openSchedule(t)}
+                          className="inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-slate-50"
                         >
-                          Lessons
+                          <Calendar className="h-3 w-3" />
+                          Schedule
                         </button>
                         <button
                           type="button"
@@ -326,6 +427,7 @@ export default function BossSalaryPage() {
         )}
       </div>
 
+      {/* Pay settings modal */}
       {editTeacher && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-xl">
@@ -359,8 +461,8 @@ export default function BossSalaryPage() {
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                 >
                   <option value="PER_LESSON">Per lesson</option>
-                  <option value="HOURLY">Hourly</option>
-                  <option value="FIXED">Fixed monthly</option>
+                  <option value="HOURLY">Hourly rate</option>
+                  <option value="FIXED">Fixed monthly salary</option>
                 </select>
               </div>
               {payType !== "FIXED" ? (
@@ -375,13 +477,15 @@ export default function BossSalaryPage() {
                     value={rate}
                     onChange={(e) => setRate(e.target.value)}
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                    placeholder={payType === "HOURLY" ? "Per hour" : "Per lesson"}
+                    placeholder={
+                      payType === "HOURLY" ? "Amount per hour" : "Amount per lesson"
+                    }
                   />
                 </div>
               ) : (
                 <div>
                   <label className="mb-1 block text-sm font-medium text-gray-700">
-                    Fixed monthly amount (AZN)
+                    Fixed monthly salary (AZN)
                   </label>
                   <input
                     type="number"
@@ -417,36 +521,119 @@ export default function BossSalaryPage() {
         </div>
       )}
 
-      {detailTeacher && (
+      {/* Schedule modal */}
+      {scheduleTeacher && (
         <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/40 p-4">
-          <div className="my-8 flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+          <div className="my-8 flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
             <div className="flex items-start justify-between border-b border-slate-100 px-6 py-4">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">
-                  {detailTeacher.name} — {MONTHS[month]} {year}
+                  {scheduleTeacher.name} — schedule
                 </h2>
                 <p className="text-sm text-slate-500">
-                  {detailTeacher.lessonCount} lessons ·{" "}
-                  {detailTeacher.totalHours.toFixed(1)} hours
+                  {MONTHS[month]} {year}
                 </p>
               </div>
               <button
                 type="button"
-                onClick={() => setDetailTeacher(null)}
+                onClick={() => setScheduleTeacher(null)}
                 className="rounded-lg border border-slate-200 p-1.5 hover:bg-slate-50"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-4">
-              {detailLoading ? (
+
+            <div className="flex gap-1 border-b border-slate-100 px-6 pt-2">
+              {(["recurring", "lessons"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setScheduleTab(tab)}
+                  className={`rounded-t-lg px-4 py-2 text-sm font-medium transition ${
+                    scheduleTab === tab
+                      ? "border-b-2 text-[#303380]"
+                      : "text-slate-500 hover:text-gray-700"
+                  }`}
+                  style={
+                    scheduleTab === tab
+                      ? { borderColor: ACCENT, color: ACCENT }
+                      : undefined
+                  }
+                >
+                  {tab === "recurring" ? "Recurring classes" : "This month"}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6">
+              {scheduleLoading ? (
                 <div className="flex items-center justify-center gap-2 py-12 text-sm text-slate-500">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading lessons…
+                  Loading schedule…
                 </div>
-              ) : detailLessons.length === 0 ? (
+              ) : !scheduleData ? (
                 <p className="py-12 text-center text-sm text-slate-500">
-                  No lessons this month
+                  Could not load schedule
+                </p>
+              ) : scheduleTab === "recurring" ? (
+                <div className="space-y-6">
+                  {(
+                    [
+                      ["Odd days", scheduleData.recurring.oddDays],
+                      ["Even days", scheduleData.recurring.evenDays],
+                    ] as const
+                  ).map(([label, slots]) => (
+                    <div key={label}>
+                      <h3 className="mb-2 text-sm font-semibold text-gray-900">
+                        {label}
+                      </h3>
+                      {slots.length === 0 ? (
+                        <p className="text-sm text-slate-500">No classes</p>
+                      ) : (
+                        <ul className="space-y-2">
+                          {slots.map((s) => (
+                            <li
+                              key={s.id}
+                              className="rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2"
+                            >
+                              <div className="font-medium text-gray-900">
+                                {s.title}
+                                {s.className ? ` · ${s.className}` : ""}
+                              </div>
+                              <div className="text-xs text-slate-500">
+                                {s.timeSlot}
+                                {s.studentCount > 0 &&
+                                  ` · ${s.studentCount} student${s.studentCount === 1 ? "" : "s"}`}
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  ))}
+                  {scheduleData.classes.length > 0 && (
+                    <div>
+                      <h3 className="mb-2 text-sm font-semibold text-gray-900">
+                        All classes
+                      </h3>
+                      <ul className="flex flex-wrap gap-2">
+                        {scheduleData.classes.map((c) => (
+                          <li
+                            key={c.id}
+                            className="rounded-full bg-slate-100 px-3 py-1 text-xs text-gray-700"
+                          >
+                            {c.name} ({c.studentCount})
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              ) : scheduleData.lessons.length === 0 ? (
+                <p className="py-12 text-center text-sm text-slate-500">
+                  No lessons recorded this month yet.
+                  {scheduleTeacher.projectedLessons > 0 &&
+                    ` Schedule projects ${scheduleTeacher.projectedLessons} lessons if applied.`}
                 </p>
               ) : (
                 <table className="w-full text-sm">
@@ -455,20 +642,23 @@ export default function BossSalaryPage() {
                       <th className="pb-2 pr-3">Date</th>
                       <th className="pb-2 pr-3">Time</th>
                       <th className="pb-2 pr-3">Class</th>
-                      <th className="pb-2 pr-3">Topic</th>
                       <th className="pb-2 text-right">Hours</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {detailLessons.map((l) => (
+                    {scheduleData.lessons.map((l) => (
                       <tr key={l.id}>
                         <td className="py-2 pr-3 whitespace-nowrap">{l.date}</td>
                         <td className="py-2 pr-3 whitespace-nowrap">
                           {l.timeSlot}
                         </td>
-                        <td className="py-2 pr-3">{l.className ?? l.title}</td>
-                        <td className="py-2 pr-3 text-slate-600">
-                          {l.topic ?? "—"}
+                        <td className="py-2 pr-3">
+                          {l.className ?? l.title}
+                          {l.topic && (
+                            <span className="block text-xs text-slate-500">
+                              {l.topic}
+                            </span>
+                          )}
                         </td>
                         <td className="py-2 text-right tabular-nums">
                           {l.hours.toFixed(1)}

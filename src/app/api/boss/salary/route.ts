@@ -4,6 +4,10 @@ import { requireBoss } from "@/lib/auth-utils";
 import { handleApiError } from "@/lib/api-helpers";
 import { parseLessonHours } from "@/lib/lesson-time";
 import { computeTeacherPay } from "@/lib/teacher-salary";
+import {
+  projectedHoursForMonth,
+  projectedLessonsForMonth,
+} from "@/lib/schedule-project";
 import { z } from "zod";
 
 const querySchema = z.object({
@@ -25,7 +29,7 @@ export async function GET(request: Request) {
     const start = new Date(Date.UTC(year, month - 1, 1));
     const end = new Date(Date.UTC(year, month, 1));
 
-    const [teachers, paySettings, lessons] = await Promise.all([
+    const [teachers, paySettings, lessons, allSlots] = await Promise.all([
       prisma.user.findMany({
         where: { role: "TEACHER" },
         select: {
@@ -33,6 +37,7 @@ export async function GET(request: Request) {
           firstName: true,
           lastName: true,
           email: true,
+          approved: true,
           branch: { select: { id: true, name: true } },
         },
         orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
@@ -49,9 +54,20 @@ export async function GET(request: Request) {
           studentRecords: { select: { studentId: true } },
         },
       }),
+      prisma.scheduleSlot.findMany({
+        where: { active: true },
+        select: { teacherId: true, dayType: true, timeSlot: true },
+      }),
     ]);
 
     const payByTeacher = new Map(paySettings.map((p) => [p.teacherId, p]));
+
+    const slotsByTeacher = new Map<string, { dayType: "ODD" | "EVEN"; timeSlot: string }[]>();
+    for (const s of allSlots) {
+      const list = slotsByTeacher.get(s.teacherId) ?? [];
+      list.push({ dayType: s.dayType, timeSlot: s.timeSlot });
+      slotsByTeacher.set(s.teacherId, list);
+    }
 
     type Agg = { lessons: number; hours: number; students: Set<string> };
     const aggByTeacher = new Map<string, Agg>();
@@ -85,22 +101,41 @@ export async function GET(request: Request) {
         [t.firstName, t.lastName].filter(Boolean).join(" ").trim() ||
         t.email.split("@")[0];
 
+      const teacherSlots = slotsByTeacher.get(t.id) ?? [];
+      const projectedLessons = projectedLessonsForMonth(
+        teacherSlots,
+        year,
+        month
+      );
+      const projectedHours = projectedHoursForMonth(teacherSlots, year, month);
+
+      // Pay from actual held lessons; if none yet but schedule exists, show
+      // projected estimate so boss can plan before teacher applies the month.
+      const lessonsForPay =
+        agg.lessons > 0 ? agg.lessons : projectedLessons;
+      const hoursForPay = agg.hours > 0 ? agg.hours : projectedHours;
+
       return {
         id: t.id,
         name,
         email: t.email,
+        approved: t.approved,
         branch: t.branch,
+        recurringSlotCount: teacherSlots.length,
         lessonCount: agg.lessons,
+        projectedLessons,
         totalHours: Math.round(agg.hours * 100) / 100,
+        projectedHours,
         studentCount: agg.students.size,
         payType: setting.payType,
         rate: setting.rate,
         fixedAmount: setting.fixedAmount,
         estimatedPay: computeTeacherPay(
           setting,
-          agg.lessons,
-          agg.hours
+          lessonsForPay,
+          hoursForPay
         ),
+        payBasedOnActual: agg.lessons > 0,
       };
     });
 
