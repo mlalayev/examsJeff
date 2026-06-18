@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-utils";
-import { studentProfileWhereForBucket } from "@/lib/study-types";
+import { studentListWhereForBucket } from "@/lib/study-types";
 
 export async function GET(request: Request) {
   try {
@@ -13,7 +13,7 @@ export async function GET(request: Request) {
     const where: {
       role: "STUDENT";
       approved?: boolean;
-      studentProfile?: Record<string, unknown>;
+      AND?: Record<string, unknown>[];
     } = {
       role: "STUDENT",
     };
@@ -22,9 +22,9 @@ export async function GET(request: Request) {
       where.approved = approved === "true";
     }
 
-    const profileWhere = bucket ? studentProfileWhereForBucket(bucket) : null;
-    if (profileWhere) {
-      where.studentProfile = { is: profileWhere };
+    const bucketWhere = bucket ? studentListWhereForBucket(bucket) : null;
+    if (bucketWhere) {
+      where.AND = [bucketWhere];
     }
 
     const rows = await prisma.user.findMany({

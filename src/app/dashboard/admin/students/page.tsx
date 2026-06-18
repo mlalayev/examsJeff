@@ -13,7 +13,6 @@ import {
   LESSON_MODES,
   LESSON_MODE_MAP,
   resolveStudyTypes,
-  STUDENT_BUCKETS,
   STUDENT_BUCKET_MAP,
   resolveStudentBucket,
   STUDENT_KIND_OPTIONS,
@@ -72,7 +71,6 @@ export default function AdminStudentsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterApproved, setFilterApproved] = useState<boolean | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
-  const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [updating, setUpdating] = useState<string | null>(null);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -432,9 +430,7 @@ export default function AdminStudentsPage() {
     const matchesCategory =
       categoryFilter === "ALL" ||
       studentStudyTypes(student).includes(categoryFilter);
-    const matchesStatus =
-      statusFilter === "ALL" || resolveStudentBucket(student) === statusFilter;
-    return matchesSearch && matchesCategory && matchesStatus;
+    return matchesSearch && matchesCategory;
   });
 
   const pendingCount = students.filter(s => !s.approved).length;
@@ -445,13 +441,6 @@ export default function AdminStudentsPage() {
     for (const id of studentStudyTypes(s)) {
       acc[id] = (acc[id] ?? 0) + 1;
     }
-    return acc;
-  }, {});
-
-  // Live count per lifecycle bucket (continues / finished / stopped / exam takers).
-  const bucketCounts = students.reduce<Record<string, number>>((acc, s) => {
-    const b = resolveStudentBucket(s);
-    acc[b] = (acc[b] ?? 0) + 1;
     return acc;
   }, {});
 
@@ -741,33 +730,6 @@ export default function AdminStudentsPage() {
               </div>
             </div>
           )}
-
-          <div className="flex items-start gap-3 sm:gap-4">
-            <span className="mt-1.5 w-12 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-              Status
-            </span>
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5">
-              <FilterTab
-                label="Everyone"
-                count={students.length}
-                active={statusFilter === "ALL"}
-                accent="#303380"
-                onClick={() => setStatusFilter("ALL")}
-              />
-              {STUDENT_BUCKETS.filter(
-                (b) => b.id === "CONTINUES" || b.id === "EXAM_TAKER"
-              ).map((b) => (
-                <FilterTab
-                  key={b.id}
-                  label={b.label}
-                  count={bucketCounts[b.id] ?? 0}
-                  active={statusFilter === b.id}
-                  accent={b.accent}
-                  onClick={() => setStatusFilter(statusFilter === b.id ? "ALL" : b.id)}
-                />
-              ))}
-            </div>
-          </div>
         </div>
       )}
 
@@ -951,8 +913,7 @@ export default function AdminStudentsPage() {
                         {(() => {
                           const bucket = resolveStudentBucket(student);
                           const meta = STUDENT_BUCKET_MAP[bucket];
-                          const label =
-                            bucket === "EXAM_TAKER" ? "Exam taker" : meta?.label ?? bucket;
+                          const label = meta?.label ?? bucket;
                           return (
                             <span
                               className="px-2 py-1 text-xs font-medium rounded-full text-white"

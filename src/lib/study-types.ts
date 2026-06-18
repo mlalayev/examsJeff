@@ -102,7 +102,7 @@ export const LESSON_MODE_MAP: Record<string, LessonModeMeta> = Object.fromEntrie
 
 export const STUDENT_KIND_OPTIONS = [
   { id: "STUDENT", label: "Student" },
-  { id: "EXAM_TAKER", label: "Exam taker" },
+  { id: "EXAM_TAKER", label: "Exam candidate" },
 ] as const;
 
 export const STUDENT_STATUS_OPTIONS = [
@@ -118,14 +118,14 @@ export const STUDENT_BUCKETS: StudentBucketMeta[] = [
   { id: "CONTINUES", label: "Continues", accent: "#16a34a" },
   { id: "FINISHED", label: "Finished", accent: "#2563eb" },
   { id: "STOPPED", label: "Stopped", accent: "#dc2626" },
-  { id: "EXAM_TAKER", label: "Exam takers", accent: "#7c3aed" },
+  { id: "EXAM_TAKER", label: "Exam candidates", accent: "#7c3aed" },
 ];
 
 export const STUDENT_BUCKET_MAP: Record<string, StudentBucketMeta> =
   Object.fromEntries(STUDENT_BUCKETS.map((b) => [b.id, b]));
 
 /**
- * Resolve the single lifecycle bucket a student belongs to. Exam-takers always
+ * Resolve the single lifecycle bucket a student belongs to. Exam candidates always
  * win; a stopped/paused student is "STOPPED"; otherwise the stored status.
  */
 export function resolveStudentBucket(s: {
@@ -164,20 +164,59 @@ export function studentProfileWhereForBucket(
     case "EXAM_TAKER":
       return { studentKind: "EXAM_TAKER" };
     case "ACTIVE":
-      // Main students list: continuing + exam takers (not finished/stopped).
+      // Main students list: regular continuing students (not finished/stopped/candidates).
       return {
-        OR: [
-          { studentKind: "EXAM_TAKER" },
+        AND: [
           {
-            studentKind: { not: "EXAM_TAKER" },
-            lessonsStopped: false,
-            studyStatus: { notIn: ["FINISHED", "STOPPED"] },
+            NOT: {
+              studentProfile: {
+                is: {
+                  OR: [
+                    { studyStatus: "FINISHED" },
+                    { studyStatus: "STOPPED" },
+                    { lessonsStopped: true },
+                    { studentKind: "EXAM_TAKER" },
+                  ],
+                },
+              },
+            },
           },
         ],
       };
     default:
       return null;
   }
+}
+
+/**
+ * User-level `where` fragment for listing students by lifecycle bucket.
+ * ACTIVE includes students with no profile yet (newly created accounts).
+ */
+export function studentListWhereForBucket(
+  bucket: string
+): Record<string, unknown> | null {
+  if (bucket === "ACTIVE") {
+    // Regular students only — excludes finished/stopped and exam candidates.
+    return {
+      NOT: {
+        studentProfile: {
+          is: {
+            OR: [
+              { studyStatus: "FINISHED" },
+              { studyStatus: "STOPPED" },
+              { lessonsStopped: true },
+              { studentKind: "EXAM_TAKER" },
+            ],
+          },
+        },
+      },
+    };
+  }
+
+  const profileWhere = studentProfileWhereForBucket(bucket);
+  if (!profileWhere) return null;
+
+  return { studentProfile: { is: profileWhere } };
 }
 
 /** Infer study types from a legacy free-text program string. */

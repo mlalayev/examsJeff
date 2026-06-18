@@ -30,6 +30,7 @@ import {
   Wallet,
   Pause,
   CircleCheck,
+  ClipboardCheck,
 } from "lucide-react";
 import StudentNav from "@/components/dashboard/student/StudentNav";
 
@@ -94,6 +95,12 @@ export default function Sidebar() {
         href: "/dashboard/creator/students/stopped",
         icon: Pause,
         color: "from-red-500 to-red-600",
+      },
+      {
+        label: "Candidates",
+        href: "/dashboard/creator/students/candidates",
+        icon: ClipboardCheck,
+        color: "from-violet-500 to-violet-600",
       },
       {
         label: "Exams",
@@ -173,6 +180,12 @@ export default function Sidebar() {
         href: "/dashboard/admin/students/stopped",
         icon: Pause,
         color: "from-red-500 to-red-600",
+      },
+      {
+        label: "Candidates",
+        href: "/dashboard/admin/students/candidates",
+        icon: ClipboardCheck,
+        color: "from-violet-500 to-violet-600",
       },
       {
         label: "Exams",
@@ -293,6 +306,12 @@ export default function Sidebar() {
         href: "/dashboard/admin/students/stopped",
         icon: Pause,
         color: "from-red-500 to-red-600",
+      },
+      {
+        label: "Candidates",
+        href: "/dashboard/admin/students/candidates",
+        icon: ClipboardCheck,
+        color: "from-violet-500 to-violet-600",
       },
       {
         label: "Exams",
