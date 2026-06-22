@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, User as UserIcon, Loader2, KeyRound } from "lucide-react";
+import { X, User as UserIcon, Loader2, KeyRound, Coins } from "lucide-react";
 import ToggleChips from "@/components/forms/ToggleChips";
+import ManualCoinModal from "@/components/coins/ManualCoinModal";
+import CoinStudentHistoryPanel from "@/components/coins/CoinStudentHistoryPanel";
 import {
   STUDY_TYPES,
   LESSON_MODES,
@@ -86,6 +88,9 @@ export default function EditAccountModal({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [coinBalance, setCoinBalance] = useState(0);
+  const [showCoinModal, setShowCoinModal] = useState(false);
+  const [coinHistoryRefresh, setCoinHistoryRefresh] = useState(0);
 
   useEffect(() => {
     if (!open || !userId) return;
@@ -119,6 +124,7 @@ export default function EditAccountModal({
           studentKind: u.profile?.studentKind ?? "STUDENT",
           studyStatus: u.profile?.studyStatus ?? "CONTINUES",
         });
+        setCoinBalance(u.profile?.coinBalance ?? 0);
       } catch {
         if (!cancelled) setError("Failed to load account");
       } finally {
@@ -416,6 +422,36 @@ export default function EditAccountModal({
                           onToggle={(id) => toggleIn("lessonModes", id)}
                         />
                       </div>
+
+                      <div className="mt-5 rounded-lg border border-amber-100 bg-amber-50/60 p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-medium text-gray-900 flex items-center gap-1.5">
+                              <Coins className="w-4 h-4 text-amber-600" />
+                              Coin balance
+                            </p>
+                            <p className="text-2xl font-bold text-amber-700 mt-1">
+                              {coinBalance}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setShowCoinModal(true)}
+                            className="px-3 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700"
+                          >
+                            Add Coins
+                          </button>
+                        </div>
+                      </div>
+
+                      {userId && (
+                        <div className="mt-5">
+                          <CoinStudentHistoryPanel
+                            studentId={userId}
+                            refreshToken={coinHistoryRefresh}
+                          />
+                        </div>
+                      )}
                     </>
                   )}
                 </div>
@@ -463,6 +499,24 @@ export default function EditAccountModal({
           </button>
         </div>
       </div>
+
+      {userId && form.role === "STUDENT" && (
+        <ManualCoinModal
+          open={showCoinModal}
+          studentId={userId}
+          studentName={
+            [form.firstName, form.lastName].filter(Boolean).join(" ").trim() ||
+            form.email ||
+            "Student"
+          }
+          initialBalance={coinBalance}
+          onClose={() => setShowCoinModal(false)}
+          onSuccess={(balance) => {
+            setCoinBalance(balance);
+            setCoinHistoryRefresh((n) => n + 1);
+          }}
+        />
+      )}
     </div>
   );
 }

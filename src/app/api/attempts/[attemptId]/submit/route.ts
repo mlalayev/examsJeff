@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireStudent } from "@/lib/auth-utils";
 import { SectionType, QuestionType } from "@prisma/client";
+import { tryAwardExamScoreReward } from "@/lib/coins";
 import { scoreQuestion } from "@/lib/scoring";
 
 type AnswersByQuestionId = Record<string, any>;
@@ -228,6 +229,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
           bandOverall: overallPercent ?? undefined,
         },
       });
+
+      await tryAwardExamScoreReward(attemptId, tx);
     });
 
     return NextResponse.json({ success: true, attemptId, resultsUrl: `/attempt/${attemptId}/results` });

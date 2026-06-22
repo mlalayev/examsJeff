@@ -1,9 +1,29 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import CoinBalanceCard from "@/components/coins/CoinBalanceCard";
 
 export default function StudentDashboard() {
   const { data: session, status } = useSession();
+  const [coinBalance, setCoinBalance] = useState(0);
+  const [coinsLoading, setCoinsLoading] = useState(true);
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    const load = async () => {
+      try {
+        const res = await fetch("/api/student/coins");
+        const data = await res.json();
+        if (res.ok) setCoinBalance(data.balance ?? 0);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setCoinsLoading(false);
+      }
+    };
+    load();
+  }, [status]);
 
   if (status === "loading") {
     return (
@@ -57,6 +77,10 @@ export default function StudentDashboard() {
         <p className="text-lg text-slate-600 max-w-xl mx-auto mb-8">
           Your learning journey starts here. Practice with mock exams and track your progress.
         </p>
+
+        <div className="max-w-md mx-auto mb-8 text-left">
+          <CoinBalanceCard balance={coinBalance} loading={coinsLoading} />
+        </div>
 
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-full text-slate-600 text-sm">
           <span>📚</span>

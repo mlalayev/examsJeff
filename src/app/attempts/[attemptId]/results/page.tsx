@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import Sidebar from "@/components/dashboard/Sidebar";
 import { WritingAiFeedbackCard } from "@/components/attempts/WritingAiFeedbackCard";
+import { ExamCoinRewardBanner } from "@/components/coins/ExamCoinRewardBanner";
 import FormattedText from "@/components/FormattedText";
 import {
   resolveSpeakingAudioSrc,
@@ -35,6 +36,7 @@ interface ResultsData {
   submittedAt: string;
   status: string;
   role: "STUDENT" | "TEACHER" | "PARENT";
+  coinReward?: { amount: number; earnedAt: string } | null;
   summary: {
     totalCorrect: number;
     totalQuestions: number;
@@ -762,7 +764,10 @@ export default function AttemptResultsPage() {
         {/* STUDENT: Show only a friendly message, no scores or section details */}
         {data.role === "STUDENT" ? (
           <div className="flex-1 min-h-0 flex items-center justify-center py-12">
-            <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-8 max-w-2xl w-full">
+            <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-8 max-w-2xl w-full space-y-4">
+              {data.coinReward && (
+                <ExamCoinRewardBanner amount={data.coinReward.amount} />
+              )}
               <div className="flex flex-col items-center text-center">
                 <div className="w-16 h-16 rounded-full bg-[#303380]/10 flex items-center justify-center mb-6">
                   <FileCheck className="w-8 h-8 text-[#303380]" />
@@ -781,6 +786,9 @@ export default function AttemptResultsPage() {
           </div>
         ) : (
           <>
+        {data.coinReward && (
+          <ExamCoinRewardBanner amount={data.coinReward.amount} className="mb-6" />
+        )}
         {/* Overall Score Card */}
         <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
           <div className="flex items-center justify-between mb-4">

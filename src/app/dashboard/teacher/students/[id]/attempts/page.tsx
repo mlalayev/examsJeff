@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, FileText, Calendar, CheckCircle, Clock, Trash2 } from "lucide-react";
+import { ArrowLeft, FileText, Calendar, CheckCircle, Clock, Trash2, Coins } from "lucide-react";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
+import ManualCoinModal from "@/components/coins/ManualCoinModal";
+import CoinStudentHistoryPanel from "@/components/coins/CoinStudentHistoryPanel";
 
 interface Attempt {
   id: string;
@@ -27,6 +29,7 @@ interface Student {
   id: string;
   name: string | null;
   email: string;
+  coinBalance?: number;
 }
 
 export default function StudentAttemptsPage() {
@@ -39,6 +42,8 @@ export default function StudentAttemptsPage() {
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [attemptToDelete, setAttemptToDelete] = useState<Attempt | null>(null);
+  const [showCoinModal, setShowCoinModal] = useState(false);
+  const [coinHistoryRefresh, setCoinHistoryRefresh] = useState(0);
 
   useEffect(() => {
     fetchData();
@@ -172,6 +177,20 @@ export default function StudentAttemptsPage() {
             </div>
             <div className="hidden sm:flex items-center gap-6 text-xs text-gray-600">
               <div className="text-right">
+                <div className="text-sm font-semibold text-amber-700 flex items-center justify-end gap-1">
+                  <Coins className="w-3.5 h-3.5" />
+                  {student.coinBalance ?? 0}
+                </div>
+                <div className="text-[11px] text-gray-500">Coins</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCoinModal(true)}
+                className="px-3 py-1.5 text-xs font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700"
+              >
+                Add Coins
+              </button>
+              <div className="text-right">
                 <div className="text-sm font-semibold text-gray-900">
                   {totalAttempts}
                 </div>
@@ -193,6 +212,15 @@ export default function StudentAttemptsPage() {
           </div>
         )}
       </div>
+
+      {student && (
+        <div className="mb-6 bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+          <CoinStudentHistoryPanel
+            studentId={student.id}
+            refreshToken={coinHistoryRefresh}
+          />
+        </div>
+      )}
 
       {/* Attempts List */}
       {loading ? (
@@ -354,6 +382,20 @@ export default function StudentAttemptsPage() {
           confirmText="Delete"
           cancelText="Cancel"
           type="danger"
+        />
+      )}
+
+      {student && (
+        <ManualCoinModal
+          open={showCoinModal}
+          studentId={student.id}
+          studentName={student.name || student.email}
+          initialBalance={student.coinBalance ?? 0}
+          onClose={() => setShowCoinModal(false)}
+          onSuccess={(balance) => {
+            setStudent((prev) => (prev ? { ...prev, coinBalance: balance } : prev));
+            setCoinHistoryRefresh((n) => n + 1);
+          }}
         />
       )}
     </div>

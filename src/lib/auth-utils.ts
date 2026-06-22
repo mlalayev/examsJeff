@@ -218,3 +218,24 @@ export function canCreatePartnerAccount(role: string | undefined): boolean {
   return canManageReferrals(role);
 }
 
+const COIN_MANAGER_ROLES = new Set(["CREATOR", "BOSS", "ADMIN", "TEACHER"]);
+
+export function canManageStudentCoins(role: string | undefined): boolean {
+  return role != null && COIN_MANAGER_ROLES.has(role);
+}
+
+export async function requireCoinManager() {
+  const user = await requireAuth();
+  const role = (user as any).role as string;
+
+  if (!canManageStudentCoins(role)) {
+    throw new Error("Forbidden: Coin manager access required");
+  }
+
+  if (role === "TEACHER" && !(user as any).approved) {
+    throw new Error("Forbidden: Approval required");
+  }
+
+  return user;
+}
+

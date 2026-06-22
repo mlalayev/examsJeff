@@ -56,6 +56,8 @@ model User {
   lessonSessions              LessonSession[]       @relation("TeacherLessonSessions")
   lessonRecordsAsStudent      LessonStudentRecord[] @relation("StudentLessonRecords")
   lessonRecordsAsTeacher      LessonStudentRecord[] @relation("TeacherLessonRecords")
+  coinTransactionsAsStudent   CoinTransaction[]     @relation("StudentCoinTransactions")
+  coinTransactionsCreated     CoinTransaction[]     @relation("CoinTransactionCreator")
 
   @@map("users")
 }
@@ -177,11 +179,12 @@ model Attempt {
   examId         String
   studentId      String
   answers        Json?
-  sections       AttemptSection[]
-  attemptAnswers AttemptAnswer[]
-  assignment     Assignment?      @relation(fields: [assignmentId], references: [id])
-  booking        Booking?         @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  branch         Branch?          @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  sections         AttemptSection[]
+  attemptAnswers   AttemptAnswer[]
+  coinTransactions CoinTransaction[]
+  assignment       Assignment?      @relation(fields: [assignmentId], references: [id])
+  booking          Booking?         @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  branch           Branch?          @relation(fields: [branchId], references: [id], onDelete: Restrict)
 
   @@index([studentId, status])
   @@index([studentId, createdAt])
@@ -566,6 +569,7 @@ model StudentProfile {
   studyStatus      String    @default("CONTINUES")
   lessonsStopped   Boolean   @default(false)
   lessonsStoppedAt DateTime?
+  coinBalance      Int       @default(0)
   branch           Branch    @relation(fields: [branchId], references: [id])
   student          User      @relation("StudentProfileUser", fields: [studentId], references: [id], onDelete: Cascade)
   teacher          User?     @relation("TeacherOfStudent", fields: [teacherId], references: [id])
@@ -573,6 +577,27 @@ model StudentProfile {
   @@index([branchId])
   @@index([teacherId])
   @@map("student_profiles")
+}
+
+model CoinTransaction {
+  id             String                @id @default(cuid())
+  studentId      String
+  amount         Int
+  type           CoinTransactionType
+  reason         String?
+  source         CoinTransactionSource
+  examAttemptId  String?
+  createdById    String?
+  createdAt      DateTime              @default(now())
+
+  student     User     @relation("StudentCoinTransactions", fields: [studentId], references: [id], onDelete: Cascade)
+  createdBy   User?    @relation("CoinTransactionCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  examAttempt Attempt? @relation(fields: [examAttemptId], references: [id], onDelete: SetNull)
+
+  @@unique([studentId, examAttemptId, type], name: "unique_student_exam_coin_type")
+  @@index([studentId, createdAt])
+  @@index([type, createdAt])
+  @@map("coin_transactions")
 }
 
 model TeacherProfile {
@@ -627,6 +652,17 @@ enum ReferralStatus {
   IN_PROGRESS
   ACCEPTED
   DECLINED
+}
+
+enum CoinTransactionType {
+  EARNED
+  MANUAL_ADD
+  MANUAL_DEDUCT
+}
+
+enum CoinTransactionSource {
+  EXAM_SCORE
+  ADMIN_ACTION
 }
 
 model Referral {

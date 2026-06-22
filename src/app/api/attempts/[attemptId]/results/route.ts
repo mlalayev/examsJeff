@@ -6,6 +6,7 @@ import {
   getIeltsBandForSection,
   type IeltsReadingType,
 } from "@/lib/ielts-band";
+import { getAttemptCoinReward } from "@/lib/coins";
 import {
   countInlineSelectBlanks,
   getInlineSelectBlankChoices,
@@ -281,6 +282,14 @@ export async function GET(
       );
     }
     
+    const attemptCoinReward = await getAttemptCoinReward(attemptId);
+    const coinReward = attemptCoinReward
+      ? {
+          amount: attemptCoinReward.amount,
+          earnedAt: attemptCoinReward.createdAt.toISOString(),
+        }
+      : null;
+
     // Group sections: parent sections with their subsections
     const parentSections = examWithSections.sections.filter((s: any) => !s.parentSectionId);
     const subsectionsByParent = examWithSections.sections
@@ -404,6 +413,7 @@ export async function GET(
         studentName: booking.student.name || booking.student.email,
         status: attempt.status,
         role: isParent ? "PARENT" : "STUDENT",
+        coinReward,
         summary: {
           totalCorrect,
           totalQuestions,
@@ -721,6 +731,7 @@ export async function GET(
         submittedAt: attempt.submittedAt,
         status: attempt.status,
         role: "TEACHER",
+        coinReward,
         summary: {
           totalCorrect,
           totalQuestions,

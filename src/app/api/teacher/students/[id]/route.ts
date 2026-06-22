@@ -14,6 +14,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         name: true,
         email: true,
         role: true,
+        studentProfile: {
+          select: { coinBalance: true },
+        },
       },
     });
 
@@ -21,7 +24,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: "Student not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ student });
+    return NextResponse.json({
+      student: {
+        id: student.id,
+        name: student.name,
+        email: student.email,
+        coinBalance: student.studentProfile?.coinBalance ?? 0,
+      },
+    });
   } catch (error) {
     console.error("Get student error:", error);
     return NextResponse.json({ error: "Failed to fetch student" }, { status: 500 });

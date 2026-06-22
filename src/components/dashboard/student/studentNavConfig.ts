@@ -43,6 +43,7 @@ export const studentNavSections: StudentNavSectionItem[] = [
     subs: [
       { label: "Take Exam", href: "/dashboard/student/exams" },
       { label: "Exam History", href: "/dashboard/student/history" },
+      { label: "My Coins", href: "/dashboard/student/coins" },
     ],
   },
   {

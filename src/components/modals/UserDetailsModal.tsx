@@ -5,8 +5,10 @@ import {
   X, Edit2, Check, ChevronDown, Building2, Calendar, Clock,
   GraduationCap, BookOpen, Users, CreditCard, Award, Target,
   Shield, Briefcase, Key, UserCheck, UserX, BarChart3,
-  TrendingUp, FileText, Star, Layers
+  TrendingUp, FileText, Star, Layers, Coins
 } from "lucide-react";
+import ManualCoinModal from "@/components/coins/ManualCoinModal";
+import CoinStudentHistoryPanel from "@/components/coins/CoinStudentHistoryPanel";
 
 interface UserDetailsModalProps {
   userDetails: any;
@@ -70,16 +72,17 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
 }
 
 // ─── Student layout ──────────────────────────────────────────────────────────
-function StudentLayout({ u, editing, setEditing, newRole, setNewRole, newBranchId, setNewBranchId, branches, onSave, onCancel, saving, onApprove, approving, onResetPassword }: any) {
+function StudentLayout({ u, editing, setEditing, newRole, setNewRole, newBranchId, setNewBranchId, branches, onSave, onCancel, saving, onApprove, approving, onResetPassword, coinBalance, onAddCoins, coinHistoryRefresh }: any) {
   const cfg = ROLE_CONFIG["STUDENT"];
   return (
     <div className="flex flex-col gap-6">
       {/* Stats row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <StatCard icon={BookOpen}     label="Attempts"         value={u._count?.attempts ?? 0}           accent="bg-blue-100 text-blue-600" />
         <StatCard icon={Users}        label="Classes"          value={u._count?.classEnrollments ?? 0}   accent="bg-indigo-100 text-indigo-600" />
         <StatCard icon={FileText}     label="Enrollments"      value={u._count?.enrollments ?? 0}        accent="bg-purple-100 text-purple-600" />
         <StatCard icon={CreditCard}   label="Payments"         value={u._count?.payments ?? 0}           accent="bg-emerald-100 text-emerald-600" />
+        <StatCard icon={Coins}        label="Coins"            value={coinBalance ?? 0}                  accent="bg-amber-100 text-amber-600" />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -152,6 +155,15 @@ function StudentLayout({ u, editing, setEditing, newRole, setNewRole, newBranchI
                   ? <span>{u.studentProfile.teacher.name}<br /><span className="text-xs text-gray-400">{u.studentProfile.teacher.email}</span></span>
                   : "—"}
               </InfoRow>
+              <div className="pt-3">
+                <button
+                  type="button"
+                  onClick={onAddCoins}
+                  className="w-full py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 transition"
+                >
+                  Add Coins
+                </button>
+              </div>
             </div>
           ) : (
             <p className="text-sm text-gray-400 italic">No student profile found.</p>
@@ -207,6 +219,13 @@ function StudentLayout({ u, editing, setEditing, newRole, setNewRole, newBranchI
           </div>
         </div>
       )}
+
+      <div className="bg-gray-50 rounded-xl p-5">
+        <CoinStudentHistoryPanel
+          studentId={u.id}
+          refreshToken={coinHistoryRefresh}
+        />
+      </div>
 
       {/* Classes */}
       {u.classEnrollments?.length > 0 && (
@@ -526,6 +545,9 @@ export function UserDetailsModal({
   const [editing, setEditing] = useState<"role" | "branch" | null>(null);
   const [newRole, setNewRole] = useState(u.role);
   const [newBranchId, setNewBranchId] = useState(u.branchId || "");
+  const [coinBalance, setCoinBalance] = useState(u.studentProfile?.coinBalance ?? 0);
+  const [showCoinModal, setShowCoinModal] = useState(false);
+  const [coinHistoryRefresh, setCoinHistoryRefresh] = useState(0);
 
   const cfg = ROLE_CONFIG[u.role] ?? ROLE_CONFIG["ADMIN"];
   const RoleIcon = cfg.icon;
@@ -542,6 +564,9 @@ export function UserDetailsModal({
     newBranchId, setNewBranchId, branches,
     onSave: handleSave, onCancel: handleCancel, saving: updating,
     onApprove, approving, onResetPassword,
+    coinBalance,
+    onAddCoins: () => setShowCoinModal(true),
+    coinHistoryRefresh,
   };
 
   const isStudent = u.role === "STUDENT";
@@ -634,6 +659,20 @@ export function UserDetailsModal({
           </div>
         )}
       </div>
+
+      {isStudent && (
+        <ManualCoinModal
+          open={showCoinModal}
+          studentId={u.id}
+          studentName={u.name || u.email}
+          initialBalance={coinBalance}
+          onClose={() => setShowCoinModal(false)}
+          onSuccess={(balance) => {
+            setCoinBalance(balance);
+            setCoinHistoryRefresh((n) => n + 1);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -3,14 +3,16 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { ArrowLeft, Award, FileText, CheckCircle, XCircle, Clock, MessageSquare } from "lucide-react";
+import { ArrowLeft, Award, FileText, CheckCircle, XCircle, Clock, MessageSquare, Coins } from "lucide-react";
 import UnifiedLoading from "@/components/loading/UnifiedLoading";
+import { ExamCoinRewardBanner } from "@/components/coins/ExamCoinRewardBanner";
 
 interface ReviewData {
   attemptId: string;
   status: string;
   submittedAt: string | null;
   bandOverall: number | null;
+  coinReward?: { amount: number; earnedAt: string } | null;
   sections: Array<{
     type: string;
     status: string;
@@ -128,6 +130,10 @@ export default function StudentResultsPage({ params }: { params: { attemptId: st
             : "N/A"}
         </p>
       </div>
+
+      {data.coinReward && (
+        <ExamCoinRewardBanner amount={data.coinReward.amount} className="mb-6" />
+      )}
 
       {/* Overall Band */}
       {data.bandOverall !== null && (

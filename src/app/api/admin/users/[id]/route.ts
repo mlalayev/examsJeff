@@ -41,6 +41,7 @@ export async function GET(
             lessonModes: true,
             studentKind: true,
             studyStatus: true,
+            coinBalance: true,
           },
         },
         teacherProfile: {
@@ -83,6 +84,7 @@ export async function GET(
               lessonModes: user.studentProfile?.lessonModes ?? [],
               studentKind: user.studentProfile?.studentKind ?? "STUDENT",
               studyStatus: user.studentProfile?.studyStatus ?? "CONTINUES",
+              coinBalance: user.studentProfile?.coinBalance ?? 0,
             }
           : null,
       },

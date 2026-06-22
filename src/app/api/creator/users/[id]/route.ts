@@ -89,6 +89,7 @@ export async function GET(
               id: true,
               firstEnrollAt: true,
               monthlyFee: true,
+              coinBalance: true,
               teacher: { select: { id: true, name: true, email: true } }
             }
           },
