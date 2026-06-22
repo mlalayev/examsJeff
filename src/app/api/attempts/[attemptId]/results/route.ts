@@ -6,6 +6,10 @@ import {
   getIeltsBandForSection,
   type IeltsReadingType,
 } from "@/lib/ielts-band";
+import {
+  countInlineSelectBlanks,
+  getInlineSelectBlankChoices,
+} from "@/lib/inline-select-utils";
 
 /**
  * Normalize a single text value for case-/punctuation-insensitive comparison.
@@ -91,6 +95,19 @@ function checkAnswerCorrectness(q: any, studentAnswer: any, answerKey: any): boo
     const correctValueUpper = typeof correctValue === 'string' ? correctValue.toUpperCase() : String(correctValue).toUpperCase();
     return studentValue === correctValueUpper;
   } else if (q.qtype === "MCQ_SINGLE" || q.qtype === "SELECT" || q.qtype === "INLINE_SELECT") {
+    if (
+      studentAnswer &&
+      typeof studentAnswer === "object" &&
+      !Array.isArray(studentAnswer) &&
+      Array.isArray(answerKey?.indices)
+    ) {
+      for (let i = 0; i < answerKey.indices.length; i++) {
+        if ((studentAnswer as Record<string, number>)[String(i)] !== answerKey.indices[i]) {
+          return false;
+        }
+      }
+      return true;
+    }
     return studentAnswer === answerKey?.index;
   } else if (q.qtype === "MCQ_MULTI") {
     const sorted = Array.isArray(studentAnswer) ? [...studentAnswer].sort() : [];
@@ -494,14 +511,36 @@ export async function GET(
             // For INLINE_SELECT, MCQ_SINGLE, SELECT: show text instead of index
             if (q.qtype === "INLINE_SELECT" || q.qtype === "MCQ_SINGLE" || q.qtype === "SELECT") {
               const choices = q.options?.choices || [];
-              if (typeof studentAnswer === "number" && choices[studentAnswer] !== undefined) {
+              if (
+                q.qtype === "INLINE_SELECT" &&
+                studentAnswer &&
+                typeof studentAnswer === "object" &&
+                !Array.isArray(studentAnswer) &&
+                Array.isArray(answerKey?.indices)
+              ) {
+                const promptText = (q.prompt as { text?: string })?.text || "";
+                const blankCount = countInlineSelectBlanks(promptText);
+                const blankChoices = getInlineSelectBlankChoices(q.options, blankCount);
+                const toText = (indices: number[]) =>
+                  indices
+                    .map((idx, i) => (blankChoices[i] || choices)[idx] ?? `Option ${idx}`)
+                    .join(" / ");
+                displayStudentAnswer = toText(
+                  Array.from({ length: blankCount }, (_, i) =>
+                    Number((studentAnswer as Record<string, number>)[String(i)])
+                  )
+                );
+                displayCorrectAnswer = toText(answerKey.indices);
+              } else if (typeof studentAnswer === "number" && choices[studentAnswer] !== undefined) {
                 displayStudentAnswer = choices[studentAnswer];
               } else if (typeof studentAnswer === "string") {
-                // Already a string (maybe from previous edit), keep it
                 displayStudentAnswer = studentAnswer;
               }
-              // For correct answer, convert to text
-              if (typeof answerKey?.index === "number" && choices[answerKey.index]) {
+              if (
+                typeof answerKey?.index === "number" &&
+                choices[answerKey.index] &&
+                !(q.qtype === "INLINE_SELECT" && Array.isArray(answerKey?.indices))
+              ) {
                 displayCorrectAnswer = choices[answerKey.index];
               }
             }

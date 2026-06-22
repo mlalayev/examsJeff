@@ -2,24 +2,28 @@
 
 import { BaseQuestionProps } from "./types";
 import { QuestionImage } from "./QuestionImage";
+import { normalizeTfngAnswer, type TfngAnswer } from "@/lib/question-answer-normalize";
 
-type TFNGValue = "TRUE" | "FALSE" | "NOT_GIVEN" | null;
-
-export function QTFNG({ question, value, onChange, readOnly, onImageClick }: BaseQuestionProps<TFNGValue>) {
+export function QTFNG({
+  question,
+  value,
+  onChange,
+  readOnly,
+  onImageClick,
+}: BaseQuestionProps<TfngAnswer | null>) {
   const imageUrl = question.prompt?.imageUrl;
+  const selected = normalizeTfngAnswer(value);
 
-  const handleChange = (next: TFNGValue) => {
+  const handleChange = (next: TfngAnswer) => {
     if (readOnly) return;
     onChange(next);
   };
 
-  const isSelected = (target: Exclude<TFNGValue, null>) => value === target;
-
   const baseClasses =
     "flex-1 flex items-center justify-center space-x-3 px-4 py-3 rounded-lg border transition-all shadow-sm";
 
-  const getButtonStyles = (selected: boolean) =>
-    selected
+  const getButtonStyles = (isSelected: boolean) =>
+    isSelected
       ? {
           className: `${baseClasses} border-transparent shadow-md ${
             readOnly ? "opacity-70 cursor-not-allowed" : ""
@@ -41,90 +45,42 @@ export function QTFNG({ question, value, onChange, readOnly, onImageClick }: Bas
           } as React.CSSProperties,
         };
 
+  const options: { key: TfngAnswer; label: string }[] = [
+    { key: "TRUE", label: "True" },
+    { key: "FALSE", label: "False" },
+    { key: "NOT_GIVEN", label: "Not Given" },
+  ];
+
   return (
     <div className="space-y-3">
       <QuestionImage imageUrl={imageUrl} onClick={() => imageUrl && onImageClick?.(imageUrl)} />
       <div className="flex flex-col sm:flex-row gap-3">
-        {/* TRUE */}
-        {(() => {
-          const selected = isSelected("TRUE");
-          const { className, style } = getButtonStyles(selected);
+        {options.map(({ key, label }) => {
+          const isSelected = selected === key;
+          const { className, style } = getButtonStyles(isSelected);
           return (
             <button
+              key={key}
               type="button"
-              onClick={() => handleChange("TRUE")}
+              onClick={() => handleChange(key)}
               disabled={readOnly}
               className={className}
               style={style}
             >
               <div
                 className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                  selected ? "border-white" : "border-gray-300"
+                  isSelected ? "border-white" : "border-gray-300"
                 }`}
               >
-                {selected && <div className="w-2.5 h-2.5 rounded-full bg-white"></div>}
+                {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-white"></div>}
               </div>
-              <span className="text-base font-medium">True</span>
+              <span className={`text-base font-medium ${key === "NOT_GIVEN" ? "whitespace-nowrap" : ""}`}>
+                {label}
+              </span>
             </button>
           );
-        })()}
-
-        {/* FALSE */}
-        {(() => {
-          const selected = isSelected("FALSE");
-          const { className, style } = getButtonStyles(selected);
-          return (
-            <button
-              type="button"
-              onClick={() => handleChange("FALSE")}
-              disabled={readOnly}
-              className={className}
-              style={style}
-            >
-              <div
-                className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                  selected ? "border-white" : "border-gray-300"
-                }`}
-              >
-                {selected && <div className="w-2.5 h-2.5 rounded-full bg-white"></div>}
-              </div>
-              <span className="text-base font-medium">False</span>
-            </button>
-          );
-        })()}
-
-        {/* NOT GIVEN */}
-        {(() => {
-          const selected = isSelected("NOT_GIVEN");
-          const { className, style } = getButtonStyles(selected);
-          return (
-            <button
-              type="button"
-              onClick={() => handleChange("NOT_GIVEN")}
-              disabled={readOnly}
-              className={className}
-              style={style}
-            >
-              <div
-                className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                  selected ? "border-white" : "border-gray-300"
-                }`}
-              >
-                {selected && <div className="w-2.5 h-2.5 rounded-full bg-white"></div>}
-              </div>
-              <span className="text-base font-medium whitespace-nowrap">Not Given</span>
-            </button>
-          );
-        })()}
+        })}
       </div>
     </div>
   );
 }
-
-
-
-
-
-
-
-

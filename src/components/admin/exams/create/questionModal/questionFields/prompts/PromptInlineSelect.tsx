@@ -23,14 +23,14 @@ export function PromptInlineSelect({ question, onChange }: PromptInlineSelectPro
         rows={3}
       />
       <div className="text-xs text-gray-500 bg-blue-50 p-2 rounded border border-blue-200">
-        <strong>Tip:</strong> Use ___ (3 underscores) where you want the dropdown to appear inline.
-        If you don't use ___, the dropdown will appear at the end of the sentence.
+        <strong>Tip:</strong> Use <code className="bg-blue-100 px-1 rounded">___</code> (3 underscores) where you want each dropdown to appear.
+        If you use multiple <code className="bg-blue-100 px-1 rounded">___</code>, each dropdown can have its own separate list of words in the Options section below.
         <br />
         <strong>Examples:</strong>
         <br />
-        • "I ___ to school every day." → dropdown appears inline
+        • &quot;I ___ to school and ___ the bus.&quot; → two dropdowns, each with its own word list
         <br />
-        • "What is the capital of France?" → dropdown appears at the end
+        • &quot;What is the capital of France?&quot; → one dropdown at the end of the sentence
       </div>
     </div>
   );

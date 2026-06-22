@@ -5,6 +5,9 @@ import FormattedText from "./FormattedText";
 import { parseStructuredTextBlocks } from "@/lib/text-formatter";
 import { StructuredFormattedText } from "@/components/StructuredFormattedText";
 import { Bookmark, Strikethrough } from "lucide-react";
+import { QTF } from "@/components/questions/QTF";
+import { QTFNG } from "@/components/questions/QTFNG";
+import { QInlineSelect } from "@/components/questions/QInlineSelect";
 
 interface QuestionPreviewProps {
   question: {
@@ -187,8 +190,20 @@ export default function QuestionPreview({ question }: QuestionPreviewProps) {
           </div>
         )}
 
-        {/* Options */}
-        {(question.qtype === "MCQ_SINGLE" || question.qtype === "MCQ_MULTI" || question.qtype === "INLINE_SELECT") &&
+        {/* Inline Select — show dropdowns in context */}
+        {question.qtype === "INLINE_SELECT" && (
+          <div className="mt-4">
+            <QInlineSelect
+              question={question as any}
+              value={null}
+              onChange={() => {}}
+              readOnly={false}
+            />
+          </div>
+        )}
+
+        {/* Options (MCQ only — INLINE_SELECT uses inline dropdowns above) */}
+        {(question.qtype === "MCQ_SINGLE" || question.qtype === "MCQ_MULTI") &&
           question.options?.choices &&
           question.options.choices.length > 0 && (
             <div className="space-y-3 mt-4">
@@ -233,22 +248,15 @@ export default function QuestionPreview({ question }: QuestionPreviewProps) {
 
         {/* True/False */}
         {question.qtype === "TF" && (
-          <div className="space-y-3 mt-4">
-            <div className="flex items-center gap-4">
-              {["True", "False"].map((label) => (
-                <div
-                  key={label}
-                  className="flex-1 flex items-center justify-center space-x-3 px-6 py-4 rounded-lg border transition-all shadow-sm bg-white"
-                  style={{
-                    borderColor: "rgba(48, 51, 128, 0.15)",
-                    color: "#374151",
-                  }}
-                >
-                  <div className="flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all border-gray-300"></div>
-                  <span className="text-base font-medium">{label}</span>
-                </div>
-              ))}
-            </div>
+          <div className="mt-4">
+            <QTF question={question as any} value={null} onChange={() => {}} readOnly={false} />
+          </div>
+        )}
+
+        {/* True/False/Not Given */}
+        {question.qtype === "TF_NG" && (
+          <div className="mt-4">
+            <QTFNG question={question as any} value={null} onChange={() => {}} readOnly={false} />
           </div>
         )}
 

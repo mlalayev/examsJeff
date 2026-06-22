@@ -44,11 +44,23 @@ function normalizeText(text: string): string {
 export function scoreQuestion(qtype: QuestionType, studentAnswer: any, answerKey: any): number {
   switch (qtype) {
     case "TF": {
-      // Exact boolean match
-      return studentAnswer === answerKey?.value ? 1 : 0;
+      const correctBool = answerKey?.value;
+      const studentBool = (() => {
+        if (typeof studentAnswer === "boolean") return studentAnswer;
+        if (typeof studentAnswer === "number") {
+          if (studentAnswer === 0) return true;
+          if (studentAnswer === 1) return false;
+        }
+        if (typeof studentAnswer === "string") {
+          const upper = studentAnswer.trim().toUpperCase();
+          if (upper === "TRUE") return true;
+          if (upper === "FALSE") return false;
+        }
+        return null;
+      })();
+      return studentBool === correctBool ? 1 : 0;
     }
     case "TF_NG": {
-      // Value is one of "TRUE" | "FALSE" | "NOT_GIVEN"
       if (!studentAnswer || !answerKey?.value) return 0;
       const normalize = (v: any) =>
         typeof v === "string" ? v.trim().toUpperCase() : String(v).trim().toUpperCase();
@@ -70,7 +82,20 @@ export function scoreQuestion(qtype: QuestionType, studentAnswer: any, answerKey
     }
     case "SELECT":
     case "INLINE_SELECT": {
-      // Selected === answerKey.index
+      // Multi-blank: { "0": idx, "1": idx } vs answerKey.indices
+      if (
+        studentAnswer &&
+        typeof studentAnswer === "object" &&
+        !Array.isArray(studentAnswer)
+      ) {
+        const correctIndices = answerKey?.indices;
+        if (!Array.isArray(correctIndices) || correctIndices.length === 0) return 0;
+        for (let i = 0; i < correctIndices.length; i++) {
+          const studentIdx = (studentAnswer as Record<string, number>)[String(i)];
+          if (studentIdx !== correctIndices[i]) return 0;
+        }
+        return 1;
+      }
       const correctIdx = answerKey?.index;
       return studentAnswer === correctIdx ? 1 : 0;
     }

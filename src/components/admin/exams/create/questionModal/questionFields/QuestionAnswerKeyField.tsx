@@ -2,6 +2,10 @@
 
 import { Question } from "../../types";
 import { extractHtmlCssAnswerKeyV1 } from "@/lib/htmlCssAnswerKey";
+import {
+  countInlineSelectBlanks,
+  getInlineSelectBlankChoices,
+} from "@/lib/inline-select-utils";
 
 interface QuestionAnswerKeyFieldProps {
   question: Question;
@@ -31,8 +35,70 @@ export function QuestionAnswerKeyField({
           </select>
         );
 
+      case "TF_NG":
+        return (
+          <select
+            value={question.answerKey?.value ?? "TRUE"}
+            onChange={(e) => {
+              onChange({
+                ...question,
+                answerKey: { value: e.target.value },
+              });
+            }}
+            className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
+          >
+            <option value="TRUE">True</option>
+            <option value="FALSE">False</option>
+            <option value="NOT_GIVEN">Not Given</option>
+          </select>
+        );
+
       case "MCQ_SINGLE":
-      case "INLINE_SELECT":
+      case "INLINE_SELECT": {
+        const promptText = question.prompt?.text || "";
+        const blankCount =
+          question.qtype === "INLINE_SELECT" ? countInlineSelectBlanks(promptText) : 1;
+        const blankChoices =
+          question.qtype === "INLINE_SELECT"
+            ? getInlineSelectBlankChoices(question.options, blankCount)
+            : [question.options?.choices || []];
+
+        if (blankCount > 1) {
+          const indices: number[] = Array.isArray(question.answerKey?.indices)
+            ? [...question.answerKey.indices]
+            : Array.from({ length: blankCount }, () => 0);
+
+          return (
+            <div className="space-y-3">
+              {Array.from({ length: blankCount }, (_, blankIdx) => (
+                <div key={blankIdx}>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Dropdown {blankIdx + 1}
+                  </label>
+                  <select
+                    value={indices[blankIdx] ?? 0}
+                    onChange={(e) => {
+                      const next = [...indices];
+                      next[blankIdx] = parseInt(e.target.value, 10);
+                      onChange({
+                        ...question,
+                        answerKey: { indices: next },
+                      });
+                    }}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
+                  >
+                    {(blankChoices[blankIdx] || []).map((opt: string, idx: number) => (
+                      <option key={idx} value={idx}>
+                        {opt || `Option ${idx + 1}`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </div>
+          );
+        }
+
         return (
           <select
             value={question.answerKey?.index ?? 0}
@@ -44,13 +110,14 @@ export function QuestionAnswerKeyField({
             }}
             className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400 bg-white"
           >
-            {(question.options?.choices || []).map((opt: string, idx: number) => (
+            {(blankChoices[0] || []).map((opt: string, idx: number) => (
               <option key={idx} value={idx}>
                 {opt || `Option ${idx + 1}`}
               </option>
             ))}
           </select>
         );
+      }
 
       case "MCQ_MULTI":
         return (
