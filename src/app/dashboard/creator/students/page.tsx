@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Users, Search, BookOpen, X, ChevronRight, ChevronLeft, Target, FileText, CheckCircle, ListChecks, Check, DollarSign, Trash2, Phone, Pause, Play } from "lucide-react";
+import { Users, Search, BookOpen, X, ChevronRight, ChevronLeft, Target, FileText, CheckCircle, ListChecks, Check, DollarSign, Trash2, Phone, Pause, Play, Coins } from "lucide-react";
 import { AlertModal } from "@/components/modals/AlertModal";
 import StudentExamsModal from "@/components/dashboard/StudentExamsModal";
 import StudentPaymentsModal from "@/components/modals/StudentPaymentsModal";
+import ManualCoinModal from "@/components/coins/ManualCoinModal";
 import { useStudentSubmittedExamIds } from "@/hooks/useStudentSubmittedExamIds";
 
 interface Student {
@@ -26,6 +27,7 @@ interface Student {
   monthlyFee?: number | null;
   lessonsStopped?: boolean;
   lessonsStoppedAt?: string | null;
+  coinBalance?: number;
   currentMonth?: {
     year: number;
     month: number;
@@ -68,6 +70,7 @@ export default function CreatorStudentsPage() {
   });
   const [examsModalStudent, setExamsModalStudent] = useState<Student | null>(null);
   const [paymentsModalStudent, setPaymentsModalStudent] = useState<Student | null>(null);
+  const [coinModalStudent, setCoinModalStudent] = useState<Student | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [lessonUpdating, setLessonUpdating] = useState<string | null>(null);
 
@@ -507,6 +510,7 @@ export default function CreatorStudentsPage() {
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">This month</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Lessons</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Status</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Coins</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Joined</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Actions</th>
                 </tr>
@@ -520,7 +524,7 @@ export default function CreatorStudentsPage() {
                         <div className="h-4 bg-gray-200 rounded w-24 animate-pulse"></div>
                       </div>
                     </td>
-                    {Array.from({ length: 11 }).map((_, j) => (
+                    {Array.from({ length: 12 }).map((_, j) => (
                       <td key={j} className="px-3 sm:px-4 py-3">
                         <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
                       </td>
@@ -550,6 +554,7 @@ export default function CreatorStudentsPage() {
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">This month</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Lessons</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Status</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Coins</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Joined</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Actions</th>
                 </tr>
@@ -645,11 +650,26 @@ export default function CreatorStudentsPage() {
                           {student.approved ? "Approved" : "Pending"}
                         </span>
                       </td>
+                      <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1 text-sm font-semibold text-amber-700">
+                          <Coins className="w-3.5 h-3.5" />
+                          {student.coinBalance ?? 0}
+                        </span>
+                      </td>
                       <td className="px-3 sm:px-4 py-3 text-gray-600 whitespace-nowrap">
                         {new Date(student.createdAt).toLocaleDateString()}
                       </td>
                       <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
                         <div className="flex flex-nowrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setCoinModalStudent(student)}
+                            className="px-2 py-1 text-xs font-medium text-amber-700 bg-amber-50 rounded hover:bg-amber-100 flex items-center gap-1"
+                            title="Add coins"
+                          >
+                            <Coins className="w-3 h-3" />
+                            Coins
+                          </button>
                           <button
                             type="button"
                             onClick={() => setPaymentsModalStudent(student)}
@@ -763,6 +783,30 @@ export default function CreatorStudentsPage() {
           onClose={() => setPaymentsModalStudent(null)}
           onChanged={() => {
             fetchStudents();
+          }}
+        />
+      )}
+
+      {coinModalStudent && (
+        <ManualCoinModal
+          open={!!coinModalStudent}
+          studentId={coinModalStudent.id}
+          studentName={coinModalStudent.name || coinModalStudent.email}
+          initialBalance={coinModalStudent.coinBalance ?? 0}
+          onClose={() => setCoinModalStudent(null)}
+          onSuccess={(balance) => {
+            setStudents((prev) =>
+              prev.map((s) =>
+                s.id === coinModalStudent.id ? { ...s, coinBalance: balance } : s
+              )
+            );
+            setCoinModalStudent(null);
+            setAlertModal({
+              isOpen: true,
+              title: "Coins added",
+              message: `Balance updated to ${balance} coins.`,
+              type: "success",
+            });
           }}
         />
       )}

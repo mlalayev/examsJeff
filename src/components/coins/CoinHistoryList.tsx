@@ -31,10 +31,17 @@ function formatDate(value: string) {
 }
 
 function formatSource(source: string) {
+  if (source === "REWARD_SHOP") return "Rewards shop";
+  if (source === "EXAM_SCORE") return "Exam score";
+  if (source === "ADMIN_ACTION") return "Admin";
   return source.replace(/_/g, " ");
 }
 
 function formatType(type: string) {
+  if (type === "REDEEMED") return "Redeemed";
+  if (type === "EARNED") return "Earned";
+  if (type === "MANUAL_ADD") return "Manual add";
+  if (type === "MANUAL_DEDUCT") return "Deducted";
   return type.replace(/_/g, " ");
 }
 

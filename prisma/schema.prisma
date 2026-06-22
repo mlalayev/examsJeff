@@ -587,17 +587,38 @@ model CoinTransaction {
   reason         String?
   source         CoinTransactionSource
   examAttemptId  String?
+  rewardId       String?
   createdById    String?
   createdAt      DateTime              @default(now())
 
-  student     User     @relation("StudentCoinTransactions", fields: [studentId], references: [id], onDelete: Cascade)
-  createdBy   User?    @relation("CoinTransactionCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  examAttempt Attempt? @relation(fields: [examAttemptId], references: [id], onDelete: SetNull)
+  student     User        @relation("StudentCoinTransactions", fields: [studentId], references: [id], onDelete: Cascade)
+  createdBy   User?       @relation("CoinTransactionCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  examAttempt Attempt?    @relation(fields: [examAttemptId], references: [id], onDelete: SetNull)
+  reward      CoinReward? @relation(fields: [rewardId], references: [id], onDelete: SetNull)
 
   @@unique([studentId, examAttemptId, type], name: "unique_student_exam_coin_type")
   @@index([studentId, createdAt])
   @@index([type, createdAt])
+  @@index([rewardId])
   @@map("coin_transactions")
+}
+
+model CoinReward {
+  id           String             @id @default(cuid())
+  slug         String             @unique
+  title        String
+  description  String?
+  coinCost     Int
+  category     CoinRewardCategory
+  icon         String             @default("🎁")
+  isActive     Boolean            @default(true)
+  sortOrder    Int                @default(0)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  transactions CoinTransaction[]
+
+  @@index([isActive, sortOrder])
+  @@map("coin_rewards")
 }
 
 model TeacherProfile {
@@ -658,11 +679,20 @@ enum CoinTransactionType {
   EARNED
   MANUAL_ADD
   MANUAL_DEDUCT
+  REDEEMED
 }
 
 enum CoinTransactionSource {
   EXAM_SCORE
   ADMIN_ACTION
+  REWARD_SHOP
+}
+
+enum CoinRewardCategory {
+  DRINK
+  FOOD
+  DISCOUNT
+  OTHER
 }
 
 model Referral {

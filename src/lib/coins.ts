@@ -19,6 +19,7 @@ export type ApplyCoinTransactionInput = {
   source: CoinTransactionSource;
   reason?: string | null;
   examAttemptId?: string | null;
+  rewardId?: string | null;
   createdById?: string | null;
 };
 
@@ -36,6 +37,8 @@ export class CoinError extends Error {
       | "INVALID_AMOUNT"
       | "INSUFFICIENT_BALANCE"
       | "DUPLICATE_TRANSACTION"
+      | "REWARD_NOT_FOUND"
+      | "REWARD_INACTIVE"
   ) {
     super(message);
     this.name = "CoinError";
@@ -47,7 +50,7 @@ function resolveSignedAmount(amount: number, type: CoinTransactionType): number 
     throw new CoinError("Amount must be an integer", "INVALID_AMOUNT");
   }
 
-  if (type === CoinTransactionType.MANUAL_DEDUCT) {
+  if (type === CoinTransactionType.MANUAL_DEDUCT || type === CoinTransactionType.REDEEMED) {
     if (amount <= 0) {
       throw new CoinError(
         "Deduction amount must be a positive integer",
@@ -118,6 +121,7 @@ export async function applyCoinTransaction(
           source: input.source,
           reason: input.reason ?? null,
           examAttemptId: input.examAttemptId ?? null,
+          rewardId: input.rewardId ?? null,
           createdById: input.createdById ?? null,
         },
       });
@@ -395,5 +399,64 @@ export async function addManualCoins(
     source: CoinTransactionSource.ADMIN_ACTION,
     reason: input.reason.trim(),
     createdById: input.createdById,
+  });
+}
+
+export async function listActiveCoinRewards() {
+  return prisma.coinReward.findMany({
+    where: { isActive: true },
+    orderBy: [{ sortOrder: "asc" }, { coinCost: "asc" }],
+    select: {
+      id: true,
+      slug: true,
+      title: true,
+      description: true,
+      coinCost: true,
+      category: true,
+      icon: true,
+    },
+  });
+}
+
+export async function redeemCoinReward(studentId: string, rewardId: string) {
+  return prisma.$transaction(async (tx) => {
+    const reward = await tx.coinReward.findUnique({
+      where: { id: rewardId },
+      select: {
+        id: true,
+        title: true,
+        coinCost: true,
+        isActive: true,
+      },
+    });
+
+    if (!reward) {
+      throw new CoinError("Reward not found", "REWARD_NOT_FOUND");
+    }
+
+    if (!reward.isActive) {
+      throw new CoinError("Reward is no longer available", "REWARD_INACTIVE");
+    }
+
+    const profile = await tx.studentProfile.findUnique({
+      where: { studentId },
+      select: { coinBalance: true },
+    });
+
+    if (!profile || profile.coinBalance < reward.coinCost) {
+      throw new CoinError("Insufficient coin balance", "INSUFFICIENT_BALANCE");
+    }
+
+    return applyCoinTransaction(
+      {
+        studentId,
+        amount: reward.coinCost,
+        type: CoinTransactionType.REDEEMED,
+        source: CoinTransactionSource.REWARD_SHOP,
+        reason: `Redeemed: ${reward.title}`,
+        rewardId: reward.id,
+      },
+      tx
+    );
   });
 }
