@@ -22,7 +22,12 @@ export async function POST(request: Request) {
     const assignment = await prisma.assignment.findUnique({
       where: { id: assignmentId },
       include: {
-        unitExam: { include: { exam: { include: { sections: true } } } },
+        unitExam: {
+          include: {
+            exam: { include: { sections: { orderBy: { order: "asc" } } } },
+          },
+        },
+        exam: { include: { sections: { orderBy: { order: "asc" } } } },
         attempt: true,
       }
     });
@@ -33,6 +38,11 @@ export async function POST(request: Request) {
 
     if (assignment.studentId !== (user as any).id) {
       return NextResponse.json({ error: "Not your assignment" }, { status: 403 });
+    }
+
+    const exam = assignment.exam ?? assignment.unitExam?.exam;
+    if (!exam) {
+      return NextResponse.json({ error: "Homework content not found" }, { status: 404 });
     }
 
     // Window check
@@ -56,11 +66,13 @@ export async function POST(request: Request) {
     const attempt = await prisma.attempt.create({
       data: {
         assignmentId: assignment.id,
-        branchId: (user as any).branchId ?? null,
+        studentId: assignment.studentId,
+        examId: exam.id,
+        branchId: assignment.branchId ?? (user as any).branchId ?? null,
         status: "IN_PROGRESS",
         startedAt: new Date(),
         sections: {
-          create: assignment.unitExam.exam.sections.map(section => ({
+          create: exam.sections.map(section => ({
             type: section.type,
             status: "NOT_STARTED"
           }))

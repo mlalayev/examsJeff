@@ -10,6 +10,39 @@ export function formatUserName(user: NameFields | null | undefined): string | nu
   return name || user.email || null;
 }
 
+const examSelect = {
+  id: true,
+  title: true,
+  category: true,
+  track: true,
+  durationMin: true,
+} as const;
+
+export const assignmentHomeworkSelect = {
+  id: true,
+  status: true,
+  startAt: true,
+  dueAt: true,
+  createdAt: true,
+  isExtra: true,
+  student: {
+    select: { id: true, firstName: true, lastName: true, email: true },
+  },
+  teacher: {
+    select: { id: true, firstName: true, lastName: true },
+  },
+  class: { select: { id: true, name: true } },
+  exam: { select: examSelect },
+  unitExam: {
+    select: {
+      id: true,
+      exam: { select: examSelect },
+      unit: { select: { id: true, title: true, order: true } },
+    },
+  },
+  attempt: { select: { id: true, status: true, bandOverall: true } },
+} as const;
+
 export type AssignmentHomeworkRow = {
   id: string;
   status: string;
@@ -29,6 +62,13 @@ export type AssignmentHomeworkRow = {
     lastName: string | null;
   } | null;
   class: { id: string; name: string } | null;
+  exam: {
+    id: string;
+    title: string;
+    category: string;
+    track: string | null;
+    durationMin: number | null;
+  } | null;
   unitExam: {
     id: string;
     exam: {
@@ -39,11 +79,14 @@ export type AssignmentHomeworkRow = {
       durationMin: number | null;
     };
     unit: { id: string; title: string; order: number } | null;
-  };
+  } | null;
   attempt: { id: string; status: string; bandOverall: number | null } | null;
 };
 
 export function mapAssignmentHomeworkRow(a: AssignmentHomeworkRow) {
+  const exam = a.exam ?? a.unitExam?.exam ?? null;
+  const unit = a.unitExam?.unit ?? null;
+
   return {
     id: a.id,
     status: a.status,
@@ -60,40 +103,8 @@ export function mapAssignmentHomeworkRow(a: AssignmentHomeworkRow) {
       ? { id: a.teacher.id, name: formatUserName(a.teacher) }
       : null,
     class: a.class,
-    exam: a.unitExam.exam,
-    unit: a.unitExam.unit,
+    exam,
+    unit,
     attempt: a.attempt,
   };
 }
-
-export const assignmentHomeworkSelect = {
-  id: true,
-  status: true,
-  startAt: true,
-  dueAt: true,
-  createdAt: true,
-  isExtra: true,
-  student: {
-    select: { id: true, firstName: true, lastName: true, email: true },
-  },
-  teacher: {
-    select: { id: true, firstName: true, lastName: true },
-  },
-  class: { select: { id: true, name: true } },
-  unitExam: {
-    select: {
-      id: true,
-      exam: {
-        select: {
-          id: true,
-          title: true,
-          category: true,
-          track: true,
-          durationMin: true,
-        },
-      },
-      unit: { select: { id: true, title: true, order: true } },
-    },
-  },
-  attempt: { select: { id: true, status: true, bandOverall: true } },
-} as const;

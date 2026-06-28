@@ -23,6 +23,15 @@ export async function GET(request: NextRequest) {
         dueAt: true,
         createdAt: true,
         isExtra: true,
+        exam: {
+          select: {
+            id: true,
+            title: true,
+            category: true,
+            track: true,
+            durationMin: true,
+          },
+        },
         unitExam: {
           select: {
             id: true,
@@ -43,27 +52,30 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    const result = items.map((a) => ({
-      id: a.id,
-      status: a.status,
-      startAt: a.startAt,
-      dueAt: a.dueAt,
-      createdAt: a.createdAt,
-      isExtra: a.isExtra,
-      exam: a.unitExam.exam,
-      unit: a.unitExam.unit,
-      teacher: a.teacher
-        ? {
-            id: a.teacher.id,
-            name:
-              [a.teacher.firstName, a.teacher.lastName]
-                .filter(Boolean)
-                .join(" ")
-                .trim() || null,
-          }
-        : null,
-      attempt: a.attempt,
-    }));
+    const result = items.map((a) => {
+      const exam = a.exam ?? a.unitExam?.exam;
+      return {
+        id: a.id,
+        status: a.status,
+        startAt: a.startAt,
+        dueAt: a.dueAt,
+        createdAt: a.createdAt,
+        isExtra: a.isExtra,
+        exam,
+        unit: a.unitExam?.unit ?? null,
+        teacher: a.teacher
+          ? {
+              id: a.teacher.id,
+              name:
+                [a.teacher.firstName, a.teacher.lastName]
+                  .filter(Boolean)
+                  .join(" ")
+                  .trim() || null,
+            }
+          : null,
+        attempt: a.attempt,
+      };
+    });
 
     return NextResponse.json({ items: result });
   } catch (error: any) {

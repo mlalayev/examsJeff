@@ -294,10 +294,12 @@ model Exam {
   writingType     String?          @default("ACADEMIC")
   bookings        Booking[]
   assignments     ExamAssignment[]
+  homeworkAssignments Assignment[] @relation("HomeworkExamAssignments")
   sections        ExamSection[]
   createdBy       User?            @relation(fields: [createdById], references: [id])
   questions       Question[]
   unitExams       UnitExam[]
+  isHomework      Boolean          @default(false)
 
   @@map("exams")
 }
@@ -448,7 +450,8 @@ model UnitExam {
 
 model Assignment {
   id         String    @id @default(cuid())
-  unitExamId String
+  unitExamId String?
+  examId     String?
   studentId  String
   teacherId  String?
   classId    String?
@@ -462,12 +465,14 @@ model Assignment {
   class      Class?    @relation(fields: [classId], references: [id])
   student    User      @relation("AssignmentStudent", fields: [studentId], references: [id], onDelete: Cascade)
   teacher    User?     @relation("AssignmentTeacher", fields: [teacherId], references: [id])
-  unitExam   UnitExam  @relation(fields: [unitExamId], references: [id], onDelete: Cascade)
+  unitExam   UnitExam? @relation(fields: [unitExamId], references: [id], onDelete: Cascade)
+  exam       Exam?     @relation("HomeworkExamAssignments", fields: [examId], references: [id], onDelete: Cascade)
   attempt    Attempt?
 
   @@index([studentId, startAt])
   @@index([teacherId, startAt])
   @@index([studentId, isExtra, status])
+  @@index([examId])
   @@map("assignments")
 }
 

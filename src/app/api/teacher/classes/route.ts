@@ -15,12 +15,13 @@ export async function GET() {
         teacherId: user.id,
       },
       include: {
-        students: {
+        classStudents: {
           include: {
-            user: {
+            student: {
               select: {
                 id: true,
-                name: true,
+                firstName: true,
+                lastName: true,
                 email: true,
               },
             },
@@ -28,7 +29,7 @@ export async function GET() {
         },
         _count: {
           select: {
-            students: true,
+            classStudents: true,
           },
         },
       },
@@ -40,11 +41,14 @@ export async function GET() {
     const response = classes.map(cls => ({
       id: cls.id,
       name: cls.name,
-      studentCount: cls._count.students,
-      students: cls.students.map(s => ({
-        id: s.user.id,
-        name: s.user.name || s.user.email?.split('@')[0] || "Unknown",
-        email: s.user.email,
+      studentCount: cls._count.classStudents,
+      students: cls.classStudents.map((s) => ({
+        id: s.student.id,
+        name:
+          [s.student.firstName, s.student.lastName].filter(Boolean).join(" ").trim() ||
+          s.student.email?.split("@")[0] ||
+          "Unknown",
+        email: s.student.email,
       })),
     }));
 

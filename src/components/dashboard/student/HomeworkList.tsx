@@ -1,8 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import useSWR from "swr";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { swrConfig } from "@/lib/swr-config";
+import { attemptRunnerPath } from "@/lib/attempt-runner-path";
 
 type HomeworkItem = {
   id: string;
@@ -17,7 +20,7 @@ type HomeworkItem = {
     category: string;
     track: string | null;
     durationMin: number | null;
-  };
+  } | null;
   unit: { id: string; title: string; order: number } | null;
   teacher: { id: string; name: string | null } | null;
   attempt: { id: string; status: string; bandOverall: number | null } | null;
@@ -43,7 +46,9 @@ export default function HomeworkList({
 }: {
   type: "regular" | "extras";
 }) {
-  const { data, error, isLoading } = useSWR<Response>(
+  const router = useRouter();
+  const [startingId, setStartingId] = useState<string | null>(null);
+  const { data, error, isLoading, mutate } = useSWR<Response>(
     `/api/student/homework?type=${type}`,
     swrConfig.fetcher,
     swrConfig
@@ -71,6 +76,37 @@ export default function HomeworkList({
   }
 
   const items = data?.items ?? [];
+
+  const openHomework = async (item: HomeworkItem) => {
+    if (!item.exam) return;
+    if (item.attempt?.id) {
+      router.push(attemptRunnerPath(item.attempt.id, item.exam.category));
+      return;
+    }
+
+    setStartingId(item.id);
+    try {
+      const res = await fetch("/api/attempts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assignmentId: item.id }),
+      });
+      const payload = await res.json();
+      if (!res.ok) {
+        if (payload.attempt?.id) {
+          router.push(attemptRunnerPath(payload.attempt.id, item.exam.category));
+          return;
+        }
+        throw new Error(payload.error || "Failed to start homework");
+      }
+      await mutate();
+      router.push(attemptRunnerPath(payload.attempt.id, item.exam.category));
+    } catch {
+      // keep UI simple — user can retry
+    } finally {
+      setStartingId(null);
+    }
+  };
 
   if (items.length === 0) {
     return (
@@ -117,19 +153,20 @@ export default function HomeworkList({
             {items.map((a) => {
               const done = a.attempt?.status === "SUBMITTED";
               const due = formatDate(a.dueAt);
+              const hasExam = Boolean(a.exam?.id);
               return (
                 <tr key={a.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3">
-                    <div className="font-medium text-gray-900">
-                      {a.exam.title}
-                    </div>
+                      <div className="font-medium text-gray-900">
+                        {a.exam?.title ?? "—"}
+                      </div>
                     {a.unit ? (
                       <div className="text-xs text-gray-500 mt-0.5">
                         Unit {a.unit.order} · {a.unit.title}
                       </div>
                     ) : null}
                   </td>
-                  <td className="px-4 py-3 text-gray-600">{a.exam.category}</td>
+                  <td className="px-4 py-3 text-gray-600">{a.exam?.category ?? "—"}</td>
                   <td className="px-4 py-3 text-gray-600">
                     {a.teacher?.name ?? "—"}
                   </td>
@@ -148,16 +185,29 @@ export default function HomeworkList({
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <Link
-                      href={
-                        a.attempt?.id
-                          ? `/dashboard/student/results/${a.attempt.id}`
-                          : "/dashboard/student/exams"
-                      }
-                      className="text-xs font-medium text-gray-900 hover:underline"
-                    >
-                      {done ? "View result" : "Open"}
-                    </Link>
+                    {done ? (
+                      <Link
+                        href={`/dashboard/student/results/${a.attempt?.id}`}
+                        className="text-xs font-medium text-gray-900 hover:underline"
+                      >
+                        View result
+                      </Link>
+                    ) : hasExam ? (
+                      <button
+                        type="button"
+                        disabled={startingId === a.id}
+                        onClick={() => openHomework(a)}
+                        className="text-xs font-medium text-gray-900 hover:underline disabled:opacity-50"
+                      >
+                        {startingId === a.id
+                          ? "Starting..."
+                          : a.attempt?.id
+                            ? "Continue"
+                            : "Open"}
+                      </button>
+                    ) : (
+                      <span className="text-xs text-gray-400">Unavailable</span>
+                    )}
                   </td>
                 </tr>
               );

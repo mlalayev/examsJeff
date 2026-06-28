@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-utils";
+import { requireHomeworkManager } from "@/lib/homework-access";
 import { z } from "zod";
 
 const questionSchema = z.object({
@@ -44,8 +45,33 @@ const updateExamSchema = z.object({
   readingType: z.string().nullable().optional(),
   writingType: z.string().nullable().optional(),
   isActive: z.boolean().optional(),
+  durationMin: z.number().nullable().optional(),
   sections: z.array(sectionSchema).optional(),
 });
+
+async function assertExamEditAccess(examId: string) {
+  const exam = await prisma.exam.findUnique({
+    where: { id: examId },
+    select: { isHomework: true, createdById: true },
+  });
+
+  if (!exam) {
+    return { exam: null, user: null as null };
+  }
+
+  if (exam.isHomework) {
+    const user = await requireHomeworkManager();
+    const role = (user as { role: string }).role;
+    const userId = (user as { id: string }).id;
+    if (role === "TEACHER" && exam.createdById !== userId) {
+      throw new Error("Forbidden: Not your homework");
+    }
+    return { exam, user };
+  }
+
+  const user = await requireAdmin();
+  return { exam, user };
+}
 
 // GET /api/admin/exams/[id] - Get single exam
 export async function GET(
@@ -54,7 +80,10 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
-    await requireAdmin();
+    const access = await assertExamEditAccess(id);
+    if (!access.exam) {
+      return NextResponse.json({ error: "Exam not found" }, { status: 404 });
+    }
 
     const exam = await prisma.exam.findUnique({
       where: { id },
@@ -120,8 +149,12 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdmin();
     const { id } = await params;
+    const access = await assertExamEditAccess(id);
+    if (!access.exam) {
+      return NextResponse.json({ error: "Exam not found" }, { status: 404 });
+    }
+
     const body = await request.json();
     
     const validatedData = updateExamSchema.parse(body);
@@ -140,6 +173,7 @@ export async function PATCH(
             ...(validatedData.readingType !== undefined ? { readingType: validatedData.readingType } : {}),
             ...(validatedData.writingType !== undefined ? { writingType: validatedData.writingType } : {}),
             ...(validatedData.isActive !== undefined ? { isActive: validatedData.isActive } : {}),
+            ...(validatedData.durationMin !== undefined ? { durationMin: validatedData.durationMin } : {}),
           },
         });
 

@@ -41,14 +41,23 @@ export interface GenericExamBuilderInitial {
   sections: Section[];
 }
 
+export interface BuilderSaveConfig {
+  createUrl: string;
+  updateUrl: (id: string) => string;
+  successRedirect: (id: string) => string;
+  backHref: string;
+  entityLabel: string;
+}
+
 interface GenericExamBuilderProps {
   mode: "create" | "edit";
   category: ExamCategory;
   examId?: string;
   initial?: GenericExamBuilderInitial;
+  saveConfig?: BuilderSaveConfig;
 }
 
-export default function GenericExamBuilder({ mode, category, examId, initial }: GenericExamBuilderProps) {
+export default function GenericExamBuilder({ mode, category, examId, initial, saveConfig }: GenericExamBuilderProps) {
   const router = useRouter();
   const isEdit = mode === "edit";
 
@@ -364,7 +373,9 @@ export default function GenericExamBuilder({ mode, category, examId, initial }: 
 
       const useEdit = isEdit && examId;
       const res = await fetch(
-        useEdit ? `/api/admin/exams/${examId}` : "/api/admin/exams",
+        useEdit
+          ? (saveConfig?.updateUrl(examId!) ?? `/api/admin/exams/${examId}`)
+          : (saveConfig?.createUrl ?? "/api/admin/exams"),
         {
           method: useEdit ? "PATCH" : "POST",
           headers: { "Content-Type": "application/json" },
@@ -375,20 +386,25 @@ export default function GenericExamBuilder({ mode, category, examId, initial }: 
       if (res.ok) {
         const data = await res.json();
         const savedId = data.exam?.id || data.examId || examId || "";
-        router.push(`/dashboard/admin/exams/${savedId}`);
+        router.push(
+          saveConfig?.successRedirect(savedId) ??
+            `/dashboard/admin/exams/${savedId}`
+        );
       } else {
         const error = await res.json().catch(() => ({}));
         console.error("Server error response:", error);
+        const entity = saveConfig?.entityLabel ?? "Exam";
         modals.showAlert(
-          useEdit ? "Failed to Update Exam" : "Failed to Create Exam",
+          useEdit ? `Failed to Update ${entity}` : `Failed to Create ${entity}`,
           error.error || error.details || JSON.stringify(error),
           "error"
         );
       }
     } catch (error) {
       console.error("Failed to save exam:", error);
+      const entity = saveConfig?.entityLabel ?? "Exam";
       modals.showAlert(
-        isEdit ? "Failed to Update Exam" : "Failed to Create Exam",
+        isEdit ? `Failed to Update ${entity}` : `Failed to Create ${entity}`,
         error instanceof Error ? error.message : String(error),
         "error"
       );
@@ -397,9 +413,8 @@ export default function GenericExamBuilder({ mode, category, examId, initial }: 
     }
   };
 
-  const backHref = isEdit
-    ? `/dashboard/admin/exams/${examId}`
-    : "/dashboard/admin/exams/create";
+  const backHref = saveConfig?.backHref
+    ?? (isEdit ? `/dashboard/admin/exams/${examId}` : "/dashboard/admin/exams/create");
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
@@ -413,9 +428,15 @@ export default function GenericExamBuilder({ mode, category, examId, initial }: 
           {isEdit ? "Back to Exam" : "Back to Categories"}
         </button>
         <h1 className="text-xl sm:text-2xl font-medium text-gray-900">
-          {isEdit ? `Edit Exam - ${selectedCategory}` : `Create New Exam - ${selectedCategory}`}
+          {isEdit
+            ? `Edit ${saveConfig?.entityLabel ?? "Exam"} - ${selectedCategory}`
+            : `Create New ${saveConfig?.entityLabel ?? "Exam"} - ${selectedCategory}`}
         </h1>
-        <p className="text-gray-500 mt-1 text-sm sm:text-base">Build your exam step by step</p>
+        <p className="text-gray-500 mt-1 text-sm sm:text-base">
+          {saveConfig?.entityLabel === "Homework"
+            ? "Build homework with the same question types as exams"
+            : "Build your exam step by step"}
+        </p>
       </div>
 
       {/* Exam Info */}

@@ -21,7 +21,7 @@ type HomeworkItem = {
     category: string;
     track: string | null;
     durationMin: number | null;
-  };
+  } | null;
   unit: { id: string; title: string; order: number } | null;
   attempt: { id: string; status: string; bandOverall: number | null } | null;
 };
@@ -190,7 +190,7 @@ export default function HomeworkManagementList({
                       </td>
                       <td className="px-4 py-3">
                         <div className="font-medium text-gray-900">
-                          {a.exam.title}
+                          {a.exam?.title ?? "—"}
                         </div>
                         {a.unit ? (
                           <div className="text-xs text-gray-500 mt-0.5">

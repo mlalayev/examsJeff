@@ -46,6 +46,9 @@ export async function GET(request: NextRequest) {
                 exam: { title: { contains: search, mode: "insensitive" } },
               },
             },
+            {
+              exam: { title: { contains: search, mode: "insensitive" } },
+            },
           ],
         },
       ];
