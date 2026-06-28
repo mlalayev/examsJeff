@@ -11,11 +11,17 @@ import {
   type HomeworkDashboardRole,
 } from "@/lib/homework-dashboard";
 
+import {
+  getHomeworkSubjectLabel,
+  formatHomeworkLevel,
+} from "@/lib/homework-subjects";
+
 type TemplateItem = {
   id: string;
   title: string;
   category: string;
   track: string | null;
+  homeworkSubject: string | null;
   isActive: boolean;
   durationMin: number | null;
   createdAt: string;
@@ -105,7 +111,8 @@ export default function HomeworkTemplatesList({ role }: Props) {
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="text-left px-4 py-3 font-medium text-gray-700">Title</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-700">Category</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-700">Lesson</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-700">Level</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-700">Sections</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-700">Assigned</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-700">Actions</th>
@@ -115,7 +122,12 @@ export default function HomeworkTemplatesList({ role }: Props) {
                 {items.map((item) => (
                   <tr key={item.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 font-medium text-gray-900">{item.title}</td>
-                    <td className="px-4 py-3 text-gray-600">{item.category}</td>
+                    <td className="px-4 py-3 text-gray-600">
+                      {getHomeworkSubjectLabel(item.homeworkSubject)}
+                    </td>
+                    <td className="px-4 py-3 text-gray-600">
+                      {formatHomeworkLevel(item.homeworkSubject, item.track) ?? "—"}
+                    </td>
                     <td className="px-4 py-3 text-gray-600">{item.sectionCount}</td>
                     <td className="px-4 py-3 text-gray-600">{item.assignmentCount}</td>
                     <td className="px-4 py-3">

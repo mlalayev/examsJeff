@@ -39,6 +39,7 @@ export async function GET(request: NextRequest) {
         title: true,
         category: true,
         track: true,
+        homeworkSubject: true,
         isActive: true,
         durationMin: true,
         createdAt: true,
@@ -60,6 +61,7 @@ export async function GET(request: NextRequest) {
         title: e.title,
         category: e.category,
         track: e.track,
+        homeworkSubject: e.homeworkSubject,
         isActive: e.isActive,
         durationMin: e.durationMin,
         createdAt: e.createdAt,
@@ -89,6 +91,7 @@ export async function POST(request: Request) {
     const exam = await createExamContent({
       ...data,
       isHomework: true,
+      homeworkSubject: data.homeworkSubject,
       createdById: (user as { id: string }).id,
     });
 

@@ -1,4 +1,8 @@
 import { z } from "zod";
+import { HOMEWORK_SUBJECTS, ENGLISH_LEVELS } from "@/lib/homework-subjects";
+
+const subjectIds = HOMEWORK_SUBJECTS.map((s) => s.id) as [string, ...string[]];
+const levelIds = ENGLISH_LEVELS.map((l) => l.id) as [string, ...string[]];
 
 export const homeworkQuestionSchema = z.object({
   id: z.string().optional(),
@@ -53,21 +57,42 @@ export const homeworkSectionSchema = z.object({
   questions: z.array(homeworkQuestionSchema).optional(),
 });
 
-export const createHomeworkTemplateSchema = z.object({
-  title: z.string().min(1).max(200),
-  category: z.enum([
-    "IELTS",
-    "TOEFL",
-    "SAT",
-    "GENERAL_ENGLISH",
-    "MATH",
-    "KIDS",
-  ]),
-  track: z.string().nullable().optional(),
-  durationMin: z.number().nullable().optional(),
-  isActive: z.boolean().default(true),
-  sections: z.array(homeworkSectionSchema).optional(),
-});
+export const createHomeworkTemplateSchema = z
+  .object({
+    title: z.string().min(1).max(200),
+    category: z.enum([
+      "IELTS",
+      "TOEFL",
+      "SAT",
+      "GENERAL_ENGLISH",
+      "MATH",
+      "KIDS",
+    ]),
+    homeworkSubject: z.enum(subjectIds),
+    track: z.string().nullable().optional(),
+    durationMin: z.number().nullable().optional(),
+    isActive: z.boolean().default(true),
+    sections: z.array(homeworkSectionSchema).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.homeworkSubject === "GENERAL_ENGLISH") {
+      if (!data.track?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "English level is required for General English homework",
+          path: ["track"],
+        });
+        return;
+      }
+      if (!levelIds.includes(data.track as (typeof levelIds)[number])) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Invalid English level",
+          path: ["track"],
+        });
+      }
+    }
+  });
 
 export const assignHomeworkSchema = z.object({
   examId: z.string().min(1),

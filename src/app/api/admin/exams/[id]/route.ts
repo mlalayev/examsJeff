@@ -42,6 +42,7 @@ const updateExamSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   category: z.string().optional(),
   track: z.string().nullable().optional(),
+  homeworkSubject: z.string().nullable().optional(),
   readingType: z.string().nullable().optional(),
   writingType: z.string().nullable().optional(),
   isActive: z.boolean().optional(),
@@ -170,6 +171,9 @@ export async function PATCH(
             ...(validatedData.title ? { title: validatedData.title } : {}),
             ...(validatedData.category ? { category: validatedData.category as any } : {}),
             ...(validatedData.track !== undefined ? { track: validatedData.track } : {}),
+            ...(validatedData.homeworkSubject !== undefined
+              ? { homeworkSubject: validatedData.homeworkSubject }
+              : {}),
             ...(validatedData.readingType !== undefined ? { readingType: validatedData.readingType } : {}),
             ...(validatedData.writingType !== undefined ? { writingType: validatedData.writingType } : {}),
             ...(validatedData.isActive !== undefined ? { isActive: validatedData.isActive } : {}),
@@ -338,6 +342,9 @@ export async function PATCH(
           ...(validatedData.title ? { title: validatedData.title } : {}),
           ...(validatedData.category ? { category: validatedData.category as any } : {}),
           ...(validatedData.track !== undefined ? { track: validatedData.track } : {}),
+          ...(validatedData.homeworkSubject !== undefined
+            ? { homeworkSubject: validatedData.homeworkSubject }
+            : {}),
           ...(validatedData.isActive !== undefined ? { isActive: validatedData.isActive } : {}),
         },
         include: {

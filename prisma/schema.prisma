@@ -300,6 +300,7 @@ model Exam {
   questions       Question[]
   unitExams       UnitExam[]
   isHomework      Boolean          @default(false)
+  homeworkSubject String?
 
   @@map("exams")
 }

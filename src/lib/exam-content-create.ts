@@ -35,6 +35,7 @@ export type CreateExamContentInput = {
   durationMin?: number | null;
   isActive?: boolean;
   isHomework?: boolean;
+  homeworkSubject?: string | null;
   sections?: SectionInput[];
   createdById: string;
 };
@@ -79,6 +80,7 @@ export async function createExamContent(input: CreateExamContentInput) {
       durationMin: input.durationMin ?? null,
       isActive: input.isActive ?? true,
       isHomework: input.isHomework ?? false,
+      homeworkSubject: input.homeworkSubject ?? null,
       createdById: input.createdById,
       sections: {
         create: regularSections.map((section) => ({

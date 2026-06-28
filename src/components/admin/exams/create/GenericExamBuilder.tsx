@@ -47,6 +47,7 @@ export interface BuilderSaveConfig {
   successRedirect: (id: string) => string;
   backHref: string;
   entityLabel: string;
+  extraPayload?: Record<string, unknown>;
 }
 
 interface GenericExamBuilderProps {
@@ -363,13 +364,16 @@ export default function GenericExamBuilder({ mode, category, examId, initial, sa
 
     setSaving(true);
     try {
-      const payload = buildExamPayload(
-        examTitle,
-        selectedCategory,
-        track,
-        durationMin,
-        sections
-      );
+      const payload = {
+        ...buildExamPayload(
+          examTitle,
+          selectedCategory,
+          track,
+          durationMin,
+          sections
+        ),
+        ...(saveConfig?.extraPayload ?? {}),
+      };
 
       const useEdit = isEdit && examId;
       const res = await fetch(

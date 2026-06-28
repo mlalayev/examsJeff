@@ -2,412 +2,31 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Menu, X } from "lucide-react";
-import {
-  LayoutDashboard,
-  DollarSign,
-  Users,
-  Building2,
-  BookOpen,
-  ClipboardList,
-  GraduationCap,
-  Clock,
-  BarChart3,
-  Settings,
-  User,
-  Calendar,
-  FileText,
-  CreditCard,
-  CheckCircle,
-  Home,
-  Library,
-  Shield,
-  Key,
-  UserPlus,
-  UserCheck,
-  Wallet,
-  Pause,
-  CircleCheck,
-  ClipboardCheck,
-} from "lucide-react";
+import { Menu, X, Home } from "lucide-react";
 import StudentNav from "@/components/dashboard/student/StudentNav";
-
-type NavItem = {
-  label: string;
-  href: string;
-  icon: React.ComponentType<{ className?: string }>;
-  color: string;
-  disabled?: boolean;
-  comingSoon?: boolean;
-};
+import StaffNav from "@/components/dashboard/nav/StaffNav";
 
 export default function Sidebar() {
-  const pathname = usePathname();
   const { data: session, status } = useSession();
-  const role = (session?.user as any)?.role;
+  const role = (session?.user as { role?: string })?.role;
   const [isOpen, setIsOpen] = useState(false);
 
-  const navItems: NavItem[] = [];
-
-  // PARTNER Navigation
-  if (role === "PARTNER") {
-    navItems.push(
-      {
-        label: "Referrals",
-        href: "/dashboard/partner/referrals",
-        icon: UserPlus,
-        color: "from-blue-500 to-blue-600",
-      },
-      {
-        label: "Earnings",
-        href: "/dashboard/partner/earnings",
-        icon: Wallet,
-        color: "from-emerald-500 to-emerald-600",
-      }
-    );
-  }
-
-  // CREATOR Navigation (Super Admin) - Everything in one dashboard
-  if (role === "CREATOR") {
-    navItems.push(
-      {
-        label: "Users",
-        href: "/dashboard/creator/users",
-        icon: Users,
-        color: "from-purple-600 to-blue-600",
-      },
-      {
-        label: "Students",
-        href: "/dashboard/creator/students",
-        icon: GraduationCap,
-        color: "from-green-500 to-green-600",
-      },
-      {
-        label: "Finished",
-        href: "/dashboard/creator/students/finished",
-        icon: CircleCheck,
-        color: "from-blue-500 to-blue-600",
-      },
-      {
-        label: "Stopped",
-        href: "/dashboard/creator/students/stopped",
-        icon: Pause,
-        color: "from-red-500 to-red-600",
-      },
-      {
-        label: "Candidates",
-        href: "/dashboard/creator/students/candidates",
-        icon: ClipboardCheck,
-        color: "from-violet-500 to-violet-600",
-      },
-      {
-        label: "Exams",
-        href: "/dashboard/creator/exams",
-        icon: BookOpen,
-        color: "from-orange-500 to-orange-600",
-      },
-      {
-        label: "Homework",
-        href: "/dashboard/creator/homework",
-        icon: ClipboardList,
-        color: "from-indigo-500 to-indigo-600",
-      },
-      {
-        label: "Classes",
-        href: "/dashboard/creator/classes",
-        icon: ClipboardList,
-        color: "from-teal-500 to-teal-600",
-      },
-      {
-        label: "Branches",
-        href: "/dashboard/creator/branches",
-        icon: Building2,
-        color: "from-purple-500 to-purple-600",
-      },
-      {
-        label: "Finance",
-        href: "/dashboard/creator/finance",
-        icon: DollarSign,
-        color: "from-emerald-500 to-emerald-600",
-      },
-      {
-        label: "Teacher salary",
-        href: "/dashboard/boss/salary",
-        icon: Wallet,
-        color: "from-green-500 to-green-600",
-      },
-      {
-        label: "Weekly reports",
-        href: "/dashboard/boss/reports",
-        icon: FileText,
-        color: "from-cyan-500 to-cyan-600",
-      },
-      {
-        label: "Referrals",
-        href: "/dashboard/referrals",
-        icon: UserPlus,
-        color: "from-sky-500 to-sky-600",
-      }
-    );
-  }
-
-  // BOSS Navigation
-  // Bosses can do everything admins can do, plus boss-only sections.
-  if (role === "BOSS") {
-    navItems.push(
-      {
-        label: "Manage Users",
-        href: "/dashboard/boss/users",
-        icon: Users,
-        color: "from-purple-500 to-purple-600",
-      },
-      {
-        label: "Teachers",
-        href: "/dashboard/boss/teachers",
-        icon: UserCheck,
-        color: "from-teal-500 to-teal-600",
-      },
-      {
-        label: "Students",
-        href: "/dashboard/admin/students",
-        icon: GraduationCap,
-        color: "from-green-500 to-green-600",
-      },
-      {
-        label: "Finished",
-        href: "/dashboard/admin/students/finished",
-        icon: CircleCheck,
-        color: "from-blue-500 to-blue-600",
-      },
-      {
-        label: "Stopped",
-        href: "/dashboard/admin/students/stopped",
-        icon: Pause,
-        color: "from-red-500 to-red-600",
-      },
-      {
-        label: "Candidates",
-        href: "/dashboard/admin/students/candidates",
-        icon: ClipboardCheck,
-        color: "from-violet-500 to-violet-600",
-      },
-      {
-        label: "Exams",
-        href: "/dashboard/admin/exams",
-        icon: BookOpen,
-        color: "from-emerald-500 to-emerald-600",
-      },
-      {
-        label: "Homework",
-        href: "/dashboard/admin/homework",
-        icon: ClipboardList,
-        color: "from-indigo-500 to-indigo-600",
-      },
-      {
-        label: "Manage Branches",
-        href: "/dashboard/boss/branches",
-        icon: Building2,
-        color: "from-orange-500 to-orange-600",
-      },
-      {
-        label: "Seed Demo Data",
-        href: "/dashboard/admin/seed",
-        icon: Settings,
-        color: "from-amber-500 to-amber-600",
-      },
-      {
-        label: "Finance",
-        href: "/dashboard/boss/finance",
-        icon: DollarSign,
-        color: "from-emerald-500 to-emerald-600",
-      },
-      {
-        label: "Teacher salary",
-        href: "/dashboard/boss/salary",
-        icon: Wallet,
-        color: "from-green-500 to-green-600",
-      },
-      {
-        label: "Weekly reports",
-        href: "/dashboard/boss/reports",
-        icon: FileText,
-        color: "from-cyan-500 to-cyan-600",
-      },
-      {
-        label: "Referrals",
-        href: "/dashboard/referrals",
-        icon: UserPlus,
-        color: "from-sky-500 to-sky-600",
-      }
-    );
-  }
-
-  // BRANCH_ADMIN Navigation
-  if (role === "BRANCH_ADMIN") {
-    navItems.push(
-      {
-        label: "Students",
-        href: "/dashboard/branch-admin/students",
-        icon: Users,
-        color: "from-purple-500 to-purple-600",
-        disabled: true,
-        comingSoon: true,
-      },
-      {
-        label: "Classes",
-        href: "/dashboard/branch-admin/classes",
-        icon: BookOpen,
-        color: "from-emerald-500 to-emerald-600",
-        disabled: true,
-        comingSoon: true,
-      },
-      {
-        label: "Finance",
-        href: "/dashboard/branch-admin/finance",
-        icon: DollarSign,
-        color: "from-orange-500 to-orange-600",
-        disabled: true,
-        comingSoon: true,
-      },
-      {
-        label: "Approvals",
-        href: "/dashboard/branch-admin/approvals",
-        icon: CheckCircle,
-        color: "from-green-500 to-green-600",
-        disabled: true,
-        comingSoon: true,
-      },
-      {
-        label: "Referrals",
-        href: "/dashboard/referrals",
-        icon: UserPlus,
-        color: "from-sky-500 to-sky-600",
-      }
-    );
-  }
-
-  // BRANCH_BOSS Navigation
-  if (role === "BRANCH_BOSS") {
-    navItems.push({
-      label: "Referrals",
-      href: "/dashboard/referrals",
-      icon: UserPlus,
-      color: "from-sky-500 to-sky-600",
-    });
-  }
-
-  // ADMIN Navigation
-  if (role === "ADMIN") {
-    navItems.push(
-      {
-        label: "Students",
-        href: "/dashboard/admin/students",
-        icon: Users,
-        color: "from-purple-500 to-purple-600",
-      },
-      {
-        label: "Finished",
-        href: "/dashboard/admin/students/finished",
-        icon: CircleCheck,
-        color: "from-blue-500 to-blue-600",
-      },
-      {
-        label: "Stopped",
-        href: "/dashboard/admin/students/stopped",
-        icon: Pause,
-        color: "from-red-500 to-red-600",
-      },
-      {
-        label: "Candidates",
-        href: "/dashboard/admin/students/candidates",
-        icon: ClipboardCheck,
-        color: "from-violet-500 to-violet-600",
-      },
-      {
-        label: "Exams",
-        href: "/dashboard/admin/exams",
-        icon: BookOpen,
-        color: "from-emerald-500 to-emerald-600",
-      },
-      {
-        label: "Homework",
-        href: "/dashboard/admin/homework",
-        icon: ClipboardList,
-        color: "from-indigo-500 to-indigo-600",
-      },
-      {
-        label: "Seed Demo Data",
-        href: "/dashboard/admin/seed",
-        icon: Settings,
-        color: "from-orange-500 to-orange-600",
-      },
-      {
-        label: "Referrals",
-        href: "/dashboard/referrals",
-        icon: UserPlus,
-        color: "from-sky-500 to-sky-600",
-      }
-    );
-  }
-
-  // TEACHER Navigation
-  if (role === "TEACHER") {
-    navItems.push(
-      {
-        label: "Schedule",
-        href: "/dashboard/teacher/schedule",
-        icon: Calendar,
-        color: "from-pink-500 to-pink-600",
-      },
-      {
-        label: "Homework",
-        href: "/dashboard/teacher/homework",
-        icon: ClipboardList,
-        color: "from-indigo-500 to-indigo-600",
-      },
-      {
-        label: "Reports",
-        href: "/dashboard/teacher/reports",
-        icon: BarChart3,
-        color: "from-cyan-500 to-cyan-600",
-        disabled: true,
-        comingSoon: true,
-      },
-      {
-        label: "Exams",
-        href: "/dashboard/teacher/exams",
-        icon: ClipboardList,
-        color: "from-emerald-500 to-emerald-600",
-        disabled: true,
-        comingSoon: true,
-      },
-      {
-        label: "Grading",
-        href: "/dashboard/teacher/grading",
-        icon: CheckCircle,
-        color: "from-orange-500 to-orange-600",
-        disabled: true,
-        comingSoon: true,
-      },
-      {
-        label: "Salary",
-        href: "/dashboard/teacher/salary",
-        icon: CreditCard,
-        color: "from-green-500 to-green-600",
-        disabled: true,
-        comingSoon: true,
-      }
-    );
-  }
-
-  // STUDENT Navigation is rendered via <StudentNav /> below
-  // (collapsible topics + clickable subtopics)
+  const usesStaffNav =
+    role &&
+    role !== "STUDENT" &&
+    [
+      "CREATOR",
+      "BOSS",
+      "ADMIN",
+      "TEACHER",
+      "BRANCH_ADMIN",
+      "BRANCH_BOSS",
+      "PARTNER",
+    ].includes(role);
 
   return (
     <>
-      {/* Mobile Menu Button - On Screen (when sidebar is closed) */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
@@ -417,7 +36,6 @@ export default function Sidebar() {
         </button>
       )}
 
-      {/* Mobile Overlay */}
       {isOpen && (
         <div
           className="lg:hidden fixed inset-0 bg-black/50 z-40"
@@ -430,7 +48,6 @@ export default function Sidebar() {
           isOpen ? "translate-x-0" : "-translate-x-full"
         } lg:translate-x-0`}
       >
-        {/* Mobile Menu Button - On Sidebar (when sidebar is open) */}
         {isOpen && (
           <div className="lg:hidden flex justify-end p-4 border-b border-slate-200">
             <button
@@ -442,7 +59,6 @@ export default function Sidebar() {
           </div>
         )}
 
-        {/* User Profile Section */}
         <div
           className={`px-4 sm:px-6 py-4 ${
             isOpen
@@ -452,15 +68,18 @@ export default function Sidebar() {
         >
           {status === "loading" ? (
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-gray-400 rounded-full animate-pulse flex-shrink-0"></div>
+              <div className="w-8 h-8 bg-gray-400 rounded-full animate-pulse flex-shrink-0" />
               <div className="flex-1 min-w-0 space-y-2">
-                <div className="h-4 bg-gray-400 rounded w-24 animate-pulse"></div>
-                <div className="h-3 bg-gray-400 rounded w-16 animate-pulse"></div>
+                <div className="h-4 bg-gray-400 rounded w-24 animate-pulse" />
+                <div className="h-3 bg-gray-400 rounded w-16 animate-pulse" />
               </div>
             </div>
           ) : (
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-medium text-xs flex-shrink-0" style={{ backgroundColor: "#303380" }}>
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center text-white font-medium text-xs flex-shrink-0"
+                style={{ backgroundColor: "#303380" }}
+              >
                 {session?.user?.name?.charAt(0).toUpperCase() ||
                   session?.user?.email?.charAt(0).toUpperCase() ||
                   "U"}
@@ -479,83 +98,25 @@ export default function Sidebar() {
           )}
         </div>
 
-        {/* Navigation */}
         <nav className="p-3 sm:p-4 pb-20">
           <div className="space-y-1">
             {status === "loading" ? (
               <>
                 {[1, 2, 3, 4].map((i) => (
                   <div key={i} className="flex items-center gap-3 px-3 py-2">
-                    <div className="w-4 h-4 bg-gray-400 rounded animate-pulse"></div>
-                    <div className="h-4 bg-gray-400 rounded w-24 animate-pulse"></div>
+                    <div className="w-4 h-4 bg-gray-400 rounded animate-pulse" />
+                    <div className="h-4 bg-gray-400 rounded w-24 animate-pulse" />
                   </div>
                 ))}
               </>
             ) : role === "STUDENT" ? (
               <StudentNav onNavigate={() => setIsOpen(false)} />
-            ) : (
-              navItems.map((item) => {
-                // For CREATOR role, match exact paths only
-                const isActive = role === "CREATOR" 
-                  ? pathname === item.href
-                  : (pathname === item.href || pathname.startsWith(item.href + "/"));
-                const Icon = item.icon;
-                const isDisabled = item.disabled || item.comingSoon;
-
-                if (isDisabled) {
-                  return (
-                    <div
-                      key={item.href}
-                      className="flex items-center gap-3 px-3 py-2 rounded text-slate-400 cursor-not-allowed"
-                      title={item.comingSoon ? "Coming soon" : "Unavailable"}
-                      aria-disabled="true"
-                    >
-                      <Icon className="w-4 h-4" />
-                      <span className="text-sm text-slate-400">{item.label}</span>
-                      {item.comingSoon ? (
-                        <span className="ml-auto text-xs text-slate-400">Soon</span>
-                      ) : null}
-                    </div>
-                  );
-                }
-
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    prefetch={false}
-                    onClick={() => setIsOpen(false)}
-                    className={`flex items-center gap-3 px-3 py-2 rounded transition ${
-                      isActive
-                        ? "text-white"
-                        : "text-slate-700 hover:bg-slate-50"
-                    }`}
-                    style={isActive ? { backgroundColor: "#303380" } : {}}
-                    onMouseEnter={(e) => {
-                      if (!isActive) {
-                        e.currentTarget.style.backgroundColor = "";
-                      } else {
-                        e.currentTarget.style.backgroundColor = "#252a6b";
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isActive) {
-                        e.currentTarget.style.backgroundColor = "";
-                      } else {
-                        e.currentTarget.style.backgroundColor = "#303380";
-                      }
-                    }}
-                  >
-                    <Icon className="w-4 h-4" />
-                    <span className="text-sm font-medium">{item.label}</span>
-                  </Link>
-                );
-              })
-            )}
+            ) : usesStaffNav ? (
+              <StaffNav role={role!} onNavigate={() => setIsOpen(false)} />
+            ) : null}
           </div>
         </nav>
 
-        {/* Bottom Section */}
         <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 border-t border-slate-200">
           <Link
             href="/"
