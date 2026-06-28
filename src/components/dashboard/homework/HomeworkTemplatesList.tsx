@@ -28,6 +28,7 @@ type TemplateItem = {
   sectionCount: number;
   assignmentCount: number;
   createdBy: { id: string; name: string | null } | null;
+  canEdit?: boolean;
 };
 
 type Response = { items: TemplateItem[] };
@@ -132,17 +133,20 @@ export default function HomeworkTemplatesList({ role }: Props) {
                     <td className="px-4 py-3 text-gray-600">{item.assignmentCount}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <Link
-                          href={`${base}/${item.id}/edit`}
-                          className="inline-flex items-center gap-1 text-xs font-medium text-gray-700 hover:text-gray-900"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                          Edit
-                        </Link>
+                        {item.canEdit !== false ? (
+                          <Link
+                            href={`${base}/${item.id}/edit`}
+                            className="inline-flex items-center gap-1 text-xs font-medium text-gray-700 hover:text-gray-900"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                            Edit
+                          </Link>
+                        ) : null}
                         <button
                           type="button"
                           onClick={() => setAssignTarget(item)}
-                          className="inline-flex items-center gap-1 text-xs font-medium text-gray-700 hover:text-gray-900"
+                          className="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded"
+                          style={{ color: "#303380" }}
                         >
                           <UserPlus className="w-3.5 h-3.5" />
                           Assign

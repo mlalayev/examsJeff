@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-utils";
-import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { preparePasswordForStorage } from "@/lib/user-password";
 
 const MANAGER_ROLES = ["CREATOR", "ADMIN", "BOSS"];
 
@@ -194,7 +194,11 @@ export async function PATCH(
     if (data.role !== undefined) userData.role = data.role;
     if (data.branchId !== undefined) userData.branchId = data.branchId;
     if (data.approved !== undefined) userData.approved = data.approved;
-    if (data.password) userData.passwordHash = await bcrypt.hash(data.password, 10);
+    if (data.password) {
+      const stored = await preparePasswordForStorage(data.password);
+      userData.passwordHash = stored.passwordHash;
+      userData.passwordEncrypted = stored.passwordEncrypted;
+    }
 
     await prisma.user.update({ where: { id }, data: userData });
 

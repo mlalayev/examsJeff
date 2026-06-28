@@ -15,6 +15,7 @@ model User {
   emailVerified               DateTime?
   image                       String?
   passwordHash                String
+  passwordEncrypted           String?
   role                        Role                  @default(STUDENT)
   tags                        String[]              @default([])
   createdAt                   DateTime              @default(now())

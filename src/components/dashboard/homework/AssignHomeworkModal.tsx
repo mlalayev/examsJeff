@@ -1,16 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { X } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { X, Search } from "lucide-react";
 import { AlertModal } from "@/components/modals/AlertModal";
 import type { HomeworkDashboardRole } from "@/lib/homework-dashboard";
 
-type StudentOption = { id: string; name: string; email: string };
-type ClassOption = {
+type StudentOption = {
   id: string;
   name: string;
-  students: StudentOption[];
+  email: string;
+  className?: string | null;
 };
+
+type ClassOption = { id: string; name: string };
 
 type Props = {
   role: HomeworkDashboardRole;
@@ -27,10 +29,12 @@ export default function AssignHomeworkModal({
   onClose,
   onAssigned,
 }: Props) {
-  const [classes, setClasses] = useState<ClassOption[]>([]);
+  const isTeacher = role === "teacher";
   const [students, setStudents] = useState<StudentOption[]>([]);
+  const [classes, setClasses] = useState<ClassOption[]>([]);
   const [selectedClass, setSelectedClass] = useState("");
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
+  const [search, setSearch] = useState("");
   const [dueAt, setDueAt] = useState("");
   const [isExtra, setIsExtra] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -42,38 +46,44 @@ export default function AssignHomeworkModal({
     type?: "success" | "error";
   }>({ isOpen: false, title: "", message: "" });
 
-  useEffect(() => {
-    (async () => {
-      setLoading(true);
-      try {
-        if (role === "teacher") {
-          const res = await fetch("/api/teacher/classes");
-          const data = await res.json();
-          if (res.ok && Array.isArray(data)) {
-            setClasses(data);
-          }
-        } else {
-          const res = await fetch("/api/admin/users?role=STUDENT");
-          const data = await res.json();
-          const list = Array.isArray(data.users) ? data.users : [];
-          setStudents(
-            list.map((u: { id: string; firstName?: string; lastName?: string; email: string }) => ({
-              id: u.id,
-              name:
-                [u.firstName, u.lastName].filter(Boolean).join(" ").trim() ||
-                u.email.split("@")[0],
-              email: u.email,
-            }))
-          );
+  const loadStudents = useCallback(async () => {
+    setLoading(true);
+    try {
+      if (isTeacher) {
+        const params = new URLSearchParams();
+        if (selectedClass) params.set("classId", selectedClass);
+        if (search.trim()) params.set("search", search.trim());
+        const res = await fetch(`/api/teacher/homework/students?${params}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to load students");
+        setStudents(data.students ?? []);
+        if (!selectedClass && !search.trim()) {
+          setClasses(data.classes ?? []);
         }
-      } finally {
-        setLoading(false);
+      } else {
+        const params = new URLSearchParams();
+        if (search.trim()) params.set("search", search.trim());
+        const res = await fetch(`/api/admin/homework/students?${params}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to load students");
+        setStudents(data.students ?? []);
       }
-    })();
-  }, [role]);
+    } catch (e) {
+      setAlert({
+        isOpen: true,
+        title: "Error",
+        message: e instanceof Error ? e.message : "Failed to load students",
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [isTeacher, selectedClass, search]);
 
-  const classStudents =
-    classes.find((c) => c.id === selectedClass)?.students ?? [];
+  useEffect(() => {
+    const t = setTimeout(loadStudents, search ? 300 : 0);
+    return () => clearTimeout(t);
+  }, [loadStudents, search]);
 
   const toggleStudent = (id: string) => {
     setSelectedStudents((prev) =>
@@ -81,13 +91,14 @@ export default function AssignHomeworkModal({
     );
   };
 
-  const handleAssign = async () => {
-    const studentIds =
-      role === "teacher"
-        ? selectedStudents
-        : selectedStudents;
+  const selectAll = () => {
+    setSelectedStudents(students.map((s) => s.id));
+  };
 
-    if (studentIds.length === 0) {
+  const clearSelection = () => setSelectedStudents([]);
+
+  const handleAssign = async () => {
+    if (selectedStudents.length === 0) {
       setAlert({
         isOpen: true,
         title: "Validation",
@@ -104,8 +115,8 @@ export default function AssignHomeworkModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           examId,
-          studentIds,
-          classId: selectedClass || undefined,
+          studentIds: selectedStudents,
+          classId: isTeacher && selectedClass ? selectedClass : undefined,
           dueAt: dueAt ? new Date(dueAt).toISOString() : undefined,
           isExtra,
         }),
@@ -114,7 +125,12 @@ export default function AssignHomeworkModal({
       if (!res.ok) {
         throw new Error(data.error || "Failed to assign homework");
       }
-      onAssigned();
+      setAlert({
+        isOpen: true,
+        title: "Assigned",
+        message: `Homework assigned to ${data.count ?? selectedStudents.length} student(s).`,
+        type: "success",
+      });
     } catch (e) {
       setAlert({
         isOpen: true,
@@ -141,69 +157,101 @@ export default function AssignHomeworkModal({
         </div>
 
         <div className="p-5 space-y-4">
-          {loading ? (
-            <p className="text-sm text-gray-500">Loading students...</p>
-          ) : role === "teacher" ? (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Class</label>
-                <select
-                  value={selectedClass}
-                  onChange={(e) => {
-                    setSelectedClass(e.target.value);
-                    setSelectedStudents([]);
-                  }}
-                  className="w-full border border-gray-200 rounded-md px-3 py-2 text-sm"
-                >
-                  <option value="">Select class</option>
-                  {classes.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {selectedClass ? (
-                <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-md divide-y">
-                  {classStudents.map((s) => (
-                    <label
-                      key={s.id}
-                      className="flex items-center gap-3 px-3 py-2 text-sm cursor-pointer hover:bg-gray-50"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedStudents.includes(s.id)}
-                        onChange={() => toggleStudent(s.id)}
-                      />
-                      <span>{s.name}</span>
-                    </label>
-                  ))}
-                </div>
-              ) : null}
-            </>
-          ) : (
-            <div className="max-h-56 overflow-y-auto border border-gray-200 rounded-md divide-y">
-              {students.map((s) => (
-                <label
-                  key={s.id}
-                  className="flex items-center gap-3 px-3 py-2 text-sm cursor-pointer hover:bg-gray-50"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedStudents.includes(s.id)}
-                    onChange={() => toggleStudent(s.id)}
-                  />
-                  <span>
-                    {s.name}
-                    <span className="text-gray-400 ml-1">({s.email})</span>
-                  </span>
-                </label>
-              ))}
+          {isTeacher && classes.length > 0 ? (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Filter by class
+              </label>
+              <select
+                value={selectedClass}
+                onChange={(e) => {
+                  setSelectedClass(e.target.value);
+                  setSelectedStudents([]);
+                }}
+                className="w-full border border-gray-200 rounded-md px-3 py-2 text-sm"
+              >
+                <option value="">All my students</option>
+                {classes.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
             </div>
-          )}
+          ) : null}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Due date</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {isTeacher ? "Your students" : "Students"}
+            </label>
+            <div className="relative mb-2">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by name or email..."
+                className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-md"
+              />
+            </div>
+            <div className="flex gap-2 mb-2">
+              <button
+                type="button"
+                onClick={selectAll}
+                disabled={loading || students.length === 0}
+                className="text-xs font-medium text-gray-700 hover:text-gray-900 disabled:opacity-40"
+              >
+                Select all
+              </button>
+              <button
+                type="button"
+                onClick={clearSelection}
+                disabled={selectedStudents.length === 0}
+                className="text-xs font-medium text-gray-500 hover:text-gray-700 disabled:opacity-40"
+              >
+                Clear
+              </button>
+              <span className="text-xs text-gray-400 ml-auto">
+                {selectedStudents.length} selected
+              </span>
+            </div>
+            {loading ? (
+              <p className="text-sm text-gray-500 py-4">Loading students...</p>
+            ) : students.length === 0 ? (
+              <p className="text-sm text-gray-500 py-4 border border-gray-200 rounded-md px-3">
+                {isTeacher
+                  ? "No students found. Add students to your classes first."
+                  : "No students found."}
+              </p>
+            ) : (
+              <div className="max-h-52 overflow-y-auto border border-gray-200 rounded-md divide-y">
+                {students.map((s) => (
+                  <label
+                    key={s.id}
+                    className="flex items-center gap-3 px-3 py-2 text-sm cursor-pointer hover:bg-gray-50"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedStudents.includes(s.id)}
+                      onChange={() => toggleStudent(s.id)}
+                    />
+                    <span className="flex-1 min-w-0">
+                      <span className="block truncate">{s.name}</span>
+                      <span className="block text-xs text-gray-400 truncate">
+                        {s.email}
+                        {s.className ? ` · ${s.className}` : ""}
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Due date (optional)
+            </label>
             <input
               type="datetime-local"
               value={dueAt}
@@ -232,12 +280,14 @@ export default function AssignHomeworkModal({
           </button>
           <button
             type="button"
-            disabled={submitting}
+            disabled={submitting || selectedStudents.length === 0}
             onClick={handleAssign}
             className="px-4 py-2 text-sm font-medium text-white rounded-md disabled:opacity-50"
             style={{ backgroundColor: "#303380" }}
           >
-            {submitting ? "Assigning..." : "Assign"}
+            {submitting
+              ? "Assigning..."
+              : `Assign to ${selectedStudents.length || 0} student(s)`}
           </button>
         </div>
       </div>
@@ -247,7 +297,11 @@ export default function AssignHomeworkModal({
         title={alert.title}
         message={alert.message}
         type={alert.type}
-        onClose={() => setAlert((a) => ({ ...a, isOpen: false }))}
+        onClose={() => {
+          const wasSuccess = alert.type === "success";
+          setAlert((a) => ({ ...a, isOpen: false }));
+          if (wasSuccess) onAssigned();
+        }}
       />
     </div>
   );

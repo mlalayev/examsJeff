@@ -19,14 +19,12 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search")?.trim() || "";
 
-    const where: Record<string, unknown> = { isHomework: true };
-    if (role === "TEACHER") {
-      where.createdById = userId;
-    }
+    const where: Record<string, unknown> = { isHomework: true, isActive: true };
+    // Teachers can assign any active homework to their students; edit is limited in UI.
     if (search) {
       where.title = { contains: search, mode: "insensitive" };
     }
-    if (branchId) {
+    if (branchId && role !== "CREATOR" && role !== "BOSS" && role !== "ADMIN") {
       where.createdBy = { branchId };
     }
 
@@ -73,6 +71,11 @@ export async function GET(request: NextRequest) {
               name: formatUserName(e.createdBy),
             }
           : null,
+        canEdit:
+          role === "CREATOR" ||
+          role === "BOSS" ||
+          role === "ADMIN" ||
+          e.createdBy?.id === userId,
       })),
     });
   } catch (error: unknown) {

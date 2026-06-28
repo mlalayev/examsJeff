@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import bcrypt from "bcryptjs";
+import { preparePasswordForStorage } from "@/lib/user-password";
 
 // Secret key to prevent unauthorized access
 const SETUP_SECRET = process.env.SETUP_SECRET || "aimentor-setup-secret-2024";
@@ -33,13 +33,15 @@ export async function POST(request: Request) {
     });
 
     if (existing) {
+      const stored = await preparePasswordForStorage(CREATOR_PASSWORD);
       // Update existing user to be CREATOR
-      const updated = await prisma.user.update({
+      await prisma.user.update({
         where: { email: CREATOR_EMAIL },
         data: {
           role: "CREATOR",
           approved: true,
-          passwordHash: await bcrypt.hash(CREATOR_PASSWORD, 10),
+          passwordHash: stored.passwordHash,
+          passwordEncrypted: stored.passwordEncrypted,
         },
       });
 
@@ -62,12 +64,16 @@ export async function POST(request: Request) {
       });
     }
 
+    const stored = await preparePasswordForStorage(CREATOR_PASSWORD);
+
     // Create creator account
-    const creator = await prisma.user.create({
+    await prisma.user.create({
       data: {
-        name: CREATOR_NAME,
+        firstName: "System",
+        lastName: "Creator",
         email: CREATOR_EMAIL,
-        passwordHash: await bcrypt.hash(CREATOR_PASSWORD, 10),
+        passwordHash: stored.passwordHash,
+        passwordEncrypted: stored.passwordEncrypted,
         role: "CREATOR",
         approved: true,
         branchId: branch.id,

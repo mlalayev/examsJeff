@@ -6,7 +6,7 @@ import {
   assertSameBranchOrBoss,
 } from "@/lib/auth-utils";
 import { parseCommissionTiers, type CommissionTier } from "@/lib/referrals";
-import bcrypt from "bcryptjs";
+import { preparePasswordForStorage } from "@/lib/user-password";
 import { z } from "zod";
 
 const tierSchema = z.object({
@@ -102,13 +102,14 @@ export async function PATCH(
           { status: 400 }
         );
       }
-      const passwordHash = await bcrypt.hash(cs.password, 10);
+      const { passwordHash, passwordEncrypted } = await preparePasswordForStorage(cs.password);
       const newStudent = await prisma.user.create({
         data: {
           firstName: cs.firstName.trim(),
           lastName: cs.lastName.trim(),
           email: cs.email.toLowerCase().trim(),
           passwordHash,
+          passwordEncrypted,
           role: "STUDENT",
           approved: true,
           branchId: referral.branchId,

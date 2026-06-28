@@ -5,7 +5,7 @@
  */
 
 import { prisma } from "./prisma";
-import bcrypt from "bcryptjs";
+import { preparePasswordForStorage } from "./user-password";
 
 const CREATOR_EMAIL = "creator@creator.com";
 const CREATOR_PASSWORD = "murad123";
@@ -47,8 +47,7 @@ export async function initializeCreatorAccount() {
       });
     }
 
-    // Hash the password
-    const passwordHash = await bcrypt.hash(CREATOR_PASSWORD, 10);
+    const { passwordHash, passwordEncrypted } = await preparePasswordForStorage(CREATOR_PASSWORD);
 
     // Create the creator account
     await prisma.user.create({
@@ -57,6 +56,7 @@ export async function initializeCreatorAccount() {
         lastName: CREATOR_LAST_NAME,
         email: CREATOR_EMAIL,
         passwordHash,
+        passwordEncrypted,
         role: "CREATOR",
         approved: true,
         branchId: defaultBranch.id,

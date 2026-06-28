@@ -264,6 +264,7 @@ export function maskSensitiveData(data: any): any {
   const sensitiveKeys = [
     "password",
     "passwordHash",
+    "passwordEncrypted",
     "token",
     "secret",
     "apiKey",

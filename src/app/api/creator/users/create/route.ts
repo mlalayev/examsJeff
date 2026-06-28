@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-utils";
-import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { preparePasswordForStorage } from "@/lib/user-password";
 
 const createUserSchema = z.object({
   firstName: z.string().min(2, "First name must be at least 2 characters"),
@@ -39,8 +39,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "User with this email already exists" }, { status: 400 });
     }
 
-    // Hash password
-    const passwordHash = await bcrypt.hash(validatedData.password, 10);
+    const { passwordHash, passwordEncrypted } = await preparePasswordForStorage(validatedData.password);
 
     if (validatedData.role === "PARENT") {
       const childIds = validatedData.childIds ?? [];
@@ -65,6 +64,7 @@ export async function POST(request: Request) {
         lastName: validatedData.lastName,
         email: validatedData.email,
         passwordHash,
+        passwordEncrypted,
         role: validatedData.role,
         approved: true,
         branchId: validatedData.branchId,

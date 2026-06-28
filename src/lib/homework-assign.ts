@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { assertSameBranchOrBoss } from "@/lib/auth-utils";
 import { formatUserName } from "@/lib/homework-utils";
+import { teacherOwnsStudents } from "@/lib/teacher-students";
 
 type AssignInput = {
   examId: string;
@@ -61,17 +62,9 @@ export async function assignHomeworkToStudents(
   }
 
   if (ctx.role === "TEACHER") {
-    const allowed = await prisma.classStudent.findMany({
-      where: {
-        studentId: { in: input.studentIds },
-        class: { teacherId: ctx.userId },
-      },
-      select: { studentId: true },
-    });
-    const allowedIds = new Set(allowed.map((a) => a.studentId));
-    const invalid = input.studentIds.filter((id) => !allowedIds.has(id));
-    if (invalid.length > 0) {
-      throw new Error("Forbidden: Student is not in your classes");
+    const ok = await teacherOwnsStudents(ctx.userId, input.studentIds);
+    if (!ok) {
+      throw new Error("Forbidden: You can only assign homework to your own students");
     }
   }
 

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { 
   Users, Key, Search, Filter, CheckCircle, XCircle, Plus,
-  Eye, X, Check, Edit, UserPlus, Loader2, Trash2, DollarSign
+  Eye, EyeOff, X, Check, Edit, UserPlus, Loader2, Trash2, DollarSign, Copy
 } from "lucide-react";
 import UnifiedLoading from "@/components/loading/UnifiedLoading";
 import { AlertModal } from "@/components/modals/AlertModal";
@@ -36,8 +36,15 @@ export default function CreatorUsersPage() {
   const [searchUsers, setSearchUsers] = useState("");
   const [roleFilter, setRoleFilter] = useState("ALL");
   const [tagFilter, setTagFilter] = useState("ALL");
-  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const isCreator = (session?.user as { role?: string } | undefined)?.role === "CREATOR";
+  const [showPasswordUser, setShowPasswordUser] = useState<CreatorUserRow | null>(null);
+  const [resetPasswordUser, setResetPasswordUser] = useState<CreatorUserRow | null>(null);
   const [newPassword, setNewPassword] = useState("");
+  const [storedPassword, setStoredPassword] = useState<string | null>(null);
+  const [storedPasswordAvailable, setStoredPasswordAvailable] = useState(false);
+  const [storedPasswordMessage, setStoredPasswordMessage] = useState("");
+  const [loadingStoredPassword, setLoadingStoredPassword] = useState(false);
+  const [showStoredPassword, setShowStoredPassword] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [userDetails, setUserDetails] = useState<any>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
@@ -128,12 +135,76 @@ export default function CreatorUsersPage() {
     }
   };
 
+  const openShowPasswordModal = async (user: CreatorUserRow) => {
+    setShowPasswordUser(user);
+    setStoredPassword(null);
+    setStoredPasswordAvailable(false);
+    setStoredPasswordMessage("");
+    setShowStoredPassword(false);
+    setLoadingStoredPassword(true);
+
+    try {
+      const res = await fetch(`/api/creator/users/${user.id}/password`);
+      const data = await res.json();
+      if (res.ok && data.available) {
+        setStoredPasswordAvailable(true);
+        setStoredPassword(data.password);
+      } else {
+        setStoredPasswordMessage(
+          data.message || "Password not stored yet. Use Reset Password to set a new one."
+        );
+      }
+    } catch {
+      setStoredPasswordMessage("Failed to load password.");
+    } finally {
+      setLoadingStoredPassword(false);
+    }
+  };
+
+  const closeShowPasswordModal = () => {
+    setShowPasswordUser(null);
+    setStoredPassword(null);
+    setStoredPasswordAvailable(false);
+    setStoredPasswordMessage("");
+    setShowStoredPassword(false);
+  };
+
+  const openResetPasswordModal = (user: CreatorUserRow) => {
+    setResetPasswordUser(user);
+    setNewPassword("");
+  };
+
+  const closeResetPasswordModal = () => {
+    setResetPasswordUser(null);
+    setNewPassword("");
+  };
+
+  const copyStoredPassword = async () => {
+    if (!storedPassword) return;
+    try {
+      await navigator.clipboard.writeText(storedPassword);
+      setAlertModal({
+        isOpen: true,
+        title: "Copied",
+        message: "Password copied to clipboard.",
+        type: "success",
+      });
+    } catch {
+      setAlertModal({
+        isOpen: true,
+        title: "Error",
+        message: "Could not copy password.",
+        type: "error",
+      });
+    }
+  };
+
   const handleResetPassword = async () => {
-    if (!selectedUser || !newPassword) return;
+    if (!resetPasswordUser || !newPassword) return;
 
     setResetting(true);
     try {
-      const res = await fetch(`/api/creator/users/${selectedUser.id}/password`, {
+      const res = await fetch(`/api/creator/users/${resetPasswordUser.id}/password`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ newPassword }),
@@ -143,17 +214,16 @@ export default function CreatorUsersPage() {
         setAlertModal({
           isOpen: true,
           title: "Password reset successfully",
-          message: `User: ${selectedUser.email}\nNew password: ${newPassword}`,
+          message: `User: ${resetPasswordUser.email}\nNew password: ${newPassword}`,
           type: "success",
         });
-        setSelectedUser(null);
-        setNewPassword("");
+        closeResetPasswordModal();
         fetchUsers();
       } else {
         const data = await res.json();
         setAlertModal({ isOpen: true, title: "Error", message: data.error || "Failed to reset", type: "error" });
       }
-    } catch (error) {
+    } catch {
       setAlertModal({ isOpen: true, title: "Error", message: "Failed to reset password", type: "error" });
     }
     setResetting(false);
@@ -668,13 +738,25 @@ export default function CreatorUsersPage() {
                             )}
                           </button>
                         )}
-                        <button
-                          onClick={() => setSelectedUser(user)}
-                          className="inline-flex items-center justify-center p-1.5 text-gray-500 hover:text-gray-700 transition-colors"
-                          title="Reset password"
-                        >
-                          <Key className="w-4 h-4" />
-                        </button>
+                        {isCreator && (
+                          <button
+                            onClick={() => openShowPasswordModal(user)}
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-[#303380] bg-[#303380]/10 hover:bg-[#303380]/15 rounded-md transition-colors"
+                            title="Show password (creator only)"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            Show Password
+                          </button>
+                        )}
+                        {isCreator && (
+                          <button
+                            onClick={() => openResetPasswordModal(user)}
+                            className="inline-flex items-center justify-center p-1.5 text-gray-500 hover:text-gray-700 transition-colors"
+                            title="Reset password"
+                          >
+                            <Key className="w-4 h-4" />
+                          </button>
+                        )}
                         {user.role === "STUDENT" && (
                           <button
                             onClick={() => setPaymentsTarget(user)}
@@ -701,23 +783,105 @@ export default function CreatorUsersPage() {
         </div>
       </div>
 
-      {/* Reset Password Modal */}
-      {selectedUser && (
+      {/* Show Password Modal (creator only) */}
+      {isCreator && showPasswordUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Reset Password
-            </h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">Show Password</h3>
+            <p className="text-xs text-gray-500 mb-4">Only visible to CREATOR account</p>
             <div className="mb-4">
               <p className="text-sm text-gray-600 mb-2">
-                User: <span className="font-medium">{selectedUser.name}</span>
+                User:{" "}
+                <span className="font-medium">
+                  {[showPasswordUser.firstName, showPasswordUser.lastName].filter(Boolean).join(" ") || "—"}
+                </span>
               </p>
               <p className="text-sm text-gray-600 mb-4">
-                Email: <span className="font-medium">{selectedUser.email}</span>
+                Email: <span className="font-medium">{showPasswordUser.email}</span>
               </p>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                New Password
-              </label>
+
+              <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+                {loadingStoredPassword ? (
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Loading password…
+                  </div>
+                ) : storedPasswordAvailable && storedPassword ? (
+                  <div className="space-y-2">
+                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">
+                      Password
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type={showStoredPassword ? "text" : "password"}
+                        readOnly
+                        value={storedPassword}
+                        className="flex-1 px-3 py-2 border border-gray-200 rounded-md text-sm bg-white font-mono"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowStoredPassword((v) => !v)}
+                        className="p-2 text-gray-500 hover:text-gray-700"
+                        title={showStoredPassword ? "Hide" : "Show"}
+                      >
+                        {showStoredPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={copyStoredPassword}
+                        className="p-2 text-gray-500 hover:text-gray-700"
+                        title="Copy password"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-amber-700">{storedPasswordMessage}</p>
+                )}
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={closeShowPasswordModal}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition"
+              >
+                Close
+              </button>
+              {!storedPasswordAvailable && (
+                <button
+                  onClick={() => {
+                    const user = showPasswordUser;
+                    closeShowPasswordModal();
+                    openResetPasswordModal(user);
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-white rounded-md transition"
+                  style={{ backgroundColor: "#303380" }}
+                >
+                  Reset Password
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reset Password Modal (creator only) */}
+      {isCreator && resetPasswordUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Reset Password</h3>
+            <div className="mb-4">
+              <p className="text-sm text-gray-600 mb-2">
+                User:{" "}
+                <span className="font-medium">
+                  {[resetPasswordUser.firstName, resetPasswordUser.lastName].filter(Boolean).join(" ") || "—"}
+                </span>
+              </p>
+              <p className="text-sm text-gray-600 mb-4">
+                Email: <span className="font-medium">{resetPasswordUser.email}</span>
+              </p>
+              <label className="block text-sm font-medium text-gray-700 mb-2">New password</label>
               <input
                 type="text"
                 value={newPassword}
@@ -728,10 +892,7 @@ export default function CreatorUsersPage() {
             </div>
             <div className="flex justify-end gap-3">
               <button
-                onClick={() => {
-                  setSelectedUser(null);
-                  setNewPassword("");
-                }}
+                onClick={closeResetPasswordModal}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition"
               >
                 Cancel
@@ -741,16 +902,6 @@ export default function CreatorUsersPage() {
                 disabled={!newPassword || newPassword.length < 6 || resetting}
                 className="px-4 py-2 text-sm font-medium text-white rounded-md transition disabled:opacity-50"
                 style={{ backgroundColor: "#303380" }}
-                onMouseEnter={(e) => {
-                  if (!e.currentTarget.disabled) {
-                    e.currentTarget.style.backgroundColor = "#252a6b";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!e.currentTarget.disabled) {
-                    e.currentTarget.style.backgroundColor = "#303380";
-                  }
-                }}
               >
                 {resetting ? "Resetting..." : "Reset Password"}
               </button>
