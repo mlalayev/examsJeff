@@ -19,6 +19,8 @@ const nextConfig = {
       bodySizeLimit: '50mb',
     },
   },
+
+  serverExternalPackages: ['bcryptjs'],
   
   typescript: {
     ignoreBuildErrors: true,

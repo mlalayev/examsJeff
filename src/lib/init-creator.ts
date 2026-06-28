@@ -5,7 +5,6 @@
  */
 
 import { prisma } from "./prisma";
-import { preparePasswordForStorage } from "./user-password";
 
 const CREATOR_EMAIL = "creator@creator.com";
 const CREATOR_PASSWORD = "murad123";
@@ -47,6 +46,7 @@ export async function initializeCreatorAccount() {
       });
     }
 
+    const { preparePasswordForStorage } = await import("./user-password");
     const { passwordHash, passwordEncrypted } = await preparePasswordForStorage(CREATOR_PASSWORD);
 
     // Create the creator account
