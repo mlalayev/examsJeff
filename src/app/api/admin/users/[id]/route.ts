@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-utils";
 import { z } from "zod";
-import { preparePasswordForStorage } from "@/lib/user-password";
+import { updateUserPassword } from "@/lib/user-password";
 
 const MANAGER_ROLES = ["CREATOR", "ADMIN", "BOSS"];
 
@@ -195,9 +195,7 @@ export async function PATCH(
     if (data.branchId !== undefined) userData.branchId = data.branchId;
     if (data.approved !== undefined) userData.approved = data.approved;
     if (data.password) {
-      const stored = await preparePasswordForStorage(data.password);
-      userData.passwordHash = stored.passwordHash;
-      userData.passwordEncrypted = stored.passwordEncrypted;
+      await updateUserPassword(prisma, id, data.password);
     }
 
     await prisma.user.update({ where: { id }, data: userData });

@@ -3,11 +3,13 @@
 import { useSession, signOut } from "next-auth/react";
 import { useState, useEffect, useRef } from "react";
 import { Bell, User, Settings, LogOut, ChevronDown } from "lucide-react";
+import ChangePasswordModal from "@/components/modals/ChangePasswordModal";
 
 export default function Header() {
   const { data: session } = useSession();
   const user = session?.user as any;
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -134,12 +136,12 @@ export default function Header() {
                   <button
                     onClick={() => {
                       setDropdownOpen(false);
-                      // Navigate to profile
+                      setChangePasswordOpen(true);
                     }}
                     className="w-full flex items-center gap-3 px-6 py-3 text-slate-700 hover:bg-slate-50 transition-colors duration-150"
                   >
                     <User className="w-4 h-4" />
-                    Profile Settings
+                    Change Password
                   </button>
 
                   <button
@@ -169,6 +171,7 @@ export default function Header() {
           </div>
         </div>
       </div>
+      <ChangePasswordModal open={changePasswordOpen} onClose={() => setChangePasswordOpen(false)} />
     </header>
   );
 }

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-utils";
 import { z } from "zod";
-import { preparePasswordForStorage } from "@/lib/user-password";
+import { updateUserPassword } from "@/lib/user-password";
 import { decryptPassword } from "@/lib/password-vault";
 
 const passwordSchema = z.object({
@@ -97,12 +97,7 @@ export async function PATCH(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const { passwordHash, passwordEncrypted } = await preparePasswordForStorage(newPassword);
-
-    await prisma.user.update({
-      where: { id },
-      data: { passwordHash, passwordEncrypted },
-    });
+    await updateUserPassword(prisma, id, newPassword);
 
     return NextResponse.json({
       message: "Password reset successfully",

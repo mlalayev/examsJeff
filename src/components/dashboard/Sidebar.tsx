@@ -3,14 +3,16 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { Menu, X, Home } from "lucide-react";
+import { Menu, X, Home, KeyRound } from "lucide-react";
 import StudentNav from "@/components/dashboard/student/StudentNav";
 import StaffNav from "@/components/dashboard/nav/StaffNav";
+import ChangePasswordModal from "@/components/modals/ChangePasswordModal";
 
 export default function Sidebar() {
   const { data: session, status } = useSession();
   const role = (session?.user as { role?: string })?.role;
   const [isOpen, setIsOpen] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
   const usesStaffNav =
     role &&
@@ -117,7 +119,20 @@ export default function Sidebar() {
           </div>
         </nav>
 
-        <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 border-t border-slate-200">
+        <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 border-t border-slate-200 space-y-1">
+          {session && (
+            <button
+              type="button"
+              onClick={() => {
+                setIsOpen(false);
+                setChangePasswordOpen(true);
+              }}
+              className="flex w-full items-center gap-3 px-3 py-2 rounded text-slate-700 hover:bg-slate-50 transition"
+            >
+              <KeyRound className="w-4 h-4" />
+              <span className="text-sm font-medium">Change Password</span>
+            </button>
+          )}
           <Link
             href="/"
             onClick={() => setIsOpen(false)}
@@ -128,6 +143,11 @@ export default function Sidebar() {
           </Link>
         </div>
       </aside>
+
+      <ChangePasswordModal
+        open={changePasswordOpen}
+        onClose={() => setChangePasswordOpen(false)}
+      />
     </>
   );
 }

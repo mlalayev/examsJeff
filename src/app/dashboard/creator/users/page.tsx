@@ -932,7 +932,16 @@ export default function CreatorUsersPage() {
               setNewBranchId(branchId);
               handleUpdateUser(role, branchId);
             }}
-            onResetPassword={() => setSelectedUser(userDetails)}
+            onResetPassword={() => {
+              setShowDetailsModal(false);
+              openResetPasswordModal({
+                id: userDetails.id,
+                firstName: userDetails.firstName ?? null,
+                lastName: userDetails.lastName ?? null,
+                email: userDetails.email,
+                role: userDetails.role,
+              });
+            }}
           />
         ) : null
       )}
