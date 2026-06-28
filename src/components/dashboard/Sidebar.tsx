@@ -109,6 +109,12 @@ export default function Sidebar() {
         color: "from-orange-500 to-orange-600",
       },
       {
+        label: "Homework",
+        href: "/dashboard/creator/homework",
+        icon: ClipboardList,
+        color: "from-indigo-500 to-indigo-600",
+      },
+      {
         label: "Classes",
         href: "/dashboard/creator/classes",
         icon: ClipboardList,
@@ -192,6 +198,12 @@ export default function Sidebar() {
         href: "/dashboard/admin/exams",
         icon: BookOpen,
         color: "from-emerald-500 to-emerald-600",
+      },
+      {
+        label: "Homework",
+        href: "/dashboard/admin/homework",
+        icon: ClipboardList,
+        color: "from-indigo-500 to-indigo-600",
       },
       {
         label: "Manage Branches",
@@ -320,6 +332,12 @@ export default function Sidebar() {
         color: "from-emerald-500 to-emerald-600",
       },
       {
+        label: "Homework",
+        href: "/dashboard/admin/homework",
+        icon: ClipboardList,
+        color: "from-indigo-500 to-indigo-600",
+      },
+      {
         label: "Seed Demo Data",
         href: "/dashboard/admin/seed",
         icon: Settings,
@@ -342,6 +360,12 @@ export default function Sidebar() {
         href: "/dashboard/teacher/schedule",
         icon: Calendar,
         color: "from-pink-500 to-pink-600",
+      },
+      {
+        label: "Homework",
+        href: "/dashboard/teacher/homework",
+        icon: ClipboardList,
+        color: "from-indigo-500 to-indigo-600",
       },
       {
         label: "Reports",
