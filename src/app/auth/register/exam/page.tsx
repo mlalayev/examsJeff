@@ -6,36 +6,32 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import {
   AlertCircle,
+  BookOpen,
   Calendar,
-  CheckCircle2,
-  GraduationCap,
   Lock,
   Mail,
   Phone,
   User,
+  UserPlus,
 } from "lucide-react";
 
 type ExamCategory = "IELTS" | "SAT";
 
-const EXAM_OPTIONS: {
-  id: ExamCategory;
-  label: string;
-  description: string;
-  accent: string;
-}[] = [
+const EXAM_OPTIONS: { id: ExamCategory; label: string; description: string }[] = [
   {
     id: "IELTS",
     label: "IELTS",
     description: "First IELTS mock exam will be added to your account",
-    accent: "from-sky-500 to-blue-600",
   },
   {
     id: "SAT",
     label: "SAT",
     description: "First SAT mock exam will be added to your account",
-    accent: "from-violet-500 to-purple-600",
   },
 ];
+
+const inputClass =
+  "w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#303380] focus:border-transparent text-gray-900 placeholder-gray-400 transition-all";
 
 function RegisterExamContent() {
   const router = useRouter();
@@ -112,57 +108,28 @@ function RegisterExamContent() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0b1020] text-white">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-24 -left-24 h-72 w-72 rounded-full bg-amber-500/20 blur-3xl" />
-        <div className="absolute top-1/3 right-0 h-96 w-96 rounded-full bg-violet-600/20 blur-3xl" />
-        <div className="absolute bottom-0 left-1/3 h-80 w-80 rounded-full bg-sky-500/10 blur-3xl" />
-      </div>
-
-      <div className="relative mx-auto flex min-h-screen max-w-6xl flex-col justify-center px-4 py-10 lg:flex-row lg:items-center lg:gap-12">
-        <div className="mb-10 max-w-xl lg:mb-0">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-400/10 px-4 py-1.5 text-sm text-amber-200">
-            <GraduationCap className="h-4 w-4" />
-            Sunday Examiner Registration
-          </div>
-          <h1 className="text-4xl font-bold tracking-tight md:text-5xl">
-            Register for your
-            <span className="block bg-gradient-to-r from-amber-300 via-orange-300 to-violet-300 bg-clip-text text-transparent">
-              mock exam session
-            </span>
-          </h1>
-          <p className="mt-4 text-lg text-slate-300">
-            Create your account, choose IELTS or SAT, and your first exam will be
-            assigned automatically. You will only have access to take exams.
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#303380] via-[#252a6b] to-[#1a1f4a] px-4 py-8">
+      <div className="max-w-xl w-full">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-white mb-2">Sunday Examiner</h1>
+          <p className="text-white/80 text-sm">
+            Create your account and get your first mock exam instantly
           </p>
-          <ul className="mt-8 space-y-3 text-sm text-slate-300">
-            <li className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-              Instant account approval
-            </li>
-            <li className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-              First exam added on registration
-            </li>
-            <li className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-              Exam-only access — no lessons or homework
-            </li>
-          </ul>
         </div>
 
-        <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur-xl md:p-8">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 border border-white/10">
           {error && (
-            <div className="mb-5 flex items-start gap-3 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-100">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>{error}</span>
+            <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <p className="text-red-700 text-sm">{error}</p>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field label="First name" icon={User}>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <Field label="First name" icon={User} htmlFor="firstName">
                 <input
+                  id="firstName"
                   required
                   value={form.firstName}
                   onChange={(e) => setField("firstName", e.target.value)}
@@ -170,8 +137,9 @@ function RegisterExamContent() {
                   placeholder="Ad"
                 />
               </Field>
-              <Field label="Last name" icon={User}>
+              <Field label="Last name" icon={User} htmlFor="lastName">
                 <input
+                  id="lastName"
                   required
                   value={form.lastName}
                   onChange={(e) => setField("lastName", e.target.value)}
@@ -181,8 +149,9 @@ function RegisterExamContent() {
               </Field>
             </div>
 
-            <Field label="Date of birth" icon={Calendar}>
+            <Field label="Date of birth" icon={Calendar} htmlFor="dateOfBirth">
               <input
+                id="dateOfBirth"
                 required
                 type="date"
                 value={form.dateOfBirth}
@@ -191,8 +160,9 @@ function RegisterExamContent() {
               />
             </Field>
 
-            <Field label="Mobile number" icon={Phone}>
+            <Field label="Mobile number" icon={Phone} htmlFor="phoneNumber">
               <input
+                id="phoneNumber"
                 required
                 type="tel"
                 value={form.phoneNumber}
@@ -202,20 +172,22 @@ function RegisterExamContent() {
               />
             </Field>
 
-            <Field label="Email address" icon={Mail}>
+            <Field label="Email address" icon={Mail} htmlFor="email">
               <input
+                id="email"
                 required
                 type="email"
                 value={form.email}
                 onChange={(e) => setField("email", e.target.value)}
                 className={inputClass}
-                placeholder="you@email.com"
+                placeholder="Enter your email"
               />
             </Field>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field label="Password" icon={Lock}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <Field label="Password" icon={Lock} htmlFor="password">
                 <input
+                  id="password"
                   required
                   type={showPassword ? "text" : "password"}
                   value={form.password}
@@ -224,8 +196,9 @@ function RegisterExamContent() {
                   placeholder="Min. 6 characters"
                 />
               </Field>
-              <Field label="Confirm password" icon={Lock}>
+              <Field label="Confirm password" icon={Lock} htmlFor="confirmPassword">
                 <input
+                  id="confirmPassword"
                   required
                   type={showPassword ? "text" : "password"}
                   value={form.confirmPassword}
@@ -236,21 +209,21 @@ function RegisterExamContent() {
               </Field>
             </div>
 
-            <label className="flex items-center gap-2 text-xs text-slate-300">
+            <label className="flex items-center gap-2 text-sm text-gray-600">
               <input
                 type="checkbox"
                 checked={showPassword}
                 onChange={(e) => setShowPassword(e.target.checked)}
-                className="rounded border-white/20 bg-white/10"
+                className="rounded border-gray-300 text-[#303380] focus:ring-[#303380]"
               />
               Show passwords
             </label>
 
             <div>
-              <p className="mb-3 text-sm font-medium text-slate-200">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Which exam do you want?
-              </p>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {EXAM_OPTIONS.map((opt) => {
                   const selected = form.examCategory === opt.id;
                   return (
@@ -258,18 +231,17 @@ function RegisterExamContent() {
                       key={opt.id}
                       type="button"
                       onClick={() => setField("examCategory", opt.id)}
-                      className={`rounded-2xl border p-4 text-left transition ${
+                      className={`rounded-lg border p-4 text-left transition-all ${
                         selected
-                          ? "border-amber-300/60 bg-amber-400/10 shadow-lg shadow-amber-500/10"
-                          : "border-white/10 bg-white/5 hover:border-white/20"
+                          ? "border-[#303380] bg-[#303380]/5 ring-2 ring-[#303380]/20"
+                          : "border-gray-300 hover:border-gray-400 hover:bg-gray-50"
                       }`}
                     >
-                      <div
-                        className={`mb-2 inline-flex rounded-lg bg-gradient-to-r ${opt.accent} px-2.5 py-1 text-xs font-semibold text-white`}
-                      >
-                        {opt.label}
+                      <div className="flex items-center gap-2 mb-1">
+                        <BookOpen className="w-4 h-4 text-[#303380]" />
+                        <span className="font-semibold text-gray-900">{opt.label}</span>
                       </div>
-                      <p className="text-xs text-slate-300">{opt.description}</p>
+                      <p className="text-xs text-gray-500">{opt.description}</p>
                     </button>
                   );
                 })}
@@ -279,18 +251,37 @@ function RegisterExamContent() {
             <button
               type="submit"
               disabled={loading}
-              className="mt-2 w-full rounded-xl bg-gradient-to-r from-amber-400 via-orange-400 to-violet-500 py-3.5 font-semibold text-slate-950 transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full py-3 px-4 bg-gradient-to-r from-[#303380] to-[#252a6b] hover:from-[#252a6b] hover:to-[#1a1f4a] text-white font-semibold rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl flex items-center justify-center gap-2 transform hover:scale-[1.02] active:scale-[0.98]"
             >
-              {loading ? "Creating account..." : "Register & get my exam"}
+              {loading ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Creating account...</span>
+                </>
+              ) : (
+                <>
+                  <UserPlus className="w-5 h-5" />
+                  <span>Register &amp; get my exam</span>
+                </>
+              )}
             </button>
           </form>
 
-          <p className="mt-6 text-center text-sm text-slate-400">
-            Already have an account?{" "}
-            <Link href="/auth/login" className="text-amber-300 hover:text-amber-200">
-              Sign in
-            </Link>
-          </p>
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <p className="text-center text-xs text-gray-500">
+              Already have an account?{" "}
+              <Link
+                href="/auth/login"
+                className="font-medium text-[#303380] hover:text-[#252a6b]"
+              >
+                Sign in
+              </Link>
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-8 text-center">
+          <p className="text-white/60 text-xs">© 2024 AI Mentor. All rights reserved.</p>
         </div>
       </div>
     </div>
@@ -300,34 +291,35 @@ function RegisterExamContent() {
 function Field({
   label,
   icon: Icon,
+  htmlFor,
   children,
 }: {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
+  htmlFor: string;
   children: React.ReactNode;
 }) {
   return (
-    <label className="block">
-      <span className="mb-1.5 block text-sm font-medium text-slate-200">
+    <div>
+      <label htmlFor={htmlFor} className="block text-sm font-semibold text-gray-700 mb-2">
         {label}
-      </span>
+      </label>
       <div className="relative">
-        <Icon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <Icon className="h-5 w-5 text-gray-400" />
+        </div>
         {children}
       </div>
-    </label>
+    </div>
   );
 }
-
-const inputClass =
-  "w-full rounded-xl border border-white/10 bg-white/10 py-3 pl-10 pr-4 text-white placeholder:text-slate-500 outline-none transition focus:border-amber-300/50 focus:ring-2 focus:ring-amber-400/20";
 
 export default function RegisterExamPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center bg-[#0b1020]">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-amber-300 border-t-transparent" />
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#303380] via-[#252a6b] to-[#1a1f4a]">
+          <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
         </div>
       }
     >
