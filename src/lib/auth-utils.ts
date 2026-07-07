@@ -218,6 +218,19 @@ export function canCreatePartnerAccount(role: string | undefined): boolean {
   return canManageReferrals(role);
 }
 
+export function canManageCrm(role: string | undefined): boolean {
+  return role === "CREATOR" || role === "BOSS" || role === "ADMIN";
+}
+
+export async function requireCrmManager() {
+  const user = await requireAuth();
+  const role = (user as any).role as string;
+  if (!canManageCrm(role)) {
+    throw new Error("Forbidden: CRM manager access required");
+  }
+  return user;
+}
+
 const COIN_MANAGER_ROLES = new Set(["CREATOR", "BOSS", "ADMIN", "TEACHER"]);
 
 export function canManageStudentCoins(role: string | undefined): boolean {

@@ -59,6 +59,7 @@ model User {
   lessonRecordsAsTeacher      LessonStudentRecord[] @relation("TeacherLessonRecords")
   coinTransactionsAsStudent   CoinTransaction[]     @relation("StudentCoinTransactions")
   coinTransactionsCreated     CoinTransaction[]     @relation("CoinTransactionCreator")
+  crmContactsCreated          CrmContact[]          @relation("CrmContactCreator")
 
   @@map("users")
 }
@@ -1113,4 +1114,27 @@ model WeeklyReport {
   @@unique([teacherId, classId, studentId, weekStart])
   @@index([teacherId, weekStart])
   @@map("weekly_reports")
+}
+
+// CRM contacts — people outreach is tracked for (e.g. Sunday Examiner registration).
+model CrmContact {
+  id            String    @id @default(cuid())
+  firstName     String
+  lastName      String
+  phoneNumber   String
+  contactReason String
+  hasWritten    Boolean   @default(false)
+  email         String?
+  dateOfBirth   DateTime?
+  notes         String?
+  createdById   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  createdBy User? @relation("CrmContactCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([phoneNumber])
+  @@index([email])
+  @@map("crm_contacts")
 }

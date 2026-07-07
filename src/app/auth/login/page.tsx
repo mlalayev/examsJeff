@@ -158,7 +158,7 @@ function LoginPageContent() {
         {/* Decorative Elements */}
         <div className="mt-8 text-center">
           <p className="text-white/60 text-xs">
-            © 2024 AI Mentor. All rights reserved.
+            © 2026 AI Mentor. All rights reserved.
           </p>
         </div>
       </div>
