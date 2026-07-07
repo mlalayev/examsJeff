@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import StudentNavSection from "./StudentNavSection";
 import { getActiveSubHref, studentNavSections } from "./studentNavConfig";
+import { isSundayExaminer } from "@/lib/sunday-examiner";
 
 type Props = {
   onNavigate?: () => void;
@@ -11,11 +13,21 @@ type Props = {
 
 export default function StudentNav({ onNavigate }: Props) {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const tags = (session?.user as { tags?: string[] } | undefined)?.tags;
+  const examOnly = isSundayExaminer(tags);
+
+  const sections = useMemo(
+    () =>
+      examOnly
+        ? studentNavSections.filter((section) => section.id === "exam")
+        : studentNavSections,
+    [examOnly]
+  );
 
   const activeId =
-    studentNavSections.find(
-      (sec) => getActiveSubHref(pathname, sec.subs) !== null
-    )?.id ?? null;
+    sections.find((sec) => getActiveSubHref(pathname, sec.subs) !== null)?.id ??
+    null;
 
   const [openId, setOpenId] = useState<string | null>(activeId);
 
@@ -26,7 +38,7 @@ export default function StudentNav({ onNavigate }: Props) {
 
   return (
     <div className="space-y-1">
-      {studentNavSections.map((section) => (
+      {sections.map((section) => (
         <StudentNavSection
           key={section.id}
           section={section}

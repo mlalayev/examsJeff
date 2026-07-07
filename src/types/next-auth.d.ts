@@ -8,6 +8,7 @@ declare module "next-auth" {
       role: "STUDENT" | "TEACHER" | "ADMIN" | "BOSS" | "BRANCH_ADMIN" | "BRANCH_BOSS" | "CREATOR" | "PARENT" | "PARTNER";
       approved?: boolean;
       branchId?: string | null;
+      tags?: string[];
     } & DefaultSession["user"];
   }
 
@@ -15,6 +16,7 @@ declare module "next-auth" {
     role: "STUDENT" | "TEACHER" | "ADMIN" | "BOSS" | "BRANCH_ADMIN" | "BRANCH_BOSS" | "CREATOR" | "PARENT" | "PARTNER";
     approved?: boolean;
     branchId?: string | null;
+    tags?: string[];
   }
 }
 
@@ -24,6 +26,7 @@ declare module "next-auth/jwt" {
     role: "STUDENT" | "TEACHER" | "ADMIN" | "BOSS" | "BRANCH_ADMIN" | "BRANCH_BOSS" | "CREATOR" | "PARENT" | "PARTNER";
     approved?: boolean;
     branchId?: string | null;
+    tags?: string[];
   }
 }
 

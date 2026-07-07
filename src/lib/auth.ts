@@ -54,6 +54,7 @@ export const authOptions: NextAuthOptions = {
           role: user.role,
           approved: (user as any).approved ?? false,
           branchId: (user as any).branchId ?? null,
+          tags: user.tags ?? [],
         } as any;
       }
     })
@@ -111,6 +112,7 @@ export const authOptions: NextAuthOptions = {
         token.role = (user as any).role;
         (token as any).approved = (user as any).approved ?? false;
         (token as any).branchId = (user as any).branchId ?? null;
+        (token as any).tags = (user as any).tags ?? [];
       } else if (token?.id) {
         // OPTIMIZED: Only sync with DB every 30 seconds instead of every request
         const lastSyncTime = (token as any).lastSync || 0;
@@ -129,6 +131,7 @@ export const authOptions: NextAuthOptions = {
                 email: true, 
                 branchId: true,
                 approved: true,
+                tags: true,
               },
             });
             
@@ -138,6 +141,7 @@ export const authOptions: NextAuthOptions = {
               (token as any).branchId = dbUser.branchId ?? null;
               token.role = dbUser.role as any;
               (token as any).approved = dbUser.approved ?? (token as any).approved ?? false;
+              (token as any).tags = dbUser.tags ?? [];
               (token as any).lastSync = now;
             }
           } catch {
@@ -155,6 +159,7 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).role = token.role;
         (session.user as any).approved = (token as any).approved ?? false;
         (session.user as any).branchId = (token as any).branchId ?? null;
+        (session.user as any).tags = (token as any).tags ?? [];
       }
       return session;
     }

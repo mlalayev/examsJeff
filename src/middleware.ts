@@ -90,6 +90,24 @@ export default async function middleware(req: NextRequest) {
     if ((token as any).role === "STUDENT" && !approved) {
       return NextResponse.redirect(new URL("/pending", req.url));
     }
+
+    const tags = ((token as any).tags as string[] | undefined) ?? [];
+    const isSundayExaminer = tags.includes("SUNDAY_EXAMINER");
+    if ((token as any).role === "STUDENT" && isSundayExaminer) {
+      const allowedPrefixes = [
+        "/dashboard/student/exams",
+        "/dashboard/student/history",
+        "/dashboard/student/coins",
+      ];
+      const allowed =
+        path === "/dashboard/student" ||
+        allowedPrefixes.some(
+          (prefix) => path === prefix || path.startsWith(prefix + "/")
+        );
+      if (!allowed) {
+        return NextResponse.redirect(new URL("/dashboard/student/exams", req.url));
+      }
+    }
   }
 
   // Teacher dashboard routes (must be approved unless elevated roles)
