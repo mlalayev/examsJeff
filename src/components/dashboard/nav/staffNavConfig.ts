@@ -7,6 +7,7 @@ import {
   Wallet,
   FileText,
   UserPlus,
+  Contact,
   Calendar,
   BarChart3,
 } from "lucide-react";
@@ -65,6 +66,12 @@ export function getStaffNavSections(role: string): CollapsibleNavSectionItem[] {
         icon: UserPlus,
         subs: [{ label: "Referrals", href: "/dashboard/referrals" }],
       },
+      {
+        id: "crm",
+        label: "CRM",
+        icon: Contact,
+        subs: [{ label: "Contacts", href: "/dashboard/crm" }],
+      },
     ];
   }
 
@@ -122,6 +129,12 @@ export function getStaffNavSections(role: string): CollapsibleNavSectionItem[] {
         icon: UserPlus,
         subs: [{ label: "Referrals", href: "/dashboard/referrals" }],
       },
+      {
+        id: "crm",
+        label: "CRM",
+        icon: Contact,
+        subs: [{ label: "Contacts", href: "/dashboard/crm" }],
+      },
     ];
   }
 
@@ -153,6 +166,12 @@ export function getStaffNavSections(role: string): CollapsibleNavSectionItem[] {
         label: "Referrals",
         icon: UserPlus,
         subs: [{ label: "Referrals", href: "/dashboard/referrals" }],
+      },
+      {
+        id: "crm",
+        label: "CRM",
+        icon: Contact,
+        subs: [{ label: "Contacts", href: "/dashboard/crm" }],
       },
     ];
   }

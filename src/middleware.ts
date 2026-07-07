@@ -162,6 +162,15 @@ export default async function middleware(req: NextRequest) {
     }
   }
 
+  // CRM contacts (admin, boss, creator)
+  if (path.startsWith("/dashboard/crm")) {
+    const role = (token as any).role;
+    const allowed = ["BOSS", "ADMIN", "CREATOR"];
+    if (!allowed.includes(role)) {
+      return NextResponse.redirect(new URL("/auth/login?error=unauthorized", req.url));
+    }
+  }
+
   return response;
 }
 
