@@ -1116,6 +1116,13 @@ model WeeklyReport {
   @@map("weekly_reports")
 }
 
+enum CrmContactStatus {
+  WRITTEN
+  INFO_PROVIDED
+  TRIAL_ATTENDED
+  ENROLLED
+}
+
 // CRM contacts — people outreach is tracked for (e.g. Sunday Examiner registration).
 model CrmContact {
   id            String    @id @default(cuid())
@@ -1123,7 +1130,7 @@ model CrmContact {
   lastName      String
   phoneNumber   String
   contactReason String
-  hasWritten    Boolean   @default(false)
+  status        CrmContactStatus @default(WRITTEN)
   email         String?
   dateOfBirth   DateTime?
   notes         String?
@@ -1134,6 +1141,7 @@ model CrmContact {
   createdBy User? @relation("CrmContactCreator", fields: [createdById], references: [id], onDelete: SetNull)
 
   @@index([createdAt])
+  @@index([status])
   @@index([phoneNumber])
   @@index([email])
   @@map("crm_contacts")

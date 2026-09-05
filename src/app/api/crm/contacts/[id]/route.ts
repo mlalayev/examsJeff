@@ -3,12 +3,19 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireCrmManager } from "@/lib/auth-utils";
 
+const statusSchema = z.enum([
+  "WRITTEN",
+  "INFO_PROVIDED",
+  "TRIAL_ATTENDED",
+  "ENROLLED",
+]);
+
 const updateSchema = z.object({
   firstName: z.string().min(1).optional(),
   lastName: z.string().min(1).optional(),
   phoneNumber: z.string().min(7).optional(),
   contactReason: z.string().min(1).optional(),
-  hasWritten: z.boolean().optional(),
+  status: statusSchema.optional(),
   email: z.string().email().optional().or(z.literal("")).nullable(),
   dateOfBirth: z
     .string()
@@ -45,7 +52,7 @@ export async function PATCH(request: Request, context: RouteContext) {
         ...(data.contactReason !== undefined && {
           contactReason: data.contactReason.trim(),
         }),
-        ...(data.hasWritten !== undefined && { hasWritten: data.hasWritten }),
+        ...(data.status !== undefined && { status: data.status }),
         ...(data.email !== undefined && {
           email: data.email?.trim() || null,
         }),

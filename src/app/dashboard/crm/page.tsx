@@ -10,8 +10,6 @@ import {
   Trash2,
   Phone,
   Mail,
-  MessageSquare,
-  MessageSquareOff,
   X,
   Users,
   Calendar,
@@ -20,6 +18,19 @@ import {
 import { AlertModal } from "@/components/modals/AlertModal";
 import UnifiedLoading from "@/components/loading/UnifiedLoading";
 
+type CrmStatus =
+  | "WRITTEN"
+  | "INFO_PROVIDED"
+  | "TRIAL_ATTENDED"
+  | "ENROLLED";
+
+const statusOptions: Array<{ value: CrmStatus; label: string }> = [
+  { value: "WRITTEN", label: "Yazdı" },
+  { value: "INFO_PROVIDED", label: "Məlumat verildi" },
+  { value: "TRIAL_ATTENDED", label: "Sınaq dərsinə girildi" },
+  { value: "ENROLLED", label: "Dərslərə qoşuldu" },
+];
+
 type CrmContact = {
   id: string;
   firstName: string;
@@ -27,7 +38,7 @@ type CrmContact = {
   name: string;
   phoneNumber: string;
   contactReason: string;
-  hasWritten: boolean;
+  status: CrmStatus;
   email: string | null;
   dateOfBirth: string | null;
   notes: string | null;
@@ -40,20 +51,20 @@ type FormState = {
   lastName: string;
   phoneNumber: string;
   contactReason: string;
-  hasWritten: boolean;
+  status: CrmStatus;
   email: string;
   dateOfBirth: string;
   notes: string;
 };
 
-type WrittenFilter = "ALL" | "true" | "false";
+type StatusFilter = "ALL" | CrmStatus;
 
 const emptyForm: FormState = {
   firstName: "",
   lastName: "",
   phoneNumber: "",
   contactReason: "",
-  hasWritten: false,
+  status: "WRITTEN",
   email: "",
   dateOfBirth: "",
   notes: "",
@@ -78,7 +89,8 @@ export default function CrmPage() {
   const [contacts, setContacts] = useState<CrmContact[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [writtenFilter, setWrittenFilter] = useState<WrittenFilter>("ALL");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
+  const [statusSavingId, setStatusSavingId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<CrmContact | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -99,7 +111,7 @@ export default function CrmPage() {
     try {
       const params = new URLSearchParams();
       if (search.trim()) params.set("q", search.trim());
-      if (writtenFilter !== "ALL") params.set("written", writtenFilter);
+      if (statusFilter !== "ALL") params.set("status", statusFilter);
       const res = await fetch(`/api/crm/contacts?${params}`);
       const data = await res.json();
       if (res.ok) setContacts(data.contacts ?? []);
@@ -108,7 +120,7 @@ export default function CrmPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, writtenFilter]);
+  }, [search, statusFilter]);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -123,11 +135,11 @@ export default function CrmPage() {
   }, [status, allowed, load, router]);
 
   const stats = useMemo(
-    () => ({
-      total: contacts.length,
-      written: contacts.filter((c) => c.hasWritten).length,
-      notWritten: contacts.filter((c) => !c.hasWritten).length,
-    }),
+    () =>
+      statusOptions.map((option) => ({
+        ...option,
+        count: contacts.filter((contact) => contact.status === option.value).length,
+      })),
     [contacts]
   );
 
@@ -145,7 +157,7 @@ export default function CrmPage() {
       lastName: contact.lastName,
       phoneNumber: contact.phoneNumber,
       contactReason: contact.contactReason,
-      hasWritten: contact.hasWritten,
+      status: contact.status,
       email: contact.email ?? "",
       dateOfBirth: toDateInput(contact.dateOfBirth),
       notes: contact.notes ?? "",
@@ -171,7 +183,7 @@ export default function CrmPage() {
         lastName: form.lastName,
         phoneNumber: form.phoneNumber,
         contactReason: form.contactReason,
-        hasWritten: form.hasWritten,
+        status: form.status,
         email: form.email,
         dateOfBirth: form.dateOfBirth,
         notes: form.notes,
@@ -203,6 +215,41 @@ export default function CrmPage() {
       setFormError("An unexpected error occurred");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const updateContactStatus = async (
+    contact: CrmContact,
+    status: CrmStatus
+  ) => {
+    if (status === contact.status) return;
+    setStatusSavingId(contact.id);
+    try {
+      const res = await fetch(`/api/crm/contacts/${contact.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAlert({
+          isOpen: true,
+          title: "Error",
+          message: data.error || "Failed to update stage",
+          type: "error",
+        });
+        return;
+      }
+      await load();
+    } catch {
+      setAlert({
+        isOpen: true,
+        title: "Error",
+        message: "Failed to update stage",
+        type: "error",
+      });
+    } finally {
+      setStatusSavingId(null);
     }
   };
 
@@ -260,16 +307,14 @@ export default function CrmPage() {
       <div className="mb-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
         <div className="flex items-center gap-2">
           <span className="text-gray-500">Total:</span>
-          <span className="font-medium text-gray-900">{stats.total}</span>
+          <span className="font-medium text-gray-900">{contacts.length}</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-gray-500">Written:</span>
-          <span className="font-medium text-gray-900">{stats.written}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-gray-500">Not written:</span>
-          <span className="font-medium text-gray-900">{stats.notWritten}</span>
-        </div>
+        {stats.map((stat) => (
+          <div key={stat.value} className="flex items-center gap-2">
+            <span className="text-gray-500">{stat.label}:</span>
+            <span className="font-medium text-gray-900">{stat.count}</span>
+          </div>
+        ))}
       </div>
 
       {/* Filters */}
@@ -285,13 +330,16 @@ export default function CrmPage() {
           />
         </div>
         <select
-          value={writtenFilter}
-          onChange={(e) => setWrittenFilter(e.target.value as WrittenFilter)}
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
           className="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#303380] focus:ring-2 focus:ring-[#303380]/30"
         >
           <option value="ALL">All contacts</option>
-          <option value="false">Not written yet</option>
-          <option value="true">Written to</option>
+          {statusOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
         </select>
         <button
           onClick={load}
@@ -331,7 +379,7 @@ export default function CrmPage() {
                     Reason
                   </th>
                   <th className="px-4 py-3 text-left font-medium text-gray-700">
-                    Written
+                    Mərhələ
                   </th>
                   <th className="px-4 py-3 text-left font-medium text-gray-700">
                     Email
@@ -380,17 +428,24 @@ export default function CrmPage() {
                       {contact.contactReason}
                     </td>
                     <td className="px-4 py-3">
-                      {contact.hasWritten ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700">
-                          <MessageSquare className="h-3 w-3" />
-                          Written
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-gray-200 px-2.5 py-0.5 text-xs font-medium text-gray-500">
-                          <MessageSquareOff className="h-3 w-3" />
-                          Not yet
-                        </span>
-                      )}
+                      <select
+                        value={contact.status}
+                        disabled={statusSavingId === contact.id}
+                        onChange={(e) =>
+                          updateContactStatus(
+                            contact,
+                            e.target.value as CrmStatus
+                          )
+                        }
+                        className="rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-700 outline-none focus:border-[#303380] disabled:opacity-50"
+                        aria-label={`${contact.name} mərhələsi`}
+                      >
+                        {statusOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
                     </td>
                     <td className="px-4 py-3 text-gray-600">
                       {contact.email ? (
@@ -517,16 +572,19 @@ export default function CrmPage() {
                 />
               </FormField>
 
-              <FormField label="Written to?">
+              <FormField label="Mərhələ">
                 <select
-                  value={form.hasWritten ? "yes" : "no"}
+                  value={form.status}
                   onChange={(e) =>
-                    setForm({ ...form, hasWritten: e.target.value === "yes" })
+                    setForm({ ...form, status: e.target.value as CrmStatus })
                   }
                   className={inputClass}
                 >
-                  <option value="no">Not written yet</option>
-                  <option value="yes">Written</option>
+                  {statusOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
               </FormField>
 
