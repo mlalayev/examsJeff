@@ -25,7 +25,7 @@ type CrmStatus =
   | "ENROLLED";
 
 const statusOptions: Array<{ value: CrmStatus; label: string }> = [
-  { value: "WRITTEN", label: "Wrote" },
+  { value: "WRITTEN", label: "New inquiry" },
   { value: "INFO_PROVIDED", label: "Information provided" },
   { value: "TRIAL_ATTENDED", label: "Attended trial lesson" },
   { value: "ENROLLED", label: "Joined classes" },
