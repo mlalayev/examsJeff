@@ -24,7 +24,7 @@ const updateSchema = z.object({
     .nullable()
     .refine(
       (value) => value == null || value === "" || !Number.isNaN(Date.parse(value)),
-      "Invalid date of birth"
+      "Doğum tarixi düzgün deyil"
     ),
   notes: z.string().optional().nullable(),
 });
@@ -40,7 +40,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 
     const existing = await prisma.crmContact.findUnique({ where: { id } });
     if (!existing) {
-      return NextResponse.json({ error: "Contact not found" }, { status: 404 });
+      return NextResponse.json({ error: "Kontakt tapılmadı" }, { status: 404 });
     }
 
     const contact = await prisma.crmContact.update({
@@ -79,7 +79,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     });
 
     return NextResponse.json({
-      message: "Contact updated",
+      message: "Kontakt yeniləndi",
       contact: {
         ...contact,
         name: [contact.firstName, contact.lastName].filter(Boolean).join(" ").trim(),
@@ -88,20 +88,20 @@ export async function PATCH(request: Request, context: RouteContext) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: error.issues[0]?.message ?? "Invalid input" },
+        { error: error.issues[0]?.message ?? "Məlumat düzgün deyil" },
         { status: 400 }
       );
     }
     if (error instanceof Error) {
       if (error.message === "Unauthorized") {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return NextResponse.json({ error: "Giriş tələb olunur" }, { status: 401 });
       }
       if (error.message.startsWith("Forbidden")) {
-        return NextResponse.json({ error: error.message }, { status: 403 });
+        return NextResponse.json({ error: "Bu əməliyyat üçün icazəniz yoxdur" }, { status: 403 });
       }
     }
     console.error("CRM contact update error:", error);
-    return NextResponse.json({ error: "Failed to update contact" }, { status: 500 });
+    return NextResponse.json({ error: "Kontaktı yeniləmək mümkün olmadı" }, { status: 500 });
   }
 }
 
@@ -112,21 +112,21 @@ export async function DELETE(_request: Request, context: RouteContext) {
 
     const existing = await prisma.crmContact.findUnique({ where: { id } });
     if (!existing) {
-      return NextResponse.json({ error: "Contact not found" }, { status: 404 });
+      return NextResponse.json({ error: "Kontakt tapılmadı" }, { status: 404 });
     }
 
     await prisma.crmContact.delete({ where: { id } });
-    return NextResponse.json({ message: "Contact deleted" });
+    return NextResponse.json({ message: "Kontakt silindi" });
   } catch (error) {
     if (error instanceof Error) {
       if (error.message === "Unauthorized") {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return NextResponse.json({ error: "Giriş tələb olunur" }, { status: 401 });
       }
       if (error.message.startsWith("Forbidden")) {
-        return NextResponse.json({ error: error.message }, { status: 403 });
+        return NextResponse.json({ error: "Bu əməliyyat üçün icazəniz yoxdur" }, { status: 403 });
       }
     }
     console.error("CRM contact delete error:", error);
-    return NextResponse.json({ error: "Failed to delete contact" }, { status: 500 });
+    return NextResponse.json({ error: "Kontaktı silmək mümkün olmadı" }, { status: 500 });
   }
 }

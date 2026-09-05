@@ -13,19 +13,19 @@ const statusSchema = z.enum(crmStatuses);
 type CrmContactStatus = (typeof crmStatuses)[number];
 
 const contactSchema = z.object({
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
-  phoneNumber: z.string().min(7, "Mobile number is required"),
-  contactReason: z.string().min(1, "Contact reason is required"),
+  firstName: z.string().min(1, "Ad tələb olunur"),
+  lastName: z.string().min(1, "Soyad tələb olunur"),
+  phoneNumber: z.string().min(7, "Telefon nömrəsi tələb olunur"),
+  contactReason: z.string().min(1, "Müraciət səbəbi tələb olunur"),
   status: statusSchema.default("WRITTEN"),
-  email: z.string().email("Invalid email").optional().or(z.literal("")),
+  email: z.string().email("E-poçt ünvanı düzgün deyil").optional().or(z.literal("")),
   dateOfBirth: z
     .string()
     .optional()
     .or(z.literal(""))
     .refine(
       (value) => !value || !Number.isNaN(Date.parse(value)),
-      "Invalid date of birth"
+      "Doğum tarixi düzgün deyil"
     ),
   notes: z.string().optional(),
 });
@@ -56,7 +56,7 @@ function mapContact(row: {
     name: [row.firstName, row.lastName].filter(Boolean).join(" ").trim(),
     phoneNumber: row.phoneNumber,
     contactReason: row.contactReason,
-    status: row.status,
+    status: row.status || "WRITTEN",
     email: row.email,
     dateOfBirth: row.dateOfBirth,
     notes: row.notes,
@@ -111,7 +111,7 @@ export async function GET(request: Request) {
     if (requestedStatus) {
       const parsedStatus = statusSchema.safeParse(requestedStatus);
       if (!parsedStatus.success) {
-        return NextResponse.json({ error: "Invalid CRM status" }, { status: 400 });
+        return NextResponse.json({ error: "CRM mərhələsi düzgün deyil" }, { status: 400 });
       }
       where.status = parsedStatus.data;
     }
@@ -129,14 +129,14 @@ export async function GET(request: Request) {
   } catch (error) {
     if (error instanceof Error) {
       if (error.message === "Unauthorized") {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return NextResponse.json({ error: "Giriş tələb olunur" }, { status: 401 });
       }
       if (error.message.startsWith("Forbidden")) {
-        return NextResponse.json({ error: error.message }, { status: 403 });
+        return NextResponse.json({ error: "Bu bölməyə giriş icazəniz yoxdur" }, { status: 403 });
       }
     }
     console.error("CRM contacts list error:", error);
-    return NextResponse.json({ error: "Failed to load contacts" }, { status: 500 });
+    return NextResponse.json({ error: "Kontaktları yükləmək mümkün olmadı" }, { status: 500 });
   }
 }
 
@@ -162,25 +162,25 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json(
-      { message: "Contact created", contact: mapContact(contact) },
+      { message: "Kontakt əlavə edildi", contact: mapContact(contact) },
       { status: 201 }
     );
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: error.issues[0]?.message ?? "Invalid input" },
+        { error: error.issues[0]?.message ?? "Məlumat düzgün deyil" },
         { status: 400 }
       );
     }
     if (error instanceof Error) {
       if (error.message === "Unauthorized") {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return NextResponse.json({ error: "Giriş tələb olunur" }, { status: 401 });
       }
       if (error.message.startsWith("Forbidden")) {
-        return NextResponse.json({ error: error.message }, { status: 403 });
+        return NextResponse.json({ error: "Bu əməliyyat üçün icazəniz yoxdur" }, { status: 403 });
       }
     }
     console.error("CRM contact create error:", error);
-    return NextResponse.json({ error: "Failed to create contact" }, { status: 500 });
+    return NextResponse.json({ error: "Kontaktı əlavə etmək mümkün olmadı" }, { status: 500 });
   }
 }
