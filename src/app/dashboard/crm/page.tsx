@@ -25,10 +25,10 @@ type CrmStatus =
   | "ENROLLED";
 
 const statusOptions: Array<{ value: CrmStatus; label: string }> = [
-  { value: "WRITTEN", label: "Yazdı" },
-  { value: "INFO_PROVIDED", label: "Məlumat verildi" },
-  { value: "TRIAL_ATTENDED", label: "Sınaq dərsinə girildi" },
-  { value: "ENROLLED", label: "Dərslərə qoşuldu" },
+  { value: "WRITTEN", label: "Wrote" },
+  { value: "INFO_PROVIDED", label: "Information provided" },
+  { value: "TRIAL_ATTENDED", label: "Attended trial lesson" },
+  { value: "ENROLLED", label: "Joined classes" },
 ];
 
 type CrmContact = {
@@ -88,7 +88,6 @@ export default function CrmPage() {
   const router = useRouter();
   const [contacts, setContacts] = useState<CrmContact[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [statusSavingId, setStatusSavingId] = useState<string | null>(null);
@@ -109,26 +108,15 @@ export default function CrmPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    setLoadError("");
     try {
       const params = new URLSearchParams();
       if (search.trim()) params.set("q", search.trim());
       if (statusFilter !== "ALL") params.set("status", statusFilter);
       const res = await fetch(`/api/crm/contacts?${params}`);
       const data = await res.json();
-      if (!res.ok) {
-        setLoadError(data.error || "Kontaktları yükləmək mümkün olmadı");
-        return;
-      }
-      setContacts(
-        (data.contacts ?? []).map((contact: CrmContact) => ({
-          ...contact,
-          status: contact.status || "WRITTEN",
-        }))
-      );
+      if (res.ok) setContacts(data.contacts ?? []);
     } catch (e) {
       console.error("Load CRM contacts:", e);
-      setLoadError("Kontaktları yükləmək mümkün olmadı");
     } finally {
       setLoading(false);
     }
@@ -169,7 +157,7 @@ export default function CrmPage() {
       lastName: contact.lastName,
       phoneNumber: contact.phoneNumber,
       contactReason: contact.contactReason,
-      status: contact.status || "WRITTEN",
+      status: contact.status,
       email: contact.email ?? "",
       dateOfBirth: toDateInput(contact.dateOfBirth),
       notes: contact.notes ?? "",
@@ -211,7 +199,7 @@ export default function CrmPage() {
       );
       const data = await res.json();
       if (!res.ok) {
-        setFormError(data.error || "Kontaktı yadda saxlamaq mümkün olmadı");
+        setFormError(data.error || "Failed to save contact");
         return;
       }
 
@@ -219,12 +207,12 @@ export default function CrmPage() {
       await load();
       setAlert({
         isOpen: true,
-        title: "Uğurlu əməliyyat",
-        message: editing ? "Kontakt yeniləndi" : "Kontakt əlavə edildi",
+        title: "Success",
+        message: editing ? "Contact updated" : "Contact added",
         type: "success",
       });
     } catch {
-      setFormError("Gözlənilməz xəta baş verdi");
+      setFormError("An unexpected error occurred");
     } finally {
       setSaving(false);
     }
@@ -246,8 +234,8 @@ export default function CrmPage() {
       if (!res.ok) {
         setAlert({
           isOpen: true,
-          title: "Xəta",
-          message: data.error || "Mərhələni yeniləmək mümkün olmadı",
+          title: "Error",
+          message: data.error || "Failed to update stage",
           type: "error",
         });
         return;
@@ -256,8 +244,8 @@ export default function CrmPage() {
     } catch {
       setAlert({
         isOpen: true,
-        title: "Xəta",
-        message: "Mərhələni yeniləmək mümkün olmadı",
+        title: "Error",
+        message: "Failed to update stage",
         type: "error",
       });
     } finally {
@@ -266,12 +254,7 @@ export default function CrmPage() {
   };
 
   const deleteContact = async (contact: CrmContact) => {
-    if (
-      !confirm(
-        `${contact.name} kontaktı silinsin?\n\nBu əməliyyatı geri qaytarmaq mümkün deyil.`
-      )
-    )
-      return;
+    if (!confirm(`Delete ${contact.name}?\n\nThis cannot be undone.`)) return;
     try {
       const res = await fetch(`/api/crm/contacts/${contact.id}`, {
         method: "DELETE",
@@ -280,8 +263,8 @@ export default function CrmPage() {
       if (!res.ok) {
         setAlert({
           isOpen: true,
-          title: "Xəta",
-          message: data.error || "Kontaktı silmək mümkün olmadı",
+          title: "Error",
+          message: data.error || "Failed to delete",
           type: "error",
         });
         return;
@@ -290,8 +273,8 @@ export default function CrmPage() {
     } catch {
       setAlert({
         isOpen: true,
-        title: "Xəta",
-        message: "Kontaktı silmək mümkün olmadı",
+        title: "Error",
+        message: "Failed to delete contact",
         type: "error",
       });
     }
@@ -306,9 +289,9 @@ export default function CrmPage() {
       {/* Header */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">CRM kontaktları</h1>
+          <h1 className="text-2xl font-bold text-gray-900">CRM Contacts</h1>
           <p className="mt-1 text-sm text-gray-600">
-            Qeydiyyat və dərslərlə bağlı müraciət edən şəxsləri idarə edin.
+            People you&apos;ve reached out to for registration and exams.
           </p>
         </div>
         <button
@@ -316,14 +299,14 @@ export default function CrmPage() {
           className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#303380] px-4 py-2 text-sm font-medium text-white hover:bg-[#252a6b]"
         >
           <Plus className="h-4 w-4" />
-          Kontakt əlavə et
+          Add contact
         </button>
       </div>
 
       {/* Compact stats */}
       <div className="mb-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
         <div className="flex items-center gap-2">
-          <span className="text-gray-500">Cəmi:</span>
+          <span className="text-gray-500">Total:</span>
           <span className="font-medium text-gray-900">{contacts.length}</span>
         </div>
         {stats.map((stat) => (
@@ -342,7 +325,7 @@ export default function CrmPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && load()}
-            placeholder="Ad, telefon, e-poçt, səbəb və ya qeydə görə axtar…"
+            placeholder="Search name, phone, email, reason, notes…"
             className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm outline-none focus:border-[#303380] focus:ring-2 focus:ring-[#303380]/30"
           />
         </div>
@@ -351,7 +334,7 @@ export default function CrmPage() {
           onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
           className="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#303380] focus:ring-2 focus:ring-[#303380]/30"
         >
-          <option value="ALL">Bütün kontaktlar</option>
+          <option value="ALL">All contacts</option>
           {statusOptions.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
@@ -362,33 +345,23 @@ export default function CrmPage() {
           onClick={load}
           className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
         >
-          Axtar
+          Search
         </button>
       </div>
 
       {/* Table */}
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
         {loading ? (
-          <div className="py-16 text-center text-sm text-gray-500">Yüklənir…</div>
-        ) : loadError ? (
-          <div className="px-4 py-16 text-center">
-            <p className="text-sm text-red-600">{loadError}</p>
-            <button
-              onClick={load}
-              className="mt-3 text-sm font-medium text-[#303380] hover:underline"
-            >
-              Yenidən yoxla
-            </button>
-          </div>
+          <div className="py-16 text-center text-sm text-gray-500">Loading…</div>
         ) : contacts.length === 0 ? (
           <div className="py-16 text-center text-gray-500">
             <Users className="mx-auto mb-2 h-8 w-8 text-gray-300" />
-            <p>Hələ kontakt yoxdur</p>
+            <p>No contacts yet</p>
             <button
               onClick={openCreate}
               className="mt-3 text-sm font-medium text-[#303380] hover:underline"
             >
-              İlk kontaktı əlavə et
+              Add your first contact
             </button>
           </div>
         ) : (
@@ -397,31 +370,31 @@ export default function CrmPage() {
               <thead className="border-b border-gray-200 bg-gray-50">
                 <tr>
                   <th className="px-4 py-3 text-left font-medium text-gray-700">
-                    Kontakt
+                    Contact
                   </th>
                   <th className="px-4 py-3 text-left font-medium text-gray-700">
-                    Telefon
+                    Mobile
                   </th>
                   <th className="px-4 py-3 text-left font-medium text-gray-700">
-                    Müraciət səbəbi
+                    Reason
                   </th>
                   <th className="px-4 py-3 text-left font-medium text-gray-700">
-                    Mərhələ
+                    Stage
                   </th>
                   <th className="px-4 py-3 text-left font-medium text-gray-700">
                     Email
                   </th>
                   <th className="px-4 py-3 text-left font-medium text-gray-700">
-                    Doğum tarixi
+                    Date of birth
                   </th>
                   <th className="px-4 py-3 text-left font-medium text-gray-700">
-                    Qeydlər
+                    Notes
                   </th>
                   <th className="px-4 py-3 text-left font-medium text-gray-700">
-                    Əlavə olunub
+                    Added
                   </th>
                   <th className="px-4 py-3 text-left font-medium text-gray-700">
-                    Əməliyyatlar
+                    Actions
                   </th>
                 </tr>
               </thead>
@@ -439,7 +412,7 @@ export default function CrmPage() {
                           </div>
                           {contact.createdBy && (
                             <div className="text-xs text-gray-500">
-                              əlavə etdi: {contact.createdBy.name}
+                              by {contact.createdBy.name}
                             </div>
                           )}
                         </div>
@@ -465,7 +438,7 @@ export default function CrmPage() {
                           )
                         }
                         className="rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-700 outline-none focus:border-[#303380] disabled:opacity-50"
-                        aria-label={`${contact.name} mərhələsi`}
+                        aria-label={`${contact.name} stage`}
                       >
                         {statusOptions.map((option) => (
                           <option key={option.value} value={option.value}>
@@ -512,14 +485,14 @@ export default function CrmPage() {
                         <button
                           onClick={() => openEdit(contact)}
                           className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
-                          title="Redaktə et"
+                          title="Edit"
                         >
                           <Pencil className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => deleteContact(contact)}
                           className="rounded-md p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"
-                          title="Sil"
+                          title="Delete"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -539,7 +512,7 @@ export default function CrmPage() {
           <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg">
             <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
               <h2 className="text-lg font-semibold text-gray-900">
-                {editing ? "Kontaktı redaktə et" : "Kontakt əlavə et"}
+                {editing ? "Edit contact" : "Add contact"}
               </h2>
               <button
                 onClick={closeModal}
@@ -557,7 +530,7 @@ export default function CrmPage() {
               )}
 
               <div className="grid grid-cols-2 gap-4">
-                <FormField label="Ad *">
+                <FormField label="First name *">
                   <input
                     value={form.firstName}
                     onChange={(e) =>
@@ -566,7 +539,7 @@ export default function CrmPage() {
                     className={inputClass}
                   />
                 </FormField>
-                <FormField label="Soyad *">
+                <FormField label="Last name *">
                   <input
                     value={form.lastName}
                     onChange={(e) =>
@@ -577,7 +550,7 @@ export default function CrmPage() {
                 </FormField>
               </div>
 
-              <FormField label="Telefon nömrəsi *">
+              <FormField label="Mobile number *">
                 <input
                   value={form.phoneNumber}
                   onChange={(e) =>
@@ -588,18 +561,18 @@ export default function CrmPage() {
                 />
               </FormField>
 
-              <FormField label="Müraciət səbəbi *">
+              <FormField label="Why contact was made *">
                 <input
                   value={form.contactReason}
                   onChange={(e) =>
                     setForm({ ...form, contactReason: e.target.value })
                   }
                   className={inputClass}
-                  placeholder="Məsələn: IELTS sınaq imtahanı"
+                  placeholder="e.g. Sunday Examiner, IELTS mock exam"
                 />
               </FormField>
 
-              <FormField label="Mərhələ">
+              <FormField label="Stage">
                 <select
                   value={form.status}
                   onChange={(e) =>
@@ -616,7 +589,7 @@ export default function CrmPage() {
               </FormField>
 
               <div className="grid grid-cols-2 gap-4">
-                <FormField label="E-poçt ünvanı">
+                <FormField label="Email address">
                   <input
                     type="email"
                     value={form.email}
@@ -624,7 +597,7 @@ export default function CrmPage() {
                     className={inputClass}
                   />
                 </FormField>
-                <FormField label="Doğum tarixi">
+                <FormField label="Date of birth">
                   <input
                     type="date"
                     value={form.dateOfBirth}
@@ -636,13 +609,13 @@ export default function CrmPage() {
                 </FormField>
               </div>
 
-              <FormField label="Qeydlər">
+              <FormField label="Notes">
                 <textarea
                   value={form.notes}
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
                   rows={3}
                   className={inputClass}
-                  placeholder="Əlavə məlumat..."
+                  placeholder="Follow-up details..."
                 />
               </FormField>
             </div>
@@ -653,18 +626,14 @@ export default function CrmPage() {
                 disabled={saving}
                 className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
               >
-                Ləğv et
+                Cancel
               </button>
               <button
                 onClick={saveContact}
                 disabled={saving}
                 className="rounded-lg bg-[#303380] px-4 py-2 text-sm font-medium text-white hover:bg-[#252a6b] disabled:opacity-50"
               >
-                {saving
-                  ? "Yadda saxlanılır…"
-                  : editing
-                    ? "Yadda saxla"
-                    : "Kontakt əlavə et"}
+                {saving ? "Saving…" : editing ? "Save" : "Add contact"}
               </button>
             </div>
           </div>
