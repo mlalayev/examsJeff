@@ -62,6 +62,28 @@ export function getStaffDashboardHref(role: string): string | null {
 }
 
 export function getStaffNavSections(role: string): CollapsibleNavSectionItem[] {
+  return applyNavMaintenance(buildStaffNavSections(role));
+}
+
+const MAINTENANCE_SECTION_IDS = new Set([
+  "students",
+  "crm",
+  "subjects",
+  "courses",
+  "content",
+]);
+
+function applyNavMaintenance(
+  sections: CollapsibleNavSectionItem[]
+): CollapsibleNavSectionItem[] {
+  return sections.map((section) =>
+    MAINTENANCE_SECTION_IDS.has(section.id)
+      ? { ...section, maintenance: true }
+      : section
+  );
+}
+
+function buildStaffNavSections(role: string): CollapsibleNavSectionItem[] {
   if (role === "CREATOR") {
     return [
       {

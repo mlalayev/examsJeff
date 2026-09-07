@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronRight, type LucideIcon } from "lucide-react";
+import { ChevronRight, Construction, type LucideIcon } from "lucide-react";
 import { getActiveSubHref, type CollapsibleSubItem } from "./navUtils";
 
 export type CollapsibleNavSectionItem = {
@@ -11,6 +11,7 @@ export type CollapsibleNavSectionItem = {
   label: string;
   icon: LucideIcon;
   subs: CollapsibleSubItem[];
+  maintenance?: boolean;
 };
 
 type Props = {
@@ -171,9 +172,24 @@ export default function CollapsibleNavSection({
   exactMatch = false,
 }: Props) {
   const pathname = usePathname();
-  const { label, icon: Icon, subs } = section;
+  const { label, icon: Icon, subs, maintenance } = section;
   const activeHref = getActiveSubHref(pathname, subs, exactMatch);
-  const sectionActive = activeHref !== null;
+  const sectionActive = !maintenance && activeHref !== null;
+
+  if (maintenance) {
+    return (
+      <div className="select-none">
+        <div
+          className="w-full flex items-center gap-3 px-3 py-2 rounded text-slate-400 cursor-not-allowed"
+          title="Maintenance"
+        >
+          <Icon className="w-4 h-4 text-slate-400" />
+          <span className="text-sm font-medium flex-1 text-left">{label}</span>
+          <Construction className="w-4 h-4 text-amber-500" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="select-none">
