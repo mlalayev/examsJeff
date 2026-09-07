@@ -37,6 +37,15 @@ interface ResultsData {
   status: string;
   role: "STUDENT" | "TEACHER" | "PARENT";
   coinReward?: { amount: number; earnedAt: string } | null;
+  placementLevel?: string | null;
+  placementBreakdown?: {
+    strategy?: string;
+    overallPercent?: number;
+    totalCorrect?: number;
+    totalQuestions?: number;
+    byLevel?: Record<string, { correct: number; total: number }>;
+    level?: string;
+  } | null;
   summary: {
     totalCorrect: number;
     totalQuestions: number;
@@ -788,6 +797,31 @@ export default function AttemptResultsPage() {
           <>
         {data.coinReward && (
           <ExamCoinRewardBanner amount={data.coinReward.amount} className="mb-6" />
+        )}
+        {data.examCategory === "PLACEMENT" && data.placementLevel && (
+          <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-medium text-gray-900 mb-1">
+                  Placement Test Result
+                </h2>
+                <p className="text-sm text-gray-600">
+                  {data.summary.totalCorrect} out of {data.summary.totalQuestions} correct
+                  {data.summary.totalPercentage != null
+                    ? ` · ${data.summary.totalPercentage}%`
+                    : ""}
+                </p>
+              </div>
+              <div className="text-right">
+                <div className="text-4xl font-bold text-[#303380] tabular-nums">
+                  {data.placementLevel}
+                </div>
+                <div className="text-xs text-gray-500 mt-1 uppercase tracking-wide">
+                  Final Level
+                </div>
+              </div>
+            </div>
+          </div>
         )}
         {/* Overall Score Card */}
         <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">

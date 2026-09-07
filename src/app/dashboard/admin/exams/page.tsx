@@ -8,6 +8,7 @@ import { DeleteExamModal } from "@/components/modals/DeleteExamModal";
 import { AlertModal } from "@/components/modals/AlertModal";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { attemptRunnerPath } from "@/lib/attempt-runner-path";
+import { getExamCategoryLabel } from "@/lib/exam-category-utils";
 
 interface Exam {
   id: string;
@@ -193,7 +194,7 @@ export default function AdminExamsPage() {
     return matchesSearch;
   });
 
-  const categories = ["IELTS", "TOEFL", "SAT", "GENERAL_ENGLISH", "MATH", "KIDS"];
+  const categories = ["IELTS", "TOEFL", "SAT", "GENERAL_ENGLISH", "MATH", "KIDS", "PLACEMENT"];
 
   const stats = {
     total: exams.length,
@@ -250,7 +251,7 @@ export default function AdminExamsPage() {
           >
             <option value="">All Categories</option>
             {categories.map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
+              <option key={cat} value={cat}>{getExamCategoryLabel(cat)}</option>
             ))}
           </select>
           <select
@@ -381,7 +382,7 @@ export default function AdminExamsPage() {
                       </div>
                     </td>
                     <td className="px-3 sm:px-4 py-3 text-sm text-gray-600">
-                      {exam.category}
+                      {getExamCategoryLabel(exam.category)}
                     </td>
                     <td className="px-3 sm:px-4 py-3 text-sm text-gray-600">
                       {exam._count.sections}

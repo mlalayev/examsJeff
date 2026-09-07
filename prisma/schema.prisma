@@ -169,24 +169,26 @@ model ClassStudent {
 }
 
 model Attempt {
-  id             String           @id @default(cuid())
-  status         String           @default("IN_PROGRESS")
-  bandOverall    Float?
-  createdAt      DateTime         @default(now())
-  bookingId      String?          @unique
-  startedAt      DateTime?
-  submittedAt    DateTime?
-  branchId       String?
-  assignmentId   String?          @unique
-  examId         String
-  studentId      String
-  answers        Json?
-  sections         AttemptSection[]
-  attemptAnswers   AttemptAnswer[]
-  coinTransactions CoinTransaction[]
-  assignment       Assignment?      @relation(fields: [assignmentId], references: [id])
-  booking          Booking?         @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  branch           Branch?          @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  id                 String            @id @default(cuid())
+  status             String            @default("IN_PROGRESS")
+  bandOverall        Float?
+  createdAt          DateTime          @default(now())
+  bookingId          String?           @unique
+  startedAt          DateTime?
+  submittedAt        DateTime?
+  branchId           String?
+  assignmentId       String?           @unique
+  examId             String
+  studentId          String
+  answers            Json?
+  placementLevel     String?
+  placementBreakdown Json?
+  sections           AttemptSection[]
+  attemptAnswers     AttemptAnswer[]
+  coinTransactions   CoinTransaction[]
+  assignment         Assignment?       @relation(fields: [assignmentId], references: [id])
+  booking            Booking?          @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  branch             Branch?           @relation(fields: [branchId], references: [id], onDelete: Restrict)
 
   @@index([studentId, status])
   @@index([studentId, createdAt])
@@ -376,6 +378,7 @@ model Question {
   sectionId   String
   qtype       QuestionType
   image       String? // For FILL_IN_BLANK and other question types
+  cefrLevel   String?
   tags        QuestionTag[]
   Exam        Exam?         @relation(fields: [examId], references: [id])
   section     ExamSection   @relation(fields: [sectionId], references: [id], onDelete: Cascade)
@@ -742,6 +745,7 @@ enum ExamCategory {
   KIDS
   GENERAL_ENGLISH
   MATH
+  PLACEMENT
 }
 
 enum SectionType {

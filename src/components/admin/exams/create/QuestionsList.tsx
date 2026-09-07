@@ -74,6 +74,11 @@ export default function QuestionsList({
                 <span className="text-xs px-2 py-1 bg-gray-100 rounded text-gray-600">
                   {QUESTION_TYPE_LABELS[q.qtype]}
                 </span>
+                {q.cefrLevel && (
+                  <span className="text-xs px-2 py-1 rounded font-medium bg-teal-50 text-teal-800">
+                    {q.cefrLevel}
+                  </span>
+                )}
                 {examCategory === "IELTS" && currentPart && (
                   <span className={`text-xs px-2 py-1 rounded font-medium ${
                     sectionType === "LISTENING" ? "bg-blue-100 text-blue-700" :

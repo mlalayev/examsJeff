@@ -5,6 +5,7 @@ import { BookOpen, Plus, Search, Edit, Upload, Trash2, PlayCircle } from "lucide
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { attemptRunnerPath } from "@/lib/attempt-runner-path";
+import { getExamCategoryLabel } from "@/lib/exam-category-utils";
 
 interface Exam {
   id: string;
@@ -124,7 +125,7 @@ export default function CreatorExamsPage() {
     return matchesSearch;
   });
 
-  const categories = ["IELTS", "TOEFL", "SAT", "GENERAL_ENGLISH", "MATH", "KIDS"];
+  const categories = ["IELTS", "TOEFL", "SAT", "GENERAL_ENGLISH", "MATH", "KIDS", "PLACEMENT"];
 
   const stats = {
     total: exams.length,
@@ -181,7 +182,7 @@ export default function CreatorExamsPage() {
           >
             <option value="">All Categories</option>
             {categories.map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
+              <option key={cat} value={cat}>{getExamCategoryLabel(cat)}</option>
             ))}
           </select>
           <select
@@ -298,7 +299,7 @@ export default function CreatorExamsPage() {
                       </div>
                     </td>
                     <td className="px-3 sm:px-4 py-3 text-sm text-gray-600">
-                      {exam.category}
+                      {getExamCategoryLabel(exam.category)}
                     </td>
                     <td className="px-3 sm:px-4 py-3 text-sm text-gray-600">
                       {exam._count.sections}

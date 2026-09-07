@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Calendar, Clock, CheckCircle, FileText, BookOpen } from "lucide-react";
+import { getExamCategoryLabel } from "@/lib/exam-category-utils";
 
 interface AttemptItem {
   id: string;
@@ -10,6 +11,7 @@ interface AttemptItem {
   createdAt: string;
   submittedAt: string | null;
   overallPercent: number | null;
+  placementLevel?: string | null;
   exam: { id: string; title: string; category: string; track?: string | null } | null;
   class: { id: string; name: string; teacher?: { id: string; name?: string | null } } | null;
   sections: { type: string; rawScore: number | null; maxScore: number | null }[];
@@ -73,14 +75,19 @@ export default function StudentHistoryPage() {
     });
   };
 
+  const latestPlacementId = attempts.find(
+    (a) => a.status === "SUBMITTED" && a.placementLevel
+  )?.id;
+
   const getCategoryColor = (category: string) => {
     const colors: Record<string, string> = {
       IELTS: "bg-blue-100 text-blue-800",
       TOEFL: "bg-purple-100 text-purple-800",
       SAT: "bg-orange-100 text-orange-800",
       GENERAL_ENGLISH: "bg-green-100 text-green-800",
-      MATH: "bg-red-100 text-red-800",
+                      MATH: "bg-red-100 text-red-800",
       KIDS: "bg-pink-100 text-pink-800",
+      PLACEMENT: "bg-teal-100 text-teal-800",
     };
     return colors[category] || "bg-gray-100 text-gray-800";
   };
@@ -154,7 +161,7 @@ export default function StudentHistoryPage() {
                     <div className="flex items-center gap-2 sm:gap-3 mb-2 flex-wrap">
                       {a.exam && (
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${getCategoryColor(a.exam.category)}`}>
-                          {a.exam.category}
+                          {getExamCategoryLabel(a.exam.category)}
                           {a.exam.track && ` · ${a.exam.track}`}
                         </span>
                       )}
@@ -177,16 +184,31 @@ export default function StudentHistoryPage() {
                       </div>
                     )}
                   </div>
-                  {a.overallPercent !== null && (
+                  {(a.overallPercent !== null || a.placementLevel) && (
                     <div className="text-right ml-4">
-                      <div className="text-xs sm:text-sm text-gray-500 mb-1">Overall Score</div>
-                      <div className={`text-2xl sm:text-3xl font-medium ${
-                        a.overallPercent >= 75 ? "text-green-600" : 
-                        a.overallPercent >= 50 ? "text-yellow-600" : 
-                        "text-red-600"
-                      }`}>
-                        {a.overallPercent}%
-                      </div>
+                      {a.placementLevel && (
+                        <>
+                          <div className="text-xs sm:text-sm text-gray-500 mb-1">
+                            Placement Level
+                            {a.id === latestPlacementId ? " · Latest" : ""}
+                          </div>
+                          <div className="text-2xl sm:text-3xl font-medium text-[#303380] mb-2">
+                            {a.placementLevel}
+                          </div>
+                        </>
+                      )}
+                      {a.overallPercent !== null && (
+                        <>
+                          <div className="text-xs sm:text-sm text-gray-500 mb-1">Overall Score</div>
+                          <div className={`text-2xl sm:text-3xl font-medium ${
+                            a.overallPercent >= 75 ? "text-green-600" :
+                            a.overallPercent >= 50 ? "text-yellow-600" :
+                            "text-red-600"
+                          }`}>
+                            {a.overallPercent}%
+                          </div>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>

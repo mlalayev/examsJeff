@@ -4,12 +4,12 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import CategorySelector from "@/components/admin/exams/create/CategorySelector";
 import type { ExamCategory } from "@/components/admin/exams/create/types";
-import { categoryToSlug } from "@/lib/exam-category-utils";
+import { categoryToSlug, EXAM_CATEGORIES } from "@/lib/exam-category-utils";
 
 export default function CreateExamLandingPage() {
   const router = useRouter();
 
-  const categories: ExamCategory[] = ["IELTS", "TOEFL", "SAT", "GENERAL_ENGLISH", "MATH", "KIDS"];
+  const categories: ExamCategory[] = EXAM_CATEGORIES;
 
   const handleCategorySelect = (category: ExamCategory) => {
     // IELTS has its own dedicated builder UI (keep legacy /create/ielts intact)

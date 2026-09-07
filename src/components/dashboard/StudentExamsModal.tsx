@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { X, ExternalLink, Loader2 } from "lucide-react";
 import { studentExamsApiUrl } from "@/lib/student-exams-api";
 import { attemptRunnerPath } from "@/lib/attempt-runner-path";
+import { getExamCategoryLabel } from "@/lib/exam-category-utils";
 
 export type StudentExamsModalStudent = {
   id: string;
@@ -22,6 +23,8 @@ type ExamRow = {
   status: string;
   createdAt: string;
   submittedAt: string | null;
+  placementLevel: string | null;
+  score: number | null;
   bookingId: string | null;
   assignedAt: string | null;
 };
@@ -72,6 +75,10 @@ export default function StudentExamsModal({ open, onClose, student }: Props) {
 
   if (!open || !student) return null;
 
+  const latestPlacementAttemptId = rows.find(
+    (r) => r.status === "SUBMITTED" && r.placementLevel
+  )?.attemptId;
+
   const hrefForAttempt = (
     attemptId: string,
     status: string,
@@ -117,6 +124,8 @@ export default function StudentExamsModal({ open, onClose, student }: Props) {
                   <tr>
                     <th className="text-left px-3 py-2 font-medium text-gray-700">Exam</th>
                     <th className="text-left px-3 py-2 font-medium text-gray-700">Status</th>
+                    <th className="text-left px-3 py-2 font-medium text-gray-700">Score</th>
+                    <th className="text-left px-3 py-2 font-medium text-gray-700">Placement Level</th>
                     <th className="text-left px-3 py-2 font-medium text-gray-700">Started</th>
                     <th className="text-left px-3 py-2 font-medium text-gray-700">Submitted</th>
                     <th className="text-right px-3 py-2 font-medium text-gray-700">Open</th>
@@ -128,13 +137,34 @@ export default function StudentExamsModal({ open, onClose, student }: Props) {
                       <td className="px-3 py-2">
                         <div className="font-medium text-gray-900">{r.examTitle}</div>
                         <div className="text-xs text-gray-500">
-                          {[r.category, r.track].filter(Boolean).join(" · ") || "—"}
+                          {[getExamCategoryLabel(r.category), r.track]
+                            .filter(Boolean)
+                            .join(" · ") || "—"}
                         </div>
                       </td>
                       <td className="px-3 py-2">
                         <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-800">
                           {r.status}
                         </span>
+                      </td>
+                      <td className="px-3 py-2 text-gray-700 tabular-nums">
+                        {r.score != null ? `${r.score}%` : "—"}
+                      </td>
+                      <td className="px-3 py-2">
+                        {r.placementLevel ? (
+                          <span className="inline-flex items-center gap-1">
+                            <span className="inline-flex px-2 py-0.5 rounded text-xs font-semibold bg-teal-50 text-teal-800">
+                              {r.placementLevel}
+                            </span>
+                            {r.attemptId === latestPlacementAttemptId && (
+                              <span className="text-[10px] uppercase tracking-wide text-gray-500">
+                                Latest
+                              </span>
+                            )}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
                       </td>
                       <td className="px-3 py-2 text-gray-600 whitespace-nowrap">
                         {new Date(r.createdAt).toLocaleString()}

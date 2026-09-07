@@ -33,7 +33,8 @@ const CATEGORY_ORDER = [
   "SAT",
   "KIDS",
   "GENERAL_ENGLISH",
-  "MATH"
+  "MATH",
+  "PLACEMENT",
 ];
 
 const TRACK_ORDER: Record<string, string[]> = {
@@ -42,7 +43,8 @@ const TRACK_ORDER: Record<string, string[]> = {
   "SAT": ["FULL", "VERBAL", "MATH"],
   "KIDS": ["GENERAL"],
   "GENERAL_ENGLISH": ["A1", "A2", "B1", "B1+", "B2"],
-  "MATH": ["GENERAL"]
+  "MATH": ["GENERAL"],
+  "PLACEMENT": ["GENERAL"],
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -51,7 +53,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   "SAT": "SAT",
   "KIDS": "Kids",
   "GENERAL_ENGLISH": "General English",
-  "MATH": "Math"
+  "MATH": "Math",
+  "PLACEMENT": "Placement Test",
 };
 
 const TRACK_LABELS: Record<string, Record<string, string>> = {
@@ -85,6 +88,9 @@ const TRACK_LABELS: Record<string, Record<string, string>> = {
     "B2": "B2"
   },
   "MATH": {
+    "GENERAL": "General"
+  },
+  "PLACEMENT": {
     "GENERAL": "General"
   }
 };

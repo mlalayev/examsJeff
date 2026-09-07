@@ -9,6 +9,8 @@ export type StudentExamAttemptRow = {
   status: string;
   createdAt: Date;
   submittedAt: Date | null;
+  placementLevel: string | null;
+  score: number | null;
   bookingId: string | null;
   assignedAt: Date | null;
 };
@@ -41,6 +43,8 @@ export async function fetchStudentExamAttemptsForDashboard(
         createdAt: true,
         submittedAt: true,
         examId: true,
+        placementLevel: true,
+        bandOverall: true,
         booking: {
           select: { id: true, startAt: true },
         },
@@ -83,6 +87,8 @@ export async function fetchStudentExamAttemptsForDashboard(
           status: a.status,
           createdAt: a.createdAt,
           submittedAt: a.submittedAt,
+          placementLevel: a.placementLevel ?? null,
+          score: a.bandOverall != null ? Math.round(a.bandOverall) : null,
           bookingId: a.booking?.id ?? null,
           assignedAt: a.booking?.startAt ?? null,
         };

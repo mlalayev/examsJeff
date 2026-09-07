@@ -1,4 +1,4 @@
-export type ExamCategory = "IELTS" | "TOEFL" | "SAT" | "GENERAL_ENGLISH" | "MATH" | "KIDS";
+export type ExamCategory = "IELTS" | "TOEFL" | "SAT" | "GENERAL_ENGLISH" | "MATH" | "KIDS" | "PLACEMENT";
 export type SectionType = "READING" | "LISTENING" | "WRITING" | "SPEAKING" | "GRAMMAR" | "VOCABULARY";
 export type QuestionType = 
   | "MCQ_SINGLE" 
@@ -46,5 +46,7 @@ export interface Question {
   maxScore: number;
   explanation?: any;
   image?: string;
+  /** Canonical English level for Placement Tests (A1, A2, B1, B1+, B2). */
+  cefrLevel?: string | null;
 }
 

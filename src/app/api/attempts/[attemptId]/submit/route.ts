@@ -4,6 +4,11 @@ import { requireStudent } from "@/lib/auth-utils";
 import { SectionType, QuestionType } from "@prisma/client";
 import { tryAwardExamScoreReward } from "@/lib/coins";
 import { scoreQuestion } from "@/lib/scoring";
+import {
+  determinePlacementLevel,
+  isEnglishLevelId,
+  type PlacementQuestionScore,
+} from "@/lib/placement";
 
 type AnswersByQuestionId = Record<string, any>;
 
@@ -59,6 +64,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
                 answerKey: true,
                 maxScore: true,
                 order: true, // For IELTS Listening part grouping
+                cefrLevel: true,
               },
             },
           },
@@ -125,6 +131,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
       rubric?: any; // For IELTS Listening part scores
     }> = [];
 
+    const placementScores: PlacementQuestionScore[] = [];
+
     for (const section of examWithSections.sections) {
       const sectionType = section.type as string;
       const isWriting = sectionType.startsWith("WRITING");
@@ -173,6 +181,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
               sectionRaw += correct;
               sectionMax += 1;
             }
+
+            const qMax = typeof q.maxScore === "number" ? q.maxScore : 1;
+            placementScores.push({
+              questionId: q.id,
+              level: isEnglishLevelId((q as { cefrLevel?: string | null }).cefrLevel)
+                ? ((q as { cefrLevel?: string | null }).cefrLevel as PlacementQuestionScore["level"])
+                : null,
+              correct: correct === 1,
+              maxScore: qMax,
+              earned: correct ? qMax : 0,
+            });
           } catch (qError) {
             console.error(`Error scoring question ${q.id}:`, qError);
             throw new Error(`Failed to score question ${q.id}: ${qError instanceof Error ? qError.message : 'Unknown error'}`);
@@ -203,6 +222,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
 
     const overallPercent = totalMax > 0 ? (totalRaw / totalMax) * 100 : null;
 
+    const isPlacement = examWithSections.category === "PLACEMENT";
+    const placement = isPlacement
+      ? determinePlacementLevel(placementScores)
+      : null;
+
     // Use transaction for atomic updates
     await prisma.$transaction(async (tx) => {
       // Update all attempt sections in batch
@@ -227,6 +251,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
           status: "SUBMITTED",
           submittedAt: new Date(),
           bandOverall: overallPercent ?? undefined,
+          ...(placement
+            ? {
+                placementLevel: placement.level,
+                placementBreakdown: placement as object,
+              }
+            : {}),
         },
       });
 

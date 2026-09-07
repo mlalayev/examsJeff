@@ -6,6 +6,7 @@ import { ArrowLeft, FileText, Calendar, CheckCircle, Clock, Trash2, Coins } from
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import ManualCoinModal from "@/components/coins/ManualCoinModal";
 import CoinStudentHistoryPanel from "@/components/coins/CoinStudentHistoryPanel";
+import { getExamCategoryLabel } from "@/lib/exam-category-utils";
 
 interface Attempt {
   id: string;
@@ -13,6 +14,7 @@ interface Attempt {
   createdAt: string;
   submittedAt: string | null;
   overallPercent: number | null;
+  placementLevel?: string | null;
   exam: {
     id: string;
     title: string;
@@ -117,6 +119,7 @@ export default function StudentAttemptsPage() {
       GENERAL_ENGLISH: "bg-green-100 text-green-800",
       MATH: "bg-red-100 text-red-800",
       KIDS: "bg-pink-100 text-pink-800",
+      PLACEMENT: "bg-teal-100 text-teal-800",
     };
     return colors[category] || "bg-gray-100 text-gray-800";
   };
@@ -245,6 +248,9 @@ export default function StudentAttemptsPage() {
         <div className="space-y-3">
           {attempts.map((attempt) => {
             const isSubmitted = attempt.status === "SUBMITTED";
+            const latestPlacementId = attempts.find(
+              (a) => a.status === "SUBMITTED" && a.placementLevel
+            )?.id;
             const statusLabel =
               attempt.status === "SUBMITTED"
                 ? "Submitted"
@@ -268,7 +274,7 @@ export default function StudentAttemptsPage() {
                               attempt.exam.category
                             )}`}
                           >
-                            {attempt.exam.category}
+                            {getExamCategoryLabel(attempt.exam.category)}
                           </span>
                         )}
                         <span
@@ -318,6 +324,17 @@ export default function StudentAttemptsPage() {
 
                   {/* Right: score + actions */}
                   <div className="mt-3 sm:mt-0 sm:w-56 flex flex-col justify-between items-stretch gap-3 sm:pl-6 sm:border-l sm:border-slate-100">
+                    {attempt.placementLevel && (
+                      <div className="flex items-start justify-between sm:flex-col sm:items-end sm:justify-start gap-1">
+                        <span className="text-xs uppercase tracking-wide text-gray-400">
+                          Placement Level
+                          {attempt.id === latestPlacementId ? " · Latest" : ""}
+                        </span>
+                        <span className="text-2xl sm:text-3xl font-semibold tabular-nums text-[#303380]">
+                          {attempt.placementLevel}
+                        </span>
+                      </div>
+                    )}
                     {attempt.overallPercent !== null && (
                       <div className="flex items-start justify-between sm:flex-col sm:items-end sm:justify-start gap-1">
                         <span className="text-xs uppercase tracking-wide text-gray-400">

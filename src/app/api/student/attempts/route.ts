@@ -22,6 +22,8 @@ export async function GET() {
         status: true,
         createdAt: true,
         submittedAt: true,
+        examId: true,
+        placementLevel: true,
         sections: {
           select: {
             type: true,
@@ -69,6 +71,15 @@ export async function GET() {
 
     const classMap = new Map(studentClasses.map(cs => [cs.classId, cs.class]));
 
+    const examIds = [...new Set(attempts.map((a) => a.examId))];
+    const exams = examIds.length
+      ? await prisma.exam.findMany({
+          where: { id: { in: examIds } },
+          select: { id: true, title: true, category: true, track: true },
+        })
+      : [];
+    const examMap = new Map(exams.map((e) => [e.id, e]));
+
     const data = attempts.map((a) => {
       const autoSections = a.sections.filter((s) => s.type !== "WRITING");
       const totalRaw = autoSections.reduce((acc, s) => acc + (s.rawScore || 0), 0);
@@ -99,7 +110,8 @@ export async function GET() {
         createdAt: a.createdAt,
         submittedAt: a.submittedAt,
         overallPercent: percent,
-        exam: a.booking?.exam || null,
+        placementLevel: a.placementLevel ?? null,
+        exam: examMap.get(a.examId) ?? a.booking?.exam ?? null,
         class: classInfo,
         sections: a.sections.map((s) => ({ type: s.type, rawScore: s.rawScore, maxScore: s.maxScore })),
       };

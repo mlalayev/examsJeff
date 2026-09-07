@@ -9,6 +9,8 @@ import { QuestionPromptField } from "./questionFields/QuestionPromptField";
 import { QuestionOptionsField } from "./questionFields/QuestionOptionsField";
 import { QuestionAnswerKeyField } from "./questionFields/QuestionAnswerKeyField";
 import { validateImageInteractiveQuestion } from "../examValidation";
+import { ENGLISH_LEVELS } from "@/lib/english-levels";
+import type { ExamCategory } from "../types";
 
 interface QuestionEditModalProps {
   question: Question;
@@ -18,6 +20,7 @@ interface QuestionEditModalProps {
   uploadingImage: boolean;
   onImageUpload: (file: File) => Promise<void>;
   showAlert: (title: string, message: string, type: "error" | "warning" | "info") => void;
+  examCategory?: ExamCategory | null;
 }
 
 export function QuestionEditModal({
@@ -28,6 +31,7 @@ export function QuestionEditModal({
   uploadingImage,
   onImageUpload,
   showAlert,
+  examCategory,
 }: QuestionEditModalProps) {
   const isEditing = question.id.startsWith("q-");
 
@@ -39,6 +43,15 @@ export function QuestionEditModal({
         showAlert(validation.error!.title, validation.error!.message, "error");
         return;
       }
+    }
+
+    if (examCategory === "PLACEMENT" && !question.cefrLevel) {
+      showAlert(
+        "Level required",
+        "Select an English level (A1–B2) for this Placement Test question.",
+        "error"
+      );
+      return;
     }
 
     onSave();
@@ -75,6 +88,31 @@ export function QuestionEditModal({
               {QUESTION_TYPE_LABELS[question.qtype]}
             </div>
           </div>
+
+          {examCategory === "PLACEMENT" && (
+            <div className="p-4 bg-white border-x-2 border-gray-300">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Question level *
+              </label>
+              <select
+                value={question.cefrLevel ?? ""}
+                onChange={(e) =>
+                  onChange({ ...question, cefrLevel: e.target.value || null })
+                }
+                className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+              >
+                <option value="">Select level</option>
+                {ENGLISH_LEVELS.map((level) => (
+                  <option key={level.id} value={level.id}>
+                    {level.label}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-gray-500">
+                Used to calculate the student&apos;s placement level after they submit.
+              </p>
+            </div>
+          )}
 
           {/* Image Upload */}
           <QuestionImageUpload

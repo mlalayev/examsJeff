@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { validateIELTSListeningUniqueness, sortIELTSSections } from "@/components/admin/exams/create/constants";
+import { normalizeCefrLevel } from "@/lib/english-levels";
 
 type SectionInput = {
   id?: string;
@@ -23,6 +24,7 @@ type SectionInput = {
     maxScore: number;
     explanation?: unknown;
     image?: string | null;
+    cefrLevel?: string | null;
   }>;
 };
 
@@ -53,6 +55,7 @@ function mapQuestionCreate(q: NonNullable<SectionInput["questions"]>[number]) {
     answerKey: q.answerKey,
     maxScore: q.maxScore,
     explanation: q.explanation,
+    cefrLevel: normalizeCefrLevel(q.cefrLevel),
   };
 }
 

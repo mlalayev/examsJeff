@@ -83,6 +83,7 @@ export function splitFillInBlankQuestions(
       answerKey: { blanks: lineAnswers },
       maxScore: inputCount,
       image: lineIdx === 0 ? editingQuestion.image : undefined,
+      cefrLevel: editingQuestion.cefrLevel ?? null,
     };
 
     newQuestions.push(newQuestion);

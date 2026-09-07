@@ -607,6 +607,7 @@ export default function GenericExamBuilder({ mode, category, examId, initial, sa
       {editingQuestion && (
         <QuestionEditModal
           question={editingQuestion}
+          examCategory={selectedCategory}
           onClose={() => setEditingQuestion(null)}
           onSave={saveQuestion}
           onChange={setEditingQuestion}

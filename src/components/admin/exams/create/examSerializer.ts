@@ -31,6 +31,7 @@ export interface SerializedQuestion {
   maxScore: number;
   explanation?: string;
   image: string | null;
+  cefrLevel?: string | null;
 }
 
 /**
@@ -142,6 +143,7 @@ function serializeQuestion(question: Question): SerializedQuestion {
     maxScore: question.maxScore,
     explanation: question.explanation,
     image: question.image || null,
+    cefrLevel: question.cefrLevel || null,
   };
 }
 

@@ -1,5 +1,34 @@
 import type { ExamCategory } from "@/components/admin/exams/create/types";
 
+export const EXAM_CATEGORIES: ExamCategory[] = [
+  "IELTS",
+  "TOEFL",
+  "SAT",
+  "GENERAL_ENGLISH",
+  "MATH",
+  "KIDS",
+  "PLACEMENT",
+];
+
+export const EXAM_CATEGORY_LABELS: Record<ExamCategory, string> = {
+  IELTS: "IELTS",
+  TOEFL: "TOEFL",
+  SAT: "SAT",
+  GENERAL_ENGLISH: "General English",
+  MATH: "Math",
+  KIDS: "Kids",
+  PLACEMENT: "Placement Test",
+};
+
+export function getExamCategoryLabel(category: string | null | undefined): string {
+  if (!category) return "—";
+  return EXAM_CATEGORY_LABELS[category as ExamCategory] ?? category;
+}
+
+export function isPlacementExam(category: string | null | undefined): boolean {
+  return category === "PLACEMENT";
+}
+
 /**
  * Maps ExamCategory enums to URL-safe slugs
  */
@@ -10,6 +39,7 @@ export const CATEGORY_SLUG_MAP: Record<ExamCategory, string> = {
   GENERAL_ENGLISH: "general-english",
   MATH: "math",
   KIDS: "kids",
+  PLACEMENT: "placement",
 };
 
 /**
@@ -22,6 +52,7 @@ export const SLUG_CATEGORY_MAP: Record<string, ExamCategory> = {
   "general-english": "GENERAL_ENGLISH",
   math: "MATH",
   kids: "KIDS",
+  placement: "PLACEMENT",
 };
 
 /**

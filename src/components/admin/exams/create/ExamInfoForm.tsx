@@ -58,6 +58,15 @@ export default function ExamInfoForm({
             </select>
           </div>
         )}
+        {selectedCategory === "PLACEMENT" && (
+          <div className="sm:col-span-2">
+            <p className="text-sm text-gray-600 bg-teal-50 border border-teal-100 rounded-md px-3 py-2">
+              Tag each question with an English level (A1–B2). After a student
+              submits, the system calculates their placement level from those
+              questions.
+            </p>
+          </div>
+        )}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
             Duration (minutes) <span className="text-gray-400 font-normal">(Optional)</span>

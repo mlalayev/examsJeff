@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin, requireBranchAdminOrBoss } from "@/lib/auth-utils";
 import { z } from "zod";
 import { validateIELTSListeningUniqueness, sortIELTSSections } from "@/components/admin/exams/create/constants";
+import { normalizeCefrLevel } from "@/lib/english-levels";
 
 const questionSchema = z.object({
   id: z.string().optional(), // Allow custom IDs (especially for IELTS part-tagged questions)
@@ -14,6 +15,7 @@ const questionSchema = z.object({
   maxScore: z.number().default(1),
   explanation: z.any().optional(),
   image: z.string().nullable().optional(),
+  cefrLevel: z.string().nullable().optional(),
 });
 
 const sectionSchema = z.object({
@@ -33,7 +35,7 @@ const sectionSchema = z.object({
 
 const createExamSchema = z.object({
   title: z.string().min(1).max(200),
-  category: z.enum(["IELTS", "TOEFL", "SAT", "GENERAL_ENGLISH", "MATH", "KIDS"]),
+  category: z.enum(["IELTS", "TOEFL", "SAT", "GENERAL_ENGLISH", "MATH", "KIDS", "PLACEMENT"]),
   track: z.string().nullable().optional(),
   readingType: z.string().nullable().optional(), // IELTS Reading type: ACADEMIC or GENERAL
   writingType: z.string().nullable().optional(), // IELTS Writing type: ACADEMIC or GENERAL
@@ -190,6 +192,7 @@ export async function POST(request: Request) {
                   answerKey: q.answerKey,
                   maxScore: q.maxScore,
                   explanation: q.explanation,
+                  cefrLevel: normalizeCefrLevel(q.cefrLevel),
                 })),
               },
             };
@@ -267,6 +270,7 @@ export async function POST(request: Request) {
                   answerKey: q.answerKey,
                   maxScore: q.maxScore,
                   explanation: q.explanation,
+                  cefrLevel: normalizeCefrLevel(q.cefrLevel),
                 })) || [],
               },
             },

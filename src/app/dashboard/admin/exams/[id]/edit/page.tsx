@@ -215,7 +215,7 @@ function LegacyEditExamPage() {
   // Rest of the component logic is the same as create page
   // I'll copy the necessary functions from create page
 
-  const categories: ExamCategory[] = ["IELTS", "TOEFL", "SAT", "GENERAL_ENGLISH", "MATH", "KIDS"];
+  const categories: ExamCategory[] = ["IELTS", "TOEFL", "SAT", "GENERAL_ENGLISH", "MATH", "KIDS", "PLACEMENT"];
   const allowedSectionTypes = selectedCategory 
     ? ALLOWED_SECTIONS_BY_CATEGORY[selectedCategory] 
     : [];
@@ -2455,6 +2455,7 @@ function mapDbQuestion(q: any): Question {
     maxScore: q.maxScore ?? 1,
     explanation: q.explanation,
     image,
+    cefrLevel: q.cefrLevel ?? null,
   } as Question;
 }
 

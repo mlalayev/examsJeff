@@ -12,6 +12,7 @@ function mapDbQuestion(q: {
   maxScore?: number | null;
   explanation?: unknown;
   image?: string | null;
+  cefrLevel?: string | null;
 }): Question {
   const prompt =
     q.prompt && typeof q.prompt === "object"
@@ -34,6 +35,7 @@ function mapDbQuestion(q: {
     maxScore: q.maxScore ?? 1,
     explanation: q.explanation,
     image,
+    cefrLevel: q.cefrLevel ?? null,
   } as Question;
 }
 

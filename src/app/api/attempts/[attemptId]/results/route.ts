@@ -414,6 +414,8 @@ export async function GET(
         status: attempt.status,
         role: isParent ? "PARENT" : "STUDENT",
         coinReward,
+        placementLevel: attempt.placementLevel ?? null,
+        placementBreakdown: attempt.placementBreakdown ?? null,
         summary: {
           totalCorrect,
           totalQuestions,
@@ -732,6 +734,8 @@ export async function GET(
         status: attempt.status,
         role: "TEACHER",
         coinReward,
+        placementLevel: attempt.placementLevel ?? null,
+        placementBreakdown: attempt.placementBreakdown ?? null,
         summary: {
           totalCorrect,
           totalQuestions,

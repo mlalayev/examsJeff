@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-utils";
 import { requireHomeworkManager } from "@/lib/homework-access";
 import { z } from "zod";
+import { normalizeCefrLevel } from "@/lib/english-levels";
 
 const questionSchema = z.object({
   id: z.string().optional(),
@@ -14,6 +15,7 @@ const questionSchema = z.object({
   maxScore: z.number().default(1),
   explanation: z.any().optional(),
   image: z.string().nullable().optional(),
+  cefrLevel: z.string().nullable().optional(),
 });
 
 // Instruction can be either a string (legacy) or an object with structured data
@@ -288,6 +290,7 @@ export async function PATCH(
               maxScore: q.maxScore,
               explanation: q.explanation,
               sectionId: sectionRecord.id,
+              cefrLevel: normalizeCefrLevel(q.cefrLevel),
             };
 
             if (q.id && existingQuestionIds.has(q.id)) {

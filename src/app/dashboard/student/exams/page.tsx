@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { attemptRunnerPath } from "@/lib/attempt-runner-path";
+import { getExamCategoryLabel } from "@/lib/exam-category-utils";
 import { BookOpen, Search, Trash2, Loader2 } from "lucide-react";
 
 type SectionType =
@@ -314,7 +315,7 @@ export default function StudentExamsPage() {
                       </div>
                     </td>
                     <td className="px-3 sm:px-4 py-3 text-sm text-gray-600">
-                      {item.category}
+                      {getExamCategoryLabel(item.category)}
                     </td>
                     <td className="px-3 sm:px-4 py-3 text-sm text-gray-600">
                       {item.dueAt

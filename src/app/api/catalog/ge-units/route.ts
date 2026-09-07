@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { ENGLISH_LEVEL_IDS } from "@/lib/english-levels";
 
 /**
  * GET /api/catalog/ge-units?level=A2
@@ -18,7 +19,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Validate level
-    const validLevels = ["A1", "A2", "B1", "B1+", "B2"];
+    const validLevels: readonly string[] = ENGLISH_LEVEL_IDS;
     if (!validLevels.includes(level)) {
       return NextResponse.json(
         { error: "Invalid level" },

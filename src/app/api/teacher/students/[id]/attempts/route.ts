@@ -22,6 +22,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         status: true,
         createdAt: true,
         submittedAt: true,
+        examId: true,
+        placementLevel: true,
         sections: {
           select: {
             type: true,
@@ -43,6 +45,15 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       },
     });
 
+    const examIds = [...new Set(attempts.map((a) => a.examId))];
+    const exams = examIds.length
+      ? await prisma.exam.findMany({
+          where: { id: { in: examIds } },
+          select: { id: true, title: true, category: true },
+        })
+      : [];
+    const examMap = new Map(exams.map((e) => [e.id, e]));
+
     // Calculate overall percentage for each attempt
     const data = attempts.map((a) => {
       const autoSections = a.sections.filter((s) => s.type !== "WRITING");
@@ -56,7 +67,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         createdAt: a.createdAt,
         submittedAt: a.submittedAt,
         overallPercent: percent,
-        exam: a.booking?.exam || null,
+        placementLevel: a.placementLevel ?? null,
+        exam: examMap.get(a.examId) ?? a.booking?.exam ?? null,
         sections: a.sections.map((s) => ({
           type: s.type,
           rawScore: s.rawScore,
