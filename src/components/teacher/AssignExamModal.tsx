@@ -55,7 +55,7 @@ export default function AssignExamModal({
     { id: "SAT", name: "SAT" },
     { id: "KIDS", name: "Kids" },
     { id: "MATH", name: "Math" },
-    { id: "PLACEMENT", name: "Placement Test" },
+    { id: "PLACEMENT", name: "Placement Test", tracks: ["A1", "A2", "B1", "B1+", "B2"] },
   ];
 
   // Reset when modal opens/closes

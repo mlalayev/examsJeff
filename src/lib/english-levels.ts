@@ -44,3 +44,7 @@ export function englishLevelLabel(id: string | null | undefined): string {
 export function englishLevelRank(id: EnglishLevelId): number {
   return ENGLISH_LEVEL_IDS.indexOf(id);
 }
+
+export function placementTestTitle(level: EnglishLevelId): string {
+  return `Placement Test ${level}`;
+}

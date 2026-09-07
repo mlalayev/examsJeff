@@ -17,7 +17,8 @@ export interface ValidationResult {
 export function validateExamInfo(
   category: ExamCategory | null,
   title: string,
-  sections: Section[]
+  sections: Section[],
+  track?: string
 ): ValidationResult {
   if (!category) {
     return {
@@ -25,6 +26,16 @@ export function validateExamInfo(
       error: {
         title: "Validation Error",
         message: "Please select an exam category",
+      },
+    };
+  }
+
+  if (category === "PLACEMENT" && !track?.trim()) {
+    return {
+      valid: false,
+      error: {
+        title: "Validation Error",
+        message: "Select a Placement Test level (A1–B2)",
       },
     };
   }

@@ -1,6 +1,11 @@
 "use client";
 
 import type { ExamCategory } from "./types";
+import {
+  ENGLISH_LEVELS,
+  isEnglishLevelId,
+  placementTestTitle,
+} from "@/lib/english-levels";
 
 interface ExamInfoFormProps {
   examTitle: string;
@@ -21,21 +26,65 @@ export default function ExamInfoForm({
   durationMin,
   onDurationMinChange,
 }: ExamInfoFormProps) {
+  const isPlacement = selectedCategory === "PLACEMENT";
+  const placementTitle = isEnglishLevelId(track) ? placementTestTitle(track) : "";
+
   return (
     <div className="bg-white border border-gray-200 rounded-md p-4 sm:p-6 mb-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Exam Title *
-          </label>
-          <input
-            type="text"
-            value={examTitle}
-            onChange={(e) => onExamTitleChange(e.target.value)}
-            placeholder="e.g., General English A2 - Unit 1"
-            className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
-          />
-        </div>
+        {isPlacement ? (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Level *
+              </label>
+              <select
+                value={track}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  onTrackChange(next);
+                  onExamTitleChange(
+                    isEnglishLevelId(next) ? placementTestTitle(next) : ""
+                  );
+                }}
+                className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+                required
+              >
+                <option value="">Select level</option>
+                {ENGLISH_LEVELS.map((level) => (
+                  <option key={level.id} value={level.id}>
+                    {level.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Exam Title
+              </label>
+              <input
+                type="text"
+                value={placementTitle}
+                readOnly
+                placeholder="Select a level"
+                className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm bg-gray-50 text-gray-800"
+              />
+            </div>
+          </>
+        ) : (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Exam Title *
+            </label>
+            <input
+              type="text"
+              value={examTitle}
+              onChange={(e) => onExamTitleChange(e.target.value)}
+              placeholder="e.g., General English A2 - Unit 1"
+              className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+            />
+          </div>
+        )}
         {selectedCategory === "GENERAL_ENGLISH" && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -56,15 +105,6 @@ export default function ExamInfoForm({
               <option value="C1">C1</option>
               <option value="C2">C2</option>
             </select>
-          </div>
-        )}
-        {selectedCategory === "PLACEMENT" && (
-          <div className="sm:col-span-2">
-            <p className="text-sm text-gray-600 bg-teal-50 border border-teal-100 rounded-md px-3 py-2">
-              Tag each question with an English level (A1–B2). After a student
-              submits, the system calculates their placement level from those
-              questions.
-            </p>
           </div>
         )}
         <div>

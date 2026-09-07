@@ -33,6 +33,7 @@ import {
   type QuestionOperationContext,
 } from "@/components/admin/exams/create/questionOperations";
 import { createNewSection, deleteSectionFromList, updateSectionInList } from "@/components/admin/exams/create/sectionOperations";
+import { isEnglishLevelId, placementTestTitle } from "@/lib/english-levels";
 
 export interface GenericExamBuilderInitial {
   title: string;
@@ -63,7 +64,12 @@ export default function GenericExamBuilder({ mode, category, examId, initial, sa
   const isEdit = mode === "edit";
 
   const [step, setStep] = useState<"sections" | "questions">("sections");
-  const [examTitle, setExamTitle] = useState(initial?.title ?? "");
+  const [examTitle, setExamTitle] = useState(() => {
+    if (category === "PLACEMENT" && isEnglishLevelId(initial?.track)) {
+      return placementTestTitle(initial.track);
+    }
+    return initial?.title ?? "";
+  });
   const [selectedCategory] = useState<ExamCategory>(category);
   const [track, setTrack] = useState(initial?.track ?? "");
   const [durationMin, setDurationMin] = useState<number | null>(initial?.durationMin ?? null);
@@ -133,6 +139,10 @@ export default function GenericExamBuilder({ mode, category, examId, initial, sa
     if (!result.valid) {
       modals.showAlert("Invalid Question Type", result.error || "This question type is not allowed", "error");
       return;
+    }
+
+    if (selectedCategory === "PLACEMENT" && isEnglishLevelId(track)) {
+      result.question.cefrLevel = track;
     }
 
     setEditingQuestion(result.question);
@@ -355,7 +365,11 @@ export default function GenericExamBuilder({ mode, category, examId, initial, sa
   };
 
   const saveExam = async () => {
-    const validation = validateExamInfo(selectedCategory, examTitle, sections);
+    const resolvedTitle =
+      selectedCategory === "PLACEMENT" && isEnglishLevelId(track)
+        ? placementTestTitle(track)
+        : examTitle;
+    const validation = validateExamInfo(selectedCategory, resolvedTitle, sections, track);
 
     if (!validation.valid) {
       modals.showAlert(validation.error!.title, validation.error!.message, "error");
@@ -366,7 +380,7 @@ export default function GenericExamBuilder({ mode, category, examId, initial, sa
     try {
       const payload = {
         ...buildExamPayload(
-          examTitle,
+          resolvedTitle,
           selectedCategory,
           track,
           durationMin,

@@ -44,7 +44,7 @@ const TRACK_ORDER: Record<string, string[]> = {
   "KIDS": ["GENERAL"],
   "GENERAL_ENGLISH": ["A1", "A2", "B1", "B1+", "B2"],
   "MATH": ["GENERAL"],
-  "PLACEMENT": ["GENERAL"],
+  "PLACEMENT": ["A1", "A2", "B1", "B1+", "B2"],
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -91,7 +91,11 @@ const TRACK_LABELS: Record<string, Record<string, string>> = {
     "GENERAL": "General"
   },
   "PLACEMENT": {
-    "GENERAL": "General"
+    "A1": "A1",
+    "A2": "A2",
+    "B1": "B1",
+    "B1+": "B1+",
+    "B2": "B2"
   }
 };
 
