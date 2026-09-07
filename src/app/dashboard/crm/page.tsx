@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { AlertModal } from "@/components/modals/AlertModal";
 import UnifiedLoading from "@/components/loading/UnifiedLoading";
+import { CRM_CONTACT_REASONS, catalogLabel } from "@/lib/portal-catalog";
 
 type CrmStatus =
   | "WRITTEN"
@@ -156,7 +157,7 @@ export default function CrmPage() {
       firstName: contact.firstName,
       lastName: contact.lastName,
       phoneNumber: contact.phoneNumber,
-      contactReason: contact.contactReason,
+      contactReason: catalogLabel(contact.contactReason),
       status: contact.status,
       email: contact.email ?? "",
       dateOfBirth: toDateInput(contact.dateOfBirth),
@@ -425,7 +426,7 @@ export default function CrmPage() {
                       </span>
                     </td>
                     <td className="max-w-[180px] px-4 py-3 text-gray-600">
-                      {contact.contactReason}
+                      {catalogLabel(contact.contactReason)}
                     </td>
                     <td className="px-4 py-3">
                       <select
@@ -562,14 +563,30 @@ export default function CrmPage() {
               </FormField>
 
               <FormField label="Why contact was made *">
-                <input
+                <select
                   value={form.contactReason}
                   onChange={(e) =>
                     setForm({ ...form, contactReason: e.target.value })
                   }
                   className={inputClass}
-                  placeholder="e.g. Sunday Examiner, IELTS mock exam"
-                />
+                >
+                  <option value="">Select an interest</option>
+                  {CRM_CONTACT_REASONS.map((item) => (
+                    <option key={item.id} value={item.label}>
+                      {item.label}
+                    </option>
+                  ))}
+                  {form.contactReason &&
+                  !CRM_CONTACT_REASONS.some(
+                    (item) =>
+                      item.label === form.contactReason ||
+                      item.id === form.contactReason
+                  ) ? (
+                    <option value={form.contactReason}>
+                      {form.contactReason}
+                    </option>
+                  ) : null}
+                </select>
               </FormField>
 
               <FormField label="Stage">

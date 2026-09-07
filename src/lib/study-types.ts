@@ -56,6 +56,27 @@ export const STUDY_TYPES: StudyTypeMeta[] = [
     keywords: ["math", "riyaziyyat", "riyazi"],
   },
   {
+    id: "CALCULUS",
+    label: "Calculus",
+    accent: "#0369a1",
+    chip: "bg-sky-50 text-sky-800 ring-sky-200",
+    keywords: ["calculus", "kalkulus", "kalkulyus"],
+  },
+  {
+    id: "DIM",
+    label: "DİM",
+    accent: "#b45309",
+    chip: "bg-yellow-50 text-yellow-800 ring-yellow-200",
+    keywords: ["dim", "dím", "dım", "dövlət imtahan", "dovlet imtahan"],
+  },
+  {
+    id: "SUBJECT_LESSONS",
+    label: "Subject Lessons",
+    accent: "#4338ca",
+    chip: "bg-indigo-50 text-indigo-800 ring-indigo-200",
+    keywords: ["subject lesson", "subject lessons", "fənn dərsi", "fenn dersi"],
+  },
+  {
     id: "KIDS",
     label: "Kids",
     accent: "#db2777",
@@ -108,7 +129,7 @@ export const STUDENT_KIND_OPTIONS = [
 export const STUDENT_STATUS_OPTIONS = [
   { id: "CONTINUES", label: "Continues" },
   { id: "FINISHED", label: "Finished" },
-  { id: "STOPPED", label: "Stopped" },
+  { id: "STOPPED", label: "Paused" },
 ] as const;
 
 export type StudentBucketMeta = { id: string; label: string; accent: string };
@@ -117,7 +138,7 @@ export type StudentBucketMeta = { id: string; label: string; accent: string };
 export const STUDENT_BUCKETS: StudentBucketMeta[] = [
   { id: "CONTINUES", label: "Continues", accent: "#16a34a" },
   { id: "FINISHED", label: "Finished", accent: "#2563eb" },
-  { id: "STOPPED", label: "Stopped", accent: "#dc2626" },
+  { id: "STOPPED", label: "Paused", accent: "#dc2626" },
   { id: "EXAM_TAKER", label: "Exam candidates", accent: "#7c3aed" },
 ];
 
@@ -219,18 +240,33 @@ export function studentListWhereForBucket(
   return { studentProfile: { is: profileWhere } };
 }
 
+function keywordMatches(text: string, keyword: string): boolean {
+  const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(?:^|[^\\p{L}\\p{N}])${escaped}(?:$|[^\\p{L}\\p{N}])`, "iu").test(
+    text
+  );
+}
+
 /** Infer study types from a legacy free-text program string. */
 export function inferStudyTypesFromProgram(program?: string | null): string[] {
   if (!program) return [];
-  const p = program.toLowerCase();
+  const p = program
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/\p{M}/gu, "");
   const found = new Set(
-    STUDY_TYPES.filter((t) => t.keywords.some((kw) => p.includes(kw))).map((t) => t.id)
+    STUDY_TYPES.filter((t) =>
+      t.keywords.some((kw) =>
+        keywordMatches(p, kw.normalize("NFKD").replace(/\p{M}/gu, ""))
+      )
+    ).map((t) => t.id)
   );
 
   // Disambiguate substring overlaps so e.g. "SAT Math" is not also tagged as the
   // standalone "Math" type, and "SAT English/Reading" is not tagged "General English".
   if (found.has("SAT_MATH")) found.delete("MATH");
   if (found.has("SAT_VERBAL")) found.delete("GENERAL_ENGLISH");
+  if (found.has("CALCULUS")) found.delete("MATH");
 
   return STUDY_TYPES.filter((t) => found.has(t.id)).map((t) => t.id);
 }

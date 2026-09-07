@@ -10,45 +10,95 @@ import {
   Contact,
   Calendar,
   BarChart3,
+  Library,
+  School,
 } from "lucide-react";
 import type { CollapsibleNavSectionItem } from "./CollapsibleNavSection";
+import type { CollapsibleSubItem } from "./navUtils";
 
-const finished = (base: string) => `${base}/finished`;
-const stopped = (base: string) => `${base}/stopped`;
-const candidates = (base: string) => `${base}/candidates`;
+function studentSubs(base: string): CollapsibleSubItem[] {
+  return [
+    {
+      label: "Courses",
+      children: [
+        { label: "Active Students", href: base },
+        { label: "Finished", href: `${base}/finished` },
+        { label: "Paused", href: `${base}/stopped` },
+      ],
+    },
+    { label: "Study Abroad", href: `${base}/study-abroad` },
+  ];
+}
+
+function crmSubs(): CollapsibleSubItem[] {
+  return [
+    { label: "Contacts", href: "/dashboard/crm" },
+    { label: "Exam Candidates", href: "/dashboard/crm/exam-candidates" },
+  ];
+}
+
+function subjectsSubs(): CollapsibleSubItem[] {
+  return [{ label: "Subjects", href: "/dashboard/subjects" }];
+}
+
+export function getStaffDashboardHref(role: string): string | null {
+  switch (role) {
+    case "CREATOR":
+      return "/dashboard/creator";
+    case "BOSS":
+      return "/dashboard/boss";
+    case "ADMIN":
+      return "/dashboard/admin";
+    case "TEACHER":
+      return "/dashboard/teacher";
+    case "BRANCH_ADMIN":
+    case "BRANCH_BOSS":
+      return "/dashboard/branch-admin";
+    case "PARTNER":
+      return "/dashboard/partner";
+    default:
+      return null;
+  }
+}
 
 export function getStaffNavSections(role: string): CollapsibleNavSectionItem[] {
   if (role === "CREATOR") {
     return [
       {
-        id: "users",
-        label: "Users",
-        icon: Users,
-        subs: [
-          { label: "All Users", href: "/dashboard/creator/users" },
-          { label: "Branches", href: "/dashboard/creator/branches" },
-        ],
-      },
-      {
         id: "students",
         label: "Students",
         icon: GraduationCap,
-        subs: [
-          { label: "All Students", href: "/dashboard/creator/students" },
-          { label: "Finished", href: finished("/dashboard/creator/students") },
-          { label: "Stopped", href: stopped("/dashboard/creator/students") },
-          { label: "Candidates", href: candidates("/dashboard/creator/students") },
-        ],
+        subs: studentSubs("/dashboard/creator/students"),
+      },
+      {
+        id: "crm",
+        label: "CRM",
+        icon: Contact,
+        subs: crmSubs(),
+      },
+      {
+        id: "subjects",
+        label: "Subjects",
+        icon: Library,
+        subs: subjectsSubs(),
+      },
+      {
+        id: "courses",
+        label: "Courses",
+        icon: School,
+        subs: [{ label: "Classes", href: "/dashboard/creator/classes" }],
+      },
+      {
+        id: "exams",
+        label: "Exams",
+        icon: FileText,
+        subs: [{ label: "Exams", href: "/dashboard/creator/exams" }],
       },
       {
         id: "content",
         label: "Content",
         icon: BookOpen,
-        subs: [
-          { label: "Exams", href: "/dashboard/creator/exams" },
-          { label: "Homework", href: "/dashboard/creator/homework" },
-          { label: "Classes", href: "/dashboard/creator/classes" },
-        ],
+        subs: [{ label: "Homework", href: "/dashboard/creator/homework" }],
       },
       {
         id: "finance",
@@ -61,22 +111,68 @@ export function getStaffNavSections(role: string): CollapsibleNavSectionItem[] {
         ],
       },
       {
+        id: "users",
+        label: "Users",
+        icon: Users,
+        subs: [
+          { label: "All Users", href: "/dashboard/creator/users" },
+          { label: "Branches", href: "/dashboard/creator/branches" },
+        ],
+      },
+      {
         id: "referrals",
         label: "Referrals",
         icon: UserPlus,
         subs: [{ label: "Referrals", href: "/dashboard/referrals" }],
-      },
-      {
-        id: "crm",
-        label: "CRM",
-        icon: Contact,
-        subs: [{ label: "Contacts", href: "/dashboard/crm" }],
       },
     ];
   }
 
   if (role === "BOSS") {
     return [
+      {
+        id: "students",
+        label: "Students",
+        icon: GraduationCap,
+        subs: studentSubs("/dashboard/admin/students"),
+      },
+      {
+        id: "crm",
+        label: "CRM",
+        icon: Contact,
+        subs: crmSubs(),
+      },
+      {
+        id: "subjects",
+        label: "Subjects",
+        icon: Library,
+        subs: subjectsSubs(),
+      },
+      {
+        id: "exams",
+        label: "Exams",
+        icon: FileText,
+        subs: [{ label: "Exams", href: "/dashboard/admin/exams" }],
+      },
+      {
+        id: "content",
+        label: "Content",
+        icon: BookOpen,
+        subs: [
+          { label: "Homework", href: "/dashboard/admin/homework" },
+          { label: "Seed Demo Data", href: "/dashboard/admin/seed" },
+        ],
+      },
+      {
+        id: "finance",
+        label: "Finance",
+        icon: DollarSign,
+        subs: [
+          { label: "Finance", href: "/dashboard/boss/finance" },
+          { label: "Teacher Salary", href: "/dashboard/boss/salary" },
+          { label: "Weekly Reports", href: "/dashboard/boss/reports" },
+        ],
+      },
       {
         id: "users",
         label: "Users",
@@ -93,47 +189,10 @@ export function getStaffNavSections(role: string): CollapsibleNavSectionItem[] {
         subs: [{ label: "Teachers", href: "/dashboard/boss/teachers" }],
       },
       {
-        id: "students",
-        label: "Students",
-        icon: GraduationCap,
-        subs: [
-          { label: "All Students", href: "/dashboard/admin/students" },
-          { label: "Finished", href: finished("/dashboard/admin/students") },
-          { label: "Stopped", href: stopped("/dashboard/admin/students") },
-          { label: "Candidates", href: candidates("/dashboard/admin/students") },
-        ],
-      },
-      {
-        id: "content",
-        label: "Content",
-        icon: BookOpen,
-        subs: [
-          { label: "Exams", href: "/dashboard/admin/exams" },
-          { label: "Homework", href: "/dashboard/admin/homework" },
-          { label: "Seed Demo Data", href: "/dashboard/admin/seed" },
-        ],
-      },
-      {
-        id: "finance",
-        label: "Finance",
-        icon: DollarSign,
-        subs: [
-          { label: "Finance", href: "/dashboard/boss/finance" },
-          { label: "Teacher Salary", href: "/dashboard/boss/salary" },
-          { label: "Weekly Reports", href: "/dashboard/boss/reports" },
-        ],
-      },
-      {
         id: "referrals",
         label: "Referrals",
         icon: UserPlus,
         subs: [{ label: "Referrals", href: "/dashboard/referrals" }],
-      },
-      {
-        id: "crm",
-        label: "CRM",
-        icon: Contact,
-        subs: [{ label: "Contacts", href: "/dashboard/crm" }],
       },
     ];
   }
@@ -144,19 +203,31 @@ export function getStaffNavSections(role: string): CollapsibleNavSectionItem[] {
         id: "students",
         label: "Students",
         icon: GraduationCap,
-        subs: [
-          { label: "All Students", href: "/dashboard/admin/students" },
-          { label: "Finished", href: finished("/dashboard/admin/students") },
-          { label: "Stopped", href: stopped("/dashboard/admin/students") },
-          { label: "Candidates", href: candidates("/dashboard/admin/students") },
-        ],
+        subs: studentSubs("/dashboard/admin/students"),
+      },
+      {
+        id: "crm",
+        label: "CRM",
+        icon: Contact,
+        subs: crmSubs(),
+      },
+      {
+        id: "subjects",
+        label: "Subjects",
+        icon: Library,
+        subs: subjectsSubs(),
+      },
+      {
+        id: "exams",
+        label: "Exams",
+        icon: FileText,
+        subs: [{ label: "Exams", href: "/dashboard/admin/exams" }],
       },
       {
         id: "content",
         label: "Content",
         icon: BookOpen,
         subs: [
-          { label: "Exams", href: "/dashboard/admin/exams" },
           { label: "Homework", href: "/dashboard/admin/homework" },
           { label: "Seed Demo Data", href: "/dashboard/admin/seed" },
         ],
@@ -166,12 +237,6 @@ export function getStaffNavSections(role: string): CollapsibleNavSectionItem[] {
         label: "Referrals",
         icon: UserPlus,
         subs: [{ label: "Referrals", href: "/dashboard/referrals" }],
-      },
-      {
-        id: "crm",
-        label: "CRM",
-        icon: Contact,
-        subs: [{ label: "Contacts", href: "/dashboard/crm" }],
       },
     ];
   }
@@ -265,6 +330,6 @@ export function getStaffNavSections(role: string): CollapsibleNavSectionItem[] {
   return [];
 }
 
-export function staffNavUsesExactMatch(role: string): boolean {
-  return role === "CREATOR";
+export function staffNavUsesExactMatch(_role: string): boolean {
+  return false;
 }

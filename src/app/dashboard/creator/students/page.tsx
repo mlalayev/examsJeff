@@ -77,7 +77,7 @@ export default function CreatorStudentsPage() {
   const handleToggleLessons = async (student: Student) => {
     const nextStopped = !student.lessonsStopped;
     const confirmMsg = nextStopped
-      ? `Mark this student's lessons as STOPPED?\n\n${student.name || student.email}\n\nThey will move to the Stopped students dashboard.`
+      ? `Pause this student's lessons?\n\n${student.name || student.email}\n\nThey will move to the Paused students list.`
       : `Mark this student's lessons as CONTINUING?\n\n${student.name || student.email}`;
     if (!confirm(confirmMsg)) return;
 
@@ -388,8 +388,8 @@ export default function CreatorStudentsPage() {
     <div className="p-4 sm:p-6 lg:p-8">
       {/* Minimal Header */}
       <div className="mb-8 sm:mb-12">
-        <h1 className="text-xl sm:text-2xl font-medium text-gray-900">Students</h1>
-        <p className="text-gray-500 mt-1 text-sm sm:text-base">Manage student accounts and approvals</p>
+        <h1 className="text-xl sm:text-2xl font-medium text-gray-900">Active Students</h1>
+        <p className="text-gray-500 mt-1 text-sm sm:text-base">Manage students currently enrolled in courses</p>
       </div>
 
       {/* Compact Stats Row */}
@@ -633,7 +633,7 @@ export default function CreatorStudentsPage() {
                               : "bg-emerald-100 text-emerald-700"
                           }`}
                         >
-                          {student.lessonsStopped ? "Stopped" : "Continues"}
+                          {student.lessonsStopped ? "Paused" : "Continues"}
                         </span>
                         {student.lessonsStopped && student.lessonsStoppedAt && (
                           <span className="ml-2 text-xs text-gray-500">
@@ -688,7 +688,7 @@ export default function CreatorStudentsPage() {
                                 ? "text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
                                 : "text-red-700 bg-red-50 hover:bg-red-100"
                             }`}
-                            title={student.lessonsStopped ? "Resume lessons" : "Stop lessons"}
+                            title={student.lessonsStopped ? "Resume lessons" : "Pause lessons"}
                           >
                             {student.lessonsStopped ? (
                               <>
@@ -698,7 +698,7 @@ export default function CreatorStudentsPage() {
                             ) : (
                               <>
                                 <Pause className="w-3 h-3" />
-                                {lessonUpdating === student.id ? "Saving..." : "Stop"}
+                                {lessonUpdating === student.id ? "Saving..." : "Pause"}
                               </>
                             )}
                           </button>

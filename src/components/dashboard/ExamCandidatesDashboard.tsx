@@ -50,8 +50,12 @@ const ACCENT = "#7c3aed";
 
 export default function ExamCandidatesDashboard({
   studentsListHref,
+  parentHref,
+  parentLabel,
 }: {
   studentsListHref: string;
+  parentHref?: string;
+  parentLabel?: string;
 }) {
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,7 +96,7 @@ export default function ExamCandidatesDashboard({
     const label = student.name || student.email;
     if (
       !confirm(
-        `Enroll ${label} as a regular student?\n\nThey will move to the main Students list and can attend lessons.`
+        `Enroll ${label} as a regular student?\n\nThey will move to Active Students and can attend lessons.`
       )
     )
       return;
@@ -132,8 +136,8 @@ export default function ExamCandidatesDashboard({
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="mb-1 flex items-center gap-2 text-sm text-gray-500">
-            <Link href={studentsListHref} className="hover:text-[#303380]">
-              Students
+            <Link href={parentHref ?? studentsListHref} className="hover:text-[#303380]">
+              {parentLabel ?? "Students"}
             </Link>
             <span>/</span>
             <span className="font-medium text-gray-700">Exam candidates</span>

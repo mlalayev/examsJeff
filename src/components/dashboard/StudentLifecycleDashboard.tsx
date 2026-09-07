@@ -61,8 +61,8 @@ const META: Record<
     accent: "#2563eb",
   },
   STOPPED: {
-    title: "Stopped students",
-    subtitle: "Students whose lessons were paused or stopped.",
+    title: "Paused students",
+    subtitle: "Students whose lessons were paused. Resume them to return to Active Students.",
     accent: "#dc2626",
   },
 };
@@ -175,7 +175,11 @@ export default function StudentLifecycleDashboard({
               Students
             </Link>
             <span>/</span>
-            <span className="font-medium text-gray-700">{meta.title}</span>
+            <span>Courses</span>
+            <span>/</span>
+            <span className="font-medium text-gray-700">
+              {bucket === "FINISHED" ? "Finished" : "Paused"}
+            </span>
           </div>
           <h1 className="text-2xl font-bold text-gray-900">{meta.title}</h1>
           <p className="mt-1 text-sm text-gray-600">{meta.subtitle}</p>
@@ -206,7 +210,7 @@ export default function StudentLifecycleDashboard({
         ) : filtered.length === 0 ? (
           <div className="py-16 text-center text-gray-500">
             <Users className="mx-auto mb-2 h-8 w-8 text-gray-300" />
-            <p>No {bucket === "FINISHED" ? "finished" : "stopped"} students</p>
+            <p>No {bucket === "FINISHED" ? "finished" : "paused"} students</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -229,7 +233,7 @@ export default function StudentLifecycleDashboard({
                     Fee / month
                   </th>
                   <th className="px-4 py-3 text-left font-medium text-gray-700">
-                    {bucket === "STOPPED" ? "Stopped since" : "Finished"}
+                    {bucket === "STOPPED" ? "Paused since" : "Finished"}
                   </th>
                   <th className="px-4 py-3 text-left font-medium text-gray-700">
                     Joined

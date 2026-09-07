@@ -171,6 +171,15 @@ export default async function middleware(req: NextRequest) {
     }
   }
 
+  // Subjects catalog (admin, boss, creator)
+  if (path.startsWith("/dashboard/subjects")) {
+    const role = (token as any).role;
+    const allowed = ["BOSS", "ADMIN", "CREATOR"];
+    if (!allowed.includes(role)) {
+      return NextResponse.redirect(new URL("/auth/login?error=unauthorized", req.url));
+    }
+  }
+
   return response;
 }
 

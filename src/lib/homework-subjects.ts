@@ -24,6 +24,9 @@ const SUBJECT_TO_CATEGORY: Record<string, ExamCategory> = {
   SAT_VERBAL: "SAT",
   SAT_MATH: "SAT",
   MATH: "MATH",
+  CALCULUS: "MATH",
+  DIM: "MATH",
+  SUBJECT_LESSONS: "MATH",
   KIDS: "KIDS",
   GENERAL_ENGLISH: "GENERAL_ENGLISH",
 };

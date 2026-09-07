@@ -1,7 +1,5 @@
-import ExamCandidatesDashboard from "@/components/dashboard/ExamCandidatesDashboard";
+import { redirect } from "next/navigation";
 
-export default function AdminExamCandidatesPage() {
-  return (
-    <ExamCandidatesDashboard studentsListHref="/dashboard/admin/students" />
-  );
+export default function AdminExamCandidatesRedirect() {
+  redirect("/dashboard/crm/exam-candidates");
 }
