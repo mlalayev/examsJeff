@@ -29,9 +29,7 @@ export default function StaffNav({ role, onNavigate }: Props) {
 
   const activeId =
     sections.find(
-      (sec) =>
-        !sec.maintenance &&
-        getActiveSubHref(pathname, sec.subs, exactMatch) !== null
+      (sec) => getActiveSubHref(pathname, sec.subs, exactMatch) !== null
     )?.id ?? null;
 
   const [openId, setOpenId] = useState<string | null>(activeId);
