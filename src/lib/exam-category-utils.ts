@@ -40,10 +40,16 @@ export const EXAM_CATEGORY_GROUPS: {
     categories: ["GENERAL_ENGLISH"],
   },
   {
+    id: "placement_tests",
+    label: "Placement Tests",
+    description: "English proficiency placement (A1–B2)",
+    categories: ["PLACEMENT"],
+  },
+  {
     id: "other",
     label: "Other Programs",
-    description: "TOEFL, Math, Kids, and Placement",
-    categories: ["TOEFL", "MATH", "KIDS", "PLACEMENT"],
+    description: "TOEFL, Math, and Kids",
+    categories: ["TOEFL", "MATH", "KIDS"],
   },
 ];
 

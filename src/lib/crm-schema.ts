@@ -3,8 +3,13 @@ import { prisma } from "@/lib/prisma";
 let ensurePromise: Promise<void> | null = null;
 
 /**
- * Idempotent CRM schema repair. Only additive / safe operations —
- * never drops data. Used when migrate deploy is stuck.
+ * Idempotent CRM schema repair for production-safe deploys.
+ *
+ * SAFETY (critical — production has real CRM rows):
+ * - NEVER DROP TABLE / TRUNCATE / DELETE FROM crm_contacts
+ * - NEVER recreate the table
+ * - Only CREATE TABLE IF NOT EXISTS, ADD COLUMN IF NOT EXISTS, backfill UPDATE
+ * - Existing contact rows are preserved
  */
 export async function ensureCrmContactsSchema(): Promise<void> {
   if (ensurePromise) return ensurePromise;

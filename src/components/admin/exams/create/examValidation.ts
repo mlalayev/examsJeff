@@ -30,14 +30,25 @@ export function validateExamInfo(
     };
   }
 
-  if (category === "PLACEMENT" && !track?.trim()) {
-    return {
-      valid: false,
-      error: {
-        title: "Validation Error",
-        message: "Select a Placement Test level (A1–B2)",
-      },
-    };
+  if (category === "PLACEMENT") {
+    const t = track?.trim() || "";
+    const ok =
+      t === "MULTI" ||
+      t === "A1" ||
+      t === "A2" ||
+      t === "B1" ||
+      t === "B1+" ||
+      t === "B2";
+    if (!ok) {
+      return {
+        valid: false,
+        error: {
+          title: "Validation Error",
+          message:
+            "Select Placement mode: Full test (multi-level) or a single band (A1–B2)",
+        },
+      };
+    }
   }
 
   if (!title.trim()) {

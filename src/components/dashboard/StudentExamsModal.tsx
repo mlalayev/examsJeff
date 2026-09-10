@@ -75,9 +75,10 @@ export default function StudentExamsModal({ open, onClose, student }: Props) {
 
   if (!open || !student) return null;
 
-  const latestPlacementAttemptId = rows.find(
+  const latestPlacement = rows.find(
     (r) => r.status === "SUBMITTED" && r.placementLevel
-  )?.attemptId;
+  );
+  const latestPlacementAttemptId = latestPlacement?.attemptId;
 
   const hrefForAttempt = (
     attemptId: string,
@@ -108,6 +109,27 @@ export default function StudentExamsModal({ open, onClose, student }: Props) {
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
+          {latestPlacement && (
+            <div className="mb-4 rounded-lg border border-teal-200 bg-teal-50/60 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-teal-800">
+                  Latest Placement Level
+                </div>
+                <div className="text-sm text-teal-900 mt-0.5">
+                  {latestPlacement.examTitle}
+                  {latestPlacement.submittedAt
+                    ? ` · ${new Date(latestPlacement.submittedAt).toLocaleDateString()}`
+                    : ""}
+                  {latestPlacement.score != null
+                    ? ` · ${latestPlacement.score}%`
+                    : ""}
+                </div>
+              </div>
+              <div className="text-3xl font-bold text-teal-900 tabular-nums">
+                {latestPlacement.placementLevel}
+              </div>
+            </div>
+          )}
           {loading ? (
             <div className="flex items-center justify-center py-16 text-gray-500 gap-2">
               <Loader2 className="w-5 h-5 animate-spin" />

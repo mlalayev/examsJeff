@@ -34,13 +34,18 @@ export type PlacementBreakdown = {
 
 /**
  * Minimum accuracy (0–1) required to “pass” a CEFR band that has questions.
- * Adjust here — do not copy thresholds into UI files.
+ *
+ * JEFF STAFF: change this single constant (or pass `minAccuracy` into
+ * `determinePlacementLevel`) to adjust placement strictness. Do not copy
+ * thresholds into React pages.
  */
 export const PLACEMENT_DEFAULT_MIN_ACCURACY = 0.6;
 
 /**
  * Used ONLY when a Placement Test has no questions tagged with a CEFR level.
- * These floors are provisional until JEFF academic staff confirm them.
+ * Provisional until JEFF academic staff confirm the floors.
+ *
+ * Order matters: highest matching floor wins.
  */
 export const PLACEMENT_OVERALL_PERCENT_FLOORS: Array<{
   minPercent: number;
@@ -66,6 +71,20 @@ export function levelFromOverallPercent(
   return result;
 }
 
+/**
+ * Authoritative Placement Level calculation (server-side only).
+ *
+ * Strategy A — consecutive_level_mastery (preferred):
+ *   Questions are grouped by `cefrLevel`. Levels are walked A1→B2 among
+ *   bands that appear in the attempt. The student keeps a band when
+ *   accuracy ≥ minAccuracy; the first failed band stops advancement.
+ *   Final level = last passed band. If the lowest tested band fails,
+ *   result is still that band (cannot place below tested material).
+ *
+ * Strategy B — overall_percent_fallback:
+ *   No questions have cefrLevel tags → map overall % via
+ *   PLACEMENT_OVERALL_PERCENT_FLOORS.
+ */
 export function determinePlacementLevel(
   questions: PlacementQuestionScore[],
   options?: { minAccuracy?: number }
@@ -111,12 +130,18 @@ export function determinePlacementLevel(
   }
 
   let result: EnglishLevelId = testedLevels[0];
+  let passedAny = false;
   for (const id of testedLevels) {
     const stats = byLevel[id]!;
     const accuracy = stats.total > 0 ? stats.correct / stats.total : 0;
     if (accuracy >= minAccuracy) {
       result = id;
+      passedAny = true;
     } else {
+      // Stop at first failed band; keep last passed (or lowest tested if none passed)
+      if (!passedAny) {
+        result = id;
+      }
       break;
     }
   }

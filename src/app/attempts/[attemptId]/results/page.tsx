@@ -43,7 +43,11 @@ interface ResultsData {
     overallPercent?: number;
     totalCorrect?: number;
     totalQuestions?: number;
-    byLevel?: Record<string, { correct: number; total: number }>;
+    byLevel?: Record<
+      string,
+      { correct: number; total: number; earned?: number; maxScore?: number }
+    >;
+    minAccuracy?: number;
     level?: string;
   } | null;
   summary: {
@@ -800,7 +804,7 @@ export default function AttemptResultsPage() {
         )}
         {data.examCategory === "PLACEMENT" && data.placementLevel && (
           <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
               <div>
                 <h2 className="text-lg font-medium text-gray-900 mb-1">
                   Placement Test Result
@@ -817,10 +821,70 @@ export default function AttemptResultsPage() {
                   {data.placementLevel}
                 </div>
                 <div className="text-xs text-gray-500 mt-1 uppercase tracking-wide">
-                  Final Level
+                  Final English Level
                 </div>
               </div>
             </div>
+            {data.placementBreakdown?.byLevel &&
+              Object.keys(data.placementBreakdown.byLevel).length > 0 && (
+                <div className="mt-5 border-t border-gray-100 pt-4">
+                  <h3 className="text-sm font-medium text-gray-800 mb-2">
+                    By CEFR band
+                  </h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-xs text-gray-500">
+                          <th className="py-1 pr-3 font-medium">Level</th>
+                          <th className="py-1 pr-3 font-medium">Correct</th>
+                          <th className="py-1 pr-3 font-medium">Total</th>
+                          <th className="py-1 font-medium">Accuracy</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {["A1", "A2", "B1", "B1+", "B2"].map((lvl) => {
+                          const stats =
+                            data.placementBreakdown?.byLevel?.[
+                              lvl as keyof NonNullable<
+                                typeof data.placementBreakdown
+                              >["byLevel"]
+                            ];
+                          if (!stats || stats.total <= 0) return null;
+                          const pct = Math.round(
+                            (stats.correct / stats.total) * 100
+                          );
+                          return (
+                            <tr key={lvl}>
+                              <td className="py-1.5 pr-3 font-medium text-gray-900">
+                                {lvl}
+                              </td>
+                              <td className="py-1.5 pr-3 text-gray-700 tabular-nums">
+                                {stats.correct}
+                              </td>
+                              <td className="py-1.5 pr-3 text-gray-700 tabular-nums">
+                                {stats.total}
+                              </td>
+                              <td className="py-1.5 text-gray-700 tabular-nums">
+                                {pct}%
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  {typeof data.placementBreakdown.minAccuracy === "number" && (
+                    <p className="mt-2 text-xs text-gray-500">
+                      Pass threshold per band:{" "}
+                      {Math.round(data.placementBreakdown.minAccuracy * 100)}%
+                      {data.placementBreakdown.strategy ===
+                      "overall_percent_fallback"
+                        ? " · Overall-percent fallback used (questions had no CEFR tags)"
+                        : " · Consecutive band mastery"}
+                    </p>
+                  )}
+                </div>
+              )}
           </div>
         )}
         {/* Overall Score Card */}

@@ -3,7 +3,10 @@
 import type { ExamCategory } from "./types";
 import {
   ENGLISH_LEVELS,
+  PLACEMENT_MULTI_TITLE,
+  PLACEMENT_TRACK_MULTI,
   isEnglishLevelId,
+  isPlacementMultiTrack,
   placementTestTitle,
 } from "@/lib/english-levels";
 
@@ -27,7 +30,8 @@ export default function ExamInfoForm({
   onDurationMinChange,
 }: ExamInfoFormProps) {
   const isPlacement = selectedCategory === "PLACEMENT";
-  const placementTitle = isEnglishLevelId(track) ? placementTestTitle(track) : "";
+  const isMulti = isPlacementMultiTrack(track);
+  const singleLevelTitle = isEnglishLevelId(track) ? placementTestTitle(track) : "";
 
   return (
     <div className="bg-white border border-gray-200 rounded-md p-4 sm:p-6 mb-6">
@@ -36,39 +40,61 @@ export default function ExamInfoForm({
           <>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Level *
+                Placement mode *
               </label>
               <select
                 value={track}
                 onChange={(e) => {
                   const next = e.target.value;
                   onTrackChange(next);
-                  onExamTitleChange(
-                    isEnglishLevelId(next) ? placementTestTitle(next) : ""
-                  );
+                  if (isPlacementMultiTrack(next)) {
+                    onExamTitleChange(PLACEMENT_MULTI_TITLE);
+                  } else if (isEnglishLevelId(next)) {
+                    onExamTitleChange(placementTestTitle(next));
+                  } else {
+                    onExamTitleChange("");
+                  }
                 }}
                 className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
                 required
               >
-                <option value="">Select level</option>
+                <option value="">Select mode</option>
+                <option value={PLACEMENT_TRACK_MULTI}>
+                  Full test (A1 → B2, multi-level questions)
+                </option>
                 {ENGLISH_LEVELS.map((level) => (
                   <option key={level.id} value={level.id}>
-                    {level.label}
+                    Single band: {level.label}
                   </option>
                 ))}
               </select>
+              <p className="mt-1 text-xs text-gray-500">
+                Full tests tag each question with its own CEFR level. Single-band
+                tests default new questions to that level.
+              </p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Exam Title
+                Exam Title {isMulti ? "*" : ""}
               </label>
-              <input
-                type="text"
-                value={placementTitle}
-                readOnly
-                placeholder="Select a level"
-                className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm bg-gray-50 text-gray-800"
-              />
+              {isMulti ? (
+                <input
+                  type="text"
+                  value={examTitle}
+                  onChange={(e) => onExamTitleChange(e.target.value)}
+                  placeholder={PLACEMENT_MULTI_TITLE}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
+                  required
+                />
+              ) : (
+                <input
+                  type="text"
+                  value={singleLevelTitle}
+                  readOnly
+                  placeholder="Select a level"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm bg-gray-50 text-gray-800"
+                />
+              )}
             </div>
           </>
         ) : (
@@ -97,11 +123,11 @@ export default function ExamInfoForm({
               required
             >
               <option value="">Select level</option>
-              <option value="A1">A1</option>
-              <option value="A2">A2</option>
-              <option value="B1">B1</option>
-              <option value="B1+">B1+</option>
-              <option value="B2">B2</option>
+              {ENGLISH_LEVELS.map((level) => (
+                <option key={level.id} value={level.id}>
+                  {level.label}
+                </option>
+              ))}
               <option value="C1">C1</option>
               <option value="C2">C2</option>
             </select>
@@ -109,12 +135,15 @@ export default function ExamInfoForm({
         )}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Duration (minutes) <span className="text-gray-400 font-normal">(Optional)</span>
+            Duration (minutes){" "}
+            <span className="text-gray-400 font-normal">(Optional)</span>
           </label>
           <input
             type="number"
             value={durationMin || ""}
-            onChange={(e) => onDurationMinChange(e.target.value ? parseInt(e.target.value) : null)}
+            onChange={(e) =>
+              onDurationMinChange(e.target.value ? parseInt(e.target.value) : null)
+            }
             placeholder="e.g., 60"
             min="1"
             className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
@@ -124,4 +153,3 @@ export default function ExamInfoForm({
     </div>
   );
 }
-

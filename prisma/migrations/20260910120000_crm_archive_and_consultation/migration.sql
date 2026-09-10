@@ -64,25 +64,38 @@ CREATE TABLE IF NOT EXISTS "crm_contacts" (
     CONSTRAINT "crm_contacts_pkey" PRIMARY KEY ("id")
 );
 
--- 5) Soft-archive + first contacted columns on existing tables
+-- 5) Soft-archive + first contacted columns on existing tables (additive only)
 ALTER TABLE "crm_contacts" ADD COLUMN IF NOT EXISTS "archivedAt" TIMESTAMP(3);
 ALTER TABLE "crm_contacts" ADD COLUMN IF NOT EXISTS "firstContactedAt" TIMESTAMP(3);
 ALTER TABLE "crm_contacts" ADD COLUMN IF NOT EXISTS "status" "CrmContactStatus" DEFAULT 'WRITTEN';
 
--- Drop legacy hasWritten if still present
-ALTER TABLE "crm_contacts" DROP COLUMN IF EXISTS "hasWritten";
-
+-- Backfill only — never deletes contact rows
 UPDATE "crm_contacts"
 SET "firstContactedAt" = COALESCE("firstContactedAt", "createdAt", CURRENT_TIMESTAMP)
 WHERE "firstContactedAt" IS NULL;
 
 ALTER TABLE "crm_contacts"
-ALTER COLUMN "firstContactedAt" SET NOT NULL,
 ALTER COLUMN "firstContactedAt" SET DEFAULT CURRENT_TIMESTAMP;
 
+-- Make firstContactedAt NOT NULL only after backfill (safe; no row deletes)
+DO $$
+BEGIN
+  UPDATE "crm_contacts"
+  SET "firstContactedAt" = COALESCE("firstContactedAt", "createdAt", CURRENT_TIMESTAMP)
+  WHERE "firstContactedAt" IS NULL;
+  ALTER TABLE "crm_contacts" ALTER COLUMN "firstContactedAt" SET NOT NULL;
+EXCEPTION
+  WHEN others THEN NULL;
+END $$;
+
 UPDATE "crm_contacts" SET "status" = 'WRITTEN' WHERE "status" IS NULL;
-ALTER TABLE "crm_contacts" ALTER COLUMN "status" SET NOT NULL;
 ALTER TABLE "crm_contacts" ALTER COLUMN "status" SET DEFAULT 'WRITTEN';
+DO $$
+BEGIN
+  ALTER TABLE "crm_contacts" ALTER COLUMN "status" SET NOT NULL;
+EXCEPTION
+  WHEN others THEN NULL;
+END $$;
 
 -- 6) Indexes & FK
 CREATE INDEX IF NOT EXISTS "crm_contacts_createdAt_idx" ON "crm_contacts"("createdAt");

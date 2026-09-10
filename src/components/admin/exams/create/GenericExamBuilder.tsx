@@ -33,7 +33,7 @@ import {
   type QuestionOperationContext,
 } from "@/components/admin/exams/create/questionOperations";
 import { createNewSection, deleteSectionFromList, updateSectionInList } from "@/components/admin/exams/create/sectionOperations";
-import { isEnglishLevelId, placementTestTitle } from "@/lib/english-levels";
+import { isEnglishLevelId, isPlacementMultiTrack, placementTestTitle } from "@/lib/english-levels";
 
 export interface GenericExamBuilderInitial {
   title: string;
@@ -374,6 +374,20 @@ export default function GenericExamBuilder({ mode, category, examId, initial, sa
     if (!validation.valid) {
       modals.showAlert(validation.error!.title, validation.error!.message, "error");
       return;
+    }
+
+    if (selectedCategory === "PLACEMENT" && isPlacementMultiTrack(track)) {
+      const missingLevel = sections.some((s) =>
+        s.questions.some((q) => !q.cefrLevel)
+      );
+      if (missingLevel) {
+        modals.showAlert(
+          "CEFR levels required",
+          "Full Placement Tests need a CEFR level (A1–B2) on every question so the final level can be calculated.",
+          "warning"
+        );
+        return;
+      }
     }
 
     setSaving(true);
