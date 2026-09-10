@@ -119,7 +119,7 @@ export default function Sidebar() {
           </div>
         </nav>
 
-        <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 border-t border-slate-200 space-y-1">
+        <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 border-t border-slate-200 space-y-1 bg-white">
           {session && (
             <button
               type="button"
