@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireBranchAdmin, getScopedBranchId } from "@/lib/auth-utils";
+import { studentListWhereForBucket } from "@/lib/study-types";
 
 // GET /api/analytics/branch/finance - Branch admin finance analytics
 export async function GET(request: Request) {
@@ -195,11 +196,12 @@ export async function GET(request: Request) {
       },
     });
 
-    // Get total active students count for this branch
+    // Active students only for this branch (same lifecycle filter as boss finance)
     const totalStudentsCount = await prisma.user.count({
       where: {
         role: "STUDENT",
         branchId,
+        ...(studentListWhereForBucket("ACTIVE") as object),
       },
     });
 

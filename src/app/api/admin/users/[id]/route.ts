@@ -41,6 +41,7 @@ export async function GET(
             lessonModes: true,
             studentKind: true,
             studyStatus: true,
+            archivedAt: true,
             coinBalance: true,
           },
         },
@@ -84,6 +85,7 @@ export async function GET(
               lessonModes: user.studentProfile?.lessonModes ?? [],
               studentKind: user.studentProfile?.studentKind ?? "STUDENT",
               studyStatus: user.studentProfile?.studyStatus ?? "CONTINUES",
+              archivedAt: user.studentProfile?.archivedAt ?? null,
               coinBalance: user.studentProfile?.coinBalance ?? 0,
             }
           : null,
@@ -124,6 +126,8 @@ const updateSchema = z.object({
       lessonModes: z.array(z.string()).optional(),
       studentKind: z.enum(["STUDENT", "EXAM_TAKER"]).optional(),
       studyStatus: z.enum(["CONTINUES", "FINISHED", "STOPPED"]).optional(),
+      /** Soft-archive: true sets archivedAt, false clears it. History preserved. */
+      archived: z.boolean().optional(),
     })
     .optional(),
 });
@@ -236,6 +240,8 @@ export async function PATCH(
               ...(p.lessonModes !== undefined ? { lessonModes: p.lessonModes } : {}),
               ...(p.studentKind !== undefined ? { studentKind: p.studentKind } : {}),
               ...(p.studyStatus !== undefined ? { studyStatus: p.studyStatus } : {}),
+              ...(p.archived === true ? { archivedAt: new Date() } : {}),
+              ...(p.archived === false ? { archivedAt: null } : {}),
             },
           });
         } else if (effectiveBranchId) {
@@ -251,6 +257,7 @@ export async function PATCH(
               lessonModes: p.lessonModes ?? [],
               studentKind: p.studentKind ?? "STUDENT",
               studyStatus: p.studyStatus ?? "CONTINUES",
+              archivedAt: p.archived === true ? new Date() : null,
             },
           });
         }

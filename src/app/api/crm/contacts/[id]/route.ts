@@ -8,6 +8,10 @@ import {
   mapCrmContact,
   type CrmContactStatus,
 } from "@/lib/crm";
+import {
+  crmPrismaErrorMessage,
+  ensureCrmContactsSchema,
+} from "@/lib/crm-schema";
 
 const optionalEmail = z
   .union([z.string().email("Invalid email"), z.literal("")])
@@ -45,6 +49,32 @@ const updateSchema = z.object({
 
 type RouteContext = { params: Promise<{ id: string }> };
 
+function jsonError(error: unknown, fallback: string) {
+  const prismaMsg = crmPrismaErrorMessage(error);
+  return NextResponse.json({ error: prismaMsg || fallback }, { status: 500 });
+}
+
+async function withCrmSchema<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    await ensureCrmContactsSchema();
+  } catch (ensureError) {
+    console.error("CRM schema ensure failed (continuing):", ensureError);
+  }
+  try {
+    return await fn();
+  } catch (error) {
+    const code =
+      error && typeof error === "object" && "code" in error
+        ? String((error as { code?: string }).code || "")
+        : "";
+    if (code === "P2021" || code === "P2022") {
+      await ensureCrmContactsSchema();
+      return await fn();
+    }
+    throw error;
+  }
+}
+
 export async function PATCH(request: Request, context: RouteContext) {
   try {
     await requireCrmManager();
@@ -52,47 +82,53 @@ export async function PATCH(request: Request, context: RouteContext) {
     const body = await request.json();
     const data = updateSchema.parse(body);
 
-    const existing = await prisma.crmContact.findUnique({ where: { id } });
-    if (!existing) {
+    const contact = await withCrmSchema(async () => {
+      const existing = await prisma.crmContact.findUnique({ where: { id } });
+      if (!existing) return null;
+
+      return prisma.crmContact.update({
+        where: { id },
+        data: {
+          ...(data.firstName !== undefined && {
+            firstName: data.firstName.trim(),
+          }),
+          ...(data.lastName !== undefined && { lastName: data.lastName.trim() }),
+          ...(data.phoneNumber !== undefined && {
+            phoneNumber: data.phoneNumber.trim(),
+          }),
+          ...(data.contactReason !== undefined && {
+            contactReason: data.contactReason.trim(),
+          }),
+          ...(data.status !== undefined && {
+            status: data.status as CrmContactStatus,
+          }),
+          ...(data.email !== undefined && {
+            email: data.email?.trim() || null,
+          }),
+          ...(data.dateOfBirth !== undefined && {
+            dateOfBirth:
+              data.dateOfBirth && data.dateOfBirth !== ""
+                ? new Date(data.dateOfBirth)
+                : null,
+          }),
+          ...(data.firstContactedAt !== undefined &&
+            data.firstContactedAt !== null &&
+            data.firstContactedAt !== "" && {
+              firstContactedAt: new Date(data.firstContactedAt),
+            }),
+          ...(data.notes !== undefined && {
+            notes: data.notes?.trim() || null,
+          }),
+          ...(data.archived === true && { archivedAt: new Date() }),
+          ...(data.archived === false && { archivedAt: null }),
+        },
+        include: { createdBy: createdBySelect },
+      });
+    });
+
+    if (!contact) {
       return NextResponse.json({ error: "Contact not found" }, { status: 404 });
     }
-
-    const contact = await prisma.crmContact.update({
-      where: { id },
-      data: {
-        ...(data.firstName !== undefined && { firstName: data.firstName.trim() }),
-        ...(data.lastName !== undefined && { lastName: data.lastName.trim() }),
-        ...(data.phoneNumber !== undefined && {
-          phoneNumber: data.phoneNumber.trim(),
-        }),
-        ...(data.contactReason !== undefined && {
-          contactReason: data.contactReason.trim(),
-        }),
-        ...(data.status !== undefined && {
-          status: data.status as CrmContactStatus,
-        }),
-        ...(data.email !== undefined && {
-          email: data.email?.trim() || null,
-        }),
-        ...(data.dateOfBirth !== undefined && {
-          dateOfBirth:
-            data.dateOfBirth && data.dateOfBirth !== ""
-              ? new Date(data.dateOfBirth)
-              : null,
-        }),
-        ...(data.firstContactedAt !== undefined &&
-          data.firstContactedAt !== null &&
-          data.firstContactedAt !== "" && {
-            firstContactedAt: new Date(data.firstContactedAt),
-          }),
-        ...(data.notes !== undefined && {
-          notes: data.notes?.trim() || null,
-        }),
-        ...(data.archived === true && { archivedAt: new Date() }),
-        ...(data.archived === false && { archivedAt: null }),
-      },
-      include: { createdBy: createdBySelect },
-    });
 
     return NextResponse.json({
       message: "Contact updated",
@@ -114,7 +150,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       }
     }
     console.error("CRM contact update error:", error);
-    return NextResponse.json({ error: "Failed to update contact" }, { status: 500 });
+    return jsonError(error, "Failed to update contact");
   }
 }
 
@@ -123,15 +159,20 @@ export async function DELETE(_request: Request, context: RouteContext) {
     await requireCrmManager();
     const { id } = await context.params;
 
-    const existing = await prisma.crmContact.findUnique({ where: { id } });
-    if (!existing) {
+    const archived = await withCrmSchema(async () => {
+      const existing = await prisma.crmContact.findUnique({ where: { id } });
+      if (!existing) return null;
+
+      await prisma.crmContact.update({
+        where: { id },
+        data: { archivedAt: existing.archivedAt ?? new Date() },
+      });
+      return true;
+    });
+
+    if (!archived) {
       return NextResponse.json({ error: "Contact not found" }, { status: 404 });
     }
-
-    await prisma.crmContact.update({
-      where: { id },
-      data: { archivedAt: existing.archivedAt ?? new Date() },
-    });
 
     return NextResponse.json({ message: "Contact archived", archived: true });
   } catch (error) {
@@ -144,6 +185,6 @@ export async function DELETE(_request: Request, context: RouteContext) {
       }
     }
     console.error("CRM contact archive error:", error);
-    return NextResponse.json({ error: "Failed to archive contact" }, { status: 500 });
+    return jsonError(error, "Failed to archive contact");
   }
 }

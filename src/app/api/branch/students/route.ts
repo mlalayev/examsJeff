@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireBranchAdmin, getScopedBranchId } from "@/lib/auth-utils";
+import { studentListWhereForBucket } from "@/lib/study-types";
 
 // GET /api/branch/students?search=&from=&to=&overdue=true - Get students with profiles (branch-scoped)
 export async function GET(request: Request) {
@@ -13,15 +14,18 @@ export async function GET(request: Request) {
     const from = searchParams.get("from");
     const to = searchParams.get("to");
     const overdue = searchParams.get("overdue") === "true";
+    const includeInactive = searchParams.get("includeInactive") === "true";
     const overdueYear = parseInt(searchParams.get("overdueYear") || new Date().getFullYear().toString());
     const overdueMonth = parseInt(searchParams.get("overdueMonth") || (new Date().getMonth() + 1).toString());
 
-    // Build where clause
+    // Build where clause — default: active students only (not finished/paused/archived/exam candidates)
     const whereClause: any = {
       role: "STUDENT",
-      // Hide CREATOR accounts from everyone
-      NOT: { role: "CREATOR" }
     };
+
+    if (!includeInactive) {
+      whereClause.AND = [studentListWhereForBucket("ACTIVE")];
+    }
 
     // Branch scoping
     if (branchId) {

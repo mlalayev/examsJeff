@@ -9,6 +9,7 @@ import { AlertModal } from "@/components/modals/AlertModal";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { attemptRunnerPath } from "@/lib/attempt-runner-path";
 import { getExamCategoryLabel } from "@/lib/exam-category-utils";
+import ExamGroupedList from "@/components/dashboard/ExamGroupedList";
 
 interface Exam {
   id: string;
@@ -301,8 +302,8 @@ export default function AdminExamsPage() {
         </div>
       </div>
 
-      {/* Simple Table */}
-      <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
+      {/* Exam list */}
+      <div className={filterCategory || loading ? "bg-white border border-gray-200 rounded-md overflow-hidden" : ""}>
         {loading ? (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[800px]">
@@ -352,7 +353,7 @@ export default function AdminExamsPage() {
               </tbody>
             </table>
           </div>
-        ) : (
+        ) : filterCategory ? (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[800px]">
               <thead className="bg-gray-50 border-b border-gray-200">
@@ -448,6 +449,48 @@ export default function AdminExamsPage() {
               </div>
             )}
           </div>
+        ) : (
+          <ExamGroupedList
+            exams={filteredExams}
+            renderActions={(exam) => (
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <button
+                  onClick={() => handleToggleActive(exam.id, exam.isActive)}
+                  disabled={togglingExamId === exam.id}
+                  className={`px-2 py-1 text-xs font-medium rounded transition ${
+                    exam.isActive
+                      ? "bg-orange-100 text-orange-700 hover:bg-orange-200"
+                      : "bg-green-100 text-green-700 hover:bg-green-200"
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  {togglingExamId === exam.id ? "Updating..." : exam.isActive ? "Deactivate" : "Activate"}
+                </button>
+                <button
+                  onClick={() => handleTakeTest(exam.id)}
+                  disabled={startingTestId === exam.id}
+                  className="px-2 py-1 text-xs font-medium text-indigo-700 bg-indigo-50 rounded hover:bg-indigo-100 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Take this exam to test it"
+                >
+                  <PlayCircle className="w-3 h-3" />
+                  {startingTestId === exam.id ? "Starting..." : "Test"}
+                </button>
+                <Link
+                  href={`/dashboard/admin/exams/${exam.id}`}
+                  className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 flex items-center gap-1"
+                >
+                  <Edit className="w-3 h-3" />
+                  Edit
+                </Link>
+                <button
+                  onClick={() => handleDelete(exam.id, exam.title)}
+                  className="px-2 py-1 text-xs font-medium text-red-700 bg-red-50 rounded hover:bg-red-100 flex items-center gap-1"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  Delete
+                </button>
+              </div>
+            )}
+          />
         )}
       </div>
 

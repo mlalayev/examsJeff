@@ -40,6 +40,7 @@ interface Student {
   lessonModes?: string[];
   studentKind?: string;
   studyStatus?: string;
+  archivedAt?: string | null;
   monthlyFee?: number | null;
   lessonsStopped?: boolean;
   lessonsStoppedAt?: string | null;

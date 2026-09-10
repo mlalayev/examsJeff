@@ -8,6 +8,12 @@ interface Class {
   id: string;
   name: string;
   createdAt: string;
+  teacher?: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string;
+  } | null;
   _count: {
     classStudents: number;
   };
@@ -22,18 +28,24 @@ export default function CreatorClassesPage() {
   const [newClassName, setNewClassName] = useState("");
   const [creating, setCreating] = useState(false);
 
+  const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
     fetchClasses();
   }, []);
 
   const fetchClasses = async () => {
+    setError(null);
     try {
       const response = await fetch("/api/classes");
-      if (!response.ok) throw new Error("Failed to fetch classes");
-      const data = await response.json();
-      setClasses(data.classes);
-    } catch (error) {
-      console.error("Error fetching classes:", error);
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error || `Failed to fetch classes (${response.status})`);
+      }
+      setClasses(data.classes || []);
+    } catch (err) {
+      console.error("Error fetching classes:", err);
+      setError(err instanceof Error ? err.message : "Failed to fetch classes");
     } finally {
       setLoading(false);
     }
@@ -42,6 +54,7 @@ export default function CreatorClassesPage() {
   const handleCreateClass = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreating(true);
+    setError(null);
 
     try {
       const response = await fetch("/api/classes", {
@@ -50,7 +63,7 @@ export default function CreatorClassesPage() {
         body: JSON.stringify({ name: newClassName }),
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
         throw new Error(data.error || "Failed to create class");
@@ -61,6 +74,7 @@ export default function CreatorClassesPage() {
       setShowCreateModal(false);
     } catch (err) {
       console.error("Error creating class:", err);
+      setError(err instanceof Error ? err.message : "Failed to create class");
     } finally {
       setCreating(false);
     }
@@ -110,6 +124,12 @@ export default function CreatorClassesPage() {
           <span className="font-medium">{stats.averageStudents}</span>
         </div>
       </div>
+
+      {error && (
+        <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </div>
+      )}
 
       {/* Simple Filters */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 mb-6">
@@ -171,6 +191,7 @@ export default function CreatorClassesPage() {
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Name</th>
+                  <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Teacher</th>
                   <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Students</th>
                   <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Created</th>
                   <th className="text-left px-3 sm:px-4 py-3 text-sm font-medium text-gray-700">Actions</th>
@@ -189,6 +210,14 @@ export default function CreatorClassesPage() {
                           <div className="text-xs text-gray-500">{classItem.id.slice(0, 8)}</div>
                 </div>
               </div>
+                    </td>
+                    <td className="px-3 sm:px-4 py-3 text-sm text-gray-600">
+                      {classItem.teacher
+                        ? [classItem.teacher.firstName, classItem.teacher.lastName]
+                            .filter(Boolean)
+                            .join(" ")
+                            .trim() || classItem.teacher.email
+                        : "—"}
                     </td>
                     <td className="px-3 sm:px-4 py-3 text-sm text-gray-600">{classItem._count.classStudents}</td>
                     <td className="px-3 sm:px-4 py-3 text-sm text-gray-600">

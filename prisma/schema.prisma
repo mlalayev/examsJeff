@@ -580,6 +580,7 @@ model StudentProfile {
   studyStatus      String    @default("CONTINUES")
   lessonsStopped   Boolean   @default(false)
   lessonsStoppedAt DateTime?
+  archivedAt       DateTime?
   coinBalance      Int       @default(0)
   branch           Branch    @relation(fields: [branchId], references: [id])
   student          User      @relation("StudentProfileUser", fields: [studentId], references: [id], onDelete: Cascade)
@@ -587,6 +588,7 @@ model StudentProfile {
 
   @@index([branchId])
   @@index([teacherId])
+  @@index([archivedAt])
   @@map("student_profiles")
 }
 

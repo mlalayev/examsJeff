@@ -11,6 +11,8 @@ import {
   Play,
   RotateCcw,
   BookOpen,
+  Archive,
+  ArchiveRestore,
 } from "lucide-react";
 import EditAccountModal from "@/components/modals/EditAccountModal";
 import StudentPaymentsModal from "@/components/modals/StudentPaymentsModal";
@@ -21,7 +23,7 @@ import {
   resolveStudyTypes,
 } from "@/lib/study-types";
 
-type LifecycleBucket = "FINISHED" | "STOPPED";
+type LifecycleBucket = "FINISHED" | "STOPPED" | "ARCHIVED";
 
 type StudentRow = {
   id: string;
@@ -39,6 +41,7 @@ type StudentRow = {
   lessonModes?: string[];
   studentKind?: string;
   studyStatus?: string;
+  archivedAt?: string | null;
   monthlyFee?: number | null;
   lessonsStopped?: boolean;
   lessonsStoppedAt?: string | null;
@@ -57,13 +60,21 @@ const META: Record<
 > = {
   FINISHED: {
     title: "Finished students",
-    subtitle: "Students who completed their course. Restore them to active if they return.",
+    subtitle:
+      "Students who completed their course. Archive them for historical storage, or restore to active if they return.",
     accent: "#2563eb",
   },
   STOPPED: {
     title: "Paused students",
-    subtitle: "Students whose lessons were paused. Resume them to return to Active Students.",
+    subtitle:
+      "Students whose lessons were paused. Resume them to return to Active Students.",
     accent: "#dc2626",
+  },
+  ARCHIVED: {
+    title: "Archived students",
+    subtitle:
+      "Finished students moved out of the active lists. Course and payment history remain intact. Unarchive to return them to Finished.",
+    accent: "#64748b",
   },
 };
 
@@ -81,19 +92,24 @@ export default function StudentLifecycleDashboard({
   const [editUserId, setEditUserId] = useState<string | null>(null);
   const [paymentsStudent, setPaymentsStudent] = useState<StudentRow | null>(null);
   const [examsStudent, setExamsStudent] = useState<StudentRow | null>(null);
-  const [restoring, setRestoring] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
   const [branches, setBranches] = useState<{ id: string; name: string }[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch(`/api/admin/students?bucket=${bucket}`);
-      if (res.ok) {
-        const data = await res.json();
-        setStudents(data.students ?? []);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `Failed to load students (${res.status})`);
       }
+      const data = await res.json();
+      setStudents(data.students ?? []);
     } catch (e) {
       console.error("Load lifecycle students:", e);
+      setError(e instanceof Error ? e.message : "Failed to load students");
     } finally {
       setLoading(false);
     }
@@ -110,18 +126,36 @@ export default function StudentLifecycleDashboard({
       .catch(() => {});
   }, []);
 
+  const patchProfile = async (
+    studentId: string,
+    profile: Record<string, unknown>
+  ) => {
+    const res = await fetch(`/api/admin/users/${studentId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ profile }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || "Failed to update student");
+    }
+  };
+
   const restoreStudent = async (student: StudentRow) => {
     const label = student.name || student.email;
     if (
       !confirm(
         bucket === "STOPPED"
           ? `Resume lessons for ${label}? They will return to the active students list.`
+          : bucket === "ARCHIVED"
+          ? `Unarchive ${label}? They will return to Finished (status unchanged).`
           : `Mark ${label} as continuing again? They will return to the active students list.`
       )
     )
       return;
 
-    setRestoring(student.id);
+    setBusyId(student.id);
+    setError(null);
     try {
       if (bucket === "STOPPED") {
         const res = await fetch(
@@ -136,85 +170,102 @@ export default function StudentLifecycleDashboard({
           const body = await res.json().catch(() => ({}));
           throw new Error(body.error || "Failed to resume");
         }
+      } else if (bucket === "ARCHIVED") {
+        await patchProfile(student.id, { archived: false });
       } else {
-        const res = await fetch(`/api/admin/users/${student.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            profile: { studyStatus: "CONTINUES" },
-          }),
-        });
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body.error || "Failed to restore");
-        }
+        await patchProfile(student.id, { studyStatus: "CONTINUES" });
       }
-      setStudents((prev) => prev.filter((s) => s.id !== student.id));
-    } catch (err) {
-      alert((err as Error).message || "Failed to restore student");
+      await load();
+    } catch (e) {
+      console.error(e);
+      setError(e instanceof Error ? e.message : "Action failed");
     } finally {
-      setRestoring(null);
+      setBusyId(null);
+    }
+  };
+
+  const archiveStudent = async (student: StudentRow) => {
+    const label = student.name || student.email;
+    if (
+      !confirm(
+        `Archive ${label}? They leave the Finished list but course and payment history stay intact.`
+      )
+    )
+      return;
+
+    setBusyId(student.id);
+    setError(null);
+    try {
+      await patchProfile(student.id, { archived: true });
+      await load();
+    } catch (e) {
+      console.error(e);
+      setError(e instanceof Error ? e.message : "Archive failed");
+    } finally {
+      setBusyId(null);
     }
   };
 
   const filtered = students.filter((s) => {
-    const q = searchQuery.toLowerCase();
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return true;
     return (
+      (s.name || "").toLowerCase().includes(q) ||
       s.email.toLowerCase().includes(q) ||
-      (s.name ?? "").toLowerCase().includes(q) ||
-      (s.phoneNumber ?? "").includes(q)
+      (s.phoneNumber || "").toLowerCase().includes(q)
     );
   });
 
   return (
-    <div className="max-w-[100vw] overflow-x-hidden p-4 sm:p-6 lg:p-8">
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <div className="p-4 sm:p-6 lg:p-8">
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className="mb-1 flex items-center gap-2 text-sm text-gray-500">
-            <Link href={studentsListHref} className="hover:text-[#303380]">
-              Students
-            </Link>
-            <span>/</span>
-            <span>Courses</span>
-            <span>/</span>
-            <span className="font-medium text-gray-700">
-              {bucket === "FINISHED" ? "Finished" : "Paused"}
-            </span>
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900">{meta.title}</h1>
-          <p className="mt-1 text-sm text-gray-600">{meta.subtitle}</p>
+          <h1 className="text-xl sm:text-2xl font-medium text-gray-900">
+            {meta.title}
+          </h1>
+          <p className="mt-1 text-sm text-gray-500 max-w-2xl">{meta.subtitle}</p>
         </div>
-        <div
-          className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-white"
-          style={{ backgroundColor: meta.accent }}
+        <Link
+          href={studentsListHref}
+          className="text-sm font-medium text-[#303380] hover:underline"
         >
-          <Users className="h-4 w-4" />
-          {students.length} total
+          ← Active Students
+        </Link>
+      </div>
+
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search by name, email, phone..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full rounded-md border border-gray-200 py-2 pl-10 pr-3 text-sm focus:border-gray-400 focus:outline-none"
+          />
+        </div>
+        <div className="text-sm text-gray-500">
+          <Users className="mr-1 inline h-4 w-4" />
+          {filtered.length} student{filtered.length === 1 ? "" : "s"}
         </div>
       </div>
 
-      <div className="mb-4 relative max-w-md">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search by name, email, or phone…"
-          className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm outline-none focus:border-[#303380] focus:ring-2 focus:ring-[#303380]/30"
-        />
-      </div>
+      {error && (
+        <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </div>
+      )}
 
-      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+      <div className="overflow-hidden rounded-md border border-gray-200 bg-white">
         {loading ? (
-          <div className="py-16 text-center text-sm text-gray-500">Loading…</div>
+          <div className="p-8 text-center text-sm text-gray-500">Loading…</div>
         ) : filtered.length === 0 ? (
-          <div className="py-16 text-center text-gray-500">
-            <Users className="mx-auto mb-2 h-8 w-8 text-gray-300" />
-            <p>No {bucket === "FINISHED" ? "finished" : "paused"} students</p>
+          <div className="p-8 text-center text-sm text-gray-500">
+            No students in this list.
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1200px] text-sm">
+            <table className="w-full min-w-[900px] text-sm">
               <thead className="border-b border-gray-200 bg-gray-50">
                 <tr>
                   <th className="px-4 py-3 text-left font-medium text-gray-700">
@@ -224,16 +275,16 @@ export default function StudentLifecycleDashboard({
                     Contact
                   </th>
                   <th className="px-4 py-3 text-left font-medium text-gray-700">
-                    Study
+                    Program
                   </th>
                   <th className="px-4 py-3 text-left font-medium text-gray-700">
                     Branch
                   </th>
                   <th className="px-4 py-3 text-left font-medium text-gray-700">
-                    Fee / month
+                    Fee
                   </th>
                   <th className="px-4 py-3 text-left font-medium text-gray-700">
-                    {bucket === "STOPPED" ? "Paused since" : "Finished"}
+                    Status date
                   </th>
                   <th className="px-4 py-3 text-left font-medium text-gray-700">
                     Joined
@@ -243,7 +294,7 @@ export default function StudentLifecycleDashboard({
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-gray-100">
                 {filtered.map((student) => {
                   const types = resolveStudyTypes(
                     student.studyTypes,
@@ -290,22 +341,23 @@ export default function StudentLifecycleDashboard({
                             );
                           })}
                         </div>
-                        {student.lessonModes && student.lessonModes.length > 0 && (
-                          <div className="mt-1 flex flex-wrap gap-1">
-                            {student.lessonModes.map((id) => {
-                              const m = LESSON_MODE_MAP[id];
-                              if (!m) return null;
-                              return (
-                                <span
-                                  key={id}
-                                  className={`rounded-full px-2 py-0.5 text-xs ring-1 ${m.chip}`}
-                                >
-                                  {m.label}
-                                </span>
-                              );
-                            })}
-                          </div>
-                        )}
+                        {student.lessonModes &&
+                          student.lessonModes.length > 0 && (
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {student.lessonModes.map((id) => {
+                                const m = LESSON_MODE_MAP[id];
+                                if (!m) return null;
+                                return (
+                                  <span
+                                    key={id}
+                                    className={`rounded-full px-2 py-0.5 text-xs ring-1 ${m.chip}`}
+                                  >
+                                    {m.label}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          )}
                       </td>
                       <td className="px-4 py-3 text-gray-600">
                         {student.branch?.name ?? "—"}
@@ -320,14 +372,18 @@ export default function StudentLifecycleDashboard({
                           </div>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                      <td className="px-4 py-3 whitespace-nowrap text-gray-600">
                         {bucket === "STOPPED" && student.lessonsStoppedAt
-                          ? new Date(student.lessonsStoppedAt).toLocaleDateString()
+                          ? new Date(
+                              student.lessonsStoppedAt
+                            ).toLocaleDateString()
+                          : bucket === "ARCHIVED" && student.archivedAt
+                          ? new Date(student.archivedAt).toLocaleDateString()
                           : bucket === "FINISHED"
                           ? "Completed"
                           : "—"}
                       </td>
-                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                      <td className="px-4 py-3 whitespace-nowrap text-gray-600">
                         {new Date(student.createdAt).toLocaleDateString()}
                       </td>
                       <td className="px-4 py-3">
@@ -356,18 +412,35 @@ export default function StudentLifecycleDashboard({
                             <BookOpen className="h-3 w-3" />
                             Exams
                           </button>
+                          {bucket === "FINISHED" && (
+                            <button
+                              type="button"
+                              disabled={busyId === student.id}
+                              onClick={() => archiveStudent(student)}
+                              className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200 disabled:opacity-50"
+                            >
+                              <Archive className="h-3 w-3" />
+                              Archive
+                            </button>
+                          )}
                           <button
                             type="button"
-                            disabled={restoring === student.id}
+                            disabled={busyId === student.id}
                             onClick={() => restoreStudent(student)}
                             className="inline-flex items-center gap-1 rounded bg-green-50 px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-100 disabled:opacity-50"
                           >
                             {bucket === "STOPPED" ? (
                               <Play className="h-3 w-3" />
+                            ) : bucket === "ARCHIVED" ? (
+                              <ArchiveRestore className="h-3 w-3" />
                             ) : (
                               <RotateCcw className="h-3 w-3" />
                             )}
-                            {bucket === "STOPPED" ? "Resume" : "Restore"}
+                            {bucket === "STOPPED"
+                              ? "Resume"
+                              : bucket === "ARCHIVED"
+                              ? "Unarchive"
+                              : "Restore"}
                           </button>
                         </div>
                       </td>

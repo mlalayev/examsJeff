@@ -24,6 +24,7 @@ function studentSubs(base: string): CollapsibleSubItem[] {
         { label: "Active Students", href: base },
         { label: "Finished", href: `${base}/finished` },
         { label: "Paused", href: `${base}/stopped` },
+        { label: "Archive", href: `${base}/archive` },
       ],
     },
     { label: "Study Abroad", href: `${base}/study-abroad` },
@@ -149,6 +150,12 @@ export function getStaffNavSections(role: string): CollapsibleNavSectionItem[] {
         subs: subjectsSubs(),
       },
       {
+        id: "courses",
+        label: "Courses",
+        icon: School,
+        subs: [{ label: "Classes", href: "/dashboard/creator/classes" }],
+      },
+      {
         id: "exams",
         label: "Exams",
         icon: FileText,
@@ -216,6 +223,12 @@ export function getStaffNavSections(role: string): CollapsibleNavSectionItem[] {
         label: "Subjects",
         icon: Library,
         subs: subjectsSubs(),
+      },
+      {
+        id: "courses",
+        label: "Courses",
+        icon: School,
+        subs: [{ label: "Classes", href: "/dashboard/creator/classes" }],
       },
       {
         id: "exams",

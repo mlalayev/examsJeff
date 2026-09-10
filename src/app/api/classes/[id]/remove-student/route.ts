@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireTeacher } from "@/lib/auth-utils";
+import { classAccessWhere } from "@/lib/class-access";
 import { handleApiError } from "@/lib/api-helpers";
 import { z } from "zod";
 
@@ -8,7 +9,7 @@ const removeStudentSchema = z.object({
   studentId: z.string().min(1, "studentId is required"),
 });
 
-// POST /api/classes/[id]/remove-student - Remove a student from a class
+// POST /api/classes/[id]/remove-student
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -19,9 +20,15 @@ export async function POST(
     const body = await request.json();
     const { studentId } = removeStudentSchema.parse(body);
 
-    // Verify the class belongs to this teacher
     const classExists = await prisma.class.findFirst({
-      where: { id: classId, teacherId: (user as any).id },
+      where: {
+        id: classId,
+        ...classAccessWhere({
+          id: (user as any).id,
+          role: (user as any).role,
+          branchId: (user as any).branchId,
+        }),
+      },
       select: { id: true },
     });
 
@@ -32,7 +39,6 @@ export async function POST(
       );
     }
 
-    // Ensure the enrollment exists in this class before deleting
     const enrollment = await prisma.classStudent.findUnique({
       where: { classId_studentId: { classId, studentId } },
       select: { id: true },

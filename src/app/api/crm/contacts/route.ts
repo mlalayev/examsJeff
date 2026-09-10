@@ -9,6 +9,10 @@ import {
   mapCrmContact,
   type CrmContactStatus,
 } from "@/lib/crm";
+import {
+  crmPrismaErrorMessage,
+  ensureCrmContactsSchema,
+} from "@/lib/crm-schema";
 
 const optionalEmail = z
   .union([z.string().email("Invalid email"), z.literal("")])
@@ -44,9 +48,36 @@ function parseYearMonth(yearRaw: string | null, monthRaw: string | null) {
   return { year, month, start, end };
 }
 
+function jsonError(error: unknown, fallback: string) {
+  const prismaMsg = crmPrismaErrorMessage(error);
+  return NextResponse.json({ error: prismaMsg || fallback }, { status: 500 });
+}
+
+async function withCrmSchema<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    await ensureCrmContactsSchema();
+  } catch (ensureError) {
+    console.error("CRM schema ensure failed (continuing):", ensureError);
+  }
+  try {
+    return await fn();
+  } catch (error) {
+    const code =
+      error && typeof error === "object" && "code" in error
+        ? String((error as { code?: string }).code || "")
+        : "";
+    if (code === "P2021" || code === "P2022") {
+      await ensureCrmContactsSchema();
+      return await fn();
+    }
+    throw error;
+  }
+}
+
 export async function GET(request: Request) {
   try {
     await requireCrmManager();
+
     const { searchParams } = new URL(request.url);
     const q = (searchParams.get("q") || "").trim();
     const requestedStatus = searchParams.get("status");
@@ -65,10 +96,12 @@ export async function GET(request: Request) {
       const start = new Date(Date.UTC(year, 0, 1));
       const end = new Date(Date.UTC(year + 1, 0, 1));
 
-      const rows = await prisma.crmContact.findMany({
-        where: { firstContactedAt: { gte: start, lt: end } },
-        select: { firstContactedAt: true },
-      });
+      const rows = await withCrmSchema(() =>
+        prisma.crmContact.findMany({
+          where: { firstContactedAt: { gte: start, lt: end } },
+          select: { firstContactedAt: true },
+        })
+      );
 
       const months = Array.from({ length: 12 }, (_, i) => ({
         month: i + 1,
@@ -130,12 +163,14 @@ export async function GET(request: Request) {
       where.firstContactedAt = { gte: ym.start, lt: ym.end };
     }
 
-    const contacts = await prisma.crmContact.findMany({
-      where,
-      include: { createdBy: createdBySelect },
-      orderBy: [{ firstContactedAt: "desc" }, { createdAt: "desc" }],
-      take: 5000,
-    });
+    const contacts = await withCrmSchema(() =>
+      prisma.crmContact.findMany({
+        where,
+        include: { createdBy: createdBySelect },
+        orderBy: [{ firstContactedAt: "desc" }, { createdAt: "desc" }],
+        take: 5000,
+      })
+    );
 
     return NextResponse.json({
       contacts: contacts.map(mapCrmContact),
@@ -150,13 +185,14 @@ export async function GET(request: Request) {
       }
     }
     console.error("CRM contacts list error:", error);
-    return NextResponse.json({ error: "Failed to load contacts" }, { status: 500 });
+    return jsonError(error, "Failed to load contacts");
   }
 }
 
 export async function POST(request: Request) {
   try {
     const user = await requireCrmManager();
+
     const body = await request.json();
     const data = contactSchema.parse(body);
 
@@ -165,23 +201,45 @@ export async function POST(request: Request) {
         ? new Date(data.firstContactedAt)
         : new Date();
 
-    const contact = await prisma.crmContact.create({
-      data: {
-        firstName: data.firstName.trim(),
-        lastName: data.lastName.trim(),
-        phoneNumber: data.phoneNumber.trim(),
-        contactReason: data.contactReason.trim(),
-        status: data.status as CrmContactStatus,
-        email: data.email?.trim() || null,
-        dateOfBirth:
-          data.dateOfBirth && data.dateOfBirth !== ""
-            ? new Date(data.dateOfBirth)
-            : null,
-        notes: data.notes?.trim() || null,
-        firstContactedAt,
-        createdById: (user as { id: string }).id,
-      },
-      include: { createdBy: createdBySelect },
+    const baseData = {
+      firstName: data.firstName.trim(),
+      lastName: data.lastName.trim(),
+      phoneNumber: data.phoneNumber.trim(),
+      contactReason: data.contactReason.trim(),
+      status: data.status as CrmContactStatus,
+      email: data.email?.trim() || null,
+      dateOfBirth:
+        data.dateOfBirth && data.dateOfBirth !== ""
+          ? new Date(data.dateOfBirth)
+          : null,
+      notes: data.notes?.trim() || null,
+      firstContactedAt,
+    };
+
+    const contact = await withCrmSchema(async () => {
+      try {
+        return await prisma.crmContact.create({
+          data: {
+            ...baseData,
+            createdById: (user as { id: string }).id,
+          },
+          include: { createdBy: createdBySelect },
+        });
+      } catch (createError) {
+        // Session user missing from users table → still save the contact
+        if (
+          createError &&
+          typeof createError === "object" &&
+          "code" in createError &&
+          (createError as { code?: string }).code === "P2003"
+        ) {
+          return await prisma.crmContact.create({
+            data: baseData,
+            include: { createdBy: createdBySelect },
+          });
+        }
+        throw createError;
+      }
     });
 
     return NextResponse.json(
@@ -202,17 +260,8 @@ export async function POST(request: Request) {
       if (error.message.startsWith("Forbidden")) {
         return NextResponse.json({ error: error.message }, { status: 403 });
       }
-      if ("code" in error && (error as { code?: string }).code === "P2021") {
-        return NextResponse.json(
-          {
-            error:
-              "CRM database table is missing. Run pending Prisma migrations (crm_contacts).",
-          },
-          { status: 500 }
-        );
-      }
     }
     console.error("CRM contact create error:", error);
-    return NextResponse.json({ error: "Failed to create contact" }, { status: 500 });
+    return jsonError(error, "Failed to create contact");
   }
 }

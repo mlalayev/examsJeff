@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-utils";
+import { studentListWhereForBucket } from "@/lib/study-types";
 
 // GET /api/analytics/boss/finance-enhanced - Enhanced finance analytics with filters
 export async function GET(request: Request) {
@@ -8,7 +9,7 @@ export async function GET(request: Request) {
     const user = await requireAuth();
     const role = (user as any).role;
     
-    if (role !== "BOSS") {
+    if (role !== "BOSS" && role !== "CREATOR" && role !== "ADMIN") {
       return NextResponse.json({ error: "Forbidden: Boss access required" }, { status: 403 });
     }
 
@@ -179,6 +180,7 @@ export async function GET(request: Request) {
           where: {
             branchId: branch.id,
             role: "STUDENT",
+            ...(studentListWhereForBucket("ACTIVE") as object),
           },
         });
 
@@ -248,12 +250,15 @@ export async function GET(request: Request) {
       },
     });
 
-    // Get total active students count
+    // Active students only (CONTINUES / not paused / not finished / not archived / not exam candidates)
+    const activeStudentWhere = {
+      role: "STUDENT" as const,
+      ...(branchId ? { branchId } : {}),
+      ...(studentListWhereForBucket("ACTIVE") as object),
+    };
+
     const totalStudentsCount = await prisma.user.count({
-      where: {
-        role: "STUDENT",
-        ...(branchId ? { branchId } : {}),
-      },
+      where: activeStudentWhere,
     });
 
     // Calculate students with no payment record for current month

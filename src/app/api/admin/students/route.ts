@@ -57,6 +57,7 @@ export async function GET(request: Request) {
             lessonModes: true,
             studentKind: true,
             studyStatus: true,
+            archivedAt: true,
             coinBalance: true,
           },
         },
@@ -106,6 +107,7 @@ export async function GET(request: Request) {
         lessonsStoppedAt: sp?.lessonsStoppedAt ?? null,
         studentKind: sp?.studentKind ?? "STUDENT",
         studyStatus: sp?.studyStatus ?? "CONTINUES",
+        archivedAt: sp?.archivedAt ?? null,
         coinBalance: sp?.coinBalance ?? 0,
         currentMonth: {
           year,

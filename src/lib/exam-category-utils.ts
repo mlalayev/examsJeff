@@ -20,6 +20,33 @@ export const EXAM_CATEGORY_LABELS: Record<ExamCategory, string> = {
   PLACEMENT: "Placement Test",
 };
 
+/** Visual IA groups for the Exams list (records stay separate by category). */
+export const EXAM_CATEGORY_GROUPS: {
+  id: string;
+  label: string;
+  description: string;
+  categories: ExamCategory[];
+}[] = [
+  {
+    id: "academic_international",
+    label: "Academic / International Exams",
+    description: "SAT and IELTS exam catalogs",
+    categories: ["SAT", "IELTS"],
+  },
+  {
+    id: "english_programs",
+    label: "English Programs",
+    description: "General English exams",
+    categories: ["GENERAL_ENGLISH"],
+  },
+  {
+    id: "other",
+    label: "Other Programs",
+    description: "TOEFL, Math, Kids, and Placement",
+    categories: ["TOEFL", "MATH", "KIDS", "PLACEMENT"],
+  },
+];
+
 export function getExamCategoryLabel(category: string | null | undefined): string {
   if (!category) return "—";
   return EXAM_CATEGORY_LABELS[category as ExamCategory] ?? category;

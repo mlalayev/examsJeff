@@ -139,21 +139,33 @@ export const STUDENT_BUCKETS: StudentBucketMeta[] = [
   { id: "CONTINUES", label: "Continues", accent: "#16a34a" },
   { id: "FINISHED", label: "Finished", accent: "#2563eb" },
   { id: "STOPPED", label: "Paused", accent: "#dc2626" },
+  { id: "ARCHIVED", label: "Archive", accent: "#64748b" },
   { id: "EXAM_TAKER", label: "Exam candidates", accent: "#7c3aed" },
 ];
 
 export const STUDENT_BUCKET_MAP: Record<string, StudentBucketMeta> =
   Object.fromEntries(STUDENT_BUCKETS.map((b) => [b.id, b]));
 
+/** Inactive profile flags that remove a student from the active finance/student lists. */
+const NON_ACTIVE_PROFILE_OR = [
+  { studyStatus: "FINISHED" },
+  { studyStatus: "STOPPED" },
+  { lessonsStopped: true },
+  { studentKind: "EXAM_TAKER" },
+  { archivedAt: { not: null } },
+] as const;
+
 /**
- * Resolve the single lifecycle bucket a student belongs to. Exam candidates always
- * win; a stopped/paused student is "STOPPED"; otherwise the stored status.
+ * Resolve the single lifecycle bucket a student belongs to.
+ * Archive wins for visibility; exam candidates next; then paused/finished/continues.
  */
 export function resolveStudentBucket(s: {
   studentKind?: string | null;
   studyStatus?: string | null;
   lessonsStopped?: boolean | null;
+  archivedAt?: string | Date | null;
 }): string {
+  if (s.archivedAt) return "ARCHIVED";
   if (s.studentKind === "EXAM_TAKER") return "EXAM_TAKER";
   if (s.lessonsStopped || s.studyStatus === "STOPPED") return "STOPPED";
   if (s.studyStatus === "FINISHED") return "FINISHED";
@@ -170,10 +182,12 @@ export function studentProfileWhereForBucket(
         studentKind: { not: "EXAM_TAKER" },
         lessonsStopped: false,
         studyStatus: "FINISHED",
+        archivedAt: null,
       };
     case "STOPPED":
       return {
         studentKind: { not: "EXAM_TAKER" },
+        archivedAt: null,
         OR: [{ lessonsStopped: true }, { studyStatus: "STOPPED" }],
       };
     case "CONTINUES":
@@ -181,28 +195,19 @@ export function studentProfileWhereForBucket(
         studentKind: { not: "EXAM_TAKER" },
         lessonsStopped: false,
         studyStatus: "CONTINUES",
+        archivedAt: null,
       };
+    case "ARCHIVED":
+      return { archivedAt: { not: null } };
     case "EXAM_TAKER":
-      return { studentKind: "EXAM_TAKER" };
+      return { studentKind: "EXAM_TAKER", archivedAt: null };
     case "ACTIVE":
-      // Main students list: regular continuing students (not finished/stopped/candidates).
+      // Profile-level shape unused by list helper; kept for consistency.
       return {
-        AND: [
-          {
-            NOT: {
-              studentProfile: {
-                is: {
-                  OR: [
-                    { studyStatus: "FINISHED" },
-                    { studyStatus: "STOPPED" },
-                    { lessonsStopped: true },
-                    { studentKind: "EXAM_TAKER" },
-                  ],
-                },
-              },
-            },
-          },
-        ],
+        studentKind: { not: "EXAM_TAKER" },
+        lessonsStopped: false,
+        studyStatus: "CONTINUES",
+        archivedAt: null,
       };
     default:
       return null;
@@ -212,22 +217,18 @@ export function studentProfileWhereForBucket(
 /**
  * User-level `where` fragment for listing students by lifecycle bucket.
  * ACTIVE includes students with no profile yet (newly created accounts).
+ * Soft-archived students are excluded from every bucket except ARCHIVED.
  */
 export function studentListWhereForBucket(
   bucket: string
 ): Record<string, unknown> | null {
   if (bucket === "ACTIVE") {
-    // Regular students only — excludes finished/stopped and exam candidates.
+    // Regular continuing students — excludes finished/paused/candidates/archived.
     return {
       NOT: {
         studentProfile: {
           is: {
-            OR: [
-              { studyStatus: "FINISHED" },
-              { studyStatus: "STOPPED" },
-              { lessonsStopped: true },
-              { studentKind: "EXAM_TAKER" },
-            ],
+            OR: [...NON_ACTIVE_PROFILE_OR],
           },
         },
       },
