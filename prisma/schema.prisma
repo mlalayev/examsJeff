@@ -1122,14 +1122,14 @@ model WeeklyReport {
 
 enum CrmContactStatus {
   WRITTEN
-  INFO_PROVIDED
+  CONSULTATION_BOOKED
   TRIAL_ATTENDED
   ENROLLED
 }
 
 // CRM contacts — people outreach is tracked for (e.g. Sunday Examiner registration).
 model CrmContact {
-  id            String    @id @default(cuid())
+  id            String           @id @default(cuid())
   firstName     String
   lastName      String
   phoneNumber   String
@@ -1138,15 +1138,22 @@ model CrmContact {
   email         String?
   dateOfBirth   DateTime?
   notes         String?
+  /// Soft-archive timestamp. Null = active contact.
+  archivedAt    DateTime?
   createdById   String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  /// Inquiry / first-contact date. Defaults to createdAt; editable when known.
+  firstContactedAt DateTime      @default(now())
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
 
   createdBy User? @relation("CrmContactCreator", fields: [createdById], references: [id], onDelete: SetNull)
 
   @@index([createdAt])
+  @@index([firstContactedAt])
   @@index([status])
+  @@index([archivedAt])
   @@index([phoneNumber])
   @@index([email])
+  @@index([contactReason])
   @@map("crm_contacts")
 }

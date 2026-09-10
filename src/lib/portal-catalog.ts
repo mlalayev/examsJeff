@@ -18,7 +18,7 @@ export type PortalCatalogItem = {
 };
 
 export const STUDY_ABROAD_ID = "STUDY_ABROAD";
-export const STUDY_ABROAD_LABEL = "Study Abroad";
+export const STUDY_ABROAD_LABEL = "Study Abroad / Xaricdə Təhsil";
 
 export const SERVICE_CATALOG: PortalCatalogItem[] = [
   {
@@ -55,6 +55,13 @@ export function catalogLabel(idOrLabel: string): string {
 
 export function isStudyAbroadReason(value: string | null | undefined): boolean {
   if (!value) return false;
-  const v = value.trim();
-  return v === STUDY_ABROAD_ID || v.toLowerCase() === STUDY_ABROAD_LABEL.toLowerCase();
+  const v = value.trim().toLowerCase();
+  return (
+    v === STUDY_ABROAD_ID.toLowerCase() ||
+    v === STUDY_ABROAD_LABEL.toLowerCase() ||
+    v === "study abroad" ||
+    v.includes("xaricdə təhsil") ||
+    v.includes("xaricde tehsil") ||
+    v.includes("study abroad")
+  );
 }

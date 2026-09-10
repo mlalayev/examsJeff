@@ -2,31 +2,45 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireCrmManager } from "@/lib/auth-utils";
+import {
+  createdBySelect,
+  crmStatusSchema,
+  mapCrmContact,
+  type CrmContactStatus,
+} from "@/lib/crm";
 
-const statusSchema = z.enum([
-  "WRITTEN",
-  "INFO_PROVIDED",
-  "TRIAL_ATTENDED",
-  "ENROLLED",
-]);
+const optionalEmail = z
+  .union([z.string().email("Invalid email"), z.literal("")])
+  .optional()
+  .nullable();
+
+const optionalDate = z
+  .union([
+    z.literal(""),
+    z.string().refine((v) => !Number.isNaN(Date.parse(v)), "Invalid date"),
+  ])
+  .optional()
+  .nullable();
 
 const updateSchema = z.object({
-  firstName: z.string().min(1).optional(),
-  lastName: z.string().min(1).optional(),
-  phoneNumber: z.string().min(7).optional(),
-  contactReason: z.string().min(1).optional(),
-  status: statusSchema.optional(),
-  email: z.string().email().optional().or(z.literal("")).nullable(),
-  dateOfBirth: z
+  firstName: z.string().trim().min(1, "First name is required").optional(),
+  lastName: z.string().trim().min(1, "Last name is required").optional(),
+  phoneNumber: z
     .string()
-    .optional()
-    .or(z.literal(""))
-    .nullable()
-    .refine(
-      (value) => value == null || value === "" || !Number.isNaN(Date.parse(value)),
-      "Invalid date of birth"
-    ),
+    .trim()
+    .min(7, "Mobile number is required (min 7 digits)")
+    .optional(),
+  contactReason: z
+    .string()
+    .trim()
+    .min(1, "Contact interest / reason is required")
+    .optional(),
+  status: crmStatusSchema.optional(),
+  email: optionalEmail,
+  dateOfBirth: optionalDate,
+  firstContactedAt: optionalDate,
   notes: z.string().optional().nullable(),
+  archived: z.boolean().optional(),
 });
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -48,11 +62,15 @@ export async function PATCH(request: Request, context: RouteContext) {
       data: {
         ...(data.firstName !== undefined && { firstName: data.firstName.trim() }),
         ...(data.lastName !== undefined && { lastName: data.lastName.trim() }),
-        ...(data.phoneNumber !== undefined && { phoneNumber: data.phoneNumber.trim() }),
+        ...(data.phoneNumber !== undefined && {
+          phoneNumber: data.phoneNumber.trim(),
+        }),
         ...(data.contactReason !== undefined && {
           contactReason: data.contactReason.trim(),
         }),
-        ...(data.status !== undefined && { status: data.status }),
+        ...(data.status !== undefined && {
+          status: data.status as CrmContactStatus,
+        }),
         ...(data.email !== undefined && {
           email: data.email?.trim() || null,
         }),
@@ -62,28 +80,23 @@ export async function PATCH(request: Request, context: RouteContext) {
               ? new Date(data.dateOfBirth)
               : null,
         }),
+        ...(data.firstContactedAt !== undefined &&
+          data.firstContactedAt !== null &&
+          data.firstContactedAt !== "" && {
+            firstContactedAt: new Date(data.firstContactedAt),
+          }),
         ...(data.notes !== undefined && {
           notes: data.notes?.trim() || null,
         }),
+        ...(data.archived === true && { archivedAt: new Date() }),
+        ...(data.archived === false && { archivedAt: null }),
       },
-      include: {
-        createdBy: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-          },
-        },
-      },
+      include: { createdBy: createdBySelect },
     });
 
     return NextResponse.json({
       message: "Contact updated",
-      contact: {
-        ...contact,
-        name: [contact.firstName, contact.lastName].filter(Boolean).join(" ").trim(),
-      },
+      contact: mapCrmContact(contact),
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -115,8 +128,12 @@ export async function DELETE(_request: Request, context: RouteContext) {
       return NextResponse.json({ error: "Contact not found" }, { status: 404 });
     }
 
-    await prisma.crmContact.delete({ where: { id } });
-    return NextResponse.json({ message: "Contact deleted" });
+    await prisma.crmContact.update({
+      where: { id },
+      data: { archivedAt: existing.archivedAt ?? new Date() },
+    });
+
+    return NextResponse.json({ message: "Contact archived", archived: true });
   } catch (error) {
     if (error instanceof Error) {
       if (error.message === "Unauthorized") {
@@ -126,7 +143,7 @@ export async function DELETE(_request: Request, context: RouteContext) {
         return NextResponse.json({ error: error.message }, { status: 403 });
       }
     }
-    console.error("CRM contact delete error:", error);
-    return NextResponse.json({ error: "Failed to delete contact" }, { status: 500 });
+    console.error("CRM contact archive error:", error);
+    return NextResponse.json({ error: "Failed to archive contact" }, { status: 500 });
   }
 }
