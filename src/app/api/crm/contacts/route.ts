@@ -163,17 +163,43 @@ export async function GET(request: Request) {
       where.firstContactedAt = { gte: ym.start, lt: ym.end };
     }
 
-    const contacts = await withCrmSchema(() =>
-      prisma.crmContact.findMany({
-        where,
-        include: { createdBy: createdBySelect },
-        orderBy: [{ firstContactedAt: "desc" }, { createdAt: "desc" }],
-        take: 5000,
-      })
-    );
+    const contacts = await withCrmSchema(async () => {
+      try {
+        return await prisma.crmContact.findMany({
+          where,
+          include: { createdBy: createdBySelect },
+          orderBy: [{ firstContactedAt: "desc" }, { createdAt: "desc" }],
+          take: 5000,
+        });
+      } catch (primaryError) {
+        // Fallback if firstContactedAt column/index still missing mid-repair
+        console.error("CRM list primary query failed, retrying simpler:", primaryError);
+        return await prisma.crmContact.findMany({
+          where: {
+            ...(archive === "archived"
+              ? { archivedAt: { not: null } }
+              : archive !== "all"
+              ? { archivedAt: null }
+              : {}),
+          },
+          include: { createdBy: createdBySelect },
+          orderBy: { createdAt: "desc" },
+          take: 5000,
+        });
+      }
+    });
 
     return NextResponse.json({
-      contacts: contacts.map(mapCrmContact),
+      contacts: contacts.map((row) =>
+        mapCrmContact({
+          ...row,
+          // Legacy enum safety if any driver still surfaces old label
+          status:
+            (row.status as string) === "INFO_PROVIDED"
+              ? "CONSULTATION_BOOKED"
+              : row.status,
+        })
+      ),
     });
   } catch (error) {
     if (error instanceof Error) {

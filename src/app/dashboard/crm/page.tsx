@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Search,
   Plus,
@@ -109,12 +109,15 @@ function validateForm(form: FormState): string | null {
 export default function CrmPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
+  const archiveView: ArchiveView = pathname?.includes("/archive")
+    ? "archived"
+    : "active";
   const [contacts, setContacts] = useState<CrmContact[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [reasonFilter, setReasonFilter] = useState("ALL");
-  const [archiveView, setArchiveView] = useState<ArchiveView>("active");
   const [filterYear, setFilterYear] = useState<number | "ALL">("ALL");
   const [filterMonth, setFilterMonth] = useState<number | "ALL">("ALL");
   const [summaryYear, setSummaryYear] = useState(new Date().getFullYear());
@@ -140,7 +143,7 @@ export default function CrmPage() {
   const loadSummary = useCallback(async (year: number) => {
     try {
       const res = await fetch(`/api/crm/contacts?summary=1&year=${year}`);
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setMonthlySummary(data.months ?? []);
         setSummaryTotal(data.total ?? 0);
@@ -165,16 +168,21 @@ export default function CrmPage() {
       }
 
       const res = await fetch(`/api/crm/contacts?${params}`);
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setLoadError(data.error || "Failed to load contacts");
+        setLoadError(
+          data.error ||
+            `Failed to load contacts (${res.status}). Restart the server and refresh.`
+        );
         setContacts([]);
         return;
       }
       setContacts(data.contacts ?? []);
     } catch (e) {
       console.error("Load CRM contacts:", e);
-      setLoadError("Failed to load contacts");
+      setLoadError(
+        "Failed to load contacts. Check the network tab / server logs for details."
+      );
     } finally {
       setLoading(false);
     }
@@ -282,10 +290,9 @@ export default function CrmPage() {
 
       const saved = data.contact as CrmContact | undefined;
 
-      // After create: show active list so the new WRITTEN contact is visible
-      if (!editing) {
-        setArchiveView("active");
-        setStatusFilter("ALL");
+      // After create: stay on active contacts list
+      if (!editing && archiveView === "archived") {
+        router.push("/dashboard/crm");
       }
 
       closeModal(true);
@@ -401,18 +408,32 @@ export default function CrmPage() {
     <div className="max-w-[100vw] overflow-x-hidden p-4 sm:p-6 lg:p-8">
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">CRM Contacts</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {archiveView === "archived" ? "CRM Archive" : "CRM Contacts"}
+          </h1>
           <p className="mt-1 text-sm text-gray-600">
-            Track inquiries by interest, stage, and first-contact date.
+            {archiveView === "archived"
+              ? "Archived inquiries. History is preserved — restore anytime."
+              : "Track inquiries by interest, stage, and first-contact date."}
           </p>
         </div>
-        <button
-          onClick={openCreate}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#303380] px-4 py-2 text-sm font-medium text-white hover:bg-[#252a6b]"
-        >
-          <Plus className="h-4 w-4" />
-          Add contact
-        </button>
+        {archiveView === "active" ? (
+          <button
+            onClick={openCreate}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#303380] px-4 py-2 text-sm font-medium text-white hover:bg-[#252a6b]"
+          >
+            <Plus className="h-4 w-4" />
+            Add contact
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => router.push("/dashboard/crm")}
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            ← Active contacts
+          </button>
+        )}
       </div>
 
       {/* Monthly inquiry summary */}
@@ -507,33 +528,8 @@ export default function CrmPage() {
         ))}
       </div>
 
-      {/* View tabs + filters */}
+      {/* Filters */}
       <div className="mb-4 flex flex-col gap-3">
-        <div className="inline-flex w-fit rounded-lg border border-gray-200 bg-gray-50 p-1">
-          <button
-            type="button"
-            onClick={() => setArchiveView("active")}
-            className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-              archiveView === "active"
-                ? "bg-white text-gray-900 shadow-sm"
-                : "text-gray-600 hover:text-gray-900"
-            }`}
-          >
-            Active
-          </button>
-          <button
-            type="button"
-            onClick={() => setArchiveView("archived")}
-            className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-              archiveView === "archived"
-                ? "bg-white text-gray-900 shadow-sm"
-                : "text-gray-600 hover:text-gray-900"
-            }`}
-          >
-            Archive
-          </button>
-        </div>
-
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
           <div className="relative max-w-md flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />

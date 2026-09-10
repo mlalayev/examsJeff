@@ -34,6 +34,7 @@ function studentSubs(base: string): CollapsibleSubItem[] {
 function crmSubs(): CollapsibleSubItem[] {
   return [
     { label: "Contacts", href: "/dashboard/crm" },
+    { label: "Archive", href: "/dashboard/crm/archive" },
     { label: "Exam Candidates", href: "/dashboard/crm/exam-candidates" },
   ];
 }

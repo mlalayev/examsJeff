@@ -3,8 +3,8 @@ import { prisma } from "@/lib/prisma";
 let ensurePromise: Promise<void> | null = null;
 
 /**
- * Idempotent CRM schema repair for environments where `prisma migrate deploy`
- * is stuck on an older failed migration. Safe to call on every CRM request.
+ * Idempotent CRM schema repair. Only additive / safe operations —
+ * never drops data. Used when migrate deploy is stuck.
  */
 export async function ensureCrmContactsSchema(): Promise<void> {
   if (ensurePromise) return ensurePromise;
@@ -24,6 +24,7 @@ BEGIN
 END $$;
 `);
 
+    // Rename legacy enum value if present (preserves existing row values)
     await prisma.$executeRawUnsafe(`
 DO $$
 BEGIN
@@ -33,9 +34,33 @@ BEGIN
     JOIN pg_type t ON e.enumtypid = t.oid
     WHERE t.typname = 'CrmContactStatus'
       AND e.enumlabel = 'INFO_PROVIDED'
+  ) AND NOT EXISTS (
+    SELECT 1
+    FROM pg_enum e
+    JOIN pg_type t ON e.enumtypid = t.oid
+    WHERE t.typname = 'CrmContactStatus'
+      AND e.enumlabel = 'CONSULTATION_BOOKED'
   ) THEN
     ALTER TYPE "CrmContactStatus" RENAME VALUE 'INFO_PROVIDED' TO 'CONSULTATION_BOOKED';
   END IF;
+END $$;
+`);
+
+    // Add CONSULTATION_BOOKED if somehow missing while INFO_PROVIDED already gone
+    await prisma.$executeRawUnsafe(`
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'CrmContactStatus')
+     AND NOT EXISTS (
+       SELECT 1 FROM pg_enum e
+       JOIN pg_type t ON e.enumtypid = t.oid
+       WHERE t.typname = 'CrmContactStatus' AND e.enumlabel = 'CONSULTATION_BOOKED'
+     ) THEN
+    ALTER TYPE "CrmContactStatus" ADD VALUE IF NOT EXISTS 'CONSULTATION_BOOKED';
+  END IF;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+  WHEN others THEN NULL;
 END $$;
 `);
 
@@ -51,7 +76,7 @@ CREATE TABLE IF NOT EXISTS "crm_contacts" (
     "dateOfBirth" TIMESTAMP(3),
     "notes" TEXT,
     "archivedAt" TIMESTAMP(3),
-    "firstContactedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "firstContactedAt" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP,
     "createdById" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -66,12 +91,19 @@ CREATE TABLE IF NOT EXISTS "crm_contacts" (
       `ALTER TABLE "crm_contacts" ADD COLUMN IF NOT EXISTS "firstContactedAt" TIMESTAMP(3)`
     );
     await prisma.$executeRawUnsafe(
-      `ALTER TABLE "crm_contacts" ADD COLUMN IF NOT EXISTS "status" "CrmContactStatus" DEFAULT 'WRITTEN'`
+      `ALTER TABLE "crm_contacts" ADD COLUMN IF NOT EXISTS "createdById" TEXT`
     );
     await prisma.$executeRawUnsafe(
-      `ALTER TABLE "crm_contacts" DROP COLUMN IF EXISTS "hasWritten"`
+      `ALTER TABLE "crm_contacts" ADD COLUMN IF NOT EXISTS "notes" TEXT`
+    );
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE "crm_contacts" ADD COLUMN IF NOT EXISTS "email" TEXT`
+    );
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE "crm_contacts" ADD COLUMN IF NOT EXISTS "dateOfBirth" TIMESTAMP(3)`
     );
 
+    // Backfill firstContactedAt from createdAt — never deletes rows
     await prisma.$executeRawUnsafe(`
 UPDATE "crm_contacts"
 SET "firstContactedAt" = COALESCE("firstContactedAt", "createdAt", CURRENT_TIMESTAMP)
@@ -81,42 +113,6 @@ WHERE "firstContactedAt" IS NULL
     await prisma.$executeRawUnsafe(`
 ALTER TABLE "crm_contacts"
 ALTER COLUMN "firstContactedAt" SET DEFAULT CURRENT_TIMESTAMP
-`);
-
-    // NOT NULL only after backfill
-    await prisma.$executeRawUnsafe(`
-DO $$
-BEGIN
-  IF EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_name = 'crm_contacts' AND column_name = 'firstContactedAt'
-  ) THEN
-    UPDATE "crm_contacts"
-    SET "firstContactedAt" = COALESCE("firstContactedAt", "createdAt", CURRENT_TIMESTAMP)
-    WHERE "firstContactedAt" IS NULL;
-    ALTER TABLE "crm_contacts" ALTER COLUMN "firstContactedAt" SET NOT NULL;
-  END IF;
-END $$;
-`);
-
-    await prisma.$executeRawUnsafe(`
-UPDATE "crm_contacts" SET "status" = 'WRITTEN' WHERE "status" IS NULL
-`);
-
-    await prisma.$executeRawUnsafe(`
-DO $$
-BEGIN
-  IF EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_name = 'crm_contacts' AND column_name = 'status'
-  ) THEN
-    ALTER TABLE "crm_contacts" ALTER COLUMN "status" SET DEFAULT 'WRITTEN';
-    BEGIN
-      ALTER TABLE "crm_contacts" ALTER COLUMN "status" SET NOT NULL;
-    EXCEPTION WHEN others THEN NULL;
-    END;
-  END IF;
-END $$;
 `);
 
     await prisma.$executeRawUnsafe(
@@ -134,12 +130,6 @@ END $$;
     await prisma.$executeRawUnsafe(
       `CREATE INDEX IF NOT EXISTS "crm_contacts_phoneNumber_idx" ON "crm_contacts"("phoneNumber")`
     );
-    await prisma.$executeRawUnsafe(
-      `CREATE INDEX IF NOT EXISTS "crm_contacts_email_idx" ON "crm_contacts"("email")`
-    );
-    await prisma.$executeRawUnsafe(
-      `CREATE INDEX IF NOT EXISTS "crm_contacts_contactReason_idx" ON "crm_contacts"("contactReason")`
-    );
 
     await prisma.$executeRawUnsafe(`
 DO $$
@@ -147,15 +137,18 @@ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_constraint WHERE conname = 'crm_contacts_createdById_fkey'
   ) THEN
-    ALTER TABLE "crm_contacts"
-      ADD CONSTRAINT "crm_contacts_createdById_fkey"
-      FOREIGN KEY ("createdById") REFERENCES "users"("id")
-      ON DELETE SET NULL ON UPDATE CASCADE;
+    BEGIN
+      ALTER TABLE "crm_contacts"
+        ADD CONSTRAINT "crm_contacts_createdById_fkey"
+        FOREIGN KEY ("createdById") REFERENCES "users"("id")
+        ON DELETE SET NULL ON UPDATE CASCADE;
+    EXCEPTION
+      WHEN others THEN NULL;
+    END;
   END IF;
 END $$;
 `);
   })().catch((err) => {
-    // Allow a later request to retry if ensure failed once.
     ensurePromise = null;
     throw err;
   });
@@ -166,28 +159,30 @@ END $$;
 export function crmPrismaErrorMessage(error: unknown): string | null {
   if (!error || typeof error !== "object") return null;
   const code = "code" in error ? String((error as { code?: string }).code || "") : "";
-  const meta = (error as { meta?: { column?: string; field_name?: string; cause?: string } })
-    .meta;
+  const meta = (error as { meta?: { column?: string; field_name?: string } }).meta;
+  const message =
+    "message" in error && typeof (error as { message?: unknown }).message === "string"
+      ? (error as { message: string }).message
+      : "";
 
   if (code === "P2021") {
-    return "CRM table is missing. Schema repair failed — run CRM migrations.";
+    return "CRM table is missing. Refresh once — schema repair runs automatically.";
   }
   if (code === "P2022") {
-    const col = meta?.column || meta?.field_name || "unknown column";
-    return `CRM schema is outdated (missing ${col}). Refresh and retry; schema repair runs automatically.`;
+    const col = meta?.column || meta?.field_name || "a required column";
+    return `CRM schema is outdated (missing ${col}). Refresh once to repair.`;
   }
   if (code === "P2003") {
-    return "Could not link contact creator. Try again, or contact support if it persists.";
+    return "Could not link contact creator. Contact was not saved with creator link.";
   }
   if (code === "P2002") {
     return "A contact with this unique value already exists.";
   }
-  if (code.startsWith("P")) {
-    const msg =
-      "message" in error && typeof (error as { message?: unknown }).message === "string"
-        ? (error as { message: string }).message
-        : "Database error";
-    return msg.slice(0, 240);
+  if (message.includes("INFO_PROVIDED") || message.includes("CONSULTATION_BOOKED")) {
+    return "CRM status enum is outdated. Refresh once to repair schema.";
+  }
+  if (code.startsWith("P") || message) {
+    return (message || "Database error").slice(0, 280);
   }
   return null;
 }
