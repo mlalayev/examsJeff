@@ -189,9 +189,10 @@ export default function SectionCard({
                 <span className="sm:hidden">Passage</span>
               </button>
             )}
-            {/* Listening section: Upload Audio button */}
-            {section.type === "LISTENING" && selectedCategory === "IELTS" && (
+            {/* Listening section: Upload Audio — all categories that support LISTENING */}
+            {section.type === "LISTENING" && (
               <button
+                type="button"
                 onClick={() => setIsEditing(true)}
                 className={`px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md flex items-center gap-1.5 ${
                   section.audio 
@@ -429,10 +430,11 @@ export default function SectionCard({
 
                         if (res.ok) {
                           const data = await res.json();
+                          const audioPath = data.publicPath || data.path;
                           const updatedSection = {
                             ...editingSection,
-                            audio: data.path,
-                            subsections: editingSection.subsections?.map((sub: Section) => ({ ...sub, audio: data.path })),
+                            audio: audioPath,
+                            subsections: editingSection.subsections?.map((sub: Section) => ({ ...sub, audio: audioPath })),
                           };
                           setEditingSection(updatedSection);
                         } else {
