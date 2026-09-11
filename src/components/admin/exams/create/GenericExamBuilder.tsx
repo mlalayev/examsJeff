@@ -555,7 +555,13 @@ export default function GenericExamBuilder({ mode, category, examId, initial, sa
           {selectedCategory === "IELTS" ? (
             <IELTSSectionContent section={currentSection} />
           ) : (
-            <GenericSectionContent section={currentSection} />
+            <GenericSectionContent
+              section={currentSection}
+              onSectionUpdate={(updatedSection) => {
+                setSections(updateSectionInList(sections, updatedSection));
+                setCurrentSection(updatedSection);
+              }}
+            />
           )}
 
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4">
