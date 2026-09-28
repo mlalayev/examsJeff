@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronRight } from "lucide-react";
+import { flushSpeakingRecordings } from "@/lib/speaking-persistence";
 import { QSpeakingRecording } from "@/components/questions/QSpeakingRecording";
 import { SpeakingIntroModal } from "@/components/attempts/modals/SpeakingIntroModal";
 import {
@@ -17,7 +18,6 @@ import {
 } from "@/lib/ielts-speaking-timers";
 import {
   type SpeakingAnswerPayload,
-  speakingAnswerText,
 } from "@/lib/speaking-answer";
 
 type Props = {
@@ -106,12 +106,15 @@ export function IeltsSpeakingFlow({
     if (advancing) return;
     setAdvancing(true);
     try {
+      await flushSpeakingRecordings(attemptId);
       if (onBeforeAdvance) await onBeforeAdvance();
+      advanceQuestion();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Recording could not be saved. Please retry.");
     } finally {
       setAdvancing(false);
     }
-    advanceQuestion();
-  }, [advancing, onBeforeAdvance, advanceQuestion]);
+  }, [advancing, onBeforeAdvance, advanceQuestion, attemptId]);
 
   useEffect(() => {
     if (!introDismissed) return;
@@ -194,8 +197,6 @@ export function IeltsSpeakingFlow({
   const fmt = (s: number) =>
     `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
 
-  const textAnswer = speakingAnswerText(answers[currentQuestion.id]);
-
   return (
     <div className="h-full overflow-y-auto max-w-[980px] mx-auto p-6 space-y-4">
       <div className="flex items-center justify-between text-xs text-slate-500">
@@ -210,7 +211,7 @@ export function IeltsSpeakingFlow({
       <QSpeakingRecording
         key={currentQuestion.id}
         question={currentQuestion as Parameters<typeof QSpeakingRecording>[0]["question"]}
-        value={textAnswer}
+        value={answers[currentQuestion.id] as SpeakingAnswerPayload | undefined}
         onChange={(v) => onAnswerChange(currentQuestion.id, v)}
         readOnly={false}
         attemptId={attemptId}

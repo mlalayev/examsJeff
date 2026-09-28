@@ -21,6 +21,7 @@ import { QDndGap } from "@/components/questions/QDndGap";
 import { QOrderSentence } from "@/components/questions/QOrderSentence";
 import { QFillInBlank } from "@/components/questions/QFillInBlank";
 import { QSpeakingRecording } from "@/components/questions/QSpeakingRecording";
+import { flushSpeakingRecordings } from "@/lib/speaking-persistence";
 import { QImageInteractive } from "@/components/questions/QImageInteractive";
 import QHtmlCss from "@/components/questions/QHtmlCss";
 import { SectionTimer } from "@/components/attempts/SectionTimer";
@@ -927,6 +928,7 @@ export default function AttemptRunnerPage() {
     setShowSubmitModal(false);
     setSubmitting(true);
     try {
+      await flushSpeakingRecordings(attemptId);
       // First: make sure anything in localStorage is synced (offline-first)
       await syncAllFromLocalStorage();
       
@@ -1330,14 +1332,21 @@ export default function AttemptRunnerPage() {
     [activeSection, data, accessedSections, sectionStartTimes, lockedSections, attemptId, ieltsTimerState]
   );
 
-  const handleIELTSSectionChangeConfirm = useCallback(() => {
+  const handleIELTSSectionChangeConfirm = useCallback(async () => {
     if (!pendingSectionChange) return;
+    try {
+      await flushSpeakingRecordings(attemptId);
+      await syncAllFromLocalStorage();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Answers could not be saved.");
+      return;
+    }
     // Mark the section they are leaving as completed (tick + disabled)
     setCompletedSections((prev) => new Set([...prev, pendingSectionChange.fromId]));
     setActiveSection(pendingSectionChange.toId);
     setPendingSectionChange(null);
     setShowIELTSSectionChangeModal(false);
-  }, [pendingSectionChange]);
+  }, [pendingSectionChange, attemptId, syncAllFromLocalStorage]);
 
   const handleAnswerChange = useCallback(
     (questionId: string, value: any) => {
@@ -1563,10 +1572,14 @@ export default function AttemptRunnerPage() {
     currentIeltsSpeakingQuestionId,
   ]);
 
-  const handleIELTSSpeakingNext = useCallback(() => {
-    // No check - always allow next
-    advanceIeltsSpeakingQuestion();
-  }, [advanceIeltsSpeakingQuestion]);
+  const handleIELTSSpeakingNext = useCallback(async () => {
+    try {
+      await flushSpeakingRecordings(attemptId);
+      advanceIeltsSpeakingQuestion();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Recording could not be saved. Please retry.");
+    }
+  }, [advanceIeltsSpeakingQuestion, attemptId]);
 
   useEffect(() => {
     if (data?.examCategory !== "IELTS") return;
@@ -1717,7 +1730,9 @@ export default function AttemptRunnerPage() {
               onWritingPartChange={setWritingPart}
               writingPartProgress={writingPartProgress}
               speakingPart={speakingPart}
-              onSpeakingPartChange={setSpeakingPart}
+              onSpeakingPartChange={(part) => {
+                void flushSpeakingRecordings(attemptId).then(() => setSpeakingPart(part)).catch((error) => alert(error.message));
+              }}
               speakingPartProgress={speakingPartProgress}
             />
 
@@ -1777,7 +1792,9 @@ export default function AttemptRunnerPage() {
                   writingPart={writingPart}
                   onWritingPartChange={setWritingPart}
                   speakingPart={speakingPart}
-                  onSpeakingPartChange={setSpeakingPart}
+                  onSpeakingPartChange={(part) => {
+                    void flushSpeakingRecordings(attemptId).then(() => setSpeakingPart(part)).catch((error) => alert(error.message));
+                  }}
                   speakingCurrentQuestionIndex={currentSection.type === "SPEAKING" && data.examCategory === "IELTS" && speakingIntroDismissed ? speakingCurrentQuestionIndex : undefined}
                   speakingSecondsLeft={currentSection.type === "SPEAKING" && data.examCategory === "IELTS" && speakingIntroDismissed ? speakingSecondsLeft : undefined}
                   onIELTSSpeakingNext={

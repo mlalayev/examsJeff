@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireStudent } from "@/lib/auth-utils";
 import { applyRateLimit } from "@/lib/rate-limiter-enhanced";
 import { createErrorResponse, validateBodySize } from "@/lib/security";
-import { SectionType } from "@prisma/client";
+import { SectionType, Prisma } from "@prisma/client";
 
 export async function POST(request: Request, { params }: { params: Promise<{ attemptId: string }> }) {
   try {
@@ -49,6 +49,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
     if (attempt.studentId !== studentId) {
       console.error('Student ID mismatch:', { attemptStudent: attempt.studentId, requestStudent: studentId });
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Recording endpoints persist audio and transcript atomically. A delayed UI
+    // snapshot must not replace their newer, authoritative Speaking answers.
+    if (sectionType === "SPEAKING") {
+      const exam = await prisma.exam.findUnique({ where: { id: attempt.examId }, select: { category: true } });
+      if (exam?.category === "IELTS") return NextResponse.json({ success: true, updated: 0 });
     }
 
     // Check if this is a JSON exam (no attempt_sections in DB)
@@ -153,7 +160,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
       // Also persist each question answer separately
       if (sectionType && typeof mergedAnswers === "object") {
         const sectionEnum = sectionType as SectionType;
-        const entries = Object.entries(mergedAnswers as Record<string, unknown>);
+        const entries = Object.entries(mergedAnswers as Record<string, Prisma.InputJsonValue | null>);
         try {
           await prisma.$transaction(
             entries.map(([questionId, answer]) =>
@@ -169,10 +176,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
                   attemptId,
                   section: sectionEnum,
                   questionId,
-                  answer: answer ?? null,
+                  answer: answer ?? Prisma.JsonNull,
                 },
                 update: {
-                  answer: answer ?? null,
+                  answer: answer ?? Prisma.JsonNull,
                 },
               })
             )

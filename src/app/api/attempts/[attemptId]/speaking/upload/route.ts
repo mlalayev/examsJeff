@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
+import { randomUUID } from "crypto";
 
 // POST /api/attempts/[attemptId]/speaking/upload - Upload speaking recording
 export async function POST(
@@ -40,8 +41,15 @@ export async function POST(
       return NextResponse.json({ error: "Question ID required" }, { status: 400 });
     }
 
+    const question = await prisma.question.findFirst({
+      where: { id: questionId, examId: attempt.examId, section: { type: "SPEAKING" } },
+      select: { id: true },
+    });
+    if (!question) return NextResponse.json({ error: "Invalid speaking question" }, { status: 400 });
+    if (attempt.status !== "IN_PROGRESS") return NextResponse.json({ error: "Attempt is already submitted" }, { status: 409 });
+
     // Validate file type
-    const validAudioExtensions = [".mp3", ".wav", ".ogg", ".m4a", ".aac", ".webm", ".flac", ".wma"];
+    const validAudioExtensions = [".mp3", ".wav", ".ogg", ".m4a", ".mp4", ".aac", ".webm", ".flac", ".wma"];
     const hasValidExtension = validAudioExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
 
     if (!hasValidExtension && !file.type.includes('audio')) {
@@ -64,10 +72,11 @@ export async function POST(
     const buffer = Buffer.from(bytes);
 
     // Generate unique filename
-    const timestamp = Date.now();
-    const randomStr = Math.random().toString(36).substring(2, 8);
-    const ext = file.name.split('.').pop();
-    const filename = `speaking-${attemptId}-${questionId}-${timestamp}-${randomStr}.${ext}`;
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (!ext || !validAudioExtensions.includes(`.${ext}`) || file.size === 0) {
+      return NextResponse.json({ error: "Invalid or empty recording" }, { status: 400 });
+    }
+    const filename = `speaking-${randomUUID()}.${ext}`;
 
     // Save to public/audio
     const uploadDir = "public/audio";
@@ -84,7 +93,32 @@ export async function POST(
     await writeFile(filePath, buffer);
 
     // Return public URL
-    const publicPath = `/audio/${filename}`;
+    const publicPath = `/api/audio/${filename}`;
+    const answer = { text: "", audioUrl: publicPath };
+    await prisma.$transaction(async (tx) => {
+      // Lock the attempt before merging concurrent question uploads.
+      await tx.$queryRaw`SELECT id FROM attempts WHERE id = ${attemptId} FOR UPDATE`;
+      const current = await tx.attempt.findUniqueOrThrow({ where: { id: attemptId } });
+      if (current.status !== "IN_PROGRESS") throw new Error("Attempt is already submitted");
+      await tx.attemptAnswer.upsert({
+        where: { attemptId_section_questionId: { attemptId, section: "SPEAKING", questionId } },
+        create: { attemptId, section: "SPEAKING", questionId, answer },
+        update: { answer },
+      });
+      const sections = await tx.attemptSection.findMany({ where: { attemptId, type: "SPEAKING" } });
+      for (const section of sections) {
+        await tx.attemptSection.update({ where: { id: section.id }, data: {
+          answers: { ...((section.answers as Record<string, any>) || {}), [questionId]: answer },
+        } });
+      }
+      if (!sections.length) {
+        const fresh = await tx.attempt.findUniqueOrThrow({ where: { id: attemptId } });
+        const answers = (fresh.answers as Record<string, any>) || {};
+        await tx.attempt.update({ where: { id: attemptId }, data: {
+          answers: { ...answers, SPEAKING: { ...(answers.SPEAKING || {}), [questionId]: answer } },
+        } });
+      }
+    });
 
     return NextResponse.json(
       {

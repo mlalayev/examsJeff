@@ -41,7 +41,12 @@ export async function POST(
     if (attempt.studentId !== studentId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const isJsonExam = attempt.sections.length === 0;
-    const sections = Array.isArray(body.sections) ? body.sections : [];
+    const incomingSections = Array.isArray(body.sections) ? body.sections : [];
+    const exam = incomingSections.some((s) => s.sectionType === "SPEAKING")
+      ? await prisma.exam.findUnique({ where: { id: attempt.examId }, select: { category: true } })
+      : null;
+    // IELTS recordings are committed by upload/transcribe, not UI snapshots.
+    const sections = incomingSections.filter((s) => !(exam?.category === "IELTS" && s.sectionType === "SPEAKING"));
 
     if (isJsonExam) {
       const currentAnswers = (attempt.answers as any) || {};
@@ -109,7 +114,7 @@ export async function POST(
         try {
           const sectionEnum = s.sectionType as SectionType;
           const entries = Object.entries(s.answers || {});
-          await tx.$transaction(
+          await Promise.all(
             entries.map(([questionId, answer]) =>
               tx.attemptAnswer.upsert({
                 where: {

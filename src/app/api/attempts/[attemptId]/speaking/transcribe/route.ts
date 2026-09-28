@@ -4,7 +4,7 @@ import { getOpenAI, handleOpenAIError } from "@/lib/openai-client";
 import { checkRateLimit } from "@/lib/rate-limiter";
 import { RATE_LIMITS } from "@/lib/rate-limit-config";
 import { createReadStream } from "fs";
-import { writeFile, unlink, mkdir } from "fs/promises";
+import { writeFile, unlink } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
 import { randomUUID } from "crypto";
@@ -95,14 +95,18 @@ export async function POST(
     const buffer = Buffer.from(bytes);
 
     // Persist recording for playback on results / teacher review
-    const storedName = `speaking-${attemptId}-${questionId}-${Date.now()}-${randomUUID().slice(0, 8)}.webm`;
-    const audioDir = join(process.cwd(), "public", "audio");
-    await mkdir(audioDir, { recursive: true });
-    await writeFile(join(audioDir, storedName), buffer);
-    const audioUrl = `/api/audio/${storedName}`;
+    const stored = await prisma.attemptAnswer.findUnique({
+      where: { attemptId_section_questionId: { attemptId, section: "SPEAKING", questionId } },
+    });
+    const audioUrl = (stored?.answer as { audioUrl?: string } | null)?.audioUrl;
+    if (!audioUrl) return NextResponse.json({ error: "Save the recording before transcription" }, { status: 409 });
 
     // Save to temporary file (Whisper API requires a file, not blob)
-    const tempFileName = `${randomUUID()}.webm`;
+    const extension = file.name.split(".").pop()?.toLowerCase();
+    if (!extension || !["webm", "mp4", "m4a", "ogg", "wav", "mp3"].includes(extension)) {
+      return NextResponse.json({ error: "Unsupported recording format" }, { status: 400 });
+    }
+    const tempFileName = `${randomUUID()}.${extension}`;
     tempFilePath = join(tmpdir(), tempFileName);
     await writeFile(tempFilePath, buffer);
 
@@ -114,7 +118,7 @@ export async function POST(
         file: createReadStream(tempFilePath) as any,
         model: "whisper-1",
         language: "en", // IELTS is in English
-      });
+      }, { timeout: 40000, maxRetries: 0 });
     } catch (aiError: any) {
       // Clean up temp file on AI error
       if (tempFilePath) {
@@ -127,6 +131,30 @@ export async function POST(
     if (tempFilePath) {
       await unlink(tempFilePath).catch(() => {});
     }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM attempts WHERE id = ${attemptId} FOR UPDATE`;
+      const latest = await tx.attemptAnswer.findUnique({
+        where: { attemptId_section_questionId: { attemptId, section: "SPEAKING", questionId } },
+      });
+      // A late transcription must not replace a newer recording.
+      if ((latest?.answer as { audioUrl?: string } | null)?.audioUrl !== audioUrl) return;
+      const answer = { text: transcription.text, audioUrl };
+      await tx.attemptAnswer.update({ where: { id: latest!.id }, data: { answer } });
+      const sections = await tx.attemptSection.findMany({ where: { attemptId, type: "SPEAKING" } });
+      for (const section of sections) {
+        await tx.attemptSection.update({ where: { id: section.id }, data: {
+          answers: { ...((section.answers as Record<string, any>) || {}), [questionId]: answer },
+        } });
+      }
+      if (!sections.length) {
+        const fresh = await tx.attempt.findUniqueOrThrow({ where: { id: attemptId } });
+        const answers = (fresh.answers as Record<string, any>) || {};
+        await tx.attempt.update({ where: { id: attemptId }, data: {
+          answers: { ...answers, SPEAKING: { ...(answers.SPEAKING || {}), [questionId]: answer } },
+        } });
+      }
+    });
 
     return NextResponse.json({
       success: true,

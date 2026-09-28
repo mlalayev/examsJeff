@@ -18,6 +18,7 @@ import FormattedText from "@/components/FormattedText";
 import QHtmlCss from "@/components/questions/QHtmlCss";
 import { IELTSAudioPlayer } from "@/components/audio/IELTSAudioPlayer";
 import { IeltsSpeakingFlow } from "@/components/attempts/ielts/IeltsSpeakingFlow";
+import { flushSpeakingRecordings } from "@/lib/speaking-persistence";
 import { groupSpeakingQuestionsByPart } from "@/lib/ielts-speaking-questions";
 import { hasSpeakingAnswerContent } from "@/lib/speaking-answer";
 import {
@@ -605,7 +606,7 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
     if (!section) return;
     const snapshot = answersRef.current[section.id];
     if (snapshot && Object.keys(snapshot).length > 0) {
-      await saveSection(section, snapshot);
+      if (!await saveSection(section, snapshot)) throw new Error("Answers could not be saved. Please retry.");
     }
   }, [sections, activeSectionId, saveSection]);
 
@@ -767,11 +768,12 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
     if (!data) return;
     setSubmitting(true);
     try {
+      await flushSpeakingRecordings(attemptId);
       await flushPendingAutosave();
       for (const section of sections) {
         const snapshot = answersRef.current[section.id] || {};
         if (Object.keys(snapshot).length > 0) {
-          await saveSection(section, snapshot);
+          if (!await saveSection(section, snapshot)) throw new Error("Answers could not be saved. Please retry.");
         }
       }
       const res = await fetch(`/api/attempts/${attemptId}/submit`, { method: "POST" });
@@ -804,18 +806,23 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
 
   const confirmSectionChange = async () => {
     if (!activeSection || !pendingSectionId) return;
-    await flushPendingAutosave();
-    const snapshot = answersRef.current[activeSection.id] || {};
-    if (Object.keys(snapshot).length > 0) {
-      await saveSection(activeSection, snapshot);
+    try {
+      await flushSpeakingRecordings(attemptId);
+      await flushPendingAutosave();
+      const snapshot = answersRef.current[activeSection.id] || {};
+      if (Object.keys(snapshot).length > 0) {
+        if (!await saveSection(activeSection, snapshot)) throw new Error("Answers could not be saved. Please retry.");
+      }
+      setLockedSections((prev) => {
+        const next = new Set([...prev, activeSection.id]);
+        persistLockedSections(attemptId, next);
+        return next;
+      });
+      setActiveSectionId(pendingSectionId);
+      setPendingSectionId(null);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Answers could not be saved.");
     }
-    setLockedSections((prev) => {
-      const next = new Set([...prev, activeSection.id]);
-      persistLockedSections(attemptId, next);
-      return next;
-    });
-    setActiveSectionId(pendingSectionId);
-    setPendingSectionId(null);
   };
 
   if (loading || !data || !activeSection) {
@@ -1160,4 +1167,3 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
     </div>
   );
 }
-

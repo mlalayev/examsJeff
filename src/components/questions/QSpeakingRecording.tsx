@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import { pendingRecording, registerSpeakingRecorder } from "@/lib/speaking-persistence";
 import { Mic, Clock, AlertCircle, Loader2 } from "lucide-react";
 import { speakSecondsForSpeakingPart } from "@/lib/ielts-speaking-timers";
 import {
@@ -61,11 +62,20 @@ export function QSpeakingRecording({
   const [status, setStatus] = useState<"idle" | "preparing" | "reading" | "recording" | "transcribing" | "completed">("idle");
   const [timeLeft, setTimeLeft] = useState(hasPreparation ? PREPARATION_DURATION : recordingDuration);
   const [error, setError] = useState<string | null>(null);
+  const [transcriptionUnavailable, setTranscriptionUnavailable] = useState(false);
   const [permissionGranted, setPermissionGranted] = useState(false);
   const [isCheckingPermission, setIsCheckingPermission] = useState(true);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const pendingBlobRef = useRef<Blob | null>(null);
+  const processingRef = useRef<Promise<void> | null>(null);
+  const finishRef = useRef<() => Promise<void>>(async () => {});
+  const stopResolveRef = useRef<(() => void) | null>(null);
+  const startingRef = useRef<Promise<void> | null>(null);
+  const finishingRef = useRef(false);
+  const [recovering, setRecovering] = useState(true);
+  const recoveryRef = useRef<Promise<void>>(Promise.resolve());
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const phaseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -86,6 +96,34 @@ export function QSpeakingRecording({
       phaseTimeoutRef.current = null;
     }
   };
+
+  useEffect(() => {
+    if (!attemptId) return;
+    return registerSpeakingRecorder(attemptId, question.id, () => finishRef.current());
+  }, [attemptId, question.id]);
+
+  useEffect(() => {
+    const warn = (event: BeforeUnloadEvent) => {
+      if (mediaRecorderRef.current?.state === "recording" || pendingBlobRef.current || status === "transcribing") {
+        event.preventDefault();
+        event.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [status]);
+
+  useEffect(() => {
+    if (!attemptId || readOnly) { setRecovering(false); return; }
+    let cancelled = false;
+    recoveryRef.current = pendingRecording(`${attemptId}:${question.id}`, "get").then((blob) => {
+      if (cancelled || !blob) return;
+      pendingBlobRef.current = blob;
+      hasStartedRef.current = true;
+      setError("An unsaved recording was recovered. Press Retry save or Next to save it.");
+    }).catch(() => {}).finally(() => { if (!cancelled) setRecovering(false); });
+    return () => { cancelled = true; };
+  }, [attemptId, question.id, readOnly]);
 
   useEffect(() => {
     return () => {
@@ -288,14 +326,23 @@ export function QSpeakingRecording({
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
+          if (attemptIdRef.current) {
+            const snapshot = new Blob(audioChunksRef.current, { type: mediaRecorder.mimeType });
+            void pendingRecording(`${attemptIdRef.current}:${questionIdRef.current}`, "put", snapshot).catch(() => {});
+          }
         }
       };
 
       mediaRecorder.onstop = async () => {
-        await transcribeAudio();
+        stream.getTracks().forEach((track) => track.stop());
+        const done = stopResolveRef.current;
+        stopResolveRef.current = null;
+        processingRef.current = transcribeAudio();
+        done?.();
+        await processingRef.current.catch(() => {});
       };
 
-      mediaRecorder.start();
+      mediaRecorder.start(1000);
       setStatus("recording");
       timeLeftRef.current = recordingDuration;
       setTimeLeft(recordingDuration);
@@ -370,7 +417,7 @@ export function QSpeakingRecording({
     if (left <= 0) return;
     if (parentRecordingStartRef.current) return;
     parentRecordingStartRef.current = true;
-    void startRecording();
+    if (!finishingRef.current && !pendingBlobRef.current && !recovering) startingRef.current = startRecording();
     // startRecording is recreated each render; we only react to timer / status
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [questionSecondsLeft, useParentTimer, speakCap, status]);
@@ -379,51 +426,93 @@ export function QSpeakingRecording({
     setStatus("transcribing");
 
     try {
-      const chunks = audioChunksRef.current;
-      if (!chunks.length) {
-        setStatus("idle");
-        if (useParentTimer) parentRecordingStartRef.current = false;
-        return;
-      }
-
-      const audioBlob = new Blob(chunks, { type: "audio/webm" });
+      const audioBlob = pendingBlobRef.current ?? new Blob(audioChunksRef.current, {
+        type: mediaRecorderRef.current?.mimeType || "audio/webm",
+      });
+      if (!audioBlob.size) throw new Error("Recording is empty. Please record your answer again.");
+      pendingBlobRef.current = audioBlob;
       const qid = questionIdRef.current;
       const aid = attemptIdRef.current;
       if (!aid) {
         throw new Error("Missing attempt id");
       }
+      await pendingRecording(`${aid}:${qid}`, "put", audioBlob).catch(() => {});
 
       const formData = new FormData();
-      formData.append("file", audioBlob, `speaking-${qid}.webm`);
+      const ext = audioBlob.type.includes("mp4") ? "mp4" : audioBlob.type.includes("ogg") ? "ogg" : "webm";
+      formData.append("file", audioBlob, `speaking-${qid}.${ext}`);
       formData.append("questionId", qid);
 
-      const response = await fetch(`/api/attempts/${aid}/speaking/transcribe`, {
+      const response = await fetch(`/api/attempts/${aid}/speaking/upload`, {
         method: "POST",
         body: formData,
+        signal: AbortSignal.timeout(60000),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "Transcription failed");
+        throw new Error(errorData.error || "Recording could not be saved");
       }
 
       const data = await response.json();
-      const text = (data.text as string) || "";
-      const audioUrl = (data.audioUrl as string) || "";
+      const audioUrl = data.url as string;
+      if (!audioUrl) throw new Error("Server did not confirm recording storage");
+      pendingBlobRef.current = null;
+      await pendingRecording(`${aid}:${qid}`, "delete").catch(() => {});
+      onChangeRef.current?.({ text: "", audioUrl });
+
+      // Audio is already durable. AI failure must never discard the recording.
+      try {
+        const result = await fetch(`/api/attempts/${aid}/speaking/transcribe`, {
+          method: "POST", body: formData,
+          signal: AbortSignal.timeout(55000),
+        });
+        if (result.ok) {
+          const transcript = await result.json();
+          onChangeRef.current?.({ text: transcript.text || "", audioUrl });
+          setTranscriptionUnavailable(false);
+        } else {
+          setTranscriptionUnavailable(true);
+        }
+      } catch { setTranscriptionUnavailable(true); }
 
       setStatus("completed");
-      onChangeRef.current?.({ text, audioUrl });
+      setError(null);
 
       if (onRecordingComplete) {
         onRecordingComplete();
       }
     } catch (err) {
       console.error("Transcription error:", err);
-      setError(`Transcription failed: ${err instanceof Error ? err.message : "Unknown error"}`);
+      setError(`Recording not saved: ${err instanceof Error ? err.message : "Unknown error"}. Press Retry save.`);
       setStatus("idle");
-      if (useParentTimer) parentRecordingStartRef.current = false;
+      throw err;
     }
   }, [onRecordingComplete, useParentTimer]);
+
+  finishRef.current = async () => {
+    finishingRef.current = true;
+    try {
+      await recoveryRef.current;
+      await startingRef.current;
+      if (mediaRecorderRef.current?.state === "recording") {
+        await new Promise<void>((resolve) => {
+          stopResolveRef.current = resolve;
+          stopRecording();
+        });
+      }
+      if (processingRef.current) {
+        const processing = processingRef.current;
+        try { await processing; } finally {
+          if (processingRef.current === processing) processingRef.current = null;
+        }
+      }
+      if (pendingBlobRef.current) {
+        processingRef.current = transcribeAudio();
+        try { await processingRef.current; } finally { processingRef.current = null; }
+      }
+    } finally { finishingRef.current = false; }
+  };
 
   const handleStart = async () => {
     if (hasStartedRef.current) return;
@@ -454,7 +543,7 @@ export function QSpeakingRecording({
 
   useEffect(() => {
     // Auto-start recording flow after permission is granted
-    if (status === "idle" && !hasSavedAnswer && !readOnly && !hasStartedRef.current && permissionGranted) {
+    if (status === "idle" && !recovering && !hasSavedAnswer && !readOnly && !pendingBlobRef.current && !hasStartedRef.current && permissionGranted) {
       const timer = setTimeout(() => {
         void handleStart();
       }, 500);
@@ -468,7 +557,7 @@ export function QSpeakingRecording({
       };
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [permissionGranted, status, hasSavedAnswer, readOnly]); // Trigger when permission is granted
+  }, [permissionGranted, status, hasSavedAnswer, readOnly, recovering]); // Trigger when permission is granted
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -575,7 +664,7 @@ export function QSpeakingRecording({
 
   // If completed with text answer - DON'T show transcription (just show recording complete message)
   // Transcription is saved but not displayed to the user
-  if (status === "completed" || (hasSavedAnswer && readOnly)) {
+  if (status === "completed" || (hasSavedAnswer && !pendingBlobRef.current && status === "idle" && !recovering)) {
     return (
       <div className="space-y-3">
         <div className="rounded-lg border border-gray-200 bg-white px-5 py-4">
@@ -587,6 +676,7 @@ export function QSpeakingRecording({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
             <p className="text-sm font-semibold text-green-700">Recording completed and saved</p>
+            {transcriptionUnavailable && <p className="text-xs text-amber-800">Your audio is saved. Automatic transcription is currently unavailable.</p>}
           </div>
         </div>
       </div>
@@ -747,6 +837,11 @@ export function QSpeakingRecording({
               <p className="text-sm text-red-800 mb-2">{error}</p>
               <button
                 onClick={async () => {
+                  if (pendingBlobRef.current) {
+                    processingRef.current = null;
+                    await finishRef.current().catch(() => {});
+                    return;
+                  }
                   // Reset state
                   hasStartedRef.current = false;
                   permissionRequestedRef.current = false;
@@ -759,7 +854,7 @@ export function QSpeakingRecording({
                 }}
                 className="text-sm font-medium text-red-700 underline hover:text-red-900"
               >
-                Try Again
+                {pendingBlobRef.current ? "Retry save" : "Try Again"}
               </button>
             </div>
           </div>

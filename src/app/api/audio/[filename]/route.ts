@@ -36,6 +36,7 @@ export async function GET(
       'wav': 'audio/wav',
       'ogg': 'audio/ogg',
       'm4a': 'audio/mp4',
+      'mp4': 'audio/mp4',
       'aac': 'audio/aac',
       'flac': 'audio/flac',
       'wma': 'audio/x-ms-wma',
