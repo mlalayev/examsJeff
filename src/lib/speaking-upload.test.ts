@@ -76,6 +76,24 @@ test('rejects a question from another exam before writing a file', async () => {
   expect((await upload(request(), context)).status).toBe(400);
   expect(writeFile).not.toHaveBeenCalled();
 });
+test.each([
+  [null, 'exam', 'SPEAKING', 201],
+  ['legacy-exam', 'exam', 'SPEAKING', 201],
+  ['exam', 'other-exam', 'SPEAKING', 400],
+  [null, 'exam', 'READING', 400],
+])('validates through the section: direct exam=%s section exam=%s type=%s', async (directExamId, sectionExamId, sectionType, expectedStatus) => {
+  const row = { id: 'q', examId: directExamId, section: { examId: sectionExamId, type: sectionType } };
+  db.question.findFirst.mockImplementationOnce(async ({ where }: any) => {
+    if (where.id !== row.id) return null;
+    if (where.examId !== undefined && where.examId !== row.examId) return null;
+    if (where.section.examId !== undefined && where.section.examId !== row.section.examId) return null;
+    if (where.section.type !== row.section.type) return null;
+    return { id: row.id };
+  });
+  expect((await upload(request(), context)).status).toBe(expectedStatus);
+  if (expectedStatus === 201) expect(db.attemptAnswer.upsert).toHaveBeenCalled();
+  else expect(writeFile).not.toHaveBeenCalled();
+});
 test('empty recording is rejected', async () => {
   expect((await upload(request('webm', 0), context)).status).toBe(400);
 });

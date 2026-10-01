@@ -42,7 +42,9 @@ export async function POST(
     }
 
     const question = await prisma.question.findFirst({
-      where: { id: questionId, examId: attempt.examId, section: { type: "SPEAKING" } },
+      // Question.examId is optional; builders attach questions through sectionId.
+      // Use the same section -> exam relationship as the attempt reader.
+      where: { id: questionId, section: { examId: attempt.examId, type: "SPEAKING" } },
       select: { id: true },
     });
     if (!question) return NextResponse.json({ error: "Invalid speaking question" }, { status: 400 });
