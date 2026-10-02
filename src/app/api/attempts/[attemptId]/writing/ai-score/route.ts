@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { canReviewIntegrity, integrityBlock } from "@/lib/exam-integrity";
 import { requireAuth } from "@/lib/auth-utils";
 import { scoreIELTSWritingFull } from "@/lib/ielts-writing-ai-score";
 import { countWords } from "@/lib/get-writing-task-texts";
@@ -112,6 +113,8 @@ export async function POST(
     }
 
     const { attemptId } = await params;
+    const blocked = await integrityBlock(attemptId);
+    if (blocked) return blocked;
     const body = await req.json().catch(() => ({}));
     const force = Boolean(body?.force);
 
@@ -154,6 +157,9 @@ export async function POST(
 
     if (!attempt) {
       return NextResponse.json({ error: "Attempt not found" }, { status: 404 });
+    }
+    if (!canReviewIntegrity(user, attempt)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     let exam = attempt.booking?.exam ?? attempt.assignment?.unitExam?.exam ?? null;
@@ -222,8 +228,10 @@ export async function POST(
     const task2WordCount = countWords(task2Answer);
 
     // Get question prompts
-    const task1Prompt = task1Question.prompt?.text || task1Question.prompt || "Write a report";
-    const task2Prompt = task2Question.prompt?.text || task2Question.prompt || "Write an essay";
+    const promptText = (prompt: unknown, fallback: string) => typeof prompt === 'string' ? prompt :
+      prompt && typeof prompt === 'object' && 'text' in prompt && typeof prompt.text === 'string' ? prompt.text : fallback;
+    const task1Prompt = promptText(task1Question.prompt, "Write a report");
+    const task2Prompt = promptText(task2Question.prompt, "Write an essay");
 
     const booking = attempt.booking as
       | { classId?: string | null; teacherId?: string | null }

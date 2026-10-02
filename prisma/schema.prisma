@@ -185,6 +185,7 @@ model Attempt {
   placementBreakdown Json?
   sections           AttemptSection[]
   attemptAnswers     AttemptAnswer[]
+  integrity          ExamIntegrity?
   coinTransactions   CoinTransaction[]
   assignment         Assignment?       @relation(fields: [assignmentId], references: [id])
   booking            Booking?          @relation(fields: [bookingId], references: [id], onDelete: Cascade)
@@ -194,6 +195,41 @@ model Attempt {
   @@index([studentId, createdAt])
   @@index([status, createdAt])
   @@map("attempts")
+}
+
+model ExamIntegrity {
+  attemptId       String   @id
+  policyVersion   Int
+  state           String   @default("PENDING")
+  acceptedAt      DateTime?
+  invalidatedAt   DateTime?
+  reviewNote      String?
+  reviewedById    String?
+  reviewedAt     DateTime?
+  attempt         Attempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  events          ExamIntegrityEvent[]
+  @@map("exam_integrity")
+}
+
+model ExamIntegrityEvent {
+  id          String   @id @default(cuid())
+  attemptId   String
+  kind        String
+  occurredAt  DateTime @default(now())
+  metadata    Json?
+  integrity   ExamIntegrity @relation(fields: [attemptId], references: [attemptId], onDelete: Cascade)
+  @@index([attemptId, occurredAt])
+  @@map("exam_integrity_events")
+}
+
+model WritingOriginalityReview {
+  attemptId   String @id
+  state       String @default("NOT_CHECKED")
+  sourceHash  String?
+  result      Json?
+  requestedBy String?
+  updatedAt   DateTime @updatedAt
+  @@map("writing_originality_reviews")
 }
 
 model AttemptSection {

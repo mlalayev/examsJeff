@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { integrityBlock } from "@/lib/exam-integrity";
 import { requireAuth } from "@/lib/auth-utils";
 import { z } from "zod";
 
@@ -14,6 +15,8 @@ export async function PATCH(
 ) {
   try {
     const user = await requireAuth();
+    const blocked = await integrityBlock((await params).id);
+    if (blocked) return blocked;
     const body = await request.json();
     
     const validatedData = endSectionSchema.parse(body);

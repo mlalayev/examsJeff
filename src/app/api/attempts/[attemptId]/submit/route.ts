@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { integrityBlock } from "@/lib/exam-integrity";
 import { requireStudent } from "@/lib/auth-utils";
 import { SectionType, QuestionType } from "@prisma/client";
 import { tryAwardExamScoreReward } from "@/lib/coins";
@@ -16,6 +17,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
   try {
     const user = await requireStudent();
     const { attemptId } = await params;
+    const blocked = await integrityBlock(attemptId);
+    if (blocked) return blocked;
     const studentId = (user as any).id as string;
 
     // Load attempt first (optimized with limited fields)
@@ -62,6 +65,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
                 id: true,
                 qtype: true,
                 answerKey: true,
+                options: true,
                 maxScore: true,
                 order: true, // For IELTS Listening part grouping
                 cefrLevel: true,
@@ -278,4 +282,3 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
     }, { status: 500 });
   }
 }
-

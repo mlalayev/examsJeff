@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { integrityBlock } from "@/lib/exam-integrity";
 import { requireAuth } from "@/lib/auth-utils";
 
 /**
@@ -14,6 +15,8 @@ export async function POST(
   try {
     const user = await requireAuth();
     const { attemptId } = await params;
+    const blocked = await integrityBlock(attemptId);
+    if (blocked) return blocked;
     
     // Only allow teachers, admins, and bosses to edit
     if (!["TEACHER", "ADMIN", "BOSS"].includes(user.role)) {
@@ -50,7 +53,7 @@ export async function POST(
     }
 
     // Determine if this is a JSON exam or DB exam
-    const isJsonExam = attempt.booking?.exam?.questions !== null;
+    const isJsonExam = attempt.sections.length === 0;
 
     if (isJsonExam) {
       // For JSON exams, update attempt.answers

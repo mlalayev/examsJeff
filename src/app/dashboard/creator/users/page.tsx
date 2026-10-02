@@ -11,6 +11,7 @@ import UnifiedLoading from "@/components/loading/UnifiedLoading";
 import { AlertModal } from "@/components/modals/AlertModal";
 import { UserDetailsModal } from "@/components/modals/UserDetailsModal";
 import StudentPaymentsModal from "@/components/modals/StudentPaymentsModal";
+import EditAccountModal from "@/components/modals/EditAccountModal";
 
 type CreatorUserRow = {
   id: string;
@@ -33,6 +34,7 @@ export default function CreatorUsersPage() {
   const router = useRouter();
   const [users, setUsers] = useState<CreatorUserRow[]>(creatorUsersCache?.users ?? []);
   const [paymentsTarget, setPaymentsTarget] = useState<CreatorUserRow | null>(null);
+  const [editUserId, setEditUserId] = useState<string | null>(null);
   const [searchUsers, setSearchUsers] = useState("");
   const [roleFilter, setRoleFilter] = useState("ALL");
   const [tagFilter, setTagFilter] = useState("ALL");
@@ -705,6 +707,13 @@ export default function CreatorUsersPage() {
                     <td className="px-3 sm:px-4 py-3 text-sm">
                       <div className="flex items-center justify-center gap-2">
                         <button
+                          onClick={() => setEditUserId(user.id)}
+                          className="inline-flex items-center justify-center p-1.5 text-gray-500 hover:text-gray-700 transition-colors"
+                          title="Edit account"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
                           onClick={() => fetchUserDetails(user.id)}
                           className="inline-flex items-center justify-center p-1.5 text-gray-500 hover:text-gray-700 transition-colors"
                           title="View all details"
@@ -947,6 +956,13 @@ export default function CreatorUsersPage() {
       )}
 
       {/* Create User Modal */}
+      <EditAccountModal
+        open={editUserId !== null}
+        userId={editUserId}
+        branches={branches}
+        onClose={() => setEditUserId(null)}
+        onSaved={() => { void fetchUsers(); }}
+      />
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 overflow-y-auto">
           <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col my-8">

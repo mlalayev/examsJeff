@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { integrityBlock } from "@/lib/exam-integrity";
 import { requireAuth } from "@/lib/auth-utils";
 import { z } from "zod";
 
@@ -69,6 +70,8 @@ export async function POST(
   try {
     const user = await requireAuth();
     const { attemptId } = await params;
+    const blocked = await integrityBlock(attemptId);
+    if (blocked) return blocked;
     const body = await request.json();
 
     const validatedData = submitWritingSchema.parse(body);
@@ -87,7 +90,6 @@ export async function POST(
         },
         booking: {
           select: {
-            classId: true,
             teacherId: true,
           },
         },
@@ -142,7 +144,7 @@ export async function POST(
       .filter((word) => word.length > 0).length;
 
     // Get class and teacher info
-    const classId = attempt.booking?.classId || attempt.assignment?.classId || null;
+    const classId = attempt.assignment?.classId || null;
     const teacherId = attempt.booking?.teacherId || attempt.assignment?.teacherId || null;
 
     // Create writing submission
@@ -193,7 +195,7 @@ export async function POST(
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: "Validation error", details: error.errors },
+        { error: "Validation error", details: error.issues },
         { status: 400 }
       );
     }

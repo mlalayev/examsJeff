@@ -5,7 +5,7 @@ import { z } from "zod";
 
 const schema = z.object({
   approved: z.boolean(),
-  role: z.enum(["STUDENT", "TEACHER", "ADMIN", "BOSS", "BRANCH_ADMIN", "BRANCH_BOSS", "CREATOR"]).optional(),
+  role: z.enum(["STUDENT", "TEACHER", "ADMIN", "BOSS", "BRANCH_ADMIN", "BRANCH_BOSS", "CREATOR", "PARENT", "PARTNER"]).optional(),
   branchId: z.string().nullable().optional(),
 });
 
@@ -65,11 +65,10 @@ export async function PATCH(
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: "Validation error", details: error.errors }, { status: 400 });
+      return NextResponse.json({ error: "Validation error", details: error.issues }, { status: 400 });
     }
     console.error("Error updating user:", error);
     return NextResponse.json({ error: "An error occurred" }, { status: 500 });
   }
 }
-
 

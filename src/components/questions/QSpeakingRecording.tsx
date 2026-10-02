@@ -63,6 +63,7 @@ export function QSpeakingRecording({
   const [timeLeft, setTimeLeft] = useState(hasPreparation ? PREPARATION_DURATION : recordingDuration);
   const [error, setError] = useState<string | null>(null);
   const [transcriptionUnavailable, setTranscriptionUnavailable] = useState(false);
+  const [transcriptionMessage, setTranscriptionMessage] = useState("");
   const [permissionGranted, setPermissionGranted] = useState(false);
   const [isCheckingPermission, setIsCheckingPermission] = useState(true);
 
@@ -464,7 +465,7 @@ export function QSpeakingRecording({
       // Audio is already durable. AI failure must never discard the recording.
       try {
         const result = await fetch(`/api/attempts/${aid}/speaking/transcribe`, {
-          method: "POST", body: formData,
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ questionId: qid }),
           signal: AbortSignal.timeout(55000),
         });
         if (result.ok) {
@@ -473,8 +474,13 @@ export function QSpeakingRecording({
           setTranscriptionUnavailable(false);
         } else {
           setTranscriptionUnavailable(true);
+          const failure = await result.json().catch(() => ({}));
+          setTranscriptionMessage(failure.error || "Your audio is saved. Automatic transcription is currently unavailable.");
         }
-      } catch { setTranscriptionUnavailable(true); }
+      } catch {
+        setTranscriptionUnavailable(true);
+        setTranscriptionMessage("Your audio is saved. Transcription timed out or the connection was interrupted.");
+      }
 
       setStatus("completed");
       setError(null);
@@ -676,7 +682,7 @@ export function QSpeakingRecording({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
             <p className="text-sm font-semibold text-green-700">Recording completed and saved</p>
-            {transcriptionUnavailable && <p className="text-xs text-amber-800">Your audio is saved. Automatic transcription is currently unavailable.</p>}
+            {transcriptionUnavailable && <p className="text-xs text-amber-800">{transcriptionMessage}</p>}
           </div>
         </div>
       </div>

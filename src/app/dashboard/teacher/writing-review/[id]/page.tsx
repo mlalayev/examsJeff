@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import { WritingOriginalityPanel } from '@/components/attempts/WritingOriginalityPanel';
 import { ArrowLeft, CheckCircle2, Clock, User, Calendar, FileText, Save, Eye, EyeOff } from "lucide-react";
 
 interface WritingSubmission {
+  attemptId: string;
   id: string;
   student: {
     id: string;
@@ -35,7 +37,8 @@ interface WritingSubmission {
   } | null;
 }
 
-export default function WritingSubmissionReviewPage({ params }: { params: { id: string } }) {
+export default function WritingSubmissionReviewPage() {
+  const params = useParams<{ id: string }>();
   const router = useRouter();
   const [submission, setSubmission] = useState<WritingSubmission | null>(null);
   const [loading, setLoading] = useState(true);
@@ -148,6 +151,7 @@ export default function WritingSubmissionReviewPage({ params }: { params: { id: 
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
+        <WritingOriginalityPanel attemptId={submission.attemptId} />
         {/* Header */}
         <div className="mb-6">
           <button

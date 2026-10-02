@@ -779,6 +779,7 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
       const res = await fetch(`/api/attempts/${attemptId}/submit`, { method: "POST" });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || "Failed to submit");
+      window.dispatchEvent(new Event('exam-submitted'));
       if (typeof window !== "undefined") {
         localStorage.removeItem(answersStorageKey(attemptId));
         localStorage.removeItem(ieltsLockedSectionsKey(attemptId));
@@ -969,6 +970,8 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
             </p>
           )}
           <textarea
+            data-writing-answer
+            name={question.id}
             value={typeof value === "string" ? value : ""}
             onChange={(e) => setAnswer(question.id, e.target.value)}
             rows={14}

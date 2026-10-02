@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireStudent } from "@/lib/auth-utils";
+import { newIntegrityPolicy } from "@/lib/exam-integrity-policy";
 
 export async function POST(request: Request) {
   try {
@@ -60,7 +61,8 @@ export async function POST(request: Request) {
         examId: booking.examId,
         branchId: booking.branchId,
         status: "IN_PROGRESS",
-        startedAt: new Date(),
+        startedAt: newIntegrityPolicy(booking.exam.category) ? null : new Date(),
+        integrity: newIntegrityPolicy(booking.exam.category),
         sections: {
           create: examSections.map((section) => ({
             type: section.type,
@@ -87,4 +89,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Failed to start attempt" }, { status: 500 });
   }
 }
-

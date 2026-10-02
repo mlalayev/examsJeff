@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Clock, FileText, Users, Eye } from "lucide-react";
 import UnifiedLoading from "@/components/loading/UnifiedLoading";
+import { ExamSecurityNotice } from '@/components/attempts/ExamSecurityNotice';
 
 interface ExamSection {
   type: string;
@@ -94,6 +95,7 @@ export default function ExamPreviewPage() {
       </div>
 
       {/* Exam Header */}
+      <ExamSecurityNotice category={exam.category} />
       <div className="bg-white border border-gray-200 rounded-lg p-6 mb-8">
         <h2 className="text-2xl font-semibold text-gray-900 mb-4">{exam.title}</h2>
         {exam.description && (

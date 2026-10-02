@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { integrityBlock } from "@/lib/exam-integrity";
 import { requireAuth } from "@/lib/auth-utils";
 import {
   computeIeltsOverallBand,
@@ -272,6 +273,8 @@ export async function GET(
     }
 
     // Check if submitted
+    const blocked = await integrityBlock(attemptId);
+    if (blocked) return blocked;
     if (attempt.status !== "SUBMITTED") {
       return NextResponse.json(
         {
@@ -300,7 +303,16 @@ export async function GET(
         return acc;
       }, {});
 
-    // STUDENT/PARENT VIEW: Summary only
+    // Speaking answers are visible to authorized reviewers without exposing answer keys.
+    const speakingAnswers: Record<string, any> = { ...((attempt.answers as any)?.SPEAKING || {}) };
+    for (const section of attempt.sections.filter((s) => s.type === "SPEAKING")) Object.assign(speakingAnswers, section.answers || {});
+    const speakingRows = await prisma.attemptAnswer.findMany({ where: { attemptId, section: "SPEAKING" } });
+    for (const row of speakingRows) speakingAnswers[row.questionId] = row.answer;
+    const speakingRecordings = examWithSections.sections.filter((s: any) => s.type === "SPEAKING")
+      .flatMap((s: any) => s.questions || []).filter((q: any) => q.qtype === "SPEAKING_RECORDING")
+      .map((q: any) => ({ questionId: q.id, prompt: q.prompt?.text || "Speaking question", answer: speakingAnswers[q.id] ?? null }));
+
+    // STUDENT/PARENT VIEW: Summary plus their own speaking recordings
     if ((role === "STUDENT" && isOwner) || isParent) {
       // For JSON exams, we may not have attempt.sections in DB, so compute from answers
       // Structure: { sectionType: { questionId: answer } }
@@ -410,9 +422,11 @@ export async function GET(
         examTitle: booking.exam.title,
         examCategory: examWithSections.category,
         submittedAt: attempt.submittedAt,
-        studentName: booking.student.name || booking.student.email,
+        studentName: [booking.student.firstName, booking.student.lastName].filter(Boolean).join(' ') || booking.student.email,
         status: attempt.status,
         role: isParent ? "PARENT" : "STUDENT",
+        speakingRecordings,
+        speakingAi: speakingAiStudent,
         coinReward,
         placementLevel: attempt.placementLevel ?? null,
         placementBreakdown: attempt.placementBreakdown ?? null,
@@ -729,10 +743,11 @@ export async function GET(
         attemptId: attempt.id,
         examTitle: booking.exam.title,
         examCategory: examWithSections.category,
-        studentName: booking.student.name || booking.student.email,
+        studentName: [booking.student.firstName, booking.student.lastName].filter(Boolean).join(' ') || booking.student.email,
         submittedAt: attempt.submittedAt,
         status: attempt.status,
         role: "TEACHER",
+        speakingRecordings,
         coinReward,
         placementLevel: attempt.placementLevel ?? null,
         placementBreakdown: attempt.placementBreakdown ?? null,

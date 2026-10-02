@@ -1,5 +1,6 @@
 jest.mock('@/lib/auth-utils', () => ({ requireAuth: jest.fn(async () => ({ id: 'student' })), requireStudent: jest.fn(async () => ({ id: 'student' })) }));
 jest.mock('@/lib/prisma', () => ({ prisma: {
+  examIntegrity: { findUnique: jest.fn() },
   attempt: { findFirst: jest.fn(), findUnique: jest.fn(), findUniqueOrThrow: jest.fn(), update: jest.fn() },
   exam: { findUnique: jest.fn() },
   question: { findFirst: jest.fn() },
@@ -7,7 +8,7 @@ jest.mock('@/lib/prisma', () => ({ prisma: {
   attemptSection: { findMany: jest.fn(), update: jest.fn(), updateMany: jest.fn(), findFirst: jest.fn() },
   $queryRaw: jest.fn(), $transaction: jest.fn(),
 } }));
-jest.mock('fs/promises', () => ({ writeFile: jest.fn(async () => {}), mkdir: jest.fn(async () => {}), unlink: jest.fn(async () => {}) }));
+jest.mock('fs/promises', () => ({ readFile: jest.fn(async () => Buffer.from('saved audio')), writeFile: jest.fn(async () => {}), mkdir: jest.fn(async () => {}), unlink: jest.fn(async () => {}) }));
 jest.mock('fs', () => ({ ...jest.requireActual('fs'), createReadStream: jest.fn(() => ({})) }));
 jest.mock('@/lib/openai-client', () => ({ getOpenAI: jest.fn(), handleOpenAIError: (error: Error) => { throw error; } }));
 jest.mock('@/lib/rate-limiter', () => ({ checkRateLimit: () => ({ limited: false }) }));
@@ -20,7 +21,8 @@ import { POST as save } from '@/app/api/attempts/[attemptId]/save/route';
 import { POST as bulkSave } from '@/app/api/attempts/[attemptId]/save-bulk/route';
 import { prisma } from '@/lib/prisma';
 import { getOpenAI } from '@/lib/openai-client';
-import { writeFile } from 'fs/promises';
+import { writeFile, readFile } from 'fs/promises';
+import { requireAuth } from '@/lib/auth-utils';
 const db = prisma as any;
 const context = { params: Promise.resolve({ attemptId: 'attempt' }) };
 function request(extension = 'webm', size = 8) {
@@ -32,7 +34,7 @@ function request(extension = 'webm', size = 8) {
 beforeEach(() => {
   jest.clearAllMocks();
   delete process.env.OPENAI_API_KEY;
-  db.attempt.findFirst.mockResolvedValue({ id: 'attempt', examId: 'exam', status: 'IN_PROGRESS' });
+  db.attempt.findFirst.mockResolvedValue({ id: 'attempt', studentId: 'student', examId: 'exam', status: 'IN_PROGRESS' });
   db.attempt.findUnique.mockResolvedValue({ id: 'attempt', examId: 'exam', studentId: 'student', sections: [{ id: 'section' }] });
   db.exam.findUnique.mockResolvedValue({ category: 'IELTS' });
   db.attempt.findUniqueOrThrow.mockResolvedValue({ status: 'IN_PROGRESS', answers: {} });
@@ -126,20 +128,63 @@ test('missing AI key leaves the durable answer untouched', async () => {
 test('AI failure leaves the durable answer untouched', async () => {
   process.env.OPENAI_API_KEY = 'test-only';
   (getOpenAI as jest.Mock).mockReturnValue({ audio: { transcriptions: { create: jest.fn().mockRejectedValue(new Error('quota')) } } });
-  expect((await transcribe(request() as any, context)).status).toBe(500);
+  expect((await transcribe(request() as any, context)).status).toBe(502);
   expect(db.attemptAnswer.update).not.toHaveBeenCalled();
 });
 test('successful transcription persists text with the original audio URL', async () => {
   process.env.OPENAI_API_KEY = 'test-only';
   (getOpenAI as jest.Mock).mockReturnValue({ audio: { transcriptions: { create: jest.fn().mockResolvedValue({ text: 'My answer' }) } } });
   expect((await transcribe(request('mp4') as any, context)).status).toBe(200);
-  expect(db.attemptAnswer.update).toHaveBeenCalledWith({ where: { id: 'row' }, data: { answer: { text: 'My answer', audioUrl: '/api/audio/saved.webm' } } });
+  expect(db.attemptAnswer.upsert).toHaveBeenCalledWith(expect.objectContaining({ update: { answer: { text: 'My answer', audioUrl: '/api/audio/saved.webm' } } }));
 });
 test('late transcription cannot replace a newer recording', async () => {
   process.env.OPENAI_API_KEY = 'test-only';
   (getOpenAI as jest.Mock).mockReturnValue({ audio: { transcriptions: { create: jest.fn().mockResolvedValue({ text: 'Old answer' }) } } });
   db.attemptAnswer.findUnique.mockResolvedValueOnce({ id: 'row', answer: { audioUrl: '/api/audio/old.webm' } })
     .mockResolvedValueOnce({ id: 'row', answer: { audioUrl: '/api/audio/new.webm' } });
-  expect((await transcribe(request() as any, context)).status).toBe(200);
+  expect((await transcribe(request() as any, context)).status).toBe(409);
   expect(db.attemptAnswer.update).not.toHaveBeenCalled();
+});
+
+test('a teacher can recover a transcript from saved audio after submission, without reupload', async () => {
+  process.env.OPENAI_API_KEY = 'test-only';
+  (requireAuth as jest.Mock).mockResolvedValueOnce({ id: 'admin', role: 'ADMIN' });
+  db.attempt.findFirst.mockResolvedValue({ id: 'attempt', studentId: 'student', examId: 'exam', status: 'SUBMITTED' });
+  (getOpenAI as jest.Mock).mockReturnValue({ audio: { transcriptions: { create: jest.fn().mockResolvedValue({ text: 'Recovered transcript' }) } } });
+  const req = new Request('http://localhost/transcribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ questionId: 'q' }) });
+  const response = await transcribe(req as any, context);
+  expect(response.status).toBe(200);
+  expect((await response.json()).text).toBe('Recovered transcript');
+  expect(readFile).toHaveBeenCalledWith(expect.stringContaining('saved.webm'));
+  expect(db.attemptSection.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ answers: { previous: 'kept', q: { text: 'Recovered transcript', audioUrl: '/api/audio/saved.webm' } } }) }));
+});
+test('cached transcript does not call the AI again', async () => {
+  process.env.OPENAI_API_KEY = 'test-only';
+  db.attemptAnswer.findUnique.mockResolvedValue({ answer: { text: 'Already saved', audioUrl: '/api/audio/saved.webm' } });
+  expect((await transcribe(request() as any, context)).status).toBe(200);
+  expect(getOpenAI).not.toHaveBeenCalled();
+});
+test('another student cannot transcribe this attempt', async () => {
+  (requireAuth as jest.Mock).mockResolvedValueOnce({ id: 'other', role: 'STUDENT' });
+  expect((await transcribe(request() as any, context)).status).toBe(403);
+});
+test('missing stored audio produces a recoverable error without erasing the answer', async () => {
+  process.env.OPENAI_API_KEY = 'test-only';
+  (readFile as jest.Mock).mockRejectedValueOnce(new Error('ENOENT'));
+  expect((await transcribe(request() as any, context)).status).toBe(404);
+  expect(db.attemptAnswer.upsert).not.toHaveBeenCalled();
+});
+test('empty provider transcript does not overwrite the saved recording', async () => {
+  process.env.OPENAI_API_KEY = 'test-only';
+  (getOpenAI as jest.Mock).mockReturnValue({ audio: { transcriptions: { create: jest.fn().mockResolvedValue({ text: '  ' }) } } });
+  expect((await transcribe(request() as any, context)).status).toBe(422);
+  expect(db.attemptAnswer.upsert).not.toHaveBeenCalled();
+});
+test('recovering a transcript invalidates cached AI feedback', async () => {
+  process.env.OPENAI_API_KEY = 'test-only';
+  db.attemptSection.findMany.mockResolvedValue([{ id: 'section', answers: {}, rubric: { teacherNote: 'keep', ieltsSpeakingAi: { overallBand: 5 } }, bandScore: 5 }]);
+  (getOpenAI as jest.Mock).mockReturnValue({ audio: { transcriptions: { create: jest.fn().mockResolvedValue({ text: 'Recovered' }) } } });
+  expect((await transcribe(request() as any, context)).status).toBe(200);
+  expect(db.attemptSection.update.mock.calls[0][0].data.rubric).toEqual({ teacherNote: 'keep' });
+  expect(db.attemptSection.update.mock.calls[0][0].data.bandScore).toBeNull();
 });

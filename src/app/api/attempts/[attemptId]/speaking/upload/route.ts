@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
+import { integrityBlock } from "@/lib/exam-integrity";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { randomUUID } from "crypto";
@@ -13,6 +14,8 @@ export async function POST(
   try {
     const user = await requireAuth();
     const { attemptId } = await params;
+    const blocked = await integrityBlock(attemptId);
+    if (blocked) return blocked;
 
     // Verify attempt belongs to user
     const attempt = await prisma.attempt.findFirst({

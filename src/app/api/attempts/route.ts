@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-utils";
 import { z } from "zod";
+import { newIntegrityPolicy } from "@/lib/exam-integrity-policy";
 
 const createAttemptSchema = z.object({
   assignmentId: z.string().min(1, "Assignment ID is required"),
@@ -70,7 +71,8 @@ export async function POST(request: Request) {
         examId: exam.id,
         branchId: assignment.branchId ?? (user as any).branchId ?? null,
         status: "IN_PROGRESS",
-        startedAt: new Date(),
+        startedAt: newIntegrityPolicy(exam.category) ? null : new Date(),
+        integrity: newIntegrityPolicy(exam.category),
         sections: {
           create: exam.sections.map(section => ({
             type: section.type,
@@ -92,7 +94,7 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: error.errors[0].message },
+        { error: error.issues[0].message },
         { status: 400 }
       );
     }

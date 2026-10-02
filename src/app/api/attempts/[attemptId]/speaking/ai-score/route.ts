@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { integrityBlock } from "@/lib/exam-integrity";
 import { requireAuth } from "@/lib/auth-utils";
 import {
   scoreIELTSSpeakingFromPayload,
@@ -9,6 +10,9 @@ import {
 import { checkRateLimit } from "@/lib/rate-limiter";
 import { handleOpenAIError } from "@/lib/openai-client";
 import { RATE_LIMITS } from "@/lib/rate-limit-config";
+import { createHash } from "crypto";
+import { speakingAnswerAudioUrl, speakingAnswerText } from "@/lib/speaking-answer";
+import { resolveSpeakingPartNumber } from "@/lib/ielts-speaking-questions";
 
 // Configure route for longer execution time
 export const maxDuration = 60;
@@ -18,6 +22,7 @@ function isStaff(role: string | undefined) {
     role === "TEACHER" ||
     role === "ADMIN" ||
     role === "BRANCH_ADMIN" ||
+    role === "BRANCH_BOSS" ||
     role === "BOSS" ||
     role === "CREATOR"
   );
@@ -46,17 +51,10 @@ function collectSpeakingQuestionsFromExam(exam: {
     }>;
   }>;
 }) {
-  const parents = exam.sections.filter((s) => !s.parentSectionId);
-  const speakingParent = parents.find((s) => s.type === "SPEAKING");
-  if (!speakingParent) return [];
-
-  const subs = exam.sections.filter((s) => s.parentSectionId === speakingParent.id);
-  let qs = [...(speakingParent.questions || [])];
-  subs.forEach((sub) => {
-    qs = [...qs, ...(sub.questions || [])];
-  });
-
-  return qs
+  const speakingIds = new Set(exam.sections.filter((s) => s.type === "SPEAKING").map((s) => s.id));
+  const qs = exam.sections.filter((s) => speakingIds.has(s.id) || (s.parentSectionId && speakingIds.has(s.parentSectionId)))
+    .flatMap((s) => s.questions || []);
+  return Array.from(new Map(qs.map((q) => [q.id, q])).values())
     .filter((q) => q.qtype === "SPEAKING_RECORDING")
     .sort((a, b) => a.order - b.order);
 }
@@ -73,7 +71,7 @@ function buildSpeakingPayload(
   const part3: IELTSSpeakingExamPayload["part3"] = [];
 
   for (const q of questions) {
-    const part = q.prompt?.part ?? 1;
+    const part = resolveSpeakingPartNumber({ ...q, prompt: q.prompt ?? undefined, order: 0 });
     const promptText = (q.prompt?.text || "").trim() || "(no prompt text)";
     const transcript = normalizeSpeakingTranscript(answers[q.id]);
     const row = { questionId: q.id, prompt: promptText, transcript };
@@ -92,9 +90,10 @@ function serializeSpeakingAi(r: IELTSSpeakingScoreResult, scoredAt: string) {
     lexicalResource: r.lexicalResource,
     grammar: r.grammar,
     pronunciation: r.pronunciation,
-    part1: r.part1,
-    part2: r.part2,
-    part3: r.part3,
+    assessmentType: r.assessmentType ?? "TRANSCRIPT_ONLY",
+    part1: { band: r.part1.band, feedback: r.part1.feedback },
+    part2: { band: r.part2.band, feedback: r.part2.feedback },
+    part3: { band: r.part3.band, feedback: r.part3.feedback },
     overallFeedback: r.overallFeedback,
     scoredAt,
   };
@@ -148,6 +147,8 @@ export async function POST(
     }
 
     const { attemptId } = await params;
+    const blocked = await integrityBlock(attemptId);
+    if (blocked) return blocked;
     const body = await req.json().catch(() => ({}));
     const force = Boolean(body?.force);
 
@@ -189,6 +190,10 @@ export async function POST(
     if (!attempt) {
       return NextResponse.json({ error: "Attempt not found" }, { status: 404 });
     }
+    if (!["ADMIN", "BOSS", "CREATOR"].includes(role || "") &&
+        (!(user as any).branchId || (user as any).branchId !== attempt.branchId)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     let exam =
       attempt.booking?.exam ?? attempt.assignment?.unitExam?.exam ?? null;
@@ -218,12 +223,6 @@ export async function POST(
 
     const prevRubric = (speakingAttemptSection.rubric as Record<string, unknown> | null) || {};
     const existingAi = prevRubric.ieltsSpeakingAi as { scoredAt?: string } | undefined;
-    if (existingAi?.scoredAt && !force) {
-      return NextResponse.json({
-        cached: true,
-        speakingAi: existingAi,
-      });
-    }
 
     const questions = collectSpeakingQuestionsFromExam(exam as any);
     if (questions.length === 0) {
@@ -241,8 +240,19 @@ export async function POST(
       ...(attemptSpeaking || {}),
       ...sectionAnswers,
     };
+    const normalized = await prisma.attemptAnswer.findMany({ where: { attemptId, section: "SPEAKING" } });
+    for (const row of normalized) mergedAnswers[row.questionId] = row.answer;
+    const missing = questions.filter((q) => speakingAnswerAudioUrl(mergedAnswers[q.id]) && !speakingAnswerText(mergedAnswers[q.id]));
+    if (missing.length) return NextResponse.json({
+      error: "Some recordings still need transcription. Generate their transcripts before AI assessment.",
+      code: "TRANSCRIPTS_REQUIRED", questionIds: missing.map((q) => q.id),
+    }, { status: 409 });
 
     const payload = buildSpeakingPayload(questions, mergedAnswers);
+    const sourceHash = createHash("sha256").update(JSON.stringify(payload)).digest("hex");
+    if (existingAi?.scoredAt && !force && (existingAi as any).sourceHash === sourceHash && (existingAi as any).assessmentType === "TRANSCRIPT_ONLY") {
+      return NextResponse.json({ cached: true, speakingAi: existingAi });
+    }
 
     const hasAnyTranscript =
       [...payload.part1, ...payload.part2, ...payload.part3].some(
@@ -269,16 +279,22 @@ export async function POST(
 
     const newRubric = {
       ...prevRubric,
-      ieltsSpeakingAi: serializeSpeakingAi(scores, scoredAt),
+      ieltsSpeakingAi: { ...serializeSpeakingAi(scores, scoredAt), sourceHash },
     };
 
-    const updated = await prisma.attemptSection.update({
-      where: { id: speakingAttemptSection.id },
-      data: {
-        rubric: newRubric as object,
-        bandScore: scores.overallBand,
-      },
+    const updated = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM attempts WHERE id = ${attemptId} FOR UPDATE`;
+      const current = await tx.attemptSection.findUniqueOrThrow({ where: { id: speakingAttemptSection.id } });
+      const rows = await tx.attemptAnswer.findMany({ where: { attemptId, section: "SPEAKING" } });
+      const answers: Record<string, unknown> = { ...(attemptSpeaking || {}), ...((current.answers as Record<string, unknown>) || {}) };
+      for (const row of rows) answers[row.questionId] = row.answer;
+      if (createHash("sha256").update(JSON.stringify(buildSpeakingPayload(questions, answers))).digest("hex") !== sourceHash) return null;
+      return tx.attemptSection.update({
+        where: { id: speakingAttemptSection.id },
+        data: { rubric: { ...((current.rubric as Record<string, unknown>) || {}), ieltsSpeakingAi: newRubric.ieltsSpeakingAi }, bandScore: scores.overallBand },
+      });
     });
+    if (!updated) return NextResponse.json({ error: "Speaking transcripts changed during assessment. Please retry." }, { status: 409 });
 
     const stored = (updated.rubric as Record<string, unknown>)?.ieltsSpeakingAi;
 

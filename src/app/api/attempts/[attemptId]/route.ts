@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireStudent } from "@/lib/auth-utils";
+import { integrityBlock } from "@/lib/exam-integrity";
 
 export async function GET(request: Request, { params }: { params: Promise<{ attemptId: string }> }) {
   try {
@@ -21,6 +22,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ atte
     if (attempt.studentId !== studentId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+    const blocked = await integrityBlock(attemptId);
+    if (blocked) return blocked;
 
     // Load exam data from database
     const exam = await prisma.exam.findUnique({ 

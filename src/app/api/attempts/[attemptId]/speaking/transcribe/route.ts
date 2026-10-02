@@ -1,14 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
-import { getOpenAI, handleOpenAIError } from "@/lib/openai-client";
+import { getOpenAI } from "@/lib/openai-client";
+import { transcriptionError } from "@/lib/transcription-error";
 import { checkRateLimit } from "@/lib/rate-limiter";
 import { RATE_LIMITS } from "@/lib/rate-limit-config";
 import { createReadStream } from "fs";
-import { writeFile, unlink } from "fs/promises";
+import { writeFile, unlink, readFile } from "fs/promises";
+import { speakingAnswerText, speakingAnswerAudioUrl } from "@/lib/speaking-answer";
 import { join } from "path";
 import { tmpdir } from "os";
 import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
+import { integrityBlock } from "@/lib/exam-integrity";
 
 // Configure route for longer execution time
 export const maxDuration = 60;
@@ -26,16 +29,23 @@ export async function POST(
   try {
     const user = await requireAuth();
     const { attemptId } = await params;
+    const blocked = await integrityBlock(attemptId);
+    if (blocked) return blocked;
     const studentId = (user as { id?: string }).id;
 
-    const attempt = await prisma.attempt.findFirst({
-      where: { id: attemptId, studentId: studentId ?? undefined },
-    });
+    const attempt = await prisma.attempt.findFirst({ where: { id: attemptId }, include: { sections: true } });
     if (!attempt) {
       return NextResponse.json(
         { error: "Attempt not found or access denied" },
         { status: 404 },
       );
+    }
+    const role = (user as any).role;
+    const globalStaff = ["ADMIN", "BOSS", "CREATOR"].includes(role);
+    const branchStaff = ["TEACHER", "BRANCH_ADMIN", "BRANCH_BOSS"].includes(role)
+      && Boolean((user as any).branchId) && (user as any).branchId === attempt.branchId;
+    if (!studentId || (attempt.studentId !== studentId && !globalStaff && !branchStaff)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     // Rate limiting: 20 transcription requests per minute per user (more lenient than scoring)
@@ -63,46 +73,45 @@ export async function POST(
     if (!process.env.OPENAI_API_KEY?.trim()) {
       return NextResponse.json(
         {
-          error: "OPENAI_API_KEY is not configured",
-          hint: "Set OPENAI_API_KEY in server environment",
+          code: "AI_NOT_CONFIGURED",
+          error: "Audio saved. The server's transcription API key is not configured. Please contact the administrator.",
         },
         { status: 503 }
       );
     }
 
-    const formData = await req.formData();
-    const file = formData.get("file") as File | null;
-    const questionId = formData.get("questionId") as string | null;
+    // Accept the old multipart client too, but always transcribe the durable
+    // recording on the server, never a second, potentially different upload.
+    const questionId = req.headers.get("content-type")?.includes("application/json")
+      ? (await req.json()).questionId
+      : (await req.formData()).get("questionId");
 
-    if (!file) {
-      return NextResponse.json({ error: "No audio file provided" }, { status: 400 });
-    }
-
-    if (!questionId) {
+    if (typeof questionId !== "string" || !questionId) {
       return NextResponse.json({ error: "Question ID required" }, { status: 400 });
     }
-
-    const maxSize = 10 * 1024 * 1024;
-    if (file.size > maxSize) {
-      return NextResponse.json(
-        { error: "File size exceeds 10MB limit" },
-        { status: 400 },
-      );
-    }
-
-    // Convert File to Buffer
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
 
     // Persist recording for playback on results / teacher review
     const stored = await prisma.attemptAnswer.findUnique({
       where: { attemptId_section_questionId: { attemptId, section: "SPEAKING", questionId } },
     });
-    const audioUrl = (stored?.answer as { audioUrl?: string } | null)?.audioUrl;
+    const fallback = (attempt.sections?.find((s) => s.type === "SPEAKING")?.answers as any)?.[questionId]
+      ?? (attempt.answers as any)?.SPEAKING?.[questionId];
+    const savedAnswer = stored?.answer ?? fallback;
+    const audioUrl = speakingAnswerAudioUrl(savedAnswer);
     if (!audioUrl) return NextResponse.json({ error: "Save the recording before transcription" }, { status: 409 });
+    const existingText = speakingAnswerText(savedAnswer);
+    if (existingText) return NextResponse.json({ success: true, cached: true, text: existingText, audioUrl, questionId });
+    const filename = audioUrl.match(/^\/(?:api\/)?audio\/([a-zA-Z0-9_-]+\.(?:webm|mp4|m4a|ogg|wav|mp3|aac|flac|wma))$/i)?.[1];
+    if (!filename) return NextResponse.json({ error: "Unsupported saved audio path" }, { status: 400 });
+    let buffer: Buffer;
+    try { buffer = await readFile(join(process.cwd(), "public", "audio", filename)); }
+    catch { return NextResponse.json({ error: "Saved audio file was not found on the server", code: "AUDIO_MISSING" }, { status: 404 }); }
+    if (!buffer.length || buffer.length > 10 * 1024 * 1024) {
+      return NextResponse.json({ error: "Saved recording is empty or exceeds 10MB" }, { status: 400 });
+    }
 
     // Save to temporary file (Whisper API requires a file, not blob)
-    const extension = file.name.split(".").pop()?.toLowerCase();
+    const extension = filename.split(".").pop()?.toLowerCase();
     if (!extension || !["webm", "mp4", "m4a", "ogg", "wav", "mp3"].includes(extension)) {
       return NextResponse.json({ error: "Unsupported recording format" }, { status: 400 });
     }
@@ -124,7 +133,11 @@ export async function POST(
       if (tempFilePath) {
         await unlink(tempFilePath).catch(() => {});
       }
-      handleOpenAIError(aiError);
+      const failure = transcriptionError(aiError);
+      console.error("Speaking transcription provider failure", {
+        attemptId, questionId, code: failure.code, status: aiError?.status,
+      });
+      return NextResponse.json(failure, { status: 502 });
     }
 
     // Clean up temp file
@@ -132,19 +145,30 @@ export async function POST(
       await unlink(tempFilePath).catch(() => {});
     }
 
-    await prisma.$transaction(async (tx) => {
+    if (!transcription.text?.trim()) {
+      return NextResponse.json({ code: "AI_EMPTY_TRANSCRIPT", error: "Audio saved, but no speech was detected in the recording." }, { status: 422 });
+    }
+
+    const persisted = await prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM attempts WHERE id = ${attemptId} FOR UPDATE`;
       const latest = await tx.attemptAnswer.findUnique({
         where: { attemptId_section_questionId: { attemptId, section: "SPEAKING", questionId } },
       });
       // A late transcription must not replace a newer recording.
-      if ((latest?.answer as { audioUrl?: string } | null)?.audioUrl !== audioUrl) return;
+      if (latest && speakingAnswerAudioUrl(latest.answer) !== audioUrl) return false;
       const answer = { text: transcription.text, audioUrl };
-      await tx.attemptAnswer.update({ where: { id: latest!.id }, data: { answer } });
+      await tx.attemptAnswer.upsert({
+        where: { attemptId_section_questionId: { attemptId, section: "SPEAKING", questionId } },
+        create: { attemptId, section: "SPEAKING", questionId, answer }, update: { answer },
+      });
       const sections = await tx.attemptSection.findMany({ where: { attemptId, type: "SPEAKING" } });
       for (const section of sections) {
+        const rubric = { ...((section.rubric as Record<string, any>) || {}) };
+        const oldAi = rubric.ieltsSpeakingAi;
+        delete rubric.ieltsSpeakingAi;
         await tx.attemptSection.update({ where: { id: section.id }, data: {
           answers: { ...((section.answers as Record<string, any>) || {}), [questionId]: answer },
+          ...(oldAi ? { rubric, ...(section.bandScore === oldAi.overallBand ? { bandScore: null } : {}) } : {}),
         } });
       }
       if (!sections.length) {
@@ -154,7 +178,9 @@ export async function POST(
           answers: { ...answers, SPEAKING: { ...(answers.SPEAKING || {}), [questionId]: answer } },
         } });
       }
+      return true;
     });
+    if (!persisted) return NextResponse.json({ error: "Recording changed during transcription. Please retry." }, { status: 409 });
 
     return NextResponse.json({
       success: true,

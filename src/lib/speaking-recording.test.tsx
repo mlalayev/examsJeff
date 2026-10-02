@@ -2,6 +2,7 @@
 import React, { act } from 'react';
 import { createRoot, Root } from 'react-dom/client';
 import { QSpeakingRecording } from '@/components/questions/QSpeakingRecording';
+import { SpeakingRecordingsReview } from '@/components/attempts/SpeakingRecordingsReview';
 import { flushSpeakingRecordings, pendingRecording } from './speaking-persistence';
 
 jest.mock('./speaking-persistence', () => ({
@@ -86,4 +87,17 @@ test('a recording recovered after reload is uploaded without recording again', a
   expect(file.name).toBe('speaking-q.webm');
   expect(file.size).toBe(9);
   expect(changed).toHaveBeenCalledWith({ text: '', audioUrl: '/api/audio/recovered.webm' });
+});
+test('results show an audio player and the saved transcript together', async () => {
+  await act(async () => { root.render(<SpeakingRecordingsReview attemptId="attempt" canTranscribe={true} onUpdated={jest.fn()} recordings={[{ questionId: 'q', prompt: 'Speak', answer: { audioUrl: '/audio/saved.mp4', text: 'My saved transcript' } }]} />); });
+  expect(host.querySelector('audio')?.getAttribute('src')).toBe('/api/audio/saved.mp4');
+  expect(host.textContent).toContain('My saved transcript');
+});
+test('Generate transcript retries using question ID, without a new microphone recording', async () => {
+  const updated = jest.fn(async () => {});
+  (fetch as jest.Mock).mockResolvedValue({ ok: true, json: async () => ({ text: 'Recovered' }) });
+  await act(async () => { root.render(<SpeakingRecordingsReview attemptId="attempt" canTranscribe={true} onUpdated={updated} recordings={[{ questionId: 'q', prompt: 'Speak', answer: { audioUrl: '/api/audio/saved.webm', text: '' } }]} />); });
+  await act(async () => { host.querySelector('button')!.click(); });
+  expect(JSON.parse((fetch as jest.Mock).mock.calls[0][1].body)).toEqual({ questionId: 'q' });
+  expect(updated).toHaveBeenCalledTimes(1);
 });

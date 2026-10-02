@@ -23,7 +23,8 @@ export async function GET(
         where: { id },
         select: {
           id: true,
-          name: true,
+          firstName: true,
+          lastName: true,
           email: true,
           role: true,
           approved: true,
@@ -90,7 +91,7 @@ export async function GET(
               firstEnrollAt: true,
               monthlyFee: true,
               coinBalance: true,
-              teacher: { select: { id: true, name: true, email: true } }
+              teacher: { select: { id: true, firstName: true, lastName: true, email: true } }
             }
           },
           classesTeaching: {
@@ -109,7 +110,7 @@ export async function GET(
             select: {
               id: true,
               unitExam: { select: { exam: { select: { title: true } } } },
-              student: { select: { name: true, email: true } },
+              student: { select: { firstName: true, lastName: true, email: true } },
               status: true,
               createdAt: true
             },
@@ -166,6 +167,21 @@ export async function GET(
     // Attach attempts and count
     const result = {
       ...userDetails,
+      name: [userDetails.firstName, userDetails.lastName].filter(Boolean).join(" ") || null,
+      studentProfile: userDetails.studentProfile ? {
+        ...userDetails.studentProfile,
+        teacher: userDetails.studentProfile.teacher ? {
+          ...userDetails.studentProfile.teacher,
+          name: [userDetails.studentProfile.teacher.firstName, userDetails.studentProfile.teacher.lastName].filter(Boolean).join(" ") || null,
+        } : null,
+      } : null,
+      assignmentsAsTeacher: userDetails.assignmentsAsTeacher.map((assignment) => ({
+        ...assignment,
+        student: {
+          ...assignment.student,
+          name: [assignment.student.firstName, assignment.student.lastName].filter(Boolean).join(" ") || null,
+        },
+      })),
       attempts: enrichedAttempts,
       _count: {
         ...userDetails._count,

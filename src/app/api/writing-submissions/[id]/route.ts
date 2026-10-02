@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-utils";
 import { z } from "zod";
+import { integrityBlock } from '@/lib/exam-integrity';
+import { canReviewIntegrity } from '@/lib/exam-integrity';
 
 const feedbackSchema = z.object({
   overallBand: z.number().min(0).max(9).optional().nullable(),
@@ -28,7 +30,8 @@ export async function GET(
         student: {
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
           },
         },
@@ -42,7 +45,8 @@ export async function GET(
         gradedBy: {
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
           },
         },
         attemptSection: {
@@ -52,6 +56,8 @@ export async function GET(
                 id: true,
                 examId: true,
                 startedAt: true,
+                branchId: true,
+                studentId: true,
               },
             },
           },
@@ -70,7 +76,7 @@ export async function GET(
     // Teacher must be the class teacher OR the assigned teacher OR ADMIN/BOSS
     const isTeacherOfClass = submission.class?.teacherId === user.id;
     const isAssignedTeacher = submission.teacherId === user.id;
-    const isAdmin = user.role === "ADMIN" || user.role === "BOSS" || user.role === "BRANCH_ADMIN" || user.role === "BRANCH_BOSS";
+    const isAdmin = canReviewIntegrity(user, submission.attemptSection.attempt);
     const isStudent = submission.studentId === user.id;
 
     if (!isTeacherOfClass && !isAssignedTeacher && !isAdmin && !isStudent) {
@@ -81,6 +87,8 @@ export async function GET(
     }
 
     // If student, only return submission status and their text (if published)
+    const blocked = await integrityBlock(submission.attemptId);
+    if (blocked) return blocked;
     if (isStudent) {
       return NextResponse.json({
         submission: {
@@ -101,7 +109,7 @@ export async function GET(
                 task1Comments: submission.task1Comments,
                 task2Comments: submission.task2Comments,
                 gradedAt: submission.gradedAt,
-                gradedBy: submission.gradedBy,
+                gradedBy: submission.gradedBy ? { ...submission.gradedBy, name: [submission.gradedBy.firstName, submission.gradedBy.lastName].filter(Boolean).join(' ') } : null,
               }
             : {
                 feedbackStatus: "pending",
@@ -114,7 +122,7 @@ export async function GET(
     return NextResponse.json({
       submission: {
         id: submission.id,
-        student: submission.student,
+        student: { ...submission.student, name: [submission.student.firstName, submission.student.lastName].filter(Boolean).join(' ') },
         class: submission.class,
         task1Response: submission.task1Response,
         task2Response: submission.task2Response,
@@ -131,7 +139,7 @@ export async function GET(
         task2Comments: submission.task2Comments,
         feedbackPublished: submission.feedbackPublished,
         gradedAt: submission.gradedAt,
-        gradedBy: submission.gradedBy,
+        gradedBy: submission.gradedBy ? { ...submission.gradedBy, name: [submission.gradedBy.firstName, submission.gradedBy.lastName].filter(Boolean).join(' ') } : null,
         attemptId: submission.attemptSection.attempt.id,
         examId: submission.attemptSection.attempt.examId,
       },
@@ -183,7 +191,8 @@ export async function PATCH(
     // Check permissions
     const isTeacherOfClass = submission.class?.teacherId === user.id;
     const isAssignedTeacher = submission.teacherId === user.id;
-    const isAdmin = user.role === "ADMIN" || user.role === "BOSS" || user.role === "BRANCH_ADMIN" || user.role === "BRANCH_BOSS";
+    const parentAttempt = await prisma.attempt.findUnique({ where: { id: submission.attemptId } });
+    const isAdmin = !!parentAttempt && canReviewIntegrity(user, parentAttempt);
 
     if (!isTeacherOfClass && !isAssignedTeacher && !isAdmin) {
       return NextResponse.json(
@@ -193,6 +202,8 @@ export async function PATCH(
     }
 
     // Update feedback
+    const blocked = await integrityBlock(submission.attemptId);
+    if (blocked) return blocked;
     const updated = await prisma.writingSubmission.update({
       where: { id },
       data: {
@@ -222,7 +233,7 @@ export async function PATCH(
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: "Validation error", details: error.errors },
+        { error: "Validation error", details: error.issues },
         { status: 400 }
       );
     }

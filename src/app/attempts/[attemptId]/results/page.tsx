@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import Sidebar from "@/components/dashboard/Sidebar";
 import { WritingAiFeedbackCard } from "@/components/attempts/WritingAiFeedbackCard";
+import { SpeakingRecordingsReview, requestSavedTranscript, type SpeakingRecordingReview } from "@/components/attempts/SpeakingRecordingsReview";
 import { ExamCoinRewardBanner } from "@/components/coins/ExamCoinRewardBanner";
 import FormattedText from "@/components/FormattedText";
 import {
@@ -29,6 +30,7 @@ import {
 } from "@/lib/speaking-answer";
 
 interface ResultsData {
+  speakingRecordings?: SpeakingRecordingReview[];
   attemptId: string;
   examTitle: string;
   examCategory?: string;
@@ -124,7 +126,8 @@ interface ResultsData {
     fluencyCoherence: number;
     lexicalResource: number;
     grammar: number;
-    pronunciation: number;
+    pronunciation: number | null;
+    assessmentType?: "TRANSCRIPT_ONLY";
     part1: { band: number; feedback: string };
     part2: { band: number; feedback: string };
     part3: { band: number; feedback: string };
@@ -401,10 +404,16 @@ export default function AttemptResultsPage() {
     e?.preventDefault();
     setCheckingSpeakingAi(true);
     try {
+      const recordings = data?.speakingRecordings || [];
+      for (const recording of recordings) {
+        if (speakingAnswerAudioUrl(recording.answer) && !speakingAnswerText(recording.answer)) {
+          await requestSavedTranscript(attemptId, recording.questionId);
+        }
+      }
       const res = await fetch(`/api/attempts/${attemptId}/speaking/ai-score`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ force: Boolean(data?.speakingAi) }),
       });
       const json = await res.json();
       if (!res.ok) {
@@ -1049,7 +1058,7 @@ export default function AttemptResultsPage() {
                           ) : showSpeakingAi && speakingBand != null && data.speakingAi ? (
                             <>
                               <span>
-                                AI speaking • FC {data.speakingAi.fluencyCoherence.toFixed(1)} · LR {data.speakingAi.lexicalResource.toFixed(1)} · GRA {data.speakingAi.grammar.toFixed(1)} · PR {data.speakingAi.pronunciation.toFixed(1)}
+                                AI text estimate • Coherence {data.speakingAi.fluencyCoherence.toFixed(1)} · LR {data.speakingAi.lexicalResource.toFixed(1)} · GRA {data.speakingAi.grammar.toFixed(1)} · PR {data.speakingAi.pronunciation?.toFixed(1) ?? "Not assessed"}
                               </span>
                               <span>•</span>
                               <span>{section.type}</span>
@@ -1255,6 +1264,11 @@ export default function AttemptResultsPage() {
           </div>
         )}
 
+        <SpeakingRecordingsReview attemptId={attemptId} recordings={data.speakingRecordings || []} canTranscribe={data.role !== "PARENT"} onUpdated={fetchResults} />
+        {data.role === "TEACHER" && data.speakingAi && <button type="button" disabled={checkingSpeakingAi} onClick={handlePersistSpeakingAiScore} className="mb-6 rounded bg-[#303380] px-4 py-2 text-sm text-white disabled:opacity-50">
+          {checkingSpeakingAi ? "Preparing transcripts and checking…" : "Recheck speaking transcripts with AI"}
+        </button>}
+
         {/* AI Speaking Assessment (Teacher) — one holistic score from Parts 1–3 transcripts */}
         {data.speakingAi && data.speakingAi.scoredAt && (
           <div className="mb-6">
@@ -1269,7 +1283,7 @@ export default function AttemptResultsPage() {
                     AI Speaking Assessment
                   </h2>
                   <p className="mt-0.5 text-xs text-slate-500">
-                    Fluency &amp; Coherence, Lexical Resource, Grammar, Pronunciation — overall band = (FC + LR + GRA + PR) / 4
+                    Transcript-based practice estimate: coherence, vocabulary and grammar. Pronunciation and spoken fluency require listening to the audio; this is not an official IELTS Speaking band.
                   </p>
                 </div>
                 <div className="shrink-0 rounded-full bg-[#303380] px-4 py-2 text-sm font-bold text-white shadow-sm">
@@ -1308,7 +1322,7 @@ export default function AttemptResultsPage() {
                       Pronunciation
                     </div>
                     <div className="text-xl font-bold tabular-nums text-emerald-700">
-                      {data.speakingAi.pronunciation.toFixed(1)}
+                      {data.speakingAi.pronunciation?.toFixed(1) ?? "Not assessed"}
                     </div>
                   </div>
                 </div>
@@ -1756,7 +1770,7 @@ export default function AttemptResultsPage() {
                                         {speakingAnswerText(q.studentAnswer)}
                                       </p>
                                     </div>
-                                  ) : null}
+                                  ) : <p className="text-sm text-amber-800">Transcript is unavailable. You can listen to the saved recording above.</p>}
                                 </div>
                               ) : q.qtype === "HTML_CSS" &&
                                  typeof q.studentAnswer === "object" &&

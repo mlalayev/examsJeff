@@ -252,7 +252,9 @@ export default function StudentAttemptsPage() {
               (a) => a.status === "SUBMITTED" && a.placementLevel
             )?.id;
             const statusLabel =
-              attempt.status === "SUBMITTED"
+              attempt.status === "DISQUALIFIED"
+                ? "Qayda pozuntusu — nəticə etibarsızdır"
+                : attempt.status === "SUBMITTED"
                 ? "Submitted"
                 : attempt.status === "IN_PROGRESS"
                 ? "In progress"
@@ -306,7 +308,7 @@ export default function StudentAttemptsPage() {
                     </div>
 
                     {/* Section inline stats */}
-                    {attempt.sections && attempt.sections.length > 0 && (
+                    {attempt.status !== "DISQUALIFIED" && attempt.sections && attempt.sections.length > 0 && (
                       <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs sm:text-sm text-slate-600">
                         {attempt.sections.map((section, idx) => (
                           <div key={idx} className="flex items-baseline gap-1">
@@ -335,7 +337,7 @@ export default function StudentAttemptsPage() {
                         </span>
                       </div>
                     )}
-                    {attempt.overallPercent !== null && (
+                    {attempt.status !== "DISQUALIFIED" && attempt.overallPercent !== null && (
                       <div className="flex items-start justify-between sm:flex-col sm:items-end sm:justify-start gap-1">
                         <span className="text-xs uppercase tracking-wide text-gray-400">
                           Overall score

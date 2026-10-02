@@ -945,6 +945,7 @@ export default function AttemptRunnerPage() {
       }
 
       // Clear all localStorage data for this attempt
+      window.dispatchEvent(new Event('exam-submitted'));
       clearAllAttemptLocalStorage();
 
       setShowSuccessModal(true);
@@ -1019,6 +1020,8 @@ export default function AttemptRunnerPage() {
                </div>
              )}
              <textarea
+               data-writing-answer
+               name={q.id}
                value={essayText}
                onChange={(e) => onChange(e.target.value)}
                disabled={readOnly}

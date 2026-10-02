@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-utils";
+import { integrityBlock } from '@/lib/exam-integrity';
 // import { scoreSection } from "@/lib/scoring";
 
 // GET /api/attempts/[id]/review - Get detailed review with correct/wrong answers
@@ -11,6 +12,8 @@ export async function GET(
   const { id } = await params;
   try {
     const user = await requireAuth();
+    const blocked = await integrityBlock(id);
+    if (blocked) return blocked;
     
     // Get attempt with all related data
     const attempt = await prisma.attempt.findUnique({

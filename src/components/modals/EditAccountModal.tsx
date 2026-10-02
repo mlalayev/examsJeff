@@ -86,6 +86,7 @@ export default function EditAccountModal({
 }: Props) {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [loading, setLoading] = useState(false);
+  const [loadedUserId, setLoadedUserId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [coinBalance, setCoinBalance] = useState(0);
@@ -97,6 +98,8 @@ export default function EditAccountModal({
     let cancelled = false;
     const load = async () => {
       setLoading(true);
+      setLoadedUserId(null);
+      setForm(emptyForm);
       setError("");
       try {
         const res = await fetch(`/api/admin/users/${userId}`);
@@ -125,6 +128,7 @@ export default function EditAccountModal({
           studyStatus: u.profile?.studyStatus ?? "CONTINUES",
         });
         setCoinBalance(u.profile?.coinBalance ?? 0);
+        setLoadedUserId(userId);
       } catch {
         if (!cancelled) setError("Failed to load account");
       } finally {
@@ -151,7 +155,7 @@ export default function EditAccountModal({
   const showProfileFields = form.role === "STUDENT" || form.role === "TEACHER";
 
   const handleSave = async () => {
-    if (!userId) return;
+    if (!userId || loadedUserId !== userId) return;
     if (!form.firstName.trim() || !form.lastName.trim()) {
       setError("First and last name are required");
       return;
@@ -172,7 +176,7 @@ export default function EditAccountModal({
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
         email: form.email.trim(),
-        role: form.role,
+        ...(form.role !== "CREATOR" ? { role: form.role } : {}),
         branchId: form.branchId || null,
         approved: form.approved,
       };
@@ -287,9 +291,11 @@ export default function EditAccountModal({
                 <Field label="Role">
                   <select
                     value={form.role}
+                    disabled={form.role === "CREATOR"}
                     onChange={(e) => set("role", e.target.value)}
                     className={inputCls}
                   >
+                    {form.role === "CREATOR" && <option value="CREATOR">Creator</option>}
                     {ROLE_OPTIONS.map((r) => (
                       <option key={r.value} value={r.value}>
                         {r.label}
@@ -484,7 +490,7 @@ export default function EditAccountModal({
           </button>
           <button
             onClick={handleSave}
-            disabled={saving || loading}
+            disabled={saving || loading || loadedUserId !== userId}
             className="px-5 py-2 text-sm font-medium text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             style={{ backgroundColor: ACCENT }}
             onMouseEnter={(e) => {

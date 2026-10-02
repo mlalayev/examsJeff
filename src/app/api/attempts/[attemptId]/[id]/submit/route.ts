@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { integrityBlock } from "@/lib/exam-integrity";
 import { requireAuth } from "@/lib/auth-utils";
 // import { scoreAttempt } from "@/lib/scoring";
 
@@ -10,6 +11,8 @@ export async function POST(
 ) {
   try {
     const user = await requireAuth();
+    const blocked = await integrityBlock((await params).id);
+    if (blocked) return blocked;
     
     // Get attempt and verify ownership
     const attempt = await prisma.attempt.findUnique({

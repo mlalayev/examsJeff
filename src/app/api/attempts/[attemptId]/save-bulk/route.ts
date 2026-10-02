@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { integrityBlock } from "@/lib/exam-integrity";
 import { requireStudent } from "@/lib/auth-utils";
 import { applyRateLimit } from "@/lib/rate-limiter-enhanced";
 import { validateBodySize } from "@/lib/security";
@@ -24,6 +25,8 @@ export async function POST(
 
     const user = await requireStudent();
     const { attemptId } = await params;
+    const blocked = await integrityBlock(attemptId);
+    if (blocked) return blocked;
     const studentId = (user as any).id as string;
     const body = (await request.json()) as BulkPayload;
 

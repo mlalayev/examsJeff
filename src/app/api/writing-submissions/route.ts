@@ -6,6 +6,9 @@ import { requireAuth } from "@/lib/auth-utils";
 export async function GET(request: Request) {
   try {
     const user = await requireAuth();
+    if (!['STUDENT', 'TEACHER', 'ADMIN', 'BOSS', 'CREATOR', 'BRANCH_ADMIN', 'BRANCH_BOSS'].includes(user.role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
     const { searchParams } = new URL(request.url);
     
     const classId = searchParams.get("classId");
@@ -13,7 +16,7 @@ export async function GET(request: Request) {
     const onlyUngraded = searchParams.get("onlyUngraded") === "true";
 
     // Build where clause based on user role
-    const where: any = {};
+    const where: any = { attemptSection: { attempt: { status: { not: 'DISQUALIFIED' } } } };
 
     if (user.role === "STUDENT") {
       // Students can only see their own submissions
@@ -31,7 +34,7 @@ export async function GET(request: Request) {
     } else if (user.role === "BRANCH_ADMIN" || user.role === "BRANCH_BOSS") {
       // Branch admins see submissions from their branch students
       where.student = {
-        branchId: user.branchId,
+        branchId: user.branchId || '__no_branch__',
       };
     }
     // ADMIN and BOSS see all submissions (no filter)
@@ -41,7 +44,7 @@ export async function GET(request: Request) {
       where.classId = classId;
     }
 
-    if (studentId) {
+    if (studentId && user.role !== 'STUDENT') {
       where.studentId = studentId;
     }
 
@@ -55,7 +58,8 @@ export async function GET(request: Request) {
         student: {
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
           },
         },
@@ -68,7 +72,8 @@ export async function GET(request: Request) {
         gradedBy: {
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
           },
         },
         attemptSection: {
@@ -101,7 +106,7 @@ export async function GET(request: Request) {
 
       return {
         id: sub.id,
-        student: sub.student,
+        student: { ...sub.student, name: [sub.student.firstName, sub.student.lastName].filter(Boolean).join(' ') },
         class: sub.class,
         submittedAt: sub.submittedAt,
         wordCountTask1: sub.wordCountTask1,
@@ -111,7 +116,7 @@ export async function GET(request: Request) {
         task2Band: sub.task2Band,
         feedbackPublished: sub.feedbackPublished,
         gradedAt: sub.gradedAt,
-        gradedBy: sub.gradedBy,
+        gradedBy: sub.gradedBy ? { ...sub.gradedBy, name: [sub.gradedBy.firstName, sub.gradedBy.lastName].filter(Boolean).join(' ') } : null,
         examId: sub.attemptSection.attempt.examId,
       };
     });
