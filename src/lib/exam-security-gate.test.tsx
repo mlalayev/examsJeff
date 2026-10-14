@@ -2,6 +2,8 @@
 import React, { act } from 'react';
 import { createRoot, Root } from 'react-dom/client';
 import { ExamSecurityGate } from '@/components/attempts/ExamSecurityGate';
+import { ExamNotice } from '@/components/attempts/ExamNotice';
+import { showExamNotice } from '@/lib/exam-notice';
 jest.mock('next/navigation', () => ({ useParams: () => ({ attemptId: 'attempt' }), usePathname: () => '/attempts/attempt/ielts/run' }));
 jest.mock('@/components/attempts/ExamIntegrityReview', () => ({ ExamIntegrityReview: () => null }));
 let root: Root; let host: HTMLDivElement; let fullscreen: Element | null;
@@ -22,6 +24,18 @@ beforeEach(() => {
 });
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); jest.useRealTimers(); });
 const render = async () => { await act(async () => { root.render(<ExamSecurityGate><div>EXAM QUESTIONS</div></ExamSecurityGate>); }); };
+test('save error notice stays inside fullscreen without a native alert', async () => {
+  const nativeAlert = jest.spyOn(window, 'alert').mockImplementation(() => {});
+  fullscreen = document.documentElement;
+  await act(async () => { root.render(<ExamNotice />); });
+  await act(async () => { showExamNotice('Answers could not be saved. Please retry.'); });
+  expect(host.querySelector('[role="alertdialog"]')?.textContent).toContain('Answers could not be saved');
+  expect(nativeAlert).not.toHaveBeenCalled();
+  expect(document.fullscreenElement).toBe(document.documentElement);
+  await act(async () => { host.querySelector('button')!.click(); });
+  expect(host.querySelector('[role="alertdialog"]')).toBeNull();
+  nativeAlert.mockRestore();
+});
 const clickText = async (text: string) => { await act(async () => { const button = Array.from(host.querySelectorAll('button')).find(b => b.textContent?.includes(text)); expect(button).toBeDefined(); button!.click(); }); };
 const preflight = async () => {
   await clickText('Tam ekranı sına');

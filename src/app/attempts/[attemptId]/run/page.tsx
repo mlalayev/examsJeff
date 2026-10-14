@@ -1,4 +1,5 @@
 "use client";
+import { showExamNotice } from '@/lib/exam-notice';
 
 import React, {
   useEffect,
@@ -703,7 +704,7 @@ export default function AttemptRunnerPage() {
       }
     } catch (err) {
       console.error(err);
-      alert("Failed to load exam");
+      showExamNotice("Failed to load exam");
       router.push("/dashboard/student/exams");
     } finally {
       setLoading(false);
@@ -790,7 +791,7 @@ export default function AttemptRunnerPage() {
       // Auto-save and lock the section
       await saveSection(sectionId, answers[sectionId] || {});
       setLockedSections((prev) => new Set([...prev, sectionId]));
-      alert("Time's up for this module! Your answers have been auto-saved and the module is now locked.");
+      showExamNotice("Time's up for this module! Your answers have been auto-saved and the module is now locked.");
 
       const currentIndex = data.sections.findIndex((s) => s.id === sectionId);
       if (currentIndex < data.sections.length - 1) {
@@ -817,7 +818,7 @@ export default function AttemptRunnerPage() {
 
         setActiveSection(nextSection.id);
       } else {
-        alert("This was the last module. You can now submit the entire exam.");
+        showExamNotice("This was the last module. You can now submit the entire exam.");
       }
     }
     // IELTS: mark section as completed and auto-advance to the next section (or show time-up modal for Speaking)
@@ -860,7 +861,7 @@ export default function AttemptRunnerPage() {
   const handleSubmitModuleClick = () => {
     if (!data?.examCategory || data.examCategory !== "SAT") return;
     if (lockedSections.has(activeSection)) {
-      alert("This module is already submitted.");
+      showExamNotice("This module is already submitted.");
       return;
     }
     setShowSubmitModuleModal(true);
@@ -916,7 +917,7 @@ export default function AttemptRunnerPage() {
       setActiveSection(nextSection.id);
     } else {
       // Last module - show message
-      alert("This was the last module. You can now submit the entire exam.");
+      showExamNotice("This was the last module. You can now submit the entire exam.");
     }
   };
 
@@ -951,7 +952,7 @@ export default function AttemptRunnerPage() {
       setShowSuccessModal(true);
     } catch (err: any) {
       console.error("Submit error:", err);
-      alert(err.message || "Failed to submit exam");
+      showExamNotice(err.message || "Failed to submit exam");
     } finally {
       setSubmitting(false);
     }
@@ -1285,7 +1286,7 @@ export default function AttemptRunnerPage() {
 
       // SAT: locked sections cannot be re-entered
       if (data.examCategory === "SAT" && lockedSections.has(sectionId)) {
-        alert("This module has been completed and locked. You cannot make changes.");
+        showExamNotice("This module has been completed and locked. You cannot make changes.");
         return;
       }
 
@@ -1294,11 +1295,11 @@ export default function AttemptRunnerPage() {
         const currentIndex = data.sections.findIndex((s) => s.id === activeSection);
         const targetIndex = data.sections.findIndex((s) => s.id === sectionId);
         if (targetIndex < currentIndex) {
-          alert("You cannot go back to previous modules in SAT exams.");
+          showExamNotice("You cannot go back to previous modules in SAT exams.");
           return;
         }
         if (targetIndex > currentIndex && !lockedSections.has(activeSection)) {
-          alert("Please submit the current module before moving to the next one.");
+          showExamNotice("Please submit the current module before moving to the next one.");
           return;
         }
       }
@@ -1341,7 +1342,7 @@ export default function AttemptRunnerPage() {
       await flushSpeakingRecordings(attemptId);
       await syncAllFromLocalStorage();
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Answers could not be saved.");
+      showExamNotice(error instanceof Error ? error.message : "Answers could not be saved.");
       return;
     }
     // Mark the section they are leaving as completed (tick + disabled)
@@ -1580,7 +1581,7 @@ export default function AttemptRunnerPage() {
       await flushSpeakingRecordings(attemptId);
       advanceIeltsSpeakingQuestion();
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Recording could not be saved. Please retry.");
+      showExamNotice(error instanceof Error ? error.message : "Recording could not be saved. Please retry.");
     }
   }, [advanceIeltsSpeakingQuestion, attemptId]);
 
@@ -1734,7 +1735,7 @@ export default function AttemptRunnerPage() {
               writingPartProgress={writingPartProgress}
               speakingPart={speakingPart}
               onSpeakingPartChange={(part) => {
-                void flushSpeakingRecordings(attemptId).then(() => setSpeakingPart(part)).catch((error) => alert(error.message));
+                void flushSpeakingRecordings(attemptId).then(() => setSpeakingPart(part)).catch((error) => showExamNotice(error.message));
               }}
               speakingPartProgress={speakingPartProgress}
             />
@@ -1796,7 +1797,7 @@ export default function AttemptRunnerPage() {
                   onWritingPartChange={setWritingPart}
                   speakingPart={speakingPart}
                   onSpeakingPartChange={(part) => {
-                    void flushSpeakingRecordings(attemptId).then(() => setSpeakingPart(part)).catch((error) => alert(error.message));
+                    void flushSpeakingRecordings(attemptId).then(() => setSpeakingPart(part)).catch((error) => showExamNotice(error.message));
                   }}
                   speakingCurrentQuestionIndex={currentSection.type === "SPEAKING" && data.examCategory === "IELTS" && speakingIntroDismissed ? speakingCurrentQuestionIndex : undefined}
                   speakingSecondsLeft={currentSection.type === "SPEAKING" && data.examCategory === "IELTS" && speakingIntroDismissed ? speakingSecondsLeft : undefined}

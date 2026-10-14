@@ -1,4 +1,5 @@
 "use client";
+import { showExamNotice } from '@/lib/exam-notice';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -291,12 +292,12 @@ function IeltsAudioPlayer({
     
     // Check if audio duration is loaded and target is valid
     if (!audio.duration || audio.duration <= 0) {
-      alert("Audio is still loading. Please wait a moment and try again.");
+      showExamNotice("Audio is still loading. Please wait a moment and try again.");
       return;
     }
     
     if (target > audio.duration) {
-      alert(`Saved time ${formatTime(Math.floor(target))} is beyond audio duration.`);
+      showExamNotice(`Saved time ${formatTime(Math.floor(target))} is beyond audio duration.`);
       return;
     }
     
@@ -369,7 +370,7 @@ function IeltsAudioPlayer({
         clearInterval(bufferCheckInterval.current!);
         setBuffering(false);
         setBufferProgress(0);
-        alert(
+        showExamNotice(
           `Buffering timeout. The audio will start from the beginning.\n\n` +
           `Tip: Let the audio play for a few minutes to buffer, then try resuming.`
         );
@@ -401,7 +402,7 @@ function IeltsAudioPlayer({
       
       // Check if seek actually worked
       if (Math.abs(actualTime - target) > 2) {
-        alert(
+        showExamNotice(
           `Unable to jump to ${formatTime(Math.floor(target))}. ` +
           `The audio server doesn't support seeking. Playing from ${formatTime(Math.floor(actualTime))}.`
         );
@@ -434,7 +435,7 @@ function IeltsAudioPlayer({
     } catch (e) {
       clearTimeout(timeout);
       audio.removeEventListener("seeked", onSeeked);
-      alert("Failed to seek. Please try again.");
+      showExamNotice("Failed to seek. Please try again.");
       lastSavedSecondRef.current = originalBlock;
     }
   };
@@ -791,7 +792,7 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
       }
       router.replace(`/attempts/${attemptId}/results`);
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to submit");
+      showExamNotice(e instanceof Error ? e.message : "Failed to submit");
     } finally {
       setSubmitting(false);
     }
@@ -800,7 +801,7 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
   const requestSectionChange = (sectionId: string) => {
     if (!activeSection || sectionId === activeSection.id) return;
     if (lockedSections.has(sectionId)) {
-      alert("This section has already been submitted and cannot be reopened.");
+      showExamNotice("This section has already been submitted and cannot be reopened.");
       return;
     }
     setPendingSectionId(sectionId);
@@ -823,7 +824,7 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
       setActiveSectionId(pendingSectionId);
       setPendingSectionId(null);
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Answers could not be saved.");
+      showExamNotice(error instanceof Error ? error.message : "Answers could not be saved.");
     }
   };
 

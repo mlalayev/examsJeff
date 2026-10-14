@@ -1,4 +1,5 @@
 "use client";
+import { showExamNotice } from '@/lib/exam-notice';
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronRight } from "lucide-react";
@@ -110,7 +111,7 @@ export function IeltsSpeakingFlow({
       if (onBeforeAdvance) await onBeforeAdvance();
       advanceQuestion();
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Recording could not be saved. Please retry.");
+      showExamNotice(error instanceof Error ? error.message : "Recording could not be saved. Please retry.");
     } finally {
       setAdvancing(false);
     }
