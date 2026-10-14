@@ -13,6 +13,7 @@ beforeEach(() => {
   security = { policy: { state: 'PENDING', policyVersion: 1 }, status: 'IN_PROGRESS', hasSpeaking: false, canReview: false };
   Object.defineProperty(document, 'fullscreenElement', { configurable: true, get: () => fullscreen });
   document.documentElement.requestFullscreen = jest.fn(async () => { fullscreen = document.documentElement; document.dispatchEvent(new Event('fullscreenchange')); });
+  document.exitFullscreen = jest.fn(async () => { fullscreen = null; document.dispatchEvent(new Event('fullscreenchange')); });
   globalThis.fetch = jest.fn(async (_url: any, options: any) => {
     if (options?.method === 'POST') { const data = JSON.parse(options.body); responses.push(data); return { ok: true, json: async () => ({ success: true, invalidated: data.event?.kind === 'FULLSCREEN_EXIT' }) } as Response; }
     return { ok: true, json: async () => security } as Response;
@@ -55,6 +56,15 @@ test('successful submit disarms fullscreen exit listener', async () => {
   await render(); await preflight(); await clickText('tam ekranda başla');
   security.status = 'SUBMITTED'; jest.useFakeTimers();
   await act(async () => { window.dispatchEvent(new Event('exam-submitted')); fullscreen = null; document.dispatchEvent(new Event('fullscreenchange')); jest.advanceTimersByTime(400); });
+  expect(responses.some(r => r.event?.kind === 'FULLSCREEN_EXIT')).toBe(false);
+});
+test('acknowledged submit preserves runner and ignores stale server status', async () => {
+  await render(); await preflight(); await clickText('tam ekranda başla');
+  // Server mock still returns IN_PROGRESS: completion must be authoritative locally.
+  await act(async () => { window.dispatchEvent(new Event('exam-submitted')); });
+  expect(host.textContent).toContain('EXAM QUESTIONS');
+  expect(host.textContent).not.toContain('İmtahandan əvvəl cihaz yoxlaması');
+  expect(document.exitFullscreen).toHaveBeenCalled();
   expect(responses.some(r => r.event?.kind === 'FULLSCREEN_EXIT')).toBe(false);
 });
 test('pagehide is logged separately without cheating verdict', async () => {

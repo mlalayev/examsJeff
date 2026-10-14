@@ -523,6 +523,7 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
   const [answers, setAnswers] = useState<Record<string, Record<string, any>>>({});
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [confirmSubmit, setConfirmSubmit] = useState(false);
   const [lockedSections, setLockedSections] = useState<Set<string>>(() => new Set());
   const [pendingSectionId, setPendingSectionId] = useState<string | null>(null);
   const autosaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1101,9 +1102,7 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
             );
           })}
           <button
-            onClick={() => {
-              if (confirm("Submit the IELTS exam?")) void submitExam();
-            }}
+            onClick={() => setConfirmSubmit(true)}
             disabled={submitting}
             className="px-4 py-2 text-sm font-semibold rounded-md bg-blue-600 text-white disabled:opacity-60"
           >
@@ -1111,6 +1110,19 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
           </button>
         </div>
       </footer>
+
+      {confirmSubmit && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/45 p-4">
+          <div role="dialog" aria-modal="true" aria-labelledby="submit-exam-title" className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
+            <h3 id="submit-exam-title" className="text-lg font-semibold">Submit the IELTS exam?</h3>
+            <p className="my-4 text-sm">Review your answers before submitting. You cannot change them after submission.</p>
+            <div className="flex justify-end gap-3">
+              <button className="rounded border px-4 py-2" onClick={() => setConfirmSubmit(false)}>Cancel</button>
+              <button className="rounded bg-blue-600 px-4 py-2 text-white" disabled={submitting} onClick={() => { setConfirmSubmit(false); void submitExam(); }}>Submit exam</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {pendingSection && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">

@@ -23,6 +23,7 @@ export function ExamSecurityGate({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState('');
   const [invalid, setInvalid] = useState(false);
   const active = useRef(false);
+  const completed = useRef(false);
   const leaving = useRef(false);
   const queue = useRef<Event[]>([]);
   const flushing = useRef(false);
@@ -53,7 +54,10 @@ export function ExamSecurityGate({ children }: { children: React.ReactNode }) {
     try {
       const res = await fetch(endpoint, { cache: 'no-store' });
       if (!res.ok) throw new Error('İmtahanın təhlükəsizlik vəziyyəti yüklənmədi. Yenidən yoxlayın.');
-      const data: Security = await res.json(); setSecurity(data); setError('');
+      const data: Security = await res.json();
+      // A poll started before submit may return stale IN_PROGRESS data afterwards.
+      if (completed.current) return;
+      setSecurity(data); setError('');
       if (data.policy?.state === 'INVALID') { setInvalid(true); active.current = false; }
       if (data.status !== 'IN_PROGRESS') active.current = false;
     } catch (e) { setError((e as Error).message); }
@@ -80,7 +84,15 @@ export function ExamSecurityGate({ children }: { children: React.ReactNode }) {
     const onReturn = (e: PageTransitionEvent) => { if (e.persisted) { active.current = false; leaving.current = false; setReady(false); void load(); } };
     const onVisible = () => { if (active.current && document.hidden) report('PAGE_HIDDEN'); };
     const onOffline = () => { if (active.current) report('OFFLINE'); };
-    const onComplete = () => { active.current = false; setReady(false); void load(); };
+    const onComplete = () => {
+      completed.current = true;
+      active.current = false;
+      if (exitTimer) clearTimeout(exitTimer);
+      // Keep the runner mounted: it still needs to navigate/show its success UI.
+      // Never return to preflight after an acknowledged successful submission.
+      setSecurity(previous => previous ? { ...previous, status: 'SUBMITTED' } : previous);
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+    };
     const onPaste = (e: ClipboardEvent) => {
       if (!active.current || !(e.target instanceof HTMLElement) || !e.target.closest('[data-writing-answer]')) return;
       report('PASTE', { length: Math.min(100000, e.clipboardData?.getData('text').length || 0), field: e.target.getAttribute('name') || e.target.id || 'writing' });
@@ -156,8 +168,8 @@ export function ExamSecurityGate({ children }: { children: React.ReactNode }) {
   if (!security) return <div className="p-8">{error || 'İmtahan yoxlanılır…'}{error && <button onClick={load}>Yenidən yoxla</button>}</div>;
   if (!running) return <><ExamIntegrityReview attemptId={attemptId} />{security.policy?.state === 'INVALID' ? null : children}</>;
   if (invalid || security.policy?.state === 'INVALID') return <div className="m-8 rounded-xl border border-red-300 bg-red-50 p-8"><h1 className="text-xl font-bold">İmtahan nəticəsi etibarsızdır</h1><p>Qayda pozuntusu — fullscreen-dən çıxış. Cavablar silinməyib, lakin nəticəyə hesablanmayacaq. Texniki problem olubsa müəlliminizlə əlaqə saxlayın.</p><button onClick={() => { void flush(); void load(); }}>Server vəziyyətini yenidən yoxla</button></div>;
+  if (ready) return <><div hidden={completed.current || security.status !== 'IN_PROGRESS'} className="fixed left-1/2 top-0 z-[60] -translate-x-1/2 rounded-b bg-emerald-800 px-3 py-1 text-xs text-white">Tam ekran nəzarəti aktivdir</div>{children}</>;
   if (!security.policy || security.status !== 'IN_PROGRESS') return <>{children}</>;
-  if (ready) return <><div className="fixed left-1/2 top-0 z-[60] -translate-x-1/2 rounded-b bg-emerald-800 px-3 py-1 text-xs text-white">Tam ekran nəzarəti aktivdir</div>{children}</>;
   return <div className="mx-auto my-8 max-w-2xl space-y-4 rounded-xl border bg-white p-6 text-gray-900">
     <h1 className="text-2xl font-semibold">İmtahandan əvvəl cihaz yoxlaması</h1><p>{LOCKDOWN_NOTICE}</p>
     <p>Bu yoxlama mərhələsində tam ekrandan çıxmaq cəza yaratmır. İlk başlanğıcda sayğac yalnız aşağıdakı başlama düyməsindən sonra işə düşür. Başlanmış imtahana qayıdış sayğacı sıfırlamır.</p>
