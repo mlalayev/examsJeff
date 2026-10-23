@@ -1,4 +1,5 @@
 "use client";
+import { resolveExamImage } from '@/lib/exam-image';
 
 import { BaseQuestionProps } from "./types";
 import { QuestionImage } from "./QuestionImage";
@@ -63,7 +64,7 @@ export function QMcqSingle({ question, value, onChange, readOnly, onImageClick }
               {choiceImage && (
                 <div className="mt-2 flex justify-center">
                   <img
-                    src={choiceImage}
+                    src={resolveExamImage(choiceImage)}
                     alt={`Option ${idx + 1}`}
                     className="rounded border border-gray-300"
                     style={{ width: "100%", maxHeight: "min(50vh, 360px)", objectFit: "contain" }}

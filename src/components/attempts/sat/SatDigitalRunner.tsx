@@ -12,6 +12,8 @@ import {
   X,
 } from "lucide-react";
 import FormattedText from "@/components/FormattedText";
+import { QuestionImage } from '@/components/questions/QuestionImage';
+import { resolveExamImage } from '@/lib/exam-image';
 import { parseStructuredTextBlocks } from "@/lib/text-formatter";
 import { StructuredFormattedText } from "@/components/StructuredFormattedText";
 
@@ -770,6 +772,7 @@ export function SatDigitalRunner({
                         </button>
                       </div>
                       {dashedRule}
+                      <QuestionImage imageUrl={currentQuestion.prompt?.imageUrl} />
                       {(derivedStem || promptText(currentQuestion)) && (
                         <p className="mt-4 text-[15px] text-slate-900 leading-relaxed">
                           <FormattedText text={derivedStem || promptText(currentQuestion)} />
@@ -803,6 +806,9 @@ export function SatDigitalRunner({
                                   </span>
                                   <span className={`text-[15px] ${crossed ? "text-slate-500 line-through" : "text-slate-900"}`}>
                                     <FormattedText text={choice} />
+                                    {currentQuestion.options?.choiceImages?.[idx] && (
+                                      <img src={resolveExamImage(currentQuestion.options.choiceImages[idx])} alt={`Option ${String.fromCharCode(65 + idx)}`} className="mt-2 max-h-64 max-w-full object-contain" />
+                                    )}
                                   </span>
                                 </button>
                                 <button

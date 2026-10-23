@@ -67,7 +67,7 @@ class EnhancedRateLimiter {
       }
       
       // Fallback to connection IP
-      return request.ip || "unknown";
+      return "unknown";
     }
     
     // Standard Request object
@@ -287,11 +287,13 @@ export const RateLimitPresets = {
  */
 export async function applyRateLimit(
   request: NextRequest | Request,
-  preset: keyof typeof RateLimitPresets = "API"
+  preset: keyof typeof RateLimitPresets = "API",
+  authenticatedUserId?: string
 ): Promise<NextResponse | null> {
   const clientId = rateLimiter.getClientIdentifier(request);
   const config = RateLimitPresets[preset];
-  const result = rateLimiter.isRateLimited(clientId, config.max, config.windowMs);
+  const identifier = `${preset}:${authenticatedUserId ? `user:${authenticatedUserId}` : `ip:${clientId}`}`;
+  const result = rateLimiter.isRateLimited(identifier, config.max, config.windowMs);
 
   if (result.limited) {
     return NextResponse.json(

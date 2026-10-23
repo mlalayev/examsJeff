@@ -19,12 +19,11 @@ const ALLOWED_IMAGE_EXTENSIONS = (process.env.ALLOWED_IMAGE_EXTENSIONS || "jpg,j
 
 export async function POST(request: NextRequest) {
   try {
-    // Rate limiting
-    const rateLimitResult = await applyRateLimit(request, "UPLOAD");
+    const user = await requireAdminOrBranchAdmin();
+    const rateLimitResult = await applyRateLimit(request, "UPLOAD", user.id);
     if (rateLimitResult) return rateLimitResult;
 
     // Authentication check
-    await requireAdminOrBranchAdmin();
     
     let formData;
     try {

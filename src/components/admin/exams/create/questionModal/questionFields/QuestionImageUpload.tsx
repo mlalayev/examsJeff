@@ -1,4 +1,5 @@
 "use client";
+import { resolveExamImage } from '@/lib/exam-image';
 
 import { Question } from "../../types";
 
@@ -26,7 +27,7 @@ export function QuestionImageUpload({
         {question.image && (
           <div className="p-3 bg-white border border-gray-200 rounded-md">
             <img
-              src={question.image}
+              src={resolveExamImage(question.image)}
               alt="Question"
               className="max-w-full h-auto max-h-48 rounded border border-gray-200"
             />

@@ -351,7 +351,7 @@ export default function SatDigitalBuilder({ mode, examId, initial }: SatDigitalB
                 prev
                   ? {
                       ...prev,
-                      image: data.publicPath || data.path,
+                      image: data.path || data.publicPath,
                     }
                   : prev
               );

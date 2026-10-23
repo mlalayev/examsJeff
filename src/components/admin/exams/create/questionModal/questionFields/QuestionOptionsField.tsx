@@ -1,4 +1,5 @@
 "use client";
+import { resolveExamImage } from '@/lib/exam-image';
 
 import { Question } from "../../types";
 import { Plus, X, Image } from "lucide-react";
@@ -63,9 +64,10 @@ function ChoiceListEditor({
                         body: formData,
                       });
                       const data = await res.json();
+                      if (!res.ok) throw new Error(data.error || 'Image upload failed');
                       if (data.publicPath || data.path) {
                         const imgs = [...(choiceImages || [])];
-                        imgs[idx] = data.publicPath || data.path;
+                        imgs[idx] = data.path || data.publicPath;
                         onImagesChange(imgs);
                       }
                     } catch (error) {
@@ -99,7 +101,7 @@ function ChoiceListEditor({
           {choiceImages?.[idx] && (
             <div className="relative inline-block">
               <img
-                src={choiceImages[idx]}
+                src={resolveExamImage(choiceImages[idx])}
                 alt={`Option ${idx + 1}`}
                 className="h-20 w-auto rounded border border-gray-200"
               />

@@ -20,10 +20,10 @@ export async function POST(
   { params }: { params: Promise<{ attemptId: string }> }
 ) {
   try {
-    const rateLimitResult = await applyRateLimit(request as any, "API");
+    const user = await requireStudent();
+    const rateLimitResult = await applyRateLimit(request as any, "API", user.id);
     if (rateLimitResult) return rateLimitResult;
 
-    const user = await requireStudent();
     const { attemptId } = await params;
     const blocked = await integrityBlock(attemptId);
     if (blocked) return blocked;

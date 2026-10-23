@@ -9,10 +9,10 @@ import { SectionType, Prisma } from "@prisma/client";
 export async function POST(request: Request, { params }: { params: Promise<{ attemptId: string }> }) {
   try {
     // Rate limiting to prevent submission spam
-    const rateLimitResult = await applyRateLimit(request as any, "API");
+    const user = await requireStudent();
+    const rateLimitResult = await applyRateLimit(request as any, "API", user.id);
     if (rateLimitResult) return rateLimitResult;
 
-    const user = await requireStudent();
     const { attemptId } = await params;
     const blocked = await integrityBlock(attemptId);
     if (blocked) return blocked;

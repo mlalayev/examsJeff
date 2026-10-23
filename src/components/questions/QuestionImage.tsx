@@ -1,4 +1,5 @@
 "use client";
+import { resolveExamImage } from '@/lib/exam-image';
 
 interface QuestionImageProps {
   imageUrl?: string;
@@ -12,7 +13,7 @@ export function QuestionImage({ imageUrl, alt = "Question diagram", onClick }: Q
   return (
     <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
       <img
-        src={imageUrl}
+        src={resolveExamImage(imageUrl)}
         alt={alt}
         onClick={onClick}
         className="h-auto w-full max-h-[min(80vh,52rem)] object-contain mx-auto rounded border border-gray-300 cursor-pointer hover:opacity-90 transition-opacity"
