@@ -1,4 +1,5 @@
 "use client";
+import { useExamDraft } from '@/hooks/useExamDraft';
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -84,6 +85,9 @@ export default function GenericExamBuilder({ mode, category, examId, initial, sa
   const [selectedSectionType, setSelectedSectionType] = useState<SectionType | "">("");
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const draft = useExamDraft(`generic:${saveConfig?.createUrl || "exams"}:${category}:${mode}:${examId || "new"}`,
+    { examTitle, track, durationMin, sections, editingQuestion, showQuestionTypeModal, step, currentSection, selectedSectionType },
+    d => { setExamTitle(d.examTitle); setTrack(d.track); setDurationMin(d.durationMin); setSections(d.sections); setEditingQuestion(d.editingQuestion); setShowQuestionTypeModal(d.showQuestionTypeModal); setStep(d.step); setCurrentSection(d.currentSection); setSelectedSectionType(d.selectedSectionType); });
 
   const ieltsParts = useIELTSParts();
   const modals = useBuilderModals();
@@ -418,6 +422,7 @@ export default function GenericExamBuilder({ mode, category, examId, initial, sa
       if (res.ok) {
         const data = await res.json();
         const savedId = data.exam?.id || data.examId || examId || "";
+        draft.clear();
         router.push(
           saveConfig?.successRedirect(savedId) ??
             `/dashboard/admin/exams/${savedId}`
@@ -448,7 +453,8 @@ export default function GenericExamBuilder({ mode, category, examId, initial, sa
   const backHref = saveConfig?.backHref
     ?? (isEdit ? `/dashboard/admin/exams/${examId}` : "/dashboard/admin/exams/create");
 
-  return (
+  if (!draft.ready) return <div className="p-6">Draft yoxlanılır…</div>;
+  return (<>{draft.notice}
     <div className="p-4 sm:p-6 lg:p-8">
       {/* Minimal Header */}
       <div className="mb-8 sm:mb-12">
@@ -697,15 +703,15 @@ export default function GenericExamBuilder({ mode, category, examId, initial, sa
                     ...editingQuestion,
                     prompt: {
                       ...editingQuestion.prompt,
-                      backgroundImage: displayUrl,
-                      _serverPath: data.publicPath,
+                      backgroundImage: data.path || data.publicPath,
+                      _serverPath: data.path || data.publicPath,
                     },
                   });
                 } else {
                   setEditingQuestion({
                     ...editingQuestion,
-                    image: displayUrl,
-                    _serverPath: data.publicPath,
+                    image: data.path || data.publicPath,
+                    _serverPath: data.path || data.publicPath,
                   } as any);
                 }
               } else {
@@ -770,5 +776,5 @@ export default function GenericExamBuilder({ mode, category, examId, initial, sa
         questionsCount={modals.deleteSectionModal.questionsCount}
       />
     </div>
-  );
+  </>);
 }

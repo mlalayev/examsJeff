@@ -9,11 +9,8 @@ import { requireAdmin } from "@/lib/auth-utils";
  * It reuses the normal student attempt flow (run -> submit -> results) by
  * creating a "test" Booking + Attempt owned by the current admin user.
  *
- * Behaviour:
- *  - If a test attempt already exists for this admin + exam and is still
- *    IN_PROGRESS, it is reused (continue where you left off).
- *  - If the previous test attempt was already SUBMITTED, it is reset so the
- *    admin gets a fresh run each time.
+ * Each explicit Test click creates a fresh attempt and booking atomically.
+ * Old attempts are retained; their timers/locked modules must not be reused.
  *
  * Because the attempt is owned by an admin (not a STUDENT), it does not appear
  * in student-facing analytics. The results page renders the full teacher review
@@ -50,47 +47,21 @@ export async function POST(
     const examSections = exam.sections;
     const sectionTypes = examSections.map((s) => s.type);
 
-    // Find an existing test booking owned by this admin for this exam.
-    let booking = await prisma.booking.findFirst({
-      where: { studentId: userId, examId },
-      include: { attempt: true },
-    });
-
-    // Reuse an in-progress test attempt so the admin can continue.
-    if (booking?.attempt && booking.attempt.status === "IN_PROGRESS") {
-      return NextResponse.json({
-        attemptId: booking.attempt.id,
-        examCategory: exam.category,
-        message: "Continuing existing test attempt",
-      });
-    }
-
-    // Otherwise reset any previous (submitted) test attempt for a clean run.
-    if (booking?.attempt) {
-      await prisma.attempt.delete({ where: { id: booking.attempt.id } });
-    }
-
-    // Create the test booking if one doesn't exist yet.
-    if (!booking) {
-      booking = (await prisma.booking.create({
-        data: {
-          studentId: userId,
-          examId,
-          branchId: userBranchId,
-          startAt: new Date(),
-          status: "CONFIRMED",
-          sections: sectionTypes,
-        },
-        include: { attempt: true },
-      })) as typeof booking;
-    }
-
     const attempt = await prisma.attempt.create({
       data: {
-        bookingId: booking!.id,
+        booking: {
+          create: {
+            studentId: userId,
+            examId,
+            branchId: userBranchId,
+            startAt: new Date(),
+            status: "CONFIRMED",
+            sections: sectionTypes,
+          },
+        },
         studentId: userId,
         examId,
-        branchId: userBranchId,
+        ...(userBranchId ? { branch: { connect: { id: userBranchId } } } : {}),
         status: "IN_PROGRESS",
         startedAt: new Date(),
         sections: {

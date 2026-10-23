@@ -1,4 +1,5 @@
 "use client";
+import { useExamDraft } from '@/hooks/useExamDraft';
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -101,6 +102,9 @@ export default function IeltsDigitalBuilder({ mode, examId, initial }: IeltsDigi
   const [deleteQuestionId, setDeleteQuestionId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const draft = useExamDraft(`ielts:${mode}:${examId || "new"}`,
+    { examTitle, track, durationMin, sections, editingQuestion, showQuestionTypeModal, activeTab, parts },
+    d => { setExamTitle(d.examTitle); setTrack(d.track); setDurationMin(d.durationMin); setSections(d.sections); setEditingQuestion(d.editingQuestion); setShowQuestionTypeModal(d.showQuestionTypeModal); setActiveTab(d.activeTab); setParts(d.parts); });
   const [uploadingAudio, setUploadingAudio] = useState(false);
   const [alert, setAlert] = useState<{
     isOpen: boolean;
@@ -258,6 +262,7 @@ export default function IeltsDigitalBuilder({ mode, examId, initial }: IeltsDigi
       if (!res.ok) throw new Error(json.error || "Failed to save IELTS exam");
       const savedId = json.exam?.id || json.examId || examId || "";
       router.push(`/dashboard/admin/exams/${savedId}`);
+      draft.clear();
     } catch (e) {
       showAlert("Save failed", e instanceof Error ? e.message : "Failed to save IELTS exam", "error");
     } finally {
@@ -272,7 +277,8 @@ export default function IeltsDigitalBuilder({ mode, examId, initial }: IeltsDigi
 
   const isEdit = mode === "edit";
 
-  return (
+  if (!draft.ready) return <div className="p-6">Draft yoxlanılır…</div>;
+  return (<>{draft.notice}
     <div className="p-4 sm:p-6 lg:p-8">
       <div className="mb-6 sm:mb-10 flex items-start justify-between gap-4">
         <div>
@@ -505,5 +511,5 @@ export default function IeltsDigitalBuilder({ mode, examId, initial }: IeltsDigi
         type={alert.type}
       />
     </div>
-  );
+  </>);
 }

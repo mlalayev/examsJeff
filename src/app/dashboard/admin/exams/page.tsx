@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BookOpen, Plus, Search, Edit, Upload, Trash2, PlayCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -33,6 +33,7 @@ export default function AdminExamsPage() {
   const [filterActive, setFilterActive] = useState<boolean | null>(null);
   const [togglingExamId, setTogglingExamId] = useState<string | null>(null);
   const [startingTestId, setStartingTestId] = useState<string | null>(null);
+  const startingTest = useRef(false);
   const [creatingSample, setCreatingSample] = useState(false);
   const [deleteExamModal, setDeleteExamModal] = useState<{ isOpen: boolean; examId: string | null; examTitle: string }>({
     isOpen: false,
@@ -100,14 +101,18 @@ export default function AdminExamsPage() {
   };
 
   const handleTakeTest = async (examId: string) => {
+    if (startingTest.current) return;
+    startingTest.current = true;
     setStartingTestId(examId);
     try {
       const res = await fetch(`/api/admin/exams/${examId}/test-attempt`, {
         method: "POST",
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        showAlert("Failed to Start Test", data.error || "Failed to start test attempt", "error");
+        showAlert("Failed to Start Test", res.status === 429
+          ? 'Server request limit reached. Please retry later. If this repeats, check the Nginx rate-limit configuration.'
+          : data.error || "Failed to start test attempt", "error");
         return;
       }
       router.push(attemptRunnerPath(data.attemptId, data.examCategory));
@@ -115,6 +120,7 @@ export default function AdminExamsPage() {
       console.error("Error starting test attempt:", error);
       showAlert("Failed to Start Test", "Failed to start test attempt", "error");
     } finally {
+      startingTest.current = false;
       setStartingTestId(null);
     }
   };
@@ -415,7 +421,7 @@ export default function AdminExamsPage() {
                         </button>
                         <button
                           onClick={() => handleTakeTest(exam.id)}
-                          disabled={startingTestId === exam.id}
+                          disabled={startingTestId !== null}
                           className="px-2 py-1 text-xs font-medium text-indigo-700 bg-indigo-50 rounded hover:bg-indigo-100 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                           title="Take this exam to test it"
                         >
@@ -467,7 +473,7 @@ export default function AdminExamsPage() {
                 </button>
                 <button
                   onClick={() => handleTakeTest(exam.id)}
-                  disabled={startingTestId === exam.id}
+                  disabled={startingTestId !== null}
                   className="px-2 py-1 text-xs font-medium text-indigo-700 bg-indigo-50 rounded hover:bg-indigo-100 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Take this exam to test it"
                 >

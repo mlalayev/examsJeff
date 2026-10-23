@@ -1,4 +1,5 @@
 "use client";
+import { useExamDraft } from '@/hooks/useExamDraft';
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -22,6 +23,7 @@ export default function CreateSATExamPage() {
     verbalModule2: 27,
   });
   const [saving, setSaving] = useState(false);
+  const draft = useExamDraft('sat-template:create', { examTitle, questionCounts }, d => { setExamTitle(d.examTitle); setQuestionCounts(d.questionCounts); });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const validateCounts = (): boolean => {
@@ -156,6 +158,7 @@ export default function CreateSATExamPage() {
         const data = await res.json();
         alert("SAT Exam created successfully! You can now edit questions for each module.");
         router.push(`/dashboard/admin/exams/${data.exam.id}`);
+        draft.clear();
       } else {
         const error = await res.json();
         alert(error.error || "Failed to create exam");
@@ -168,7 +171,8 @@ export default function CreateSATExamPage() {
     }
   };
 
-  return (
+  if (!draft.ready) return <div className="p-6">Draft yoxlanılır…</div>;
+  return (<>{draft.notice}
     <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
       {/* Header */}
       <div className="max-w-4xl mx-auto mb-8">
@@ -401,6 +405,6 @@ export default function CreateSATExamPage() {
         </div>
       </div>
     </div>
-  );
+  </>);
 }
 
