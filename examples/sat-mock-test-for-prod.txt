@@ -1,0 +1,71 @@
+[verbal module 1]
+
+1. The researcher checked the measurements three times to ensure their _____. Which choice completes the text most precisely?
+a. accuracy
+b. distance
+c. popularity
+d. silence
+Answer: A
+Explanation: Repeated checking helps ensure that measurements are accurate.
+
+2. The museum opened a new exhibit on Monday. By Friday, more than 500 people had visited it. Which statement is supported by the text?
+a. The museum was closed on Friday.
+b. More than 500 people visited the new exhibit by Friday.
+c. The exhibit opened on Friday.
+d. Exactly 500 people visited on Monday.
+Answer: B
+Explanation: The passage explicitly states that more than 500 people had visited by Friday.
+
+[verbal module 2]
+
+1. Each of the students _____ a notebook. Which choice completes the sentence using Standard English?
+a. have
+b. are having
+c. has
+d. were having
+Answer: C
+Explanation: The singular subject Each takes the singular verb has.
+
+2. The first design was inexpensive to produce. _____, it broke easily during testing. Which transition best completes the text?
+a. For example
+b. Similarly
+c. Therefore
+d. However
+Answer: D
+Explanation: However introduces a contrast between low cost and poor durability.
+
+[math module 1]
+
+1. If 3x + 2 = 17, what is the value of x?
+a. 3
+b. 5
+c. 7
+d. 15
+Answer: B
+Explanation: Subtract 2 to get 3x = 15, then divide by 3 to get x = 5.
+
+2. A rectangle has length 8 and width 3. What is its area?
+a. 11
+b. 22
+c. 24
+d. 64
+Answer: C
+Explanation: Area equals length times width: 8 times 3 = 24.
+
+[math module 2]
+
+1. If f(x) = x^2 + 1, what is f(4)?
+a. 17
+b. 9
+c. 16
+d. 5
+Answer: A
+Explanation: f(4) = 4^2 + 1 = 17.
+
+2. A bag contains 3 red balls and 2 blue balls. One ball is selected at random. What is the probability that it is blue?
+a. 1/5
+b. 3/5
+c. 1/2
+d. 2/5
+Answer: D
+Explanation: There are 2 blue balls out of 5 equally likely balls.

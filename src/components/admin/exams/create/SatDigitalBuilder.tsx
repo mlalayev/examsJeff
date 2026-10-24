@@ -14,6 +14,8 @@ import type { ExamCategory, Question, QuestionType, Section } from "@/components
 import { createQuestionDraft } from "@/components/admin/exams/create/addQuestionFlow";
 import { validateExamInfo } from "@/components/admin/exams/create/examValidation";
 import { buildExamPayload } from "@/components/admin/exams/create/examSerializer";
+import SatTextImport from './SatTextImport';
+import { appendSatImport } from '@/lib/sat-text-import';
 
 const SAT_CATEGORY: ExamCategory = "SAT";
 
@@ -96,9 +98,11 @@ export default function SatDigitalBuilder({ mode, examId, initial }: SatDigitalB
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [importText, setImportText] = useState('');
+  const [showTextImport, setShowTextImport] = useState(false);
   const draft = useExamDraft(`sat:${mode}:${examId || "new"}`,
-    { examTitle, track, durationMin, sections, editingQuestion, showQuestionTypeModal, activeModuleIndex },
-    d => { setExamTitle(d.examTitle); setTrack(d.track); setDurationMin(d.durationMin); setSections(d.sections); setEditingQuestion(d.editingQuestion); setShowQuestionTypeModal(d.showQuestionTypeModal); setActiveModuleIndex(d.activeModuleIndex); });
+    { examTitle, track, durationMin, sections, editingQuestion, showQuestionTypeModal, activeModuleIndex, importText },
+    d => { setExamTitle(d.examTitle); setTrack(d.track); setDurationMin(d.durationMin); setSections(d.sections); setEditingQuestion(d.editingQuestion); setShowQuestionTypeModal(d.showQuestionTypeModal); setActiveModuleIndex(d.activeModuleIndex); setImportText(d.importText ?? ''); });
 
   const [deleteQuestionId, setDeleteQuestionId] = useState<string | null>(null);
   const [alert, setAlert] = useState<{
@@ -264,6 +268,16 @@ export default function SatDigitalBuilder({ mode, examId, initial }: SatDigitalB
         onDurationMinChange={setDurationMin}
       />
 
+      {showTextImport && <SatTextImport text={importText} onTextChange={setImportText}
+        onClose={() => setShowTextImport(false)}
+        disabled={saving || !!editingQuestion || sections.length !== 4}
+        onImport={result => {
+          const batchId = crypto.randomUUID();
+          setSections(previous => appendSatImport(previous, result, batchId));
+          setActiveModuleIndex(0);
+          setShowTextImport(false);
+        }} />}
+
       <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
         <div className="border-b border-gray-200 bg-gray-50 px-3 pt-3">
           <div className="flex items-end gap-2">
@@ -328,6 +342,7 @@ export default function SatDigitalBuilder({ mode, examId, initial }: SatDigitalB
         isOpen={showQuestionTypeModal}
         onClose={() => setShowQuestionTypeModal(false)}
         onSelect={handleAddQuestion}
+        onImportText={() => { setShowQuestionTypeModal(false); setShowTextImport(true); }}
         allowedGroups={{
           "SAT Question Types": ["MCQ_SINGLE", "SHORT_TEXT"],
         }}
