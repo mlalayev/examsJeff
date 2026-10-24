@@ -42,3 +42,10 @@ a. Optional choice text [Image: images/math_module_1_q01_a.png]
 Names in markers must match the ZIP exactly. One image per question and per choice. Do not use image markers in explanations. Without images, a plain questions.txt file or pasted text also works.
 
 Check all correct answers and explanations; supply all four modules. Images can be edited later. Save Questions adds editable question cards; Save Exam persists the exam.`;
+
+export const MATH_IMPORT_INSTRUCTIONS = SAT_IMPORT_INSTRUCTIONS
+  .replace('a SAT exam package named sat-exam.zip', 'a Math exam package named math-exam.zip')
+  .replace('images/verbal_module_1_q01.png', 'images/math_module_1_q01.png')
+  .replace('[verbal module 1]\n[verbal module 2]\n', '')
+  .replace('[verbal module 1]', '[math module 1]')
+  .replace('all four modules', 'both Math modules (no Verbal modules)');

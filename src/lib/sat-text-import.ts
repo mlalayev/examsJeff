@@ -1,11 +1,15 @@
 import type { Question, Section } from '@/components/admin/exams/create/types';
 
 export const SAT_IMPORT_MODULES = ['verbal module 1', 'verbal module 2', 'math module 1', 'math module 2'];
+export const MATH_IMPORT_MODULES = ['math module 1', 'math module 2'];
+export type ModuleExamCategory = 'SAT' | 'MATH';
+export const importModules = (category: ModuleExamCategory) => category === 'MATH' ? MATH_IMPORT_MODULES : SAT_IMPORT_MODULES;
 export type SatImportResult = { modules: Question[][]; errors: string[] };
 
 /** Strict, local-only parser. Never guesses answer keys or silently drops malformed input. */
-export function parseSatText(text: string, images: Record<string, string> = {}): SatImportResult {
-  const modules: Question[][] = [[], [], [], []];
+export function parseSatText(text: string, images: Record<string, string> = {}, category: ModuleExamCategory = 'SAT'): SatImportResult {
+  const names = importModules(category);
+  const modules: Question[][] = names.map(() => []);
   const errors: string[] = [];
   if (text.length > 200_000) return { modules, errors: ['Text exceeds 200,000 characters.'] };
   let moduleIndex = -1;
@@ -56,7 +60,7 @@ export function parseSatText(text: string, images: Record<string, string> = {}):
     const header = line.match(/^\[(.+)\]$/);
     if (header && !/^\[(Image:|text\]|textintro\]|question\])/i.test(line)) {
       finish();
-      moduleIndex = SAT_IMPORT_MODULES.indexOf(header[1].toLowerCase().replace(/\s+/g, ' ').trim());
+      moduleIndex = names.indexOf(header[1].toLowerCase().replace(/\s+/g, ' ').trim());
       if (moduleIndex < 0) fail(index + 1, `Unknown module: ${header[1]}`);
       else if (seen.has(moduleIndex)) fail(index + 1, 'Duplicate module heading.');
       else seen.add(moduleIndex);
@@ -99,12 +103,12 @@ export function parseSatText(text: string, images: Record<string, string> = {}):
     else current.choices[field] += '\n' + line;
   });
   finish();
-  SAT_IMPORT_MODULES.forEach((name, i) => { if (!modules[i].length) errors.push(`Missing questions in [${name}].`); });
+  names.forEach((name, i) => { if (!modules[i].length) errors.push(`Missing questions in [${name}].`); });
   return { modules, errors };
 }
 
-export function appendSatImport(sections: Section[], result: SatImportResult, batchId: string): Section[] {
-  if (result.errors.length || sections.length !== 4 || result.modules.some(m => !m.length)) throw new Error('Invalid SAT import.');
+export function appendSatImport(sections: Section[], result: SatImportResult, batchId: string, category: ModuleExamCategory = 'SAT'): Section[] {
+  if (result.errors.length || sections.length !== importModules(category).length || result.modules.length !== sections.length || result.modules.some(m => !m.length)) throw new Error('Invalid module import.');
   return sections.map((section, i) => ({ ...section, questions: [
     ...section.questions,
     ...result.modules[i].map((q, j) => ({ ...q, id: `import-${batchId}-${i}-${j}`, order: section.questions.length + j })),

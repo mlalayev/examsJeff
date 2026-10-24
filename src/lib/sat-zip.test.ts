@@ -18,6 +18,14 @@ function archive(files: [string, Buffer][]): Buffer {
 }
 const image = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64');
 const source = SAT_IMPORT_MODULES.map(m => `[${m}]\n1. Solve $x^2=4$.\n[Image: images/q.png]\na. 2 [Image: images/q.png]\nb. 3\nc. 4\nd. 5\nAnswer: A`).join('\n');
+test('Math ZIP validates only the two Math modules and preserves image references', async () => {
+  const math = source.slice(source.indexOf('[math module 1]'));
+  const zip = archive([['questions.txt', Buffer.from(math)], ['images/q.png', image]]);
+  const result = await readSatZip(zip, 'MATH');
+  expect(result.images.size).toBe(1);
+  expect(parseSatText(result.text, { 'images/q.png': '/api/images/qa.png' }, 'MATH').errors).toEqual([]);
+  await expect(readSatZip(zip)).rejects.toThrow();
+});
 test('ZIP loads all modules and binds question and choice images without changing LaTeX', async () => {
   const result = await readSatZip(archive([['questions.txt', Buffer.from(source)], ['images/q.png', image]]));
   expect(result.images.size).toBe(1);

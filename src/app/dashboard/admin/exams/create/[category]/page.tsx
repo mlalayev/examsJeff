@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import GenericExamBuilder from "@/components/admin/exams/create/GenericExamBuilder";
+import SatDigitalBuilder from "@/components/admin/exams/create/SatDigitalBuilder";
 import type { ExamCategory } from "@/components/admin/exams/create/types";
 import { slugToCategory } from "@/lib/exam-category-utils";
 
@@ -32,5 +33,6 @@ export default function CreateExamPage() {
     );
   }
 
+  if (category === "MATH") return <SatDigitalBuilder key="math" mode="create" category="MATH" />;
   return <GenericExamBuilder mode="create" category={category} />;
 }

@@ -2597,6 +2597,11 @@ export default function EditExamPage() {
     if (isDigitalSat) {
       return <SatDigitalBuilder mode="edit" examId={examId} initial={buildSatInitial(exam)} />;
     }
+    // Only the two-module format uses the new editor; preserve legacy Math sections.
+    if (exam.category === "MATH" && sectionList.length === 2 &&
+      sectionList[0].title === "Math Module 1" && sectionList[1].title === "Math Module 2") {
+      return <SatDigitalBuilder mode="edit" category="MATH" examId={examId} initial={buildSatInitial(exam)} />;
+    }
     if (isDigitalIelts) {
       return <IeltsDigitalBuilder mode="edit" examId={examId} initial={buildIeltsInitial(exam)} />;
     }

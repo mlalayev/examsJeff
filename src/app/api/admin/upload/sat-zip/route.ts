@@ -21,7 +21,9 @@ export async function POST(request: NextRequest) {
     const form = await request.formData();
     const file = form.get('file');
     if (!(file instanceof File) || !file.name.toLowerCase().endsWith('.zip') || file.size > MAX_SAT_ZIP) return NextResponse.json({ error: 'Select a ZIP file up to 20 MB.' }, { status: 400 });
-    const archive = await readSatZip(Buffer.from(await file.arrayBuffer()));
+    const category = form.get('category') || 'SAT';
+    if (category !== 'SAT' && category !== 'MATH') return NextResponse.json({ error: 'Invalid exam category.' }, { status: 400 });
+    const archive = await readSatZip(Buffer.from(await file.arrayBuffer()), category);
     const directory = join(process.cwd(), 'public', 'images');
     await mkdir(directory, { recursive: true });
     const paths: Record<string, string> = {};

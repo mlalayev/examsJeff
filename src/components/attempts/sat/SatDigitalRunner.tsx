@@ -734,6 +734,7 @@ export function SatDigitalRunner({
                     annotateMode ? "[&::selection]:bg-amber-200" : ""
                   }`}
                 >
+                  <QuestionImage imageUrl={currentQuestion?.image || currentQuestion?.prompt?.imageUrl} />
                   {passageText ? (
                     structured ? (
                       <StructuredFormattedText text={passageText} showQuestion={false} />
@@ -742,9 +743,9 @@ export function SatDigitalRunner({
                         <FormattedText text={passageText} />
                       </div>
                     )
-                  ) : (
+                  ) : !(currentQuestion?.image || currentQuestion?.prompt?.imageUrl) ? (
                     <p className="text-slate-500 text-sm">No passage for this item.</p>
-                  )}
+                  ) : null}
                 </div>
                 <div className="w-1/2 min-w-0 flex flex-col bg-white overflow-y-auto">
                   {currentQuestion && currentSection && (
@@ -775,7 +776,6 @@ export function SatDigitalRunner({
                         </button>
                       </div>
                       {dashedRule}
-                      <QuestionImage imageUrl={currentQuestion.image || currentQuestion.prompt?.imageUrl} />
                       {(derivedStem || promptText(currentQuestion)) && (
                         <p className="mt-4 text-[15px] text-slate-900 leading-relaxed">
                           <FormattedText text={derivedStem || promptText(currentQuestion)} />

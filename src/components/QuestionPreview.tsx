@@ -63,6 +63,7 @@ export default function QuestionPreview({ question }: QuestionPreviewProps) {
           <div className="px-6 pb-6">
             <div className="w-full flex gap-0 border border-slate-200 rounded-lg overflow-hidden shadow-sm">
               <div className="w-1/2 min-w-0 border-r border-slate-200 bg-slate-50/80 p-5">
+                {questionImage && <img src={questionImage} alt="Question" className="mb-4 max-h-80 max-w-full object-contain rounded border border-slate-200" />}
                 <StructuredFormattedText text={prompt} showQuestion={false} />
               </div>
               <div className="w-1/2 min-w-0 bg-white p-5">
@@ -77,16 +78,6 @@ export default function QuestionPreview({ question }: QuestionPreviewProps) {
                 </div>
 
                 {dashedRule}
-
-                {questionImage && (
-                  <div className="mt-4">
-                    <img
-                      src={questionImage}
-                      alt="Question"
-                      className="max-h-48 w-auto rounded border border-slate-200"
-                    />
-                  </div>
-                )}
 
                 {stem && (
                   <p className="mt-4 text-[15px] text-slate-900 leading-relaxed">

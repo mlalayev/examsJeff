@@ -3,9 +3,23 @@ import { buildExamPayload } from '@/components/admin/exams/create/examSerializer
 import type { Section } from '@/components/admin/exams/create/types';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { MATH_IMPORT_INSTRUCTIONS } from './sat-import-instructions';
 
 const question = '1. What is 2 + 3?\na. 4\nb. 5\nc. 6\nd. 7\nAnswer: B\nExplanation: Addition.';
 const source = SAT_IMPORT_MODULES.map(m => `[${m}]\n${question}`).join('\n\n');
+
+test('Math requires exactly its two modules and rejects Verbal or missing modules', () => {
+  expect(MATH_IMPORT_INSTRUCTIONS).not.toContain('[verbal module');
+  expect(MATH_IMPORT_INSTRUCTIONS).toContain('[math module 1]\n[math module 2]');
+  const text = ['math module 1', 'math module 2'].map(m => `[${m}]\n${question}`).join('\n');
+  const parsed = parseSatText(text, {}, 'MATH');
+  expect(parsed.errors).toEqual([]);
+  expect(parsed.modules.map(m => m.length)).toEqual([1, 1]);
+  expect(parseSatText(source, {}, 'MATH').errors.join(' ')).toContain('Unknown module: verbal');
+  expect(parseSatText(`[math module 1]\n${question}`, {}, 'MATH').errors).toContain('Missing questions in [math module 2].');
+  expect(parseSatText(text).errors).toContain('Missing questions in [verbal module 1].');
+  expect(() => appendSatImport(sections(), parsed, 'bad')).toThrow();
+});
 const sections = (): Section[] => ['READING', 'LISTENING', 'GRAMMAR', 'VOCABULARY'].map((type, i) => ({
   id: `s${i}`, type: type as Section['type'], title: SAT_IMPORT_MODULES[i], instruction: '', order: i, durationMin: i < 2 ? 32 : 35, questions: [],
 }));

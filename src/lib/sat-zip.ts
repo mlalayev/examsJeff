@@ -1,11 +1,11 @@
 import { fromBuffer, type Entry } from 'yauzl';
-import { parseSatText } from './sat-text-import';
+import { parseSatText, type ModuleExamCategory } from './sat-text-import';
 
 export const MAX_SAT_ZIP = 20 * 1024 * 1024;
 const MAX_TOTAL = 50 * 1024 * 1024;
 
 /** Bounded, sequential extraction into memory; archive paths are never used as disk paths. */
-export async function readSatZip(buffer: Buffer): Promise<{ text: string; images: Map<string, Buffer> }> {
+export async function readSatZip(buffer: Buffer, category: ModuleExamCategory = 'SAT'): Promise<{ text: string; images: Map<string, Buffer> }> {
   if (buffer.length > MAX_SAT_ZIP) throw new Error('ZIP exceeds 20 MB.');
   const files = await new Promise<Map<string, Buffer>>((resolve, reject) => {
     fromBuffer(buffer, { lazyEntries: true, validateEntrySizes: true, strictFileNames: true }, (error, zip) => {
@@ -59,7 +59,7 @@ export async function readSatZip(buffer: Buffer): Promise<{ text: string; images
   const references = [...text.matchAll(/\[Image:\s*([^\]]+)\]/gi)].map(m => m[1].trim());
   for (const ref of references) if (!files.has(ref)) throw new Error(`Missing ZIP image: ${ref}`);
   const placeholders = Object.fromEntries([...files.keys()].map((name, i) => [name, `/api/images/check-${i}.${name.split('.').pop()}`]));
-  const parsed = parseSatText(text, placeholders);
+  const parsed = parseSatText(text, placeholders, category);
   if (parsed.errors.length) throw new Error(parsed.errors.slice(0, 10).join('\n'));
   // Unreferenced files are neither written nor exposed.
   return { text, images: new Map([...files].filter(([name]) => references.includes(name))) };

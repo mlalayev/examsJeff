@@ -10,14 +10,13 @@ import QuestionsList from "@/components/admin/exams/create/QuestionsList";
 import { QuestionEditModal } from "@/components/admin/exams/create/questionModal/QuestionEditModal";
 import { DeleteQuestionModal } from "@/components/modals/DeleteQuestionModal";
 import { AlertModal } from "@/components/modals/AlertModal";
-import type { ExamCategory, Question, QuestionType, Section } from "@/components/admin/exams/create/types";
+import type { Question, QuestionType, Section } from "@/components/admin/exams/create/types";
 import { createQuestionDraft } from "@/components/admin/exams/create/addQuestionFlow";
 import { validateExamInfo } from "@/components/admin/exams/create/examValidation";
 import { buildExamPayload } from "@/components/admin/exams/create/examSerializer";
 import SatTextImport from './SatTextImport';
 import { appendSatImport } from '@/lib/sat-text-import';
 
-const SAT_CATEGORY: ExamCategory = "SAT";
 
 // SAT Digital modules are positional: Verbal 1 → Verbal 2 → Math 1 → Math 2.
 // Sections are matched by their order (array index) so this works for both freshly
@@ -69,6 +68,12 @@ export function createSatDigitalSections(): Section[] {
   ];
 }
 
+export function createMathSections(): Section[] {
+  return createSatDigitalSections().slice(2).map((section, order) => ({
+    ...section, id: `math-module-${order + 1}`, order,
+  }));
+}
+
 export interface SatDigitalBuilderInitial {
   title: string;
   track: string;
@@ -77,20 +82,24 @@ export interface SatDigitalBuilderInitial {
 }
 
 interface SatDigitalBuilderProps {
+  category?: "SAT" | "MATH";
   mode: "create" | "edit";
   examId?: string;
   initial?: SatDigitalBuilderInitial;
 }
 
-export default function SatDigitalBuilder({ mode, examId, initial }: SatDigitalBuilderProps) {
+export default function SatDigitalBuilder({ mode, examId, initial, category = "SAT" }: SatDigitalBuilderProps) {
   const router = useRouter();
+  const isMath = category === "MATH";
+  const examName = isMath ? "Math" : "SAT Digital";
+  const moduleLabels = isMath ? ["Math 1", "Math 2"] : MODULE_LABELS;
 
-  const [examTitle, setExamTitle] = useState(initial?.title ?? "SAT Digital — New Exam");
+  const [examTitle, setExamTitle] = useState(initial?.title ?? `${examName} — New Exam`);
   const [track, setTrack] = useState(initial?.track ?? "");
   const [durationMin, setDurationMin] = useState<number | null>(initial?.durationMin ?? null);
 
   const [sections, setSections] = useState<Section[]>(
-    () => initial?.sections ?? createSatDigitalSections()
+    () => initial?.sections ?? (isMath ? createMathSections() : createSatDigitalSections())
   );
   const [activeModuleIndex, setActiveModuleIndex] = useState(0);
 
@@ -100,7 +109,7 @@ export default function SatDigitalBuilder({ mode, examId, initial }: SatDigitalB
   const [uploadingImage, setUploadingImage] = useState(false);
   const [importText, setImportText] = useState('');
   const [showTextImport, setShowTextImport] = useState(false);
-  const draft = useExamDraft(`sat:${mode}:${examId || "new"}`,
+  const draft = useExamDraft(`${category.toLowerCase()}:${mode}:${examId || "new"}`,
     { examTitle, track, durationMin, sections, editingQuestion, showQuestionTypeModal, activeModuleIndex, importText },
     d => { setExamTitle(d.examTitle); setTrack(d.track); setDurationMin(d.durationMin); setSections(d.sections); setEditingQuestion(d.editingQuestion); setShowQuestionTypeModal(d.showQuestionTypeModal); setActiveModuleIndex(d.activeModuleIndex); setImportText(d.importText ?? ''); });
 
@@ -125,7 +134,7 @@ export default function SatDigitalBuilder({ mode, examId, initial }: SatDigitalB
     if (!currentSection) return;
     const result = createQuestionDraft({
       questionType: qtype,
-      examCategory: SAT_CATEGORY,
+      examCategory: category,
       sectionType: currentSection.type,
       currentSection,
     });
@@ -176,7 +185,7 @@ export default function SatDigitalBuilder({ mode, examId, initial }: SatDigitalB
   };
 
   const saveExam = async () => {
-    const validation = validateExamInfo(SAT_CATEGORY, examTitle, sections);
+    const validation = validateExamInfo(category, examTitle, sections);
     if (!validation.valid) {
       setAlert({
         isOpen: true,
@@ -189,7 +198,7 @@ export default function SatDigitalBuilder({ mode, examId, initial }: SatDigitalB
 
     setSaving(true);
     try {
-      const payload = buildExamPayload(examTitle, SAT_CATEGORY, track, durationMin, sections);
+      const payload = buildExamPayload(examTitle, category, track, durationMin, sections);
       const isEdit = mode === "edit" && examId;
       const res = await fetch(
         isEdit ? `/api/admin/exams/${examId}` : "/api/admin/exams",
@@ -206,8 +215,8 @@ export default function SatDigitalBuilder({ mode, examId, initial }: SatDigitalB
         isOpen: true,
         title: isEdit ? "Exam updated" : "Exam created",
         message: isEdit
-          ? "SAT Digital exam updated successfully."
-          : "SAT Digital exam created successfully.",
+          ? `${examName} exam updated successfully.`
+          : `${examName} exam created successfully.`,
         type: "success",
       });
       const savedId = json.exam?.id || json.examId || examId || "";
@@ -240,10 +249,10 @@ export default function SatDigitalBuilder({ mode, examId, initial }: SatDigitalB
             Back
           </button>
           <h1 className="text-xl sm:text-2xl font-medium text-gray-900">
-            {isEdit ? "Edit SAT Digital Exam" : "Create SAT Digital Exam"}
+            {`${isEdit ? "Edit" : "Create"} ${examName} Exam`}
           </h1>
           <p className="text-gray-500 mt-1 text-sm sm:text-base">
-            Verbal 1 → Verbal 2 → Math 1 → Math 2 (modules auto-created)
+            {moduleLabels.join(" → ")} (modules auto-created)
           </p>
         </div>
         <button
@@ -261,19 +270,19 @@ export default function SatDigitalBuilder({ mode, examId, initial }: SatDigitalB
       <ExamInfoForm
         examTitle={examTitle}
         onExamTitleChange={setExamTitle}
-        selectedCategory={SAT_CATEGORY}
+        selectedCategory={category}
         track={track}
         onTrackChange={setTrack}
         durationMin={durationMin}
         onDurationMinChange={setDurationMin}
       />
 
-      {showTextImport && <SatTextImport text={importText} onTextChange={setImportText}
+      {showTextImport && <SatTextImport category={category} text={importText} onTextChange={setImportText}
         onClose={() => setShowTextImport(false)}
-        disabled={saving || !!editingQuestion || sections.length !== 4}
+        disabled={saving || !!editingQuestion || sections.length !== moduleLabels.length}
         onImport={result => {
           const batchId = crypto.randomUUID();
-          setSections(previous => appendSatImport(previous, result, batchId));
+          setSections(previous => appendSatImport(previous, result, batchId, category));
           setActiveModuleIndex(0);
           setShowTextImport(false);
         }} />}
@@ -283,7 +292,7 @@ export default function SatDigitalBuilder({ mode, examId, initial }: SatDigitalB
           <div className="flex items-end gap-2">
             {sections.map((section, idx) => {
               const isActive = idx === activeModuleIndex;
-              const label = MODULE_LABELS[idx] ?? section.title;
+              const label = moduleLabels[idx] ?? section.title;
               return (
                 <button
                   key={section.id}
@@ -328,7 +337,7 @@ export default function SatDigitalBuilder({ mode, examId, initial }: SatDigitalB
 
               <QuestionsList
                 questions={currentSection.questions}
-                examCategory={SAT_CATEGORY}
+                examCategory={category}
                 sectionType={currentSection.type}
                 onEdit={(q) => setEditingQuestion({ ...q })}
                 onDelete={setDeleteQuestionId}
@@ -344,7 +353,7 @@ export default function SatDigitalBuilder({ mode, examId, initial }: SatDigitalB
         onSelect={handleAddQuestion}
         onImportText={() => { setShowQuestionTypeModal(false); setShowTextImport(true); }}
         allowedGroups={{
-          "SAT Question Types": ["MCQ_SINGLE", "SHORT_TEXT"],
+          [isMath ? "Math Question Types" : "SAT Question Types"]: ["MCQ_SINGLE", "SHORT_TEXT"],
         }}
       />
 
