@@ -24,6 +24,7 @@ type Question = {
   options?: any;
   order: number;
   maxScore?: number;
+  image?: string | null;
 };
 
 type Section = {
@@ -654,6 +655,7 @@ export function SatDigitalRunner({
 
                     {dashedRule}
 
+                    {(currentQuestion.image || currentQuestion.prompt?.imageUrl) && <img src={resolveExamImage(currentQuestion.image || currentQuestion.prompt.imageUrl)} alt="Question" className="mt-4 max-h-80 max-w-full object-contain" />}
                     {promptText(currentQuestion) && (
                       <div className="mt-4 text-[15px] text-slate-900 leading-relaxed">
                         <FormattedText text={promptText(currentQuestion)} />
@@ -688,6 +690,7 @@ export function SatDigitalRunner({
                                 </span>
                                 <span className={`text-[15px] ${crossed ? "text-slate-500 line-through" : "text-slate-900"}`}>
                                   <FormattedText text={choice} />
+                                  {currentQuestion.options?.choiceImages?.[idx] && <img src={resolveExamImage(currentQuestion.options.choiceImages[idx])} alt={`Option ${String.fromCharCode(65 + idx)}`} className="mt-2 max-h-64 max-w-full object-contain" />}
                                 </span>
                               </button>
                               <button
@@ -772,7 +775,7 @@ export function SatDigitalRunner({
                         </button>
                       </div>
                       {dashedRule}
-                      <QuestionImage imageUrl={currentQuestion.prompt?.imageUrl} />
+                      <QuestionImage imageUrl={currentQuestion.image || currentQuestion.prompt?.imageUrl} />
                       {(derivedStem || promptText(currentQuestion)) && (
                         <p className="mt-4 text-[15px] text-slate-900 leading-relaxed">
                           <FormattedText text={derivedStem || promptText(currentQuestion)} />

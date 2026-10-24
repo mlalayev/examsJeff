@@ -1877,7 +1877,7 @@ export default function AttemptResultsPage() {
                             <span className="text-xs font-bold text-amber-800 uppercase tracking-wide">Explanation</span>
                           </div>
                           <p className="text-sm text-amber-900 leading-relaxed">
-                            {q.explanation.text || JSON.stringify(q.explanation)}
+                            <FormattedText text={typeof q.explanation === 'string' ? q.explanation : q.explanation.text || JSON.stringify(q.explanation)} />
                           </p>
                         </div>
                       )}

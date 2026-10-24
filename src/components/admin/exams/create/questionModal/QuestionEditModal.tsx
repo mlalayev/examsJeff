@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import { Question } from "../types";
 import { QUESTION_TYPE_LABELS } from "../constants";
 import QuestionPreview from "@/components/QuestionPreview";
+import FormattedText from '@/components/FormattedText';
 import { QuestionImageUpload } from "./questionFields/QuestionImageUpload";
 import { QuestionPromptField } from "./questionFields/QuestionPromptField";
 import { QuestionOptionsField } from "./questionFields/QuestionOptionsField";
@@ -148,6 +149,10 @@ export function QuestionEditModal({
 
         {/* Question Preview */}
         <QuestionPreview question={question} />
+        <p className="mt-3 rounded bg-indigo-50 p-3 text-sm text-indigo-900">
+          {'Math formatting: $x^2$ stays inline in a sentence. $$\\frac{x}{2}=5$$ is a separate centered equation. Use \\frac{a}{b} for fractions, x^{2} for powers, \\sqrt{x} for roots. Use plain numbers/text (not LaTeX) in short-answer keys.'}
+        </p>
+        {question.explanation && <div className="mt-4 rounded border p-3"><strong>Explanation preview</strong><FormattedText text={typeof question.explanation === 'string' ? question.explanation : question.explanation.text || ''} /></div>}
 
         <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 mt-4 sm:mt-6 pt-4 border-t border-gray-200">
           <button

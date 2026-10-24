@@ -164,6 +164,7 @@ export default function QuestionPreview({ question }: QuestionPreviewProps) {
       </div>
       
       <div className="bg-white rounded-xl border shadow-sm p-6" style={{ borderColor: "rgba(15, 17, 80, 0.63)" }}>
+        {(question as any).image && <img src={(question as any).image} alt="Question" className="mb-4 max-h-64 max-w-full object-contain" />}
         {/* Question Text */}
         {question.prompt?.text && (
           <div className="mb-4">

@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import ScheduleWorkspace from '@/components/teacher/ScheduleWorkspace';
 import {
   Calendar as CalendarIcon,
   Check,
@@ -269,7 +270,7 @@ export default function TeacherSchedulePage() {
         setError((err as Error).message || "Failed to load schedule");
         setData(null);
       } finally {
-        setLoading(false);
+        if (!signal?.aborted) setLoading(false);
       }
     },
     []
@@ -418,35 +419,6 @@ export default function TeacherSchedulePage() {
     setSlotsModal(null);
     setAddOpen(true);
   };
-
-  const [reportOpen, setReportOpen] = useState(false);
-  const [reportLoading, setReportLoading] = useState(false);
-  const [reportText, setReportText] = useState("");
-
-  const openReport = useCallback(async () => {
-    setReportOpen(true);
-    setReportLoading(true);
-    setReportText("");
-    try {
-      const res = await fetch(
-        `/api/teacher/schedule/month/report?year=${currentYear}&month=${
-          currentMonth + 1
-        }`
-      );
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error || "Failed to build report");
-      const rows: ReportClassRow[] = body.classes ?? [];
-      setReportText(
-        rows.length > 0
-          ? buildMonthlyReport(rows)
-          : "No lessons this month yet."
-      );
-    } catch (err) {
-      setReportText((err as Error).message || "Failed to build report");
-    } finally {
-      setReportLoading(false);
-    }
-  }, [currentMonth, currentYear]);
 
   const [weekReportOpen, setWeekReportOpen] = useState(false);
   const [weekReportLoading, setWeekReportLoading] = useState(false);
@@ -597,7 +569,7 @@ export default function TeacherSchedulePage() {
 
   const classesForDay = useCallback(
     (day: number, _dayOfWeek: number): DayClass[] => {
-      if (!data) return [];
+      if (!data || data.year !== currentYear || data.month !== currentMonth + 1) return [];
 
       // Only concrete lessons that have been applied to this month are shown.
       // Recurring odd/even slots are templates; they appear on the calendar
@@ -622,7 +594,7 @@ export default function TeacherSchedulePage() {
 
       return lessonChips.sort(sortByTime);
     },
-    [data]
+    [data, currentYear, currentMonth]
   );
 
   const isToday = (day: number) =>
@@ -644,287 +616,15 @@ export default function TeacherSchedulePage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
-      {/* Header */}
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
-          <CalendarIcon className="h-5 w-5 text-slate-500" />
-          <div>
-            <h1 className="text-xl font-semibold text-gray-900 sm:text-2xl">
-              Schedule
-            </h1>
-            <p className="mt-0.5 text-sm text-gray-500">
-              Your monthly teaching calendar.
-            </p>
-          </div>
-        </div>
-
-        {/* Month navigation */}
-        <div className="flex items-center justify-between gap-2 sm:justify-end">
-          <button
-            type="button"
-            onClick={goToPreviousMonth}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50"
-            aria-label="Previous month"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-
-          <button
-            type="button"
-            onClick={goToToday}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
-          >
-            Today
-          </button>
-
-          <button
-            type="button"
-            onClick={goToNextMonth}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50"
-            aria-label="Next month"
-          >
-            <ChevronRight className="h-5 w-5" />
-          </button>
-        </div>
-      </div>
-
-      {/* Month + year label and legend */}
-      <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-lg font-semibold tabular-nums text-slate-900 sm:text-xl">
-          {MONTHS[currentMonth]} {currentYear}
-        </h2>
-
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600">
-          <LegendSwatch className="bg-amber-50 border-amber-200" label="Sunday" />
-          <LegendSwatch className="bg-blue-50 border-blue-200" label="Odd day" />
-          <LegendSwatch className="bg-gray-50 border-gray-200" label="Even day" />
-          <span className="flex items-center gap-1.5">
-            <span
-              className="inline-block h-3 w-3 rounded-full ring-2 ring-offset-1"
-              style={{ ["--tw-ring-color" as string]: ACCENT, color: ACCENT }}
-            />
-            Today
-          </span>
-        </div>
-      </div>
-
-      {/* Schedule controls */}
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <div className="inline-flex rounded-lg border border-gray-200 bg-white p-1 shadow-sm">
-          <button
-            type="button"
-            onClick={() => setSlotsModal("ODD")}
-            className="rounded-md px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-slate-50"
-          >
-            Odd Days Classes
-          </button>
-          <button
-            type="button"
-            onClick={() => setSlotsModal("EVEN")}
-            className="rounded-md px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-slate-50"
-          >
-            Even Days Classes
-          </button>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={openReport}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-slate-50"
-            title="Build this month's lesson summary"
-          >
-            <FileText className="h-4 w-4" />
-            Monthly report
-          </button>
-
-          <button
-            type="button"
-            onClick={applyMonth}
-            disabled={applying}
-            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:opacity-90 disabled:opacity-50"
-            style={{ backgroundColor: ACCENT }}
-            title="Add your odd/even day schedule to this month"
-          >
-            {applying ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Plus className="h-4 w-4" />
-            )}
-            Add schedule to this month
-          </button>
-
-          <button
-            type="button"
-            onClick={clearMonth}
-            disabled={clearing}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-white px-3 py-2 text-sm font-medium text-rose-700 shadow-sm transition hover:bg-rose-50 disabled:opacity-50"
-            title="Delete this month's lessons and feedback"
-          >
-            {clearing ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Trash2 className="h-4 w-4" />
-            )}
-            Clear month
-          </button>
-        </div>
-      </div>
-
-      {toast && (
-        <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-          {toast}
-        </div>
-      )}
-
-      {error && (
-        <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
-          {error}
-        </div>
-      )}
-
-      {/* Calendar */}
-      <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
-        {/* Weekday headers */}
-        <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50/70">
-          {WEEKDAYS_FULL.map((day, i) => (
-            <div
-              key={day}
-              className="border-r border-slate-200 p-2 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-600 last:border-r-0 sm:text-xs"
-            >
-              <span className="hidden sm:inline">{day}</span>
-              <span className="sm:hidden">{WEEKDAYS_SHORT[i]}</span>
-            </div>
-          ))}
-        </div>
-
-        {loading ? (
-          <CalendarSkeleton />
-        ) : (
-          <div className="grid grid-cols-7">
-            {weeks.map((week, wi) => {
-              const sunday = new Date(
-                currentYear,
-                currentMonth,
-                1 - firstDayOfWeek + wi * 7
-              );
-              const saturday = new Date(sunday);
-              saturday.setDate(saturday.getDate() + 6);
-              const rangeLabel =
-                sunday.getMonth() === saturday.getMonth()
-                  ? `${MONTHS[sunday.getMonth()].slice(0, 3)} ${sunday.getDate()} – ${saturday.getDate()}`
-                  : `${MONTHS[sunday.getMonth()].slice(0, 3)} ${sunday.getDate()} – ${MONTHS[
-                      saturday.getMonth()
-                    ].slice(0, 3)} ${saturday.getDate()}`;
-
-              return (
-                <Fragment key={`week-${wi}`}>
-                  {week.map((day, ci) => {
-                    if (day === null) {
-                      return (
-                        <div
-                          key={`blank-${wi}-${ci}`}
-                          className="min-h-20 border-b border-r border-slate-200 bg-slate-50/40 last:border-r-0 sm:min-h-28"
-                        />
-                      );
-                    }
-                    const dayOfWeek = ci;
-                    const dayClasses = classesForDay(day, dayOfWeek);
-                    const todayCell = isToday(day);
-                    const visible = dayClasses.slice(0, MAX_VISIBLE_CHIPS);
-                    const overflow = dayClasses.length - visible.length;
-
-                    return (
-                      <button
-                        type="button"
-                        key={day}
-                        onClick={() => setSelectedDay(day)}
-                        className={`relative min-h-20 border-b border-r border-slate-200 p-1.5 text-left align-top transition last:border-r-0 hover:brightness-[0.97] focus:outline-none focus:ring-2 focus:ring-[#303380]/50 sm:min-h-28 ${cellBackground(
-                          day,
-                          dayOfWeek
-                        )} ${
-                          todayCell ? "z-10 ring-2 ring-inset ring-[#303380]" : ""
-                        }`}
-                        aria-label={`${MONTHS[currentMonth]} ${day}, ${currentYear}`}
-                      >
-                        {/* Day number */}
-                        <div className="mb-1 flex items-center justify-between">
-                          <span
-                            className={
-                              todayCell
-                                ? "inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold tabular-nums text-white"
-                                : "px-1 text-xs font-semibold tabular-nums text-slate-700"
-                            }
-                            style={
-                              todayCell ? { backgroundColor: ACCENT } : undefined
-                            }
-                          >
-                            {day}
-                          </span>
-
-                          {/* Mobile: count badge */}
-                          {dayClasses.length > 0 && (
-                            <span className="inline-flex items-center justify-center rounded-full bg-white/80 px-1.5 text-[10px] font-semibold text-slate-600 sm:hidden">
-                              {dayClasses.length}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* sm+ : class chips */}
-                        <div className="hidden space-y-1 sm:block">
-                          {visible.map((c) => (
-                            <div
-                              key={c.key}
-                              className="truncate rounded border border-slate-200 bg-white/80 px-1.5 py-1 text-[11px] text-slate-800"
-                              title={`${c.title}${
-                                c.className ? ` · ${c.className}` : ""
-                              } (${c.timeSlot})`}
-                            >
-                              <div className="truncate font-semibold">
-                                {c.title}
-                              </div>
-                              <div className="flex items-center gap-1 text-[10px] tabular-nums text-slate-500">
-                                <Clock className="h-3 w-3 shrink-0" />
-                                <span className="truncate">{c.timeSlot}</span>
-                              </div>
-                            </div>
-                          ))}
-
-                          {overflow > 0 && (
-                            <div className="px-1 text-[11px] font-medium text-slate-500">
-                              +{overflow} more
-                            </div>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
-
-                  {/* Per-week report action bar */}
-                  <div className="col-span-7 flex items-center justify-between gap-2 border-b border-slate-200 bg-slate-50/70 px-3 py-1.5">
-                    <span className="text-[11px] font-medium text-slate-500">
-                      {rangeLabel}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => openWeekReports(sunday)}
-                      className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold shadow-sm transition hover:bg-slate-50"
-                      style={{ color: ACCENT }}
-                      title="Generate weekly parent reports for this week"
-                    >
-                      <FileText className="h-3.5 w-3.5" />
-                      Weekly reports
-                    </button>
-                  </div>
-                </Fragment>
-              );
-            })}
-          </div>
-        )}
-      </div>
+      <ScheduleWorkspace data={data} loading={loading} error={error} toast={toast}
+        applying={applying} clearing={clearing}
+        onNavigate={date => { setSelectedDay(null); setCurrentYear(date.getFullYear()); setCurrentMonth(date.getMonth()); }}
+        onDay={date => { setCurrentYear(date.getFullYear()); setCurrentMonth(date.getMonth()); setSelectedDay(date.getDate()); }}
+        onSchedule={() => setSlotsModal("ODD")} onApply={applyMonth} onClear={clearMonth}
+        onReport={date => { void openWeekReports(date); }} />
 
       {/* Day detail modal */}
-      {selectedDay !== null && (
+      {selectedDay !== null && !loading && data?.year === currentYear && data?.month === currentMonth + 1 && (
         <DayDetailModal
           weekday={
             WEEKDAYS_FULL[
@@ -964,6 +664,7 @@ export default function TeacherSchedulePage() {
       {slotsModal && data && (
         <SlotsListModal
           dayType={slotsModal}
+          onDayTypeChange={setSlotsModal}
           slots={slotsModal === "ODD" ? data.oddDays : data.evenDays}
           onAdd={() =>
             openAdd(slotsModal === "ODD" ? "ODD_DAYS" : "EVEN_DAYS")
@@ -979,16 +680,6 @@ export default function TeacherSchedulePage() {
           preset={addPreset}
           onClose={() => setAddOpen(false)}
           onCreate={createClassWithSchedule}
-        />
-      )}
-
-      {/* Monthly report modal */}
-      {reportOpen && (
-        <ReportModal
-          title={`${MONTHS[currentMonth]} ${currentYear} — Lesson summary`}
-          loading={reportLoading}
-          text={reportText}
-          onClose={() => setReportOpen(false)}
         />
       )}
 
@@ -1283,8 +974,8 @@ function DayDetailModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-[1px]">
-      <div className="flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+    <div className="fixed inset-0 z-50 flex justify-end bg-black/30">
+      <div role="dialog" aria-modal="true" aria-label="Day lessons" className="flex h-full w-full max-w-lg flex-col overflow-hidden border-l border-slate-200 bg-white shadow-xl">
         <div className="flex items-start justify-between gap-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white px-5 py-4">
           <div className="flex items-center gap-2">
             <span
@@ -1466,12 +1157,14 @@ function StatusBadge({ status }: { status: LessonSession["status"] }) {
 
 function SlotsListModal({
   dayType,
+  onDayTypeChange,
   slots,
   onAdd,
   onDelete,
   onClose,
 }: {
   dayType: "ODD" | "EVEN";
+  onDayTypeChange: (type: "ODD" | "EVEN") => void;
   slots: ScheduleSlot[];
   onAdd: () => void;
   onDelete: (slotId: string) => Promise<void>;
@@ -1503,7 +1196,7 @@ function SlotsListModal({
                 aria-hidden
               />
               <div className="text-base font-semibold text-gray-900">
-                {label} Classes
+                Recurring schedule
               </div>
             </div>
             <div className="mt-0.5 text-sm text-gray-500">
@@ -1522,6 +1215,9 @@ function SlotsListModal({
           </button>
         </div>
 
+        <div className="flex gap-2 border-b px-5 py-3">
+          {(['ODD', 'EVEN'] as const).map(type => <button type="button" key={type} aria-pressed={dayType === type} onClick={() => onDayTypeChange(type)} className={`flex-1 rounded-xl px-4 py-3 text-sm font-semibold ${dayType === type ? 'bg-[#303380] text-white' : 'bg-slate-100 text-slate-600'}`}>{type === 'ODD' ? 'Odd dates · 1, 3, 5…' : 'Even dates · 2, 4, 6…'}</button>)}
+        </div>
         <div className="space-y-2 overflow-y-auto p-5">
           <div className="mb-1 flex items-center justify-between">
             <span className="text-sm text-gray-600">
@@ -1580,95 +1276,6 @@ function SlotsListModal({
 }
 
 type RosterDraft = { id: string; name: string; email: string };
-
-function ReportModal({
-  title,
-  loading,
-  text,
-  onClose,
-}: {
-  title: string;
-  loading: boolean;
-  text: string;
-  onClose: () => void;
-}) {
-  const [copied, setCopied] = useState(false);
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // ignore clipboard failures
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-[1px]">
-      <div className="my-8 flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
-        <div className="flex items-start justify-between gap-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white px-6 py-4">
-          <div className="flex items-center gap-2">
-            <span
-              className="h-2 w-2 rounded-full"
-              style={{ backgroundColor: ACCENT }}
-              aria-hidden
-            />
-            <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50"
-            aria-label="Close"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-5">
-          {loading ? (
-            <div className="flex items-center gap-2 py-8 text-sm text-slate-500">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Building report…
-            </div>
-          ) : (
-            <textarea
-              readOnly
-              value={text}
-              onFocus={(e) => e.currentTarget.select()}
-              className="h-72 w-full resize-none rounded-lg border border-slate-200 bg-slate-50 p-3 font-mono text-sm leading-relaxed text-gray-800 outline-none focus:border-[#303380] focus:ring-2 focus:ring-[#303380]/30"
-            />
-          )}
-        </div>
-
-        <div className="flex items-center justify-end gap-2 border-t border-slate-100 px-6 py-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-slate-50"
-          >
-            Close
-          </button>
-          <button
-            type="button"
-            onClick={copy}
-            disabled={loading || !text}
-            className="inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:opacity-90 disabled:opacity-50"
-            style={{ backgroundColor: ACCENT }}
-          >
-            {copied ? (
-              <Check className="h-4 w-4" />
-            ) : (
-              <Copy className="h-4 w-4" />
-            )}
-            {copied ? "Copied" : "Copy"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function WeekReportCard({ report }: { report: WeekReportItem }) {
   const [copied, setCopied] = useState(false);
@@ -2297,8 +1904,8 @@ function LessonFeedbackModal({
   const title = dayClass.className ?? dayClass.title;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4 backdrop-blur-[1px]">
-      <div className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+    <div className="fixed inset-0 z-[60] flex justify-end bg-black/30">
+      <div role="dialog" aria-modal="true" aria-label="Lesson feedback" className="flex h-full w-full max-w-3xl flex-col overflow-hidden border-l border-slate-200 bg-white shadow-xl">
         {/* Header */}
         <div className="flex items-start justify-between gap-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white px-5 py-4">
           <div className="min-w-0">

@@ -40,3 +40,8 @@
 .animate-fade-in {
   animation: fade-in 0.3s ease-out;
 }
+/* Shared by question stems, answer choices, previews and review explanations. */
+.exam-math-display { display: block; width: 100%; overflow-x: auto; padding: .5rem 0; font-size: 1.12em; text-align: center; }
+.exam-math-display .katex-display { margin: .35em 0; }
+.exam-math-inline { display: inline; }
+.exam-math-inline .katex { font-size: 1.08em; }

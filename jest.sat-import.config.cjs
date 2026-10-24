@@ -1,1 +1,1 @@
-module.exports = { ...require('./jest.speaking.config.cjs'), testMatch: ['**/sat-text-import.test.ts', '**/sat-text-import-ui.test.tsx', '**/sat-import-builder.test.tsx'] };
+module.exports = { ...require('./jest.speaking.config.cjs'), testMatch: ['**/sat-text-import.test.ts', '**/sat-text-import-ui.test.tsx', '**/sat-import-builder.test.tsx', '**/math-render.test.tsx', '**/sat-zip.test.ts'] };

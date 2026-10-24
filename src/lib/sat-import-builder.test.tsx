@@ -24,7 +24,7 @@ const click = async (label: string) => {
 test('Add Question file import creates normal cards in all modules, supports edit and restores draft', async () => {
   await act(async () => root.render(<SatDigitalBuilder mode="create" />));
   await click('Add Question');
-  await click('Import questions from text / .txt file');
+  await click('Import questions from text / .txt / .zip');
   expect(host.querySelector('[role="dialog"]')).not.toBeNull();
   const source = SAT_IMPORT_MODULES.map((m, i) => `[${m}]\n1. MCQ for ${m}\na. A\nb. B\nc. C\nd. D\nAnswer: B\n2. Open for ${m}\nType: SHORT_TEXT\nAnswer: ${i + 1}`).join('\n');
   const file = host.querySelector('input[type="file"]')!;

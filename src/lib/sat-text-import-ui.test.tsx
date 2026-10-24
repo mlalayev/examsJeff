@@ -65,3 +65,26 @@ test('invalid file keeps existing text', async () => {
   expect(onTextChange).not.toHaveBeenCalled();
   expect(host.textContent).toContain('Choose a .txt file');
 });
+
+test('ZIP uses a single authenticated upload request and keeps returned image URLs in the draft text', async () => {
+  const previousFetch = globalThis.fetch;
+  const uploaded = source.replace('Question?', 'Question?\n[Image: /api/images/zip-question.png]');
+  const fetchMock = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ text: uploaded, imageCount: 1 }) });
+  globalThis.fetch = fetchMock;
+  const onImport = jest.fn();
+  function Harness() {
+    const [text, setText] = useState('');
+    return <SatTextImport text={text} onTextChange={setText} onImport={onImport} disabled={false} />;
+  }
+  try {
+    await act(async () => root.render(<Harness />));
+    const fileInput = host.querySelector('input[type="file"]')!;
+    Object.defineProperty(fileInput, 'files', { value: [new File(['zip'], 'sat-exam.zip')] });
+    await act(async () => fileInput.dispatchEvent(new Event('change', { bubbles: true })));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/admin/upload/sat-zip');
+    expect(host.querySelector('textarea')!.value).toContain('/api/images/zip-question.png');
+    await click('Save Questions');
+    expect(onImport.mock.calls[0][0].modules[0][0].image).toBe('/api/images/zip-question.png');
+  } finally { globalThis.fetch = previousFetch; }
+});
