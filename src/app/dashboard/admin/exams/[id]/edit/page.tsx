@@ -143,7 +143,7 @@ function LegacyEditExamPage() {
               answerKey: q.answerKey,
               maxScore: q.maxScore,
               explanation: q.explanation,
-              image: q.prompt?.image || null,
+              image: q.image || q.prompt?.image || q.prompt?.imageUrl || null,
             })),
           };
 
@@ -2444,7 +2444,7 @@ function parseInstruction(raw: any): any {
 
 function mapDbQuestion(q: any): Question {
   const prompt = q.prompt && typeof q.prompt === "object" ? q.prompt : { text: q.prompt || "" };
-  const image = prompt.imageUrl || prompt.image || q.image || undefined;
+  const image = q.image || prompt.image || prompt.imageUrl || undefined;
   return {
     id: q.id,
     qtype: q.qtype,

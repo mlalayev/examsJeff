@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { questionImageSource } from '@/lib/question-image';
 import { prisma } from "@/lib/prisma";
 import { requireStudent } from "@/lib/auth-utils";
 import { integrityBlock } from "@/lib/exam-integrity";
@@ -105,7 +106,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ atte
             prompt: {
               ...prompt,
               // Map top-level image to prompt.imageUrl for question components
-              imageUrl: q.image || prompt.imageUrl || null,
+              imageUrl: questionImageSource(q),
             },
           };
         }),

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { questionImageForSave } from '@/lib/question-image';
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-utils";
 import { requireHomeworkManager } from "@/lib/homework-access";
@@ -281,10 +282,7 @@ export async function PATCH(
             const questionData = {
               qtype: q.qtype,
               order: q.order,
-              prompt: {
-                ...q.prompt,
-                ...(q.image ? { image: q.image } : {}),
-              },
+              ...questionImageForSave(q),
               options: q.options,
               answerKey: q.answerKey,
               maxScore: q.maxScore,

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { questionImageForSave } from '@/lib/question-image';
 import { prisma } from "@/lib/prisma";
 import { requireAdmin, requireBranchAdminOrBoss } from "@/lib/auth-utils";
 import { z } from "zod";
@@ -183,11 +184,7 @@ export async function POST(request: Request) {
                   ...(q.id ? { id: q.id } : {}), // Use custom ID if provided (for IELTS parts)
                   qtype: q.qtype,
                   order: q.order,
-                  prompt: {
-                    ...q.prompt,
-                    // Add imageUrl to prompt if image exists
-                    ...(q.image ? { imageUrl: q.image } : {}),
-                  },
+                  ...questionImageForSave(q),
                   options: q.options,
                   answerKey: q.answerKey,
                   maxScore: q.maxScore,
@@ -262,10 +259,7 @@ export async function POST(request: Request) {
                   ...(q.id ? { id: q.id } : {}), // Use custom ID if provided (for IELTS parts)
                   qtype: q.qtype,
                   order: q.order,
-                  prompt: {
-                    ...q.prompt,
-                    ...(q.image ? { imageUrl: q.image } : {}),
-                  },
+                  ...questionImageForSave(q),
                   options: q.options,
                   answerKey: q.answerKey,
                   maxScore: q.maxScore,
