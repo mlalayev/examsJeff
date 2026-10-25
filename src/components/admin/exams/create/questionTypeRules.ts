@@ -25,6 +25,7 @@ const QUESTION_TYPE_RESTRICTIONS: Partial<Record<SectionType, QuestionType[]>> =
  */
 const CONTEXT_SPECIFIC_TYPES: Partial<Record<QuestionType, (ctx: QuestionTypeContext) => boolean>> = {
   SPEAKING_RECORDING: (ctx) => ctx.examCategory === "IELTS" && ctx.sectionType === "SPEAKING",
+  HTML_CSS: (ctx) => ctx.examCategory === "IELTS",
 };
 
 /**

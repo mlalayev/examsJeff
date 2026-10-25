@@ -1,0 +1,52 @@
+[section: GRAMMAR]
+Title: Grammar practice
+Duration: 10
+Instruction: Complete the questions.
+1. She ___ a teacher.
+Type: MCQ_SINGLE
+a. am
+b. is
+c. are
+Answer: B
+Explanation: Use "is" with "she".
+2. They [input] students.
+Type: FILL_IN_BLANK
+Answer: are
+
+[section: VOCABULARY]
+Title: Everyday words
+Duration: 10
+1. What is the opposite of cold?
+Type: SHORT_TEXT
+Answer: hot
+
+[section: READING]
+Title: Anna's weekend
+Duration: 15
+Instruction: Read the passage and answer the questions.
+[passage]
+Anna visited a park on Sunday. She travelled by bus and took a book with her. She read under a tree for an hour.
+[/passage]
+1. Anna visited the park on Saturday.
+Type: TF
+Answer: FALSE
+2. How did Anna travel?
+Type: SHORT_TEXT
+Answer: bus | by bus
+
+[section: LISTENING]
+Title: Listening practice
+Duration: 10
+Instruction: Listen to the recording and answer the question.
+1. What time does the library open?
+Type: MCQ_SINGLE
+a. Eight o'clock
+b. Nine o'clock
+c. Ten o'clock
+Answer: B
+
+[section: WRITING]
+Title: My favourite place
+Duration: 20
+1. Write 80–100 words about your favourite place. Describe where it is, what you do there and why you like it.
+Type: ESSAY

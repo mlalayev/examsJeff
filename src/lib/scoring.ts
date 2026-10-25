@@ -120,6 +120,15 @@ export function scoreQuestion(qtype: QuestionType, studentAnswer: any, answerKey
         return normalizeText(a) === normalized;
       }) ? 1 : 0;
     }
+    case "FILL_IN_BLANK": {
+      const blanks = Array.isArray(answerKey) ? answerKey : answerKey?.blanks;
+      if (!Array.isArray(blanks) || !blanks.length || !studentAnswer || typeof studentAnswer !== 'object') return 0;
+      return blanks.every((expected: unknown, i: number) =>
+        typeof expected === 'string' && expected.trim().length > 0 &&
+        typeof studentAnswer[String(i)] === 'string' &&
+        normalizeText(studentAnswer[String(i)]) === normalizeText(expected)
+      ) ? 1 : 0;
+    }
     case "ORDER_SENTENCE": {
       // Order array deep-equal
       const correctOrder = answerKey?.order || [];

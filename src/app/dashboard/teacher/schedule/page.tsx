@@ -2,6 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import ScheduleWorkspace from '@/components/teacher/ScheduleWorkspace';
+import QuickLessonFeedback from '@/components/teacher/QuickLessonFeedback';
 import {
   Calendar as CalendarIcon,
   Check,
@@ -620,6 +621,10 @@ export default function TeacherSchedulePage() {
         applying={applying} clearing={clearing}
         onNavigate={date => { setSelectedDay(null); setCurrentYear(date.getFullYear()); setCurrentMonth(date.getMonth()); }}
         onDay={date => { setCurrentYear(date.getFullYear()); setCurrentMonth(date.getMonth()); setSelectedDay(date.getDate()); }}
+        onLesson={(date, lesson) => setFeedbackCtx({ date: dateKey(date.getFullYear(), date.getMonth(), date.getDate()), dayClass: {
+          key: lesson.id, kind: 'lesson', lessonId: lesson.id, title: lesson.title, timeSlot: lesson.timeSlot,
+          className: lesson.class?.name ?? null, classId: null, studentCount: lesson.class?._count?.classStudents || 0,
+        } })}
         onSchedule={() => setSlotsModal("ODD")} onApply={applyMonth} onClear={clearMonth}
         onReport={date => { void openWeekReports(date); }} />
 
@@ -1667,27 +1672,6 @@ function AddScheduleModal({
   );
 }
 
-const ATTENDANCE_OPTIONS: { value: Attendance; label: string }[] = [
-  { value: "PRESENT", label: "Present" },
-  { value: "ABSENT", label: "Absent" },
-  { value: "LATE", label: "Late" },
-];
-
-const PERFORMANCE_OPTIONS: { value: PerformanceRating; label: string }[] = [
-  { value: "EXCELLENT", label: "Excellent" },
-  { value: "GOOD", label: "Good" },
-  { value: "AVERAGE", label: "Average" },
-  { value: "WEAK", label: "Weak" },
-  { value: "DID_NOT_PARTICIPATE", label: "Did not participate" },
-];
-
-const HOMEWORK_OPTIONS: { value: Homework; label: string }[] = [
-  { value: "COMPLETED", label: "Completed" },
-  { value: "INCOMPLETE", label: "Incomplete" },
-  { value: "NOT_DONE", label: "Not submitted" },
-  { value: "NOT_ASSIGNED", label: "Not assigned" },
-];
-
 type StudentRow = {
   studentId: string;
   name: string;
@@ -1905,7 +1889,7 @@ function LessonFeedbackModal({
 
   return (
     <div className="fixed inset-0 z-[60] flex justify-end bg-black/30">
-      <div role="dialog" aria-modal="true" aria-label="Lesson feedback" className="flex h-full w-full max-w-3xl flex-col overflow-hidden border-l border-slate-200 bg-white shadow-xl">
+      <div role="dialog" aria-modal="true" aria-label="Lesson feedback" className="flex h-full w-full max-w-6xl flex-col overflow-hidden border-l border-slate-200 bg-white shadow-xl">
         {/* Header */}
         <div className="flex items-start justify-between gap-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white px-5 py-4">
           <div className="min-w-0">
@@ -1972,10 +1956,8 @@ function LessonFeedbackModal({
 
               {/* Roster editor */}
               {classId && (
-                <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50/60 p-3">
-                  <div className="mb-2 text-sm font-medium text-gray-700">
-                    Add a student to this class
-                  </div>
+                <details className="mb-4 rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+                  <summary className="mb-2 cursor-pointer text-sm font-medium text-gray-700">Manage class roster · Add student</summary>
                   <StudentSearchField
                     onSelect={addStudent}
                     excludeIds={rows.map((r) => r.studentId)}
@@ -1984,7 +1966,7 @@ function LessonFeedbackModal({
                   {rosterError && (
                     <p className="mt-1.5 text-xs text-rose-600">{rosterError}</p>
                   )}
-                </div>
+                </details>
               )}
 
               {rows.length === 0 ? (
@@ -1993,16 +1975,9 @@ function LessonFeedbackModal({
                   attendance and feedback.
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {rows.map((r) => (
-                    <StudentFeedbackCard
-                      key={r.studentId}
-                      row={r}
-                      onChange={(patch) => updateRow(r.studentId, patch)}
-                      onRemove={() => removeStudent(r.studentId)}
-                    />
-                  ))}
-                </div>
+                <QuickLessonFeedback rows={rows} disabled={saving || rosterBusy} onChange={updateRow}
+                  onBulkChange={(ids, patch) => setRows(previous => previous.map(row => ids.includes(row.studentId) ? { ...row, ...patch } : row))}
+                  onRemove={removeStudent} />
               )}
             </>
           )}
@@ -2025,150 +2000,8 @@ function LessonFeedbackModal({
             style={{ backgroundColor: ACCENT }}
           >
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-            {saving ? "Saving…" : "Save feedback"}
+            {saving ? "Saving…" : "Save lesson"}
           </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function StudentFeedbackCard({
-  row,
-  onChange,
-  onRemove,
-}: {
-  row: StudentRow;
-  onChange: (patch: Partial<StudentRow>) => void;
-  onRemove: () => void;
-}) {
-  return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <div className="font-semibold text-gray-900">{row.name}</div>
-        <button
-          type="button"
-          onClick={onRemove}
-          className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-rose-700 transition hover:bg-rose-50"
-          title="Remove student from class"
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {/* Attendance */}
-        <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">
-            Attendance
-          </label>
-          <div className="inline-flex w-full rounded-lg border border-gray-200 bg-white p-1">
-            {ATTENDANCE_OPTIONS.map((o) => (
-              <button
-                key={o.value}
-                type="button"
-                onClick={() => onChange({ attendance: o.value })}
-                className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition ${
-                  row.attendance === o.value
-                    ? "text-white shadow-sm"
-                    : "text-gray-700 hover:bg-slate-50"
-                }`}
-                style={
-                  row.attendance === o.value
-                    ? { backgroundColor: ACCENT }
-                    : undefined
-                }
-              >
-                {o.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Late minutes */}
-        <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">
-            Late minutes
-          </label>
-          <input
-            type="number"
-            min={0}
-            max={600}
-            value={row.lateMinutes}
-            disabled={row.attendance !== "LATE"}
-            onChange={(e) => onChange({ lateMinutes: e.target.value })}
-            placeholder={row.attendance === "LATE" ? "e.g., 10" : "—"}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#303380] focus:ring-2 focus:ring-[#303380]/30 disabled:bg-slate-50 disabled:text-slate-400"
-          />
-        </div>
-
-        {/* Performance */}
-        <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">
-            Performance
-          </label>
-          <select
-            value={row.performance}
-            onChange={(e) =>
-              onChange({ performance: e.target.value as PerformanceRating | "" })
-            }
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#303380] focus:ring-2 focus:ring-[#303380]/30"
-          >
-            <option value="">Not rated</option>
-            {PERFORMANCE_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Homework */}
-        <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">
-            Homework
-          </label>
-          <select
-            value={row.homeworkStatus}
-            onChange={(e) =>
-              onChange({ homeworkStatus: e.target.value as Homework })
-            }
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#303380] focus:ring-2 focus:ring-[#303380]/30"
-          >
-            {HOMEWORK_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Teacher feedback note */}
-        <div className="sm:col-span-2">
-          <label className="mb-1 block text-xs font-medium text-gray-600">
-            Teacher feedback note
-          </label>
-          <textarea
-            rows={2}
-            value={row.feedback}
-            onChange={(e) => onChange({ feedback: e.target.value })}
-            placeholder="Feedback for the student / parent…"
-            className="w-full resize-y rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#303380] focus:ring-2 focus:ring-[#303380]/30"
-          />
-        </div>
-
-        {/* Behavior note */}
-        <div className="sm:col-span-2">
-          <label className="mb-1 block text-xs font-medium text-gray-600">
-            Behavior note
-          </label>
-          <textarea
-            rows={2}
-            value={row.behaviorNote}
-            onChange={(e) => onChange({ behaviorNote: e.target.value })}
-            placeholder="Behavior observations…"
-            className="w-full resize-y rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#303380] focus:ring-2 focus:ring-[#303380]/30"
-          />
         </div>
       </div>
     </div>

@@ -27,6 +27,14 @@ test('destructive action hidden in more menu and apply remains separate',async()
   await click('More schedule actions');await click('Clear month & feedback');expect(props.onClear).toHaveBeenCalledTimes(1);
   await click('Apply to Oct');expect(props.onApply).toHaveBeenCalledTimes(1);
 });
+test('lesson card opens feedback directly when a lesson handler is provided',async()=>{
+  props.onLesson=jest.fn(); await mount();
+  const card=Array.from(host.querySelectorAll('button')).find(b=>b.textContent?.includes('2 students'))!;
+  await act(async()=>card.click());
+  expect(props.onDay).not.toHaveBeenCalled();
+  expect(props.onLesson.mock.calls[0][1].id).toBe('l');
+  expect(dayKey(props.onLesson.mock.calls[0][0])).toBe('2026-10-24');
+});
 test('empty state offers setup and hides apply until templates exist',async()=>{
   props.data={...props.data,oddDays:[],lessons:[]};await mount();
   expect(host.textContent).toContain('Build your teaching routine');expect(host.textContent).not.toContain('Apply to Oct');

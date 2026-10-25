@@ -10,6 +10,7 @@ interface QuestionTypeModalProps {
   onSelect: (type: QuestionType) => void;
   allowedGroups?: Record<string, QuestionType[]>;
   onImportText?: () => void;
+  importLabel?: string;
 }
 
 export default function QuestionTypeModal({ 
@@ -17,7 +18,8 @@ export default function QuestionTypeModal({
   onClose, 
   onSelect,
   allowedGroups,
-  onImportText
+  onImportText,
+  importLabel = 'Import questions from text / .txt / .zip'
 }: QuestionTypeModalProps) {
   if (!isOpen) return null;
 
@@ -54,7 +56,7 @@ export default function QuestionTypeModal({
         <div className="space-y-4 sm:space-y-6">
           {onImportText && <button type="button" onClick={onImportText}
             className="w-full rounded-md border border-indigo-200 bg-indigo-50 p-3 text-left font-medium text-indigo-900">
-            Import questions from text / .txt / .zip
+            {importLabel}
           </button>}
           {Object.entries(groups).map(([groupName, types], groupIndex) => (
             <div key={groupName} className={groupIndex > 0 ? "pt-4 sm:pt-6 border-t-2 border-gray-300" : ""}>

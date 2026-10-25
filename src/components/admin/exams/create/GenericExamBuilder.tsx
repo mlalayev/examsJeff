@@ -1,5 +1,7 @@
 "use client";
 import { useExamDraft } from '@/hooks/useExamDraft';
+import GeneralTextImport from './GeneralTextImport';
+import { appendGeneralImport } from '@/lib/general-text-import';
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -85,9 +87,11 @@ export default function GenericExamBuilder({ mode, category, examId, initial, sa
   const [selectedSectionType, setSelectedSectionType] = useState<SectionType | "">("");
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [generalImportText, setGeneralImportText] = useState('');
+  const [showGeneralImport, setShowGeneralImport] = useState(false);
   const draft = useExamDraft(`generic:${saveConfig?.createUrl || "exams"}:${category}:${mode}:${examId || "new"}`,
-    { examTitle, track, durationMin, sections, editingQuestion, showQuestionTypeModal, step, currentSection, selectedSectionType },
-    d => { setExamTitle(d.examTitle); setTrack(d.track); setDurationMin(d.durationMin); setSections(d.sections); setEditingQuestion(d.editingQuestion); setShowQuestionTypeModal(d.showQuestionTypeModal); setStep(d.step); setCurrentSection(d.currentSection); setSelectedSectionType(d.selectedSectionType); });
+    { examTitle, track, durationMin, sections, editingQuestion, showQuestionTypeModal, step, currentSection, selectedSectionType, generalImportText },
+    d => { setExamTitle(d.examTitle); setTrack(d.track); setDurationMin(d.durationMin); setSections(d.sections); setEditingQuestion(d.editingQuestion); setShowQuestionTypeModal(d.showQuestionTypeModal); setStep(d.step); setCurrentSection(d.currentSection); setSelectedSectionType(d.selectedSectionType); setGeneralImportText(d.generalImportText ?? ''); });
 
   const ieltsParts = useIELTSParts();
   const modals = useBuilderModals();
@@ -489,6 +493,14 @@ export default function GenericExamBuilder({ mode, category, examId, initial, sa
       />
 
       {/* Sections */}
+      {selectedCategory === 'GENERAL_ENGLISH' && <div className="mb-5 rounded-lg border bg-indigo-50 p-4">
+        <button type="button" disabled={saving || !!editingQuestion} onClick={() => setShowGeneralImport(true)} className="rounded bg-indigo-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Import questions from text / .txt</button>
+        <p className="mt-2 text-sm text-slate-600">Reading passages, Listening, Writing, Grammar and Vocabulary. Choose question types and copy ChatGPT instructions.</p>
+      </div>}
+      {showGeneralImport && <GeneralTextImport text={generalImportText} onTextChange={setGeneralImportText} onClose={() => setShowGeneralImport(false)} onImport={result => {
+        const next = appendGeneralImport(sections, result, crypto.randomUUID());
+        setSections(next); setCurrentSection(null); setStep('sections'); setShowGeneralImport(false);
+      }} />}
       <SectionsList
         sections={sections}
         selectedCategory={selectedCategory}
@@ -630,6 +642,8 @@ export default function GenericExamBuilder({ mode, category, examId, initial, sa
         isOpen={showQuestionTypeModal}
         onClose={() => setShowQuestionTypeModal(false)}
         onSelect={(type) => addQuestion(type)}
+        importLabel="Import questions from text / .txt"
+        onImportText={selectedCategory === 'GENERAL_ENGLISH' ? () => { setShowQuestionTypeModal(false); setShowGeneralImport(true); } : undefined}
         allowedGroups={
           currentSection && selectedCategory
             ? getGroupedQuestionTypes({
