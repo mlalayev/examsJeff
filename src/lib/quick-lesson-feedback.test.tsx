@@ -9,11 +9,12 @@ beforeEach(async () => { (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true; ho
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); });
 const click = async (label: string) => { const el = Array.from(host.querySelectorAll<HTMLElement>('button,input')).find(e => e.getAttribute('aria-label') === label || e.textContent === label)!; expect(el).toBeDefined(); await act(async () => el.click()); };
 const select = async (label: string, value: string) => { const el = host.querySelector<HTMLSelectElement>(`[aria-label="${label}"]`)!; await act(async () => { el.value = value; el.dispatchEvent(new Event('change', {bubbles:true})); }); };
-test('bulk changes affect selected students only and preserve existing notes and attendance', async () => {
-  await click('Select Ali'); await click('Select Leyla');
-  await select('Selected performance', 'GOOD'); await select('Selected homework', 'COMPLETED'); await click('Apply to selected');
-  expect(latest.map(r => r.performance)).toEqual(['GOOD','GOOD','']);
-  expect(latest.map(r => r.homeworkStatus)).toEqual(['COMPLETED','COMPLETED','NOT_ASSIGNED']);
+test('Update all changes chosen fields and preserves existing notes and attendance', async () => {
+  expect(host.querySelector('input[type=checkbox]')).toBeNull();
+  await click('Update all');
+  await select('All students performance', 'GOOD'); await select('All students homework', 'COMPLETED'); await click('Apply to all');
+  expect(latest.map(r => r.performance)).toEqual(['GOOD','GOOD','GOOD']);
+  expect(latest.map(r => r.homeworkStatus)).toEqual(['COMPLETED','COMPLETED','COMPLETED']);
   expect(latest[1].attendance).toBe('ABSENT'); expect(latest[0].feedback).toBe('Keep this note');
   expect(host.querySelector('[role="status"]')?.textContent).toContain('Save lesson');
 });
