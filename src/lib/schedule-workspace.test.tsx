@@ -54,3 +54,23 @@ test('year boundary and leap day produce seven consecutive dates',()=>{
   expect(weekDates(new Date(2027,0,1)).map(dayKey)).toEqual(['2026-12-27','2026-12-28','2026-12-29','2026-12-30','2026-12-31','2027-01-01','2027-01-02']);
   expect(weekDates(new Date(2028,1,29)).map(dayKey)).toContain('2028-02-29');
 });
+test('Sunday report uses the displayed week and feedback colors follow saved records',async()=>{
+  props.data.lessons[0]._count={studentRecords:2};
+  props.data.lessons.push({...props.data.lessons[0],id:'pending',title:'Math',class:null,_count:{studentRecords:0}});
+  await mount();
+  const reportButton=Array.from(host.querySelectorAll('button')).find(b=>b.textContent?.includes('Weekly reports'))!;
+  await act(async()=>reportButton.click());
+  expect(dayKey(props.onReport.mock.calls[0][0])).toBe('2026-10-18');
+  const cards=Array.from(host.querySelectorAll('button'));
+  expect(cards.find(b=>b.textContent?.includes('2 students'))?.className).toContain('bg-emerald-50');
+  expect(cards.find(b=>b.textContent?.includes('Math'))?.className).toContain('bg-rose-50');
+  expect(host.querySelector('[aria-label="Schedule color legend"]')?.textContent).toContain('Feedback not saved');
+  expect(host.querySelector('.ring-indigo-300')).not.toBeNull();
+});
+
+test('weekly report mark reflects saved server status, including month boundary Sunday',async()=>{
+  props.data.reportWeeks=[];await mount();expect(host.querySelector('[aria-label="Reports not prepared"]')).not.toBeNull();
+  props.data={...props.data,reportWeeks:['2026-10-18']};await mount();
+  expect(host.querySelector('[aria-label="Reports ready"]')?.textContent).toContain('Done');
+  expect(host.querySelector('[aria-label="Reports not prepared"]')).toBeNull();
+});

@@ -174,6 +174,7 @@ type LessonSession = {
 };
 
 type MonthData = {
+  reportWeeks?: string[];
   year: number;
   month: number;
   oddDays: ScheduleSlot[];
@@ -469,6 +470,9 @@ export default function TeacherSchedulePage() {
       if (!res.ok) throw new Error(body.error || "Failed to generate reports");
       const list: WeekReportItem[] = body.reports ?? [];
       setWeekReports(list);
+      if (list.length > 0) setData(previous => previous ? {
+        ...previous, reportWeeks: [...new Set([...(previous.reportWeeks || []), isoDay(sunday)])],
+      } : previous);
       setWeekReportCached(Boolean(body.cached));
       if (list.length === 0) {
         const candidates = body.candidates ?? 0;

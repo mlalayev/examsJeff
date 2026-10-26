@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { integrityBlock } from "@/lib/exam-integrity";
+import { integrityBlock, canReviewIntegrity } from "@/lib/exam-integrity";
 import { requireAuth } from "@/lib/auth-utils";
 import {
   computeIeltsOverallBand,
@@ -273,9 +273,15 @@ export async function GET(
     }
 
     // Check if submitted
-    const blocked = await integrityBlock(attemptId);
-    if (blocked) return blocked;
-    if (attempt.status !== "SUBMITTED") {
+    const policy = await prisma.examIntegrity.findUnique({ where: { attemptId } });
+    const invalidated = policy?.state === 'INVALID' || attempt.status === 'DISQUALIFIED';
+    const reviewOnly = invalidated && canReviewIntegrity(user, attempt);
+    if (invalidated && !reviewOnly) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (!reviewOnly) {
+      const blocked = await integrityBlock(attemptId);
+      if (blocked) return blocked;
+    }
+    if (attempt.status !== "SUBMITTED" && !reviewOnly) {
       return NextResponse.json(
         {
           error: "Attempt not submitted yet",
@@ -285,7 +291,7 @@ export async function GET(
       );
     }
     
-    const attemptCoinReward = await getAttemptCoinReward(attemptId);
+    const attemptCoinReward = reviewOnly ? null : await getAttemptCoinReward(attemptId);
     const coinReward = attemptCoinReward
       ? {
           amount: attemptCoinReward.amount,
@@ -461,11 +467,17 @@ export async function GET(
       });
     }
 
+    // Reconstruct saved answers without modifying the invalidated attempt.
+    const savedAnswers: Record<string, any> = { ...((attempt.answers as any) || {}) };
+    for (const section of attempt.sections) savedAnswers[section.type] = { ...(savedAnswers[section.type] || {}), ...((section.answers as any) || {}) };
+    const savedRows = await prisma.attemptAnswer.findMany({ where: { attemptId } });
+    for (const row of savedRows) savedAnswers[row.section] = { ...(savedAnswers[row.section] || {}), [row.questionId]: row.answer };
+
     // TEACHER VIEW: Full review
     if (isTeacher) {
       // For JSON exams, answers are stored in attempt.answers, not in attempt_sections
       // Structure: { sectionType: { questionId: answer } }
-      const allStudentAnswers = (attempt.answers as any) || {};
+      const allStudentAnswers = savedAnswers;
       const isIelts = examWithSections.category === "IELTS";
       const readingType: IeltsReadingType =
         (examWithSections.readingType || "ACADEMIC").toUpperCase() === "GENERAL_TRAINING"
@@ -503,9 +515,7 @@ export async function GET(
         allQuestions.sort((a, b) => (a.q?.order ?? 0) - (b.q?.order ?? 0));
 
         const questions = allQuestions.map(({ q, sourceSectionType }) => {
-          const studentAnswer = attemptSection?.answers
-            ? (attemptSection.answers as Record<string, any>)[q.id]
-            : (allStudentAnswers[sourceSectionType] || {})[q.id];
+          const studentAnswer = (allStudentAnswers[sourceSectionType] || {})[q.id];
           const answerKey = q.answerKey as any;
 
 
@@ -747,6 +757,7 @@ export async function GET(
         submittedAt: attempt.submittedAt,
         status: attempt.status,
         role: "TEACHER",
+        reviewOnly,
         speakingRecordings,
         coinReward,
         placementLevel: attempt.placementLevel ?? null,

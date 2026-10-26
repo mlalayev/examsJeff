@@ -166,7 +166,7 @@ export function ExamSecurityGate({ children }: { children: React.ReactNode }) {
     } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   }
   if (!security) return <div className="p-8">{error || 'İmtahan yoxlanılır…'}{error && <button onClick={load}>Yenidən yoxla</button>}</div>;
-  if (!running) return <><ExamIntegrityReview attemptId={attemptId} />{security.policy?.state === 'INVALID' ? null : children}</>;
+  if (!running) return <><div className="min-w-0 lg:ml-72"><div className="mx-auto max-w-7xl pt-16 lg:pt-4"><ExamIntegrityReview attemptId={attemptId} /></div></div>{security.policy?.state === 'INVALID' && !security.canReview ? null : children}</>;
   if (invalid || security.policy?.state === 'INVALID') return <div className="m-8 rounded-xl border border-red-300 bg-red-50 p-8"><h1 className="text-xl font-bold">İmtahan nəticəsi etibarsızdır</h1><p>Qayda pozuntusu — fullscreen-dən çıxış. Cavablar silinməyib, lakin nəticəyə hesablanmayacaq. Texniki problem olubsa müəlliminizlə əlaqə saxlayın.</p><button onClick={() => { void flush(); void load(); }}>Server vəziyyətini yenidən yoxla</button></div>;
   if (ready) return <><div hidden={completed.current || security.status !== 'IN_PROGRESS'} className="fixed left-1/2 top-0 z-[60] -translate-x-1/2 rounded-b bg-emerald-800 px-3 py-1 text-xs text-white">Tam ekran nəzarəti aktivdir</div>{children}</>;
   if (!security.policy || security.status !== 'IN_PROGRESS') return <>{children}</>;

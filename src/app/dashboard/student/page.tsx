@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import CoinBalanceCard from "@/components/coins/CoinBalanceCard";
+import MonthlyAttendance from "@/components/student/MonthlyAttendance";
 
 export default function StudentDashboard() {
   const { data: session, status } = useSession();
@@ -58,7 +59,7 @@ export default function StudentDashboard() {
   }
 
   return (
-    <div className="h-[calc(100vh-5rem)] flex items-center justify-center">
+    <div className="min-h-[calc(100vh-5rem)] py-8">
       <div className="text-center">
         <div className="inline-flex items-center gap-3 px-6 py-3 bg-white/80 backdrop-blur-sm rounded-full shadow-lg border border-white/20 mb-8">
           <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full flex items-center justify-center">
@@ -85,6 +86,9 @@ export default function StudentDashboard() {
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-full text-slate-600 text-sm">
           <span>📚</span>
           <span>Use the sidebar to navigate between different sections</span>
+        </div>
+        <div className="mx-auto mt-8 max-w-6xl text-left">
+          <MonthlyAttendance />
         </div>
       </div>
     </div>

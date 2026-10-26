@@ -35,8 +35,9 @@ interface ResultsData {
   examTitle: string;
   examCategory?: string;
   studentName: string;
-  submittedAt: string;
+  submittedAt: string | null;
   status: string;
+  reviewOnly?: boolean;
   role: "STUDENT" | "TEACHER" | "PARENT";
   coinReward?: { amount: number; earnedAt: string } | null;
   placementLevel?: string | null;
@@ -681,7 +682,7 @@ export default function AttemptResultsPage() {
     return (
       <div className="min-h-screen bg-gray-50">
         <Sidebar />
-        <main className="ml-72">
+        <main className="lg:ml-72">
           <div className="max-w-7xl mx-auto px-6 py-8">
             {/* Header Skeleton */}
             <div className="mb-6">
@@ -755,7 +756,7 @@ export default function AttemptResultsPage() {
     return (
       <div className="min-h-screen bg-gray-50">
         <Sidebar />
-        <main className="ml-72 flex items-center justify-center min-h-screen">
+        <main className="lg:ml-72 flex items-center justify-center min-h-screen">
           <p className="text-gray-500">Results not found</p>
         </main>
       </div>
@@ -765,7 +766,7 @@ export default function AttemptResultsPage() {
   return (
     <div className="min-h-screen h-screen flex flex-col bg-gray-50">
       <Sidebar />
-      <main className="ml-72 flex-1 flex flex-col min-h-0">
+      <main className="lg:ml-72 flex-1 flex flex-col min-h-0">
         <div className="max-w-7xl mx-auto px-6 py-8 flex-1 flex flex-col min-h-0 w-full">
         {/* Header */}
         <div className="mb-6">
@@ -778,11 +779,12 @@ export default function AttemptResultsPage() {
           </button>
           <h1 className="text-2xl font-semibold text-gray-900">{data.examTitle}</h1>
           <p className="text-gray-500">
-            {new Date(data.submittedAt).toLocaleDateString()}
+            {data.submittedAt ? new Date(data.submittedAt).toLocaleDateString() : "Not submitted"}
             {data.role !== "STUDENT" && ` • ${data.studentName}`}
           </p>
         </div>
 
+        {data.reviewOnly && <div role="status" className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900"><strong>Invalidated attempt — review only</strong><p>The overall score and answer checks below use saved answers. This result remains invalid and does not count as an official result.</p></div>}
         {/* STUDENT: Show only a friendly message, no scores or section details */}
         {data.role === "STUDENT" ? (
           <div className="flex-1 min-h-0 flex items-center justify-center py-12">
@@ -992,7 +994,7 @@ export default function AttemptResultsPage() {
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2 gap-y-1">
                           <h3 className="font-medium text-gray-900">{section.title}</h3>
-                          {data.role === "TEACHER" && isWritingSectionType(section.type) && !showWritingAi && (
+                          {!data.reviewOnly && data.role === "TEACHER" && isWritingSectionType(section.type) && !showWritingAi && (
                             <button
                               type="button"
                               onClick={handlePersistWritingAiScore}
@@ -1012,7 +1014,7 @@ export default function AttemptResultsPage() {
                               )}
                             </button>
                           )}
-                          {data.role === "TEACHER" && isSpeakingSectionType(section.type) && !showSpeakingAi && (
+                          {!data.reviewOnly && data.role === "TEACHER" && isSpeakingSectionType(section.type) && !showSpeakingAi && (
                             <button
                               type="button"
                               onClick={handlePersistSpeakingAiScore}
@@ -1032,12 +1034,12 @@ export default function AttemptResultsPage() {
                               )}
                             </button>
                           )}
-                          {data.role === "TEACHER" && isWritingSectionType(section.type) && showWritingAi && writingBand != null && (
+                          {!data.reviewOnly && data.role === "TEACHER" && isWritingSectionType(section.type) && showWritingAi && writingBand != null && (
                             <span className="inline-flex items-center rounded-full bg-[#303380]/10 px-2.5 py-0.5 text-xs font-semibold text-[#303380]">
                               Band {writingBand.toFixed(1)} (saved)
                             </span>
                           )}
-                          {data.role === "TEACHER" && isSpeakingSectionType(section.type) && showSpeakingAi && speakingBand != null && (
+                          {!data.reviewOnly && data.role === "TEACHER" && isSpeakingSectionType(section.type) && showSpeakingAi && speakingBand != null && (
                             <span className="inline-flex items-center rounded-full bg-[#303380]/10 px-2.5 py-0.5 text-xs font-semibold text-[#303380]">
                               Band {speakingBand.toFixed(1)} (saved)
                             </span>
@@ -1264,8 +1266,8 @@ export default function AttemptResultsPage() {
           </div>
         )}
 
-        <SpeakingRecordingsReview attemptId={attemptId} recordings={data.speakingRecordings || []} canTranscribe={data.role !== "PARENT"} onUpdated={fetchResults} />
-        {data.role === "TEACHER" && data.speakingAi && <button type="button" disabled={checkingSpeakingAi} onClick={handlePersistSpeakingAiScore} className="mb-6 rounded bg-[#303380] px-4 py-2 text-sm text-white disabled:opacity-50">
+        <SpeakingRecordingsReview attemptId={attemptId} recordings={data.speakingRecordings || []} canTranscribe={!data.reviewOnly && data.role !== "PARENT"} onUpdated={fetchResults} />
+        {!data.reviewOnly && data.role === "TEACHER" && data.speakingAi && <button type="button" disabled={checkingSpeakingAi} onClick={handlePersistSpeakingAiScore} className="mb-6 rounded bg-[#303380] px-4 py-2 text-sm text-white disabled:opacity-50">
           {checkingSpeakingAi ? "Preparing transcripts and checking…" : "Recheck speaking transcripts with AI"}
         </button>}
 
@@ -1545,7 +1547,7 @@ export default function AttemptResultsPage() {
                             </div>
                           </div>
                         </div>
-                        {!q.isCorrect && editingQuestion !== q.id && (
+                        {!data.reviewOnly && !q.isCorrect && editingQuestion !== q.id && (
                           <button
                             onClick={() => handleEditAnswer(q.id, q.studentAnswer)}
                             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
