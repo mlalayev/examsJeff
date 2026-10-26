@@ -1,91 +1,15 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { requireTeacher } from "@/lib/auth-utils";
-
-/**
- * GET /api/teacher/attempts
- * Returns all attempts from students taught by this teacher
- */
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { requireTeacher } from '@/lib/auth-utils';
+import { handleApiError } from '@/lib/api-helpers';
+import { classExamCategories } from '@/lib/teacher-exam-scope';
 export async function GET() {
-  try {
-    const user = await requireTeacher();
-    const teacherId = (user as any).id;
-    const branchId = (user as any).branchId;
-
-    // Get all attempts from bookings assigned by this teacher (with pagination limit)
-    const attempts = await prisma.attempt.findMany({
-      where: {
-        booking: {
-          teacherId,
-          ...(branchId ? { branchId } : {}),
-        },
-        status: {
-          in: ["IN_PROGRESS", "SUBMITTED"],
-        },
-      },
-      select: {
-        id: true,
-        status: true,
-        submittedAt: true,
-        createdAt: true,
-        booking: {
-          select: {
-            student: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
-            exam: {
-              select: {
-                id: true,
-                title: true,
-              },
-            },
-          },
-        },
-        sections: {
-          select: {
-            type: true,
-            rawScore: true,
-            maxScore: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-      take: 100, // Limit to 100 most recent attempts
-    });
-
-    const attemptsData = attempts.map((attempt) => {
-      // Calculate total score from auto-gradable sections only
-      const autoSections = attempt.sections.filter((s) => s.type !== "WRITING");
-      const totalCorrect = autoSections.reduce((sum, s) => sum + (s.rawScore || 0), 0);
-      const totalQuestions = autoSections.reduce((sum, s) => sum + (s.maxScore || 0), 0);
-      const totalScore = totalQuestions > 0 ? (totalCorrect / totalQuestions) * 100 : null;
-
-      return {
-        id: attempt.id,
-        studentName: attempt.booking.student.name || "Unknown",
-        studentEmail: attempt.booking.student.email,
-        examTitle: attempt.booking.exam.title,
-        status: attempt.status,
-        submittedAt: attempt.submittedAt,
-        totalScore,
-        totalQuestions,
-        correctAnswers: totalCorrect,
-      };
-    });
-
-    return NextResponse.json({ attempts: attemptsData });
-  } catch (error) {
-    console.error("Teacher attempts error:", error);
-    return NextResponse.json(
-      { error: "Failed to load attempts" },
-      { status: 500 }
-    );
-  }
+ try {
+  const user=await requireTeacher();
+  const classes=await prisma.class.findMany({where:{teacherId:user.id},select:{name:true,classStudents:{select:{studentId:true}}}});
+  const exams=await prisma.exam.findMany({where:{category:{in:[...new Set(classes.flatMap(c=>classExamCategories(c.name)))]}},select:{id:true,title:true,category:true}});
+  const attempts=await prisma.attempt.findMany({where:{OR:classes.map(c=>({studentId:{in:c.classStudents.map(s=>s.studentId)},examId:{in:exams.filter(e=>classExamCategories(c.name).includes(e.category)).map(e=>e.id)}}))},include:{sections:true},orderBy:{createdAt:'desc'},take:100});
+  const students=await prisma.user.findMany({where:{id:{in:[...new Set(attempts.map(a=>a.studentId))]}},select:{id:true,firstName:true,lastName:true,email:true}});
+  return NextResponse.json({attempts:attempts.map(a=>{const student=students.find(s=>s.id===a.studentId);const sections=a.sections.filter(s=>!['WRITING','SPEAKING'].includes(s.type));const correctAnswers=sections.reduce((n,s)=>n+(s.rawScore||0),0);const totalQuestions=sections.reduce((n,s)=>n+(s.maxScore||0),0);return {id:a.id,status:a.status,submittedAt:a.submittedAt,studentName:student?[student.firstName,student.lastName].filter(Boolean).join(' '):'Unknown',studentEmail:student?.email,examTitle:exams.find(e=>e.id===a.examId)?.title,totalScore:totalQuestions?100*correctAnswers/totalQuestions:null,totalQuestions,correctAnswers};})});
+ }catch(error){return handleApiError(error,'Teacher attempts');}
 }
-

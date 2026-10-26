@@ -1,17 +1,20 @@
+import { teacherStudentScope } from '@/lib/teacher-exam-scope';
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireTeacher } from "@/lib/auth-utils";
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requireTeacher();
+    const user = await requireTeacher();
     const { id } = await params;
 
+    if (!(await teacherStudentScope(user.id,id)).classes.length) return NextResponse.json({error:'Forbidden'},{status:403});
     const student = await prisma.user.findUnique({
       where: { id },
       select: {
         id: true,
-        name: true,
+        firstName: true,
+        lastName: true,
         email: true,
         role: true,
         studentProfile: {
@@ -27,7 +30,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     return NextResponse.json({
       student: {
         id: student.id,
-        name: student.name,
+        name: [student.firstName,student.lastName].filter(Boolean).join(' '),
         email: student.email,
         coinBalance: student.studentProfile?.coinBalance ?? 0,
       },

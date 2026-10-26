@@ -1,15 +1,20 @@
+import { teacherStudentScope } from '@/lib/teacher-exam-scope';
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireTeacher } from "@/lib/auth-utils";
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requireTeacher();
+    const user = await requireTeacher();
     const { id: studentId } = await params;
 
-    // Find all attempts for this student
+    const scope = await teacherStudentScope(user.id, studentId, new URL(request.url).searchParams.get('classId'));
+    if (!scope.classes.length) return NextResponse.json({error:'Forbidden'}, {status:403});
+    const allowedExams = await prisma.exam.findMany({where:{category:{in:scope.categories}},select:{id:true}});
+    // Return every attempt, but only for this student's subjects taught by this teacher.
     const attempts = await prisma.attempt.findMany({
       where: {
+        examId: {in:allowedExams.map(e=>e.id)},
         OR: [
           { studentId },
           { booking: { studentId } },

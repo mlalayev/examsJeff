@@ -1,5 +1,6 @@
 "use client";
 
+import StudentProgress from '@/components/teacher/StudentProgress';
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -293,6 +294,7 @@ export default function ClassManagePage() {
                       <td className="px-4 py-3">
                         <div className="font-medium text-gray-900">
                           {row.student.name || "—"}
+                          <div className="mt-2"><StudentProgress studentId={row.student.id} classId={classId} /></div>
                         </div>
                         <div className="text-xs text-gray-500">
                           {row.student.email}

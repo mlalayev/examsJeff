@@ -1,3 +1,4 @@
+import { teacherStudentScope } from '@/lib/teacher-exam-scope';
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { integrityBlock, canReviewIntegrity } from "@/lib/exam-integrity";
@@ -264,6 +265,10 @@ export async function GET(
         select: { id: true },
       })) != null;
 
+    if (role === 'TEACHER') {
+      const scope = await teacherStudentScope(user.id, booking.studentId);
+      if (!scope.categories.includes(examWithSections.category)) return NextResponse.json({error:'Forbidden'}, {status:403});
+    }
     // Authorization check
     if (!isOwner && !isTeacher && !isParent) {
       return NextResponse.json(

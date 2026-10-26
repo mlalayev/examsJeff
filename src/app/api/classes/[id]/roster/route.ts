@@ -1,3 +1,4 @@
+import { classExamCategories } from '@/lib/teacher-exam-scope';
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireTeacher } from "@/lib/auth-utils";
@@ -50,11 +51,13 @@ export async function GET(
       );
     }
 
+    const allowedExams = await prisma.exam.findMany({where:{category:{in:classExamCategories(classData.name)}},select:{id:true}});
     const roster = await Promise.all(
       classData.classStudents.map(async (enrollment) => {
         const latestAttempt = await prisma.attempt.findFirst({
           where: {
             studentId: enrollment.studentId,
+            examId: {in:allowedExams.map(e=>e.id)},
           },
           orderBy: {
             createdAt: "desc",

@@ -1,3 +1,4 @@
+import { teacherStudentScope } from '@/lib/teacher-exam-scope';
 import { NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-utils';
 import { prisma } from '@/lib/prisma';
@@ -24,6 +25,11 @@ export async function GET(_request: Request, { params }: Context) {
     const attempt = await prisma.attempt.findUnique({ where: { id: attemptId }, include: { integrity: true } });
     if (!attempt) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     const staff = canReviewIntegrity(user, attempt);
+    if (user.role === 'TEACHER') {
+      const scope = await teacherStudentScope(user.id, attempt.studentId);
+      const allowed = await prisma.exam.findFirst({where:{id:attempt.examId,category:{in:scope.categories}},select:{id:true}});
+      if (!allowed) return NextResponse.json({error:'Forbidden'},{status:403});
+    }
     const parent = user.role === 'PARENT' && !!(await prisma.parentChild.findFirst({ where: { parentId: user.id, childId: attempt.studentId }, select: { id: true } }));
     if (attempt.studentId !== user.id && !staff && !parent) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     const exam = await prisma.exam.findUnique({ where: { id: attempt.examId }, select: { sections: { select: { type: true } } } });

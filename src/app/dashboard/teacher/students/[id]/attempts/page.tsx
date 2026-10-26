@@ -1,5 +1,6 @@
  "use client";
 
+import StudentProgress from '@/components/teacher/StudentProgress';
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, FileText, Calendar, CheckCircle, Clock, Trash2, Coins } from "lucide-react";
@@ -225,6 +226,7 @@ export default function StudentAttemptsPage() {
         </div>
       )}
 
+      <div className="mb-6"><StudentProgress studentId={studentId} /></div>
       {/* Attempts List */}
       {loading ? (
         <div className="space-y-4">

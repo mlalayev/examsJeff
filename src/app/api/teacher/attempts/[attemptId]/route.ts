@@ -1,3 +1,4 @@
+import { teacherStudentScope } from '@/lib/teacher-exam-scope';
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireTeacher } from "@/lib/auth-utils";
@@ -9,7 +10,7 @@ export async function DELETE(
   { params }: { params: Promise<{ attemptId: string }> }
 ) {
   try {
-    await requireTeacher();
+    const user = await requireTeacher();
     const { attemptId } = await params;
 
     if (!attemptId) {
@@ -19,13 +20,16 @@ export async function DELETE(
     // Ensure the attempt exists first
     const existing = await prisma.attempt.findUnique({
       where: { id: attemptId },
-      select: { id: true },
+      select: { id: true, studentId:true, examId:true },
     });
 
     if (!existing) {
       return NextResponse.json({ error: "Attempt not found" }, { status: 404 });
     }
 
+    const scope = await teacherStudentScope(user.id, existing.studentId);
+    const allowed = await prisma.exam.findFirst({where:{id:existing.examId,category:{in:scope.categories}},select:{id:true}});
+    if (!allowed) return NextResponse.json({error:'Forbidden'},{status:403});
     // Cascade will clean up AttemptSection etc. via Prisma schema
     await prisma.attempt.delete({
       where: { id: attemptId },
