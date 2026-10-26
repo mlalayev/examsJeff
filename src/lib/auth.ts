@@ -18,13 +18,13 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          throw new Error("Missing email or password");
+          return null;
         }
 
         // Basic email validation
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(credentials.email)) {
-          throw new Error("Invalid email format");
+          return null;
         }
 
         const user = await prisma.user.findUnique({
@@ -35,7 +35,7 @@ export const authOptions: NextAuthOptions = {
           // Use constant-time comparison to prevent timing attacks
           // Hash a dummy password even if user doesn't exist
           await bcrypt.compare(credentials.password, "$2a$10$invalidhashtopreventtimingattacks");
-          throw new Error("Invalid email or password");
+          return null;
         }
 
         const isValidPassword = await bcrypt.compare(
@@ -44,7 +44,7 @@ export const authOptions: NextAuthOptions = {
         );
 
         if (!isValidPassword) {
-          throw new Error("Invalid email or password");
+          return null;
         }
 
         return {
@@ -102,6 +102,7 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: "/auth/login",
+    error: "/auth/error",
   },
   callbacks: {
     async jwt({ token, user }) {

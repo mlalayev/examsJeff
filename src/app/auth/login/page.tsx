@@ -2,11 +2,10 @@
 
 import { useState, Suspense } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Mail, Lock, LogIn, AlertCircle, BookOpen } from "lucide-react";
 
 function LoginPageContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [formData, setFormData] = useState({
     email: "",
@@ -26,20 +25,24 @@ function LoginPageContent() {
     try {
       const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
       
-      // Use redirect: true and callbackUrl to let NextAuth handle the redirect
-      // This ensures the session is properly set before navigation
+      // Handle failed credentials in the form without navigating to a generic error.
       const result = await signIn("credentials", {
         email: formData.email,
         password: formData.password,
         callbackUrl: callbackUrl,
-        redirect: true, // Let NextAuth handle the redirect after successful login
+        redirect: false,
       });
 
-      // This code will only run if redirect fails or there's an error
-      if (result?.error) {
-        setError("Invalid email or password");
+      if (result?.error || !result?.ok) {
+        setError(result?.status === 401 || result?.error === 'CredentialsSignin'
+          ? "Account not found or incorrect password. Please check your email and password."
+          : "Sign-in is temporarily unavailable. Please try again.");
         setLoading(false);
+        return;
       }
+      // Reload after success so every session consumer starts with the new cookie.
+      const target = new URL(result.url || '/dashboard', window.location.origin);
+      window.location.assign(target.origin === window.location.origin ? target.href : '/dashboard');
     } catch (err) {
       setError("An error occurred during login");
       setLoading(false);
@@ -57,13 +60,15 @@ function LoginPageContent() {
 
         {/* Login Card */}
         <div className="bg-white rounded-2xl shadow-2xl p-8 border border-white/10">
-          {(error || errorParam === "unauthorized") && (
-            <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg flex items-start gap-3">
+          {(error || errorParam) && (
+            <div role="alert" className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
               <p className="text-red-700 text-sm">
                 {errorParam === "unauthorized" 
                   ? "You don't have permission to access that page" 
-                  : error}
+                  : error || (errorParam === 'CredentialsSignin'
+                    ? 'Account not found or incorrect password. Please try again.'
+                    : 'Sign-in could not be completed. Please try again.')}
               </p>
             </div>
           )}
