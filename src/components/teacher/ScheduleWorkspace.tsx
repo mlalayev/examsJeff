@@ -1,4 +1,5 @@
 "use client";
+import MonthlyLessonSummary from './MonthlyLessonSummary';
 import { useEffect, useMemo, useState } from 'react';
 import { CalendarDays, ChevronLeft, ChevronRight, Clock, FileText, MoreHorizontal, Plus, Settings2, Users, X } from 'lucide-react';
 
@@ -60,6 +61,7 @@ export default function ScheduleWorkspace({ data, loading, error, toast, applyin
     <header className="mb-7 flex flex-wrap items-center justify-between gap-4">
       <div><div className="mb-2 text-xs font-semibold uppercase tracking-widest text-indigo-700">Teaching workspace</div><h1 className="text-3xl font-semibold tracking-tight text-slate-900">Your schedule</h1><p className="mt-2 text-sm text-slate-500">Plan your classes. Keep every lesson in one place.</p></div>
       <div className="flex flex-wrap gap-2">
+        <MonthlyLessonSummary year={anchor.getFullYear()} month={anchor.getMonth()+1} />
         <button className={action} onClick={() => { setReportDate(dayKey(anchor)); setReports(true); }}><FileText size={17}/>Reports</button>
         <button disabled={loading || !data} className="inline-flex items-center gap-2 rounded-xl bg-[#303380] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50" onClick={onSchedule}><Settings2 size={17}/>Manage schedule</button>
       </div>

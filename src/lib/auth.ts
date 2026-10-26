@@ -135,6 +135,8 @@ export const authOptions: NextAuthOptions = {
               },
             });
             
+            // Revoke old JWTs after an account is removed or its login email changes.
+            if (!dbUser || dbUser.email !== token.email) return null as any;
             if (dbUser) {
               token.name = dbUser.firstName && dbUser.lastName ? `${dbUser.firstName} ${dbUser.lastName}` : dbUser.firstName || dbUser.lastName || token.name;
               token.email = dbUser.email ?? token.email;

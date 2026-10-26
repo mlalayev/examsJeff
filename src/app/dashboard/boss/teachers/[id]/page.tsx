@@ -1,5 +1,6 @@
 "use client";
 
+import MonthlyLessonSummary from "@/components/teacher/MonthlyLessonSummary";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
@@ -284,6 +285,7 @@ export default function BossTeacherDetailPage() {
         <div className="flex items-center gap-2">
           <CalendarIcon className="h-5 w-5 text-slate-500" />
           <h2 className="text-lg font-medium text-gray-900">Schedule</h2>
+          <MonthlyLessonSummary year={currentYear} month={currentMonth+1} teacherId={teacherId} />
         </div>
         <div className="inline-flex rounded-lg border border-gray-200 bg-white p-1">
           <button

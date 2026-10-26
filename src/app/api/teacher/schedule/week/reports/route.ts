@@ -280,7 +280,8 @@ export async function POST(request: Request) {
           const reports = await generateWeeklyReports(
             job.kind,
             job.subject,
-            job.students
+            job.students,
+            { start, end }
           );
           const nameById = new Map(
             job.students.map((s) => [s.studentId, s.name])
