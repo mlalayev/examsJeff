@@ -36,6 +36,8 @@ export async function GET(request: Request) {
 
     const students = found.map((s) => ({
       id: s.id,
+      firstName: s.firstName,
+      lastName: s.lastName,
       email: s.email,
       name:
         [s.firstName, s.lastName].filter(Boolean).join(" ").trim() || s.email,

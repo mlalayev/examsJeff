@@ -1,3 +1,4 @@
+import { recurringDayType } from '@/lib/schedule-days';
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireTeacher } from "@/lib/auth-utils";
@@ -10,7 +11,7 @@ const querySchema = z.object({
 
 // GET /api/teacher/schedule/day?date=2026-06-14
 // Returns the classes/lessons effective for a specific day:
-//  - recurring slots that apply (odd/even by day-of-month, Sundays excluded)
+//  - recurring slots that apply (odd/even by weekday, Sundays excluded)
 //  - any concrete lesson sessions already created for that date
 export async function GET(request: Request) {
   try {
@@ -23,8 +24,7 @@ export async function GET(request: Request) {
     const dayEnd = new Date(Date.UTC(y, m - 1, d + 1));
 
     const dayOfWeek = dayStart.getUTCDay(); // 0 = Sunday
-    const dayOfMonth = d;
-    const dayType: "ODD" | "EVEN" = dayOfMonth % 2 !== 0 ? "ODD" : "EVEN";
+    const dayType = recurringDayType(dayStart)!;
 
     // Sundays inherit no recurring slots (mirrors the calendar UI behaviour)
     const recurringSlots =

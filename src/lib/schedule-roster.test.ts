@@ -1,0 +1,10 @@
+import { PUT } from '@/app/api/teacher/schedule/slots/[slotId]/roster/route';
+import { prisma } from '@/lib/prisma';
+jest.mock('@/lib/auth-utils',()=>({requireTeacher:async()=>({id:'t',role:'TEACHER',branchId:'b'}),getScopedBranchId:()=> 'b'}));
+jest.mock('@/lib/prisma',()=>({prisma:{$transaction:jest.fn()}}));
+const tx:any={scheduleSlot:{findFirst:jest.fn()},user:{findMany:jest.fn(),update:jest.fn()},classStudent:{deleteMany:jest.fn(),createMany:jest.fn()}};
+beforeEach(()=>{jest.clearAllMocks();(prisma.$transaction as jest.Mock).mockImplementation(fn=>fn(tx));tx.scheduleSlot.findFirst.mockResolvedValue({classId:'c',class:{teacherId:'t',classStudents:[{studentId:'s'}]}});tx.user.findMany.mockResolvedValue([{id:'s',firstName:'Old',lastName:'Name'}]);});
+const call=(students:any[])=>PUT(new Request('http://local',{method:'PUT',body:JSON.stringify({students})}),{params:Promise.resolve({slotId:'slot'})});
+test('saves account name and membership atomically',async()=>{const r=await call([{id:'s',firstName:'Correct',lastName:'Name'}]);expect(r.status).toBe(200);expect(tx.user.update).toHaveBeenCalledWith({where:{id:'s'},data:{firstName:'Correct',lastName:'Name'}});expect(tx.classStudent.deleteMany).toHaveBeenCalled();});
+test('cannot edit another teacher class',async()=>{tx.scheduleSlot.findFirst.mockResolvedValue(null);expect((await call([])).status).toBe(404);expect(tx.user.update).not.toHaveBeenCalled();expect(tx.classStudent.deleteMany).not.toHaveBeenCalled();});
+test('rejects unavailable students before changing membership',async()=>{tx.user.findMany.mockResolvedValue([]);expect((await call([{id:'s',firstName:'Correct',lastName:'Name'}])).status).toBe(400);expect(tx.classStudent.deleteMany).not.toHaveBeenCalled();});

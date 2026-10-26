@@ -1,3 +1,4 @@
+import { recurringDayType } from '@/lib/schedule-days';
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireTeacher } from "@/lib/auth-utils";
@@ -44,6 +45,15 @@ export async function POST(request: Request) {
     const start = new Date(Date.UTC(year, month - 1, 1));
     const end = new Date(Date.UTC(year, month, 1));
 
+    // Repair only future, untouched generated lessons. Preserve attendance/history.
+    const today = new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Baku',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+    const candidates = await prisma.lessonSession.findMany({
+      where: { teacherId, scheduleSlotId: {in:slots.map(s=>s.id)}, status:'SCHEDULED', topic:null, studentRecords:{none:{}}, date:{gte:start,lt:end,gt:new Date(`${today}T00:00:00Z`)} },
+      select:{id:true,date:true,scheduleSlotId:true},
+    });
+    const misplaced = candidates.filter(l => slots.find(s=>s.id===l.scheduleSlotId)?.dayType !== recurringDayType(l.date)).map(l=>l.id);
+    if(misplaced.length) await prisma.lessonSession.deleteMany({where:{id:{in:misplaced},teacherId,status:'SCHEDULED',topic:null,studentRecords:{none:{}}}});
+
     // Already-materialised slot occurrences this month (any status), so we don't
     // duplicate lessons or resurrect ones the teacher removed for a single day.
     const existing = await prisma.lessonSession.findMany({
@@ -76,7 +86,7 @@ export async function POST(request: Request) {
       const dateUtc = new Date(Date.UTC(year, month - 1, day));
       if (dateUtc.getUTCDay() === 0) continue; // skip Sundays
 
-      const wantType = day % 2 !== 0 ? "ODD" : "EVEN";
+      const wantType = recurringDayType(dateUtc);
       for (const slot of slots) {
         if (slot.dayType !== wantType) continue;
         if (taken.has(takenKey(slot.id, day))) continue;

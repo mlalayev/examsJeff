@@ -199,7 +199,7 @@ const pad2 = (n: number) => String(n).padStart(2, "0");
 const dateKey = (year: number, month0: number, day: number) =>
   `${year}-${pad2(month0 + 1)}-${pad2(day)}`;
 
-const isOddDay = (day: number) => day % 2 !== 0;
+
 
 function sortByTime(a: DayClass, b: DayClass) {
   return a.timeSlot.localeCompare(b.timeSlot);
@@ -609,7 +609,7 @@ export default function TeacherSchedulePage() {
 
   const cellBackground = (day: number, dayOfWeek: number) => {
     if (dayOfWeek === 0) return "bg-amber-50"; // Sunday → light yellow
-    if (isOddDay(day)) return "bg-blue-50"; // Odd days → light blue
+    if (new Date(currentYear, currentMonth, day).getDay() % 2 !== 0) return "bg-blue-50"; // Odd days → light blue
     return "bg-gray-50"; // Even days → light gray
   };
 
@@ -678,6 +678,7 @@ export default function TeacherSchedulePage() {
           onAdd={() =>
             openAdd(slotsModal === "ODD" ? "ODD_DAYS" : "EVEN_DAYS")
           }
+          onSaved={async () => { await Promise.all([loadMonth(currentYear, currentMonth), fetchClasses()]); }}
           onDelete={deleteSlot}
           onClose={() => setSlotsModal(null)}
         />
@@ -794,7 +795,7 @@ function TimeSelect({
   );
 }
 
-type StudentHit = { id: string; name: string; email: string };
+type StudentHit = { id: string; name: string; email: string; firstName?: string; lastName?: string };
 
 // Type-ahead that searches existing student accounts by name or email.
 function StudentSearchField({
@@ -1170,15 +1171,18 @@ function SlotsListModal({
   slots,
   onAdd,
   onDelete,
+  onSaved,
   onClose,
 }: {
   dayType: "ODD" | "EVEN";
   onDayTypeChange: (type: "ODD" | "EVEN") => void;
   slots: ScheduleSlot[];
   onAdd: () => void;
+  onSaved: () => Promise<void>;
   onDelete: (slotId: string) => Promise<void>;
   onClose: () => void;
 }) {
+  const [editingSlot, setEditingSlot] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const label = dayType === "ODD" ? "Odd Days" : "Even Days";
 
@@ -1193,6 +1197,7 @@ function SlotsListModal({
     }
   };
 
+  if (editingSlot) return <RecurringRosterEditor slotId={editingSlot} onClose={() => setEditingSlot(null)} onSaved={onSaved} />;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-[1px]">
       <div className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
@@ -1210,8 +1215,8 @@ function SlotsListModal({
             </div>
             <div className="mt-0.5 text-sm text-gray-500">
               {dayType === "ODD"
-                ? "Applies to every odd-numbered day of the month."
-                : "Applies to every even-numbered day of the month."}
+                ? "Applies on Monday, Wednesday and Friday."
+                : "Applies on Tuesday, Thursday and Saturday."}
             </div>
           </div>
           <button
@@ -1225,7 +1230,7 @@ function SlotsListModal({
         </div>
 
         <div className="flex gap-2 border-b px-5 py-3">
-          {(['ODD', 'EVEN'] as const).map(type => <button type="button" key={type} aria-pressed={dayType === type} onClick={() => onDayTypeChange(type)} className={`flex-1 rounded-xl px-4 py-3 text-sm font-semibold ${dayType === type ? 'bg-[#303380] text-white' : 'bg-slate-100 text-slate-600'}`}>{type === 'ODD' ? 'Odd dates · 1, 3, 5…' : 'Even dates · 2, 4, 6…'}</button>)}
+          {(['ODD', 'EVEN'] as const).map(type => <button type="button" key={type} aria-pressed={dayType === type} onClick={() => onDayTypeChange(type)} className={`flex-1 rounded-xl px-4 py-3 text-sm font-semibold ${dayType === type ? 'bg-[#303380] text-white' : 'bg-slate-100 text-slate-600'}`}>{type === 'ODD' ? 'Odd days · Mon, Wed, Fri' : 'Even days · Tue, Thu, Sat'}</button>)}
         </div>
         <div className="space-y-2 overflow-y-auto p-5">
           <div className="mb-1 flex items-center justify-between">
@@ -1262,6 +1267,7 @@ function SlotsListModal({
                     {s.timeSlot}
                   </div>
                 </div>
+                <button type="button" onClick={() => setEditingSlot(s.id)} className="ml-auto rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-[#303380]">Edit students</button>
                 <button
                   type="button"
                   onClick={() => handleDelete(s.id)}
@@ -1544,7 +1550,7 @@ function AddScheduleModal({
                 Add {dayLabel} Class
               </h2>
               <p className="text-xs text-gray-500">
-                Applies to every {dayLabel.toLowerCase()} of the month.
+                {preset === 'ODD_DAYS' ? 'Monday, Wednesday and Friday.' : 'Tuesday, Thursday and Saturday.'}
               </p>
             </div>
           </div>
@@ -2010,4 +2016,14 @@ function LessonFeedbackModal({
       </div>
     </div>
   );
+}
+
+function RecurringRosterEditor({slotId,onClose,onSaved}:{slotId:string;onClose:()=>void;onSaved:()=>Promise<void>}) {
+  type Row = {id:string;firstName:string;lastName:string;email:string};
+  const [students,setStudents]=useState<Row[]>([]);
+  const [originalIds,setOriginalIds]=useState<string[]>([]); const [loaded,setLoaded]=useState(false);
+  const [loading,setLoading]=useState(true); const [saving,setSaving]=useState(false); const [error,setError]=useState('');
+  useEffect(()=>{let active=true;fetch(`/api/teacher/schedule/slots/${slotId}/roster`).then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.error);return d;}).then(d=>{if(active){setStudents(d.students.map((s:Row)=>({...s,firstName:s.firstName||'',lastName:s.lastName||''})));setOriginalIds(d.students.map((s:Row)=>s.id));setLoaded(true);}}).catch(e=>{if(active)setError(e.message);}).finally(()=>{if(active)setLoading(false);});return()=>{active=false;};},[slotId]);
+  async function save(){setSaving(true);setError('');try{const r=await fetch(`/api/teacher/schedule/slots/${slotId}/roster`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({students})});const d=await r.json();if(!r.ok)throw new Error(d.error);await onSaved();onClose();}catch(e){setError((e as Error).message);}finally{setSaving(false);}}
+  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"><div className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl"><h2 className="text-lg font-semibold">Edit class students</h2><p className="my-3 text-sm text-slate-500">Remove the wrong student and search for a replacement. Name changes update the student's account everywhere. This roster is shared by this class's schedules; saved attendance records remain unchanged.</p>{error&&<p role="alert" className="my-3 text-red-700">{error}</p>}{loading?<p>Loading…</p>:<fieldset disabled={saving} className="space-y-3"><StudentSearchField excludeIds={students.map(s=>s.id)} onSelect={s=>setStudents(prev=>prev.some(p=>p.id===s.id)?prev:[...prev,{id:s.id,email:s.email,firstName:s.firstName||'',lastName:s.lastName||''}])}/>{students.map(s=><div key={s.id} className="rounded-xl border border-slate-200 p-3"><p className="mb-2 text-xs text-slate-500">{s.email}</p><div className="flex flex-wrap gap-2"><label className="flex-1 text-xs">First name<input aria-label={`First name ${s.email}`} disabled={!originalIds.includes(s.id)} value={s.firstName} onChange={e=>setStudents(prev=>prev.map(p=>p.id===s.id?{...p,firstName:e.target.value}:p))} className="mt-1 w-full rounded border p-2 text-sm"/></label><label className="flex-1 text-xs">Last name<input aria-label={`Last name ${s.email}`} disabled={!originalIds.includes(s.id)} value={s.lastName} onChange={e=>setStudents(prev=>prev.map(p=>p.id===s.id?{...p,lastName:e.target.value}:p))} className="mt-1 w-full rounded border p-2 text-sm"/></label><button type="button" onClick={()=>setStudents(prev=>prev.filter(p=>p.id!==s.id))} className="self-end rounded border px-3 py-2 text-sm text-rose-700">Remove</button></div></div>)}<div className="flex justify-end gap-2 pt-4"><button type="button" onClick={onClose} className="rounded-lg border px-4 py-2">Cancel</button><button type="button" disabled={!loaded || students.some(s=>!s.firstName.trim())} onClick={save} className="rounded-lg bg-[#303380] px-4 py-2 text-white disabled:opacity-50">{saving?'Saving…':'Save changes'}</button></div></fieldset>}{loading&&<button onClick={onClose}>Cancel</button>}</div></div>;
 }
