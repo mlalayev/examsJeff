@@ -373,6 +373,7 @@ export default function GenericExamBuilder({ mode, category, examId, initial, sa
   };
 
   const saveExam = async () => {
+    if (sections.some(section => !section.title.trim())) { alert('Please enter a name for every section.'); return; }
     const resolvedTitle =
       selectedCategory === "PLACEMENT" && isEnglishLevelId(track)
         ? placementTestTitle(track)
@@ -585,7 +586,12 @@ export default function GenericExamBuilder({ mode, category, examId, initial, sa
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4">
             <div>
               <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
-                <h3 className="text-lg sm:text-xl font-medium text-gray-900">{currentSection.title}</h3>
+                <label className="block text-sm text-slate-600">Section name
+                  <input aria-label="Section name" maxLength={120} value={currentSection.title} onChange={e => {
+                    const updated = {...currentSection, title:e.target.value};
+                    setSections(updateSectionInList(sections, updated)); setCurrentSection(updated);
+                  }} className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-lg font-medium text-gray-900" />
+                </label>
                 <span className="text-xs px-2 py-1 bg-slate-900 text-white rounded-full font-medium">
                   ACTIVE
                 </span>

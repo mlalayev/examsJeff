@@ -157,6 +157,8 @@ model Class {
 }
 
 model ClassStudent {
+  monthlyFee Decimal? @db.Decimal(10, 2)
+  paymentDueDay Int @default(10)
   id        String   @id @default(cuid())
   classId   String
   studentId String
@@ -1194,4 +1196,24 @@ model CrmContact {
   @@index([email])
   @@index([contactReason])
   @@map("crm_contacts")
+}
+
+// Subject-specific monthly charges. IDs preserve the original teacher attribution.
+model ClassMonthlyPayment {
+  id String @id @default(cuid())
+  classId String
+  studentId String
+  teacherId String
+  year Int
+  month Int
+  expected Decimal @db.Decimal(10, 2)
+  paid Decimal @default(0) @db.Decimal(10, 2)
+  dueDate DateTime @db.Date
+  paidAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([classId, studentId, year, month])
+  @@index([teacherId, year, month])
+  @@index([studentId, year, month])
+  @@map("class_monthly_payments")
 }

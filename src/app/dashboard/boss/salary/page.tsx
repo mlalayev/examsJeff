@@ -1,5 +1,6 @@
 "use client";
 
+import TeacherRevenueModal from '@/components/modals/TeacherRevenueModal';
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Calendar,
@@ -70,6 +71,7 @@ type ScheduleData = {
 };
 
 export default function BossSalaryPage() {
+  const [revenueTeacher,setRevenueTeacher] = useState<TeacherSalaryRow|null>(null);
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -351,7 +353,7 @@ export default function BossSalaryPage() {
                 {filtered.map((t) => (
                   <tr key={t.id} className="hover:bg-slate-50/80">
                     <td className="px-4 py-3">
-                      <div className="font-medium text-gray-900">{t.name}</div>
+                      <button onClick={() => setRevenueTeacher(t)} className="font-medium text-indigo-900 hover:underline">{t.name}</button>
                       <div className="text-xs text-slate-500">{t.email}</div>
                     </td>
                     <td className="px-4 py-3 text-gray-600">
@@ -401,6 +403,7 @@ export default function BossSalaryPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap items-center gap-2">
+                        <button onClick={()=>setRevenueTeacher(t)} className="rounded border border-indigo-200 px-2 py-1 text-xs text-indigo-800">Groups & revenue</button>
                         <button
                           type="button"
                           onClick={() => openSchedule(t)}
@@ -522,6 +525,7 @@ export default function BossSalaryPage() {
       )}
 
       {/* Schedule modal */}
+      {revenueTeacher && <TeacherRevenueModal teacher={revenueTeacher} year={year} month={month+1} onClose={()=>setRevenueTeacher(null)} />}
       {scheduleTeacher && (
         <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/40 p-4">
           <div className="my-8 flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">

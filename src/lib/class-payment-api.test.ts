@@ -1,0 +1,14 @@
+import {PUT} from '@/app/api/branch/students/[studentId]/class-payments/route';
+import {requireBranchAdmin,getScopedBranchId} from '@/lib/auth-utils';
+import {prisma} from '@/lib/prisma';
+jest.mock('@/lib/auth-utils',()=>({requireBranchAdmin:jest.fn(),getScopedBranchId:jest.fn()}));
+jest.mock('@/lib/prisma',()=>({prisma:{user:{findFirst:jest.fn()},class:{findFirst:jest.fn()},$transaction:jest.fn()}}));
+const db=prisma as any;
+const context={params:Promise.resolve({studentId:'s'})};
+const payload={classId:'c',year:2026,month:10,expected:100,paid:70,dueDay:10,setDefault:true};
+const request=(data=payload)=>new Request('http://localhost',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+beforeEach(()=>{jest.clearAllMocks();(requireBranchAdmin as jest.Mock).mockResolvedValue({role:'BOSS'});(getScopedBranchId as jest.Mock).mockReturnValue(null);db.user.findFirst.mockResolvedValue({id:'s'});db.class.findFirst.mockResolvedValue({teacherId:'t'});});
+test('blocks branch accounts without branch assignment',async()=>{(requireBranchAdmin as jest.Mock).mockResolvedValue({role:'BRANCH_ADMIN'});expect((await PUT(request(),context)).status).toBe(403);expect(db.$transaction).not.toHaveBeenCalled();});
+test('rejects paid above expected without writing',async()=>{expect((await PUT(request({...payload,paid:101}),context)).status).toBe(400);expect(db.$transaction).not.toHaveBeenCalled();});
+test('saves per-class amount and future default atomically',async()=>{const tx={classStudent:{findUnique:jest.fn().mockResolvedValue({id:'member'}),update:jest.fn()},classMonthlyPayment:{findUnique:jest.fn().mockResolvedValue(null),upsert:jest.fn()}};db.$transaction.mockImplementation((fn:any)=>fn(tx));expect((await PUT(request(),context)).status).toBe(200);expect(tx.classStudent.update).toHaveBeenCalledWith({where:{id:'member'},data:{monthlyFee:100,paymentDueDay:10}});expect(tx.classMonthlyPayment.upsert).toHaveBeenCalledWith(expect.objectContaining({create:expect.objectContaining({classId:'c',studentId:'s',teacherId:'t',expected:100,paid:70})}));});
+test('rejects student outside chosen class',async()=>{const tx={classStudent:{findUnique:jest.fn().mockResolvedValue(null)},classMonthlyPayment:{findUnique:jest.fn().mockResolvedValue(null),upsert:jest.fn()}};db.$transaction.mockImplementation((fn:any)=>fn(tx));expect((await PUT(request(),context)).status).toBe(403);expect(tx.classMonthlyPayment.upsert).not.toHaveBeenCalled();});

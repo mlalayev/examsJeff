@@ -1,5 +1,6 @@
 "use client";
 
+import ClassPaymentPanel from './ClassPaymentPanel';
 import { useEffect, useState, useCallback } from "react";
 import { X, Check, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 
@@ -216,6 +217,8 @@ export default function StudentPaymentsModal({
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-4">
+          <ClassPaymentPanel studentId={studentId} year={year} />
+          <h3 className="mb-3 font-semibold">Legacy monthly payments</h3>
           {error && (
             <div className="mb-3 px-3 py-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded">
               {error}
