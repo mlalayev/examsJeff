@@ -98,15 +98,36 @@ test.each([
   const result = parseGeneralText(text); expect(result.errors.length).toBeGreaterThan(0);
   expect(() => appendGeneralImport([], result, 'bad')).toThrow();
 });
-test('selection restrictions, duplicate sections and existing exams are protected', () => {
+test('selection restrictions and existing exams are protected', () => {
   expect(parseGeneralText(source, ['SHORT_TEXT']).errors.length).toBeGreaterThan(0);
   expect(parseGeneralText(source, undefined, ['READING']).errors.length).toBeGreaterThan(0);
   const result = parseGeneralText(source); const existing = appendGeneralImport([],result,'first');
   const snapshot = JSON.stringify(existing);
   const next = appendGeneralImport(existing,result,'second');
-  expect(next[0].questions).toHaveLength(18);
-  expect(new Set(next[0].questions.map(q => q.id)).size).toBe(18);
+  expect(next).toHaveLength(existing.length * 2);
+  expect(next[0].questions).toHaveLength(9);
+  expect(new Set(next.flatMap(s => s.questions.map(q => q.id))).size).toBe(24);
   expect(next[0].id).toBe(existing[0].id);
-  expect(() => appendGeneralImport(existing,parseGeneralText(source.replace('Anna went','Bob went')),'bad')).toThrow('passage differs');
+  expect(appendGeneralImport(existing,parseGeneralText(source.replace('Anna went','Bob went')),'different')[5].passage).toContain('Bob went');
   expect(JSON.stringify(existing)).toBe(snapshot);
+});
+
+const shortQuestion = '1. What did you hear?\nType: SHORT_TEXT\nAnswer: school';
+test('repeated listening headings create independent sections and retain distinct audio on save', () => {
+  const result = parseGeneralText(`[listening]\nTitle: Track 1\n${shortQuestion}\n[section: LISTENING]\nTitle: Track 2\n${shortQuestion}`);
+  expect(result.errors).toEqual([]);
+  const sections = appendGeneralImport([], result, 'audio');
+  sections[0].audio = '/uploads/first.mp3'; sections[1].audio = '/uploads/second.mp3';
+  expect(new Set(sections.map(s => s.id)).size).toBe(2);
+  expect(sections.map(s => s.questions[0].order)).toEqual([0,0]);
+  const payload = buildExamPayload('Two recordings', 'GENERAL_ENGLISH', '', null, sections);
+  expect(payload.sections.map(s => JSON.parse(s.instruction).audio)).toEqual(['/uploads/first.mp3','/uploads/second.mp3']);
+});
+test.each(['grammar','vocabulary','reading','listening','writing'])('allows repeated %s sections', type => {
+  const passage = type === 'reading' ? '[passage]\nA separate passage.\n[/passage]\n' : '';
+  const text = `[${type}]\n${passage}${shortQuestion}`;
+  const result = parseGeneralText(text + '\n' + text);
+  expect(result.errors).toEqual([]);
+  expect(result.sections).toHaveLength(2);
+  expect(result.sections.map(s => s.questions.length)).toEqual([1,1]);
 });

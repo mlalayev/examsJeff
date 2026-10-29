@@ -66,11 +66,10 @@ export function parseGeneralText(text: string, allowedTypes = GENERAL_TEXT_TYPES
       return;
     }
     if (!line) return;
-    const heading = line.match(/^\[section:\s*([a-z_]+)\]$/i);
+    const heading = line.match(/^\[(?:section:\s*)?(GRAMMAR|VOCABULARY|READING|LISTENING|WRITING)\]$/i);
     if (heading) {
       finish(); const type = heading[1].toUpperCase() as SectionType;
       if (!GENERAL_SECTIONS.includes(type) || !allowedSections.includes(type)) fail(n, `Unsupported or unselected section: ${type}.`);
-      if (result.sections.some(s => s.type === type)) fail(n, 'Use each section type once. Put its questions together.');
       section = { id: `ge-s-${result.sections.length}`, type, title: type[0] + type.slice(1).toLowerCase(), order: result.sections.length, durationMin: 20, instruction: '', questions: [] };
       result.sections.push(section); return;
     }
@@ -108,7 +107,7 @@ export function parseGeneralText(text: string, allowedTypes = GENERAL_TEXT_TYPES
     if (!s.questions.length) result.errors.push(`${s.title}: no questions.`);
     if (!s.title.trim()) result.errors.push('Section title cannot be empty.');
     if (s.type === 'READING' && !s.passage?.trim()) result.errors.push('Reading needs a non-empty [passage] block.');
-    if (s.type === 'LISTENING') result.warnings.push('Listening audio must be uploaded in the section editor before publishing.');
+    if (s.type === 'LISTENING') result.warnings.push(`${s.order + 1}. ${s.title}: upload this section's listening audio in the section editor before publishing.`);
     if (s.type === 'WRITING') result.warnings.push('Writing tasks are imported without automatic scoring; review grading separately.');
   }
   return result;
@@ -116,15 +115,12 @@ export function parseGeneralText(text: string, allowedTypes = GENERAL_TEXT_TYPES
 
 export function appendGeneralImport(existing: Section[], result: GeneralImportResult, batch: string): Section[] {
   if (result.errors.length || !result.sections.length) throw new Error('Fix import errors first.');
-  let next = [...existing];
-  result.sections.forEach((s,i) => {
-    const matches = next.filter(e => e.type === s.type);
-    if (matches.length > 1) throw new Error(`${s.title}: multiple existing sections; cannot choose an import target safely.`);
-    const target = matches[0];
-    if (target?.passage?.trim() && target.passage.trim() !== s.passage?.trim()) throw new Error('Reading passage differs from the existing passage. Existing text and questions were kept.');
-    const questions = s.questions.map((q,j) => ({ ...q, id: `ge-${batch}-${i}-${j}`, order: (target?.questions.length || 0) + j }));
-    if (target) next = next.map(e => e.id === target.id ? { ...e, passage: e.passage || s.passage, questions: [...e.questions,...questions] } : e);
-    else next.push({ ...s, id: `ge-${batch}-${i}`, order: next.length, questions });
-  });
-  return next;
+  // Every heading represents a distinct section, including repeated types.
+  // Never merge by type: separate recordings and passages belong to separate tasks.
+  return [...existing, ...result.sections.map((s, i) => ({
+    ...s,
+    id: `ge-${batch}-${i}`,
+    order: existing.length + i,
+    questions: s.questions.map((q, j) => ({ ...q, id: `ge-${batch}-${i}-${j}`, order: j })),
+  }))];
 }

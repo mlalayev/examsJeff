@@ -7,12 +7,12 @@ import FormattedText from '@/components/FormattedText';
 
 export function generalImportInstructions(types: QuestionType[], sections: SectionType[]) {
   return `Create a General English exam as plain UTF-8 questions.txt, or plain text. No Markdown fences, HTML/CSS, JSON or ZIP.
-Allowed sections: ${sections.join(', ')}. Use each section type at most once; omit unwanted sections. Include all selected sections.
+Allowed sections: ${sections.join(', ')}. Repeat any section type as often as needed; every heading creates a separate section. Omit unwanted sections. Include all selected sections.
 Allowed question types: ${types.join(', ')}. Use only these types and write Type: explicitly on every question.
-Each section begins [section: READING] (replace READING with its type).
+Each section begins [section: READING] or [reading] (replace READING with its type). For separate audio tracks use [listening] again for each track.
 Before questions use Title: ..., Duration: 20 (integer minutes), Instruction: ... .
-Reading requires one [passage] ... [/passage] block before its questions. Multiple texts can be included in that block with clear titles and question references. Do not repeat the Reading section.
-Listening audio is uploaded separately by the teacher after import. Do not invent audio links or include an Audio field. Create questions for the supplied audio/transcript; ask for it if missing. Do not include answers in the student-facing instructions or passage.
+Reading requires one [passage] ... [/passage] block before its questions. For a separate reading text, start another [reading] section with its own passage block.
+Each Listening section has its own audio, uploaded separately by the teacher after import. Give repeated sections distinct Title: values such as Listening 1 and Listening 2. Do not invent audio links or include an Audio field. Create questions for the supplied audio/transcript; ask for it if missing. Do not include answers in the student-facing instructions or passage.
 Number questions 1., 2., ... starting at 1 in each section. Put all multiline question/task text BEFORE Type:. Use unnumbered lines for task bullet points.
 MCQ_SINGLE / INLINE_SELECT: 2–8 choices a. through h., then Answer: B.
 MCQ_MULTI: 2–8 choices, then Answer: A, C.
@@ -65,7 +65,7 @@ export default function GeneralTextImport({ text, onTextChange, onImport, onClos
   return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
     <section role="dialog" aria-modal="true" aria-label="Import General English questions" className="max-h-[90vh] w-full max-w-4xl overflow-auto rounded-xl bg-white p-5">
       <div className="flex items-center justify-between gap-3"><h2 className="text-lg font-semibold">Import General English questions</h2><button type="button" onClick={onClose} className="rounded border px-3 py-2">Close</button></div>
-      <p className="my-3 text-sm text-slate-600">Choose sections and question types, copy the instructions to ChatGPT, then paste its text or upload questions.txt. Questions append to matching sections; missing sections are created. Existing settings and audio are kept. Reading must use the same passage when appending. Save Exam saves to the server.</p>
+      <p className="my-3 text-sm text-slate-600">Choose sections and question types, copy the instructions to ChatGPT, then paste its text or upload questions.txt. Each heading creates a new section, even when its type repeats. Existing sections and audio stay unchanged. Upload a separate audio file in each Listening section. Save Exam saves to the server.</p>
       <fieldset className="mb-3 rounded border p-3"><legend className="px-1 text-sm font-semibold">Sections to include</legend><div className="flex flex-wrap gap-4">{GENERAL_SECTIONS.map(type => <label key={type} className="text-sm"><input type="checkbox" checked={sections.includes(type)} onChange={e => { setSections(e.target.checked ? [...sections,type] : sections.filter(t => t !== type)); setPreview(null); }} /> {type}</label>)}</div></fieldset>
       <fieldset className="mb-3 rounded border p-3"><legend className="px-1 text-sm font-semibold">Allowed question types</legend><div className="grid gap-2 sm:grid-cols-2">{GENERAL_TEXT_TYPES.map(type => <label key={type} className="text-sm"><input type="checkbox" checked={types.includes(type)} onChange={e => { setTypes(e.target.checked ? [...types,type] : types.filter(t => t !== type)); setPreview(null); }} /> {QUESTION_TYPE_LABELS[type]}</label>)}</div></fieldset>
       <details className="mb-3 rounded border p-3"><summary className="cursor-pointer font-medium">ChatGPT instructions and file format</summary>
@@ -89,7 +89,7 @@ export default function GeneralTextImport({ text, onTextChange, onImport, onClos
       }}>Save Questions</button></div>
       {message && <p role="status" className="my-2 text-sm">{message}</p>}
       {preview?.errors.length ? <ul role="alert" className="text-sm text-red-700">{preview.errors.map((e,i) => <li key={i}>{e}</li>)}</ul> : preview && <div>
-        {preview.warnings.map(w => <p key={w} className="my-2 text-sm text-amber-800">{w}</p>)}
+        {preview.warnings.map((w,i) => <p key={i} className="my-2 text-sm text-amber-800">{w}</p>)}
         {preview.sections.map(s => <details key={s.id} className="my-2 rounded border p-3"><summary>{s.title} · {s.questions.length} questions · {s.durationMin} min</summary>
           {s.passage && <div className="my-3 whitespace-pre-wrap rounded bg-slate-50 p-3"><FormattedText text={s.passage} /></div>}
           {s.questions.map((q,i) => <div key={q.id} className="my-2 border-t pt-2"><p>{i+1}. {QUESTION_TYPE_LABELS[q.qtype]}</p><FormattedText text={q.prompt.text || q.prompt.textWithBlanks || ''} /><pre className="whitespace-pre-wrap text-xs">{JSON.stringify({options:q.options,answer:q.answerKey},null,2)}</pre></div>)}

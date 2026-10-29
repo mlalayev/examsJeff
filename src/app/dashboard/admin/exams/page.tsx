@@ -417,7 +417,7 @@ export default function AdminExamsPage() {
                               : "bg-green-100 text-green-700 hover:bg-green-200"
                           } disabled:opacity-50 disabled:cursor-not-allowed`}
                         >
-                          {togglingExamId === exam.id ? "Updating..." : exam.isActive ? "Deactivate" : "Activate"}
+                          {togglingExamId === exam.id ? "Updating..." : exam.isActive ? " " : "Activate"}
                         </button>
                         <button
                           onClick={() => handleTakeTest(exam.id)}

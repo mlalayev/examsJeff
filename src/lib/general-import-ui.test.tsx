@@ -44,3 +44,19 @@ test('bad file leaves imported text and existing exam unchanged',async()=>{
   expect(host.querySelector<HTMLTextAreaElement>('textarea')?.value).toContain('HTML_CSS');
   expect(JSON.parse(localStorage.getItem('exam-draft:v1:general-test:generic:exams:GENERAL_ENGLISH:create:new')!).data.sections).toEqual([]);
 });
+
+test('repeated listening sections survive refresh and save as distinct sections', async () => {
+  await mount(); await click('Import questions from text / .txt');
+  await upload('[listening]\nTitle: Track one\n1. Where?\nType: SHORT_TEXT\nAnswer: school\n[listening]\nTitle: Track two\n1. When?\nType: SHORT_TEXT\nAnswer: Monday');
+  await click('Save Questions');
+  const key='exam-draft:v1:general-test:generic:exams:GENERAL_ENGLISH:create:new';
+  const sections=JSON.parse(localStorage.getItem(key)!).data.sections;
+  expect(sections.map((s:any)=>s.title)).toEqual(['Track one','Track two']);
+  expect(new Set(sections.map((s:any)=>s.id)).size).toBe(2);
+  await act(async()=>root.unmount());root=createRoot(host);await mount();
+  const fetchMock=jest.fn().mockResolvedValue({ok:true,json:async()=>({examId:'new-id'})});globalThis.fetch=fetchMock;
+  await click('Save Exam');
+  const payload=JSON.parse(fetchMock.mock.calls[0][1].body);
+  expect(payload.sections.map((s:any)=>s.type)).toEqual(['LISTENING','LISTENING']);
+  expect(payload.sections.map((s:any)=>s.questions[0].answerKey.answers[0])).toEqual(['school','Monday']);
+});
