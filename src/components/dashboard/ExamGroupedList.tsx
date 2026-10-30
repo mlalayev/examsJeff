@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { BookOpen } from "lucide-react";
+import { BookOpen, ChevronDown } from "lucide-react";
 import {
   EXAM_CATEGORY_GROUPS,
   getExamCategoryLabel,
@@ -91,15 +91,18 @@ export default function ExamGroupedList({
           </div>
 
           {group.byCategory.map(({ key, label, exams: catExams }) => (
-            <div key={key} className="m-4 overflow-hidden rounded-lg border border-gray-200">
-              <div className="flex items-center justify-between bg-indigo-50/60 px-4 py-3">
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            <details key={key} className="group m-4 overflow-hidden rounded-lg border border-gray-200">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 bg-indigo-50/60 px-4 py-3 hover:bg-indigo-100/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600 [&::-webkit-details-marker]:hidden">
+                <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
                   {label}
-                </h3>
-                <span className="text-xs text-gray-400">
-                  {catExams.length} exam{catExams.length === 1 ? "" : "s"}
                 </span>
-              </div>
+                <span className="flex items-center gap-3 text-xs text-gray-500">
+                  {catExams.length} exam{catExams.length === 1 ? "" : "s"}
+                  <span className="rounded-md border border-indigo-100 bg-white p-1.5 text-indigo-800">
+                    <ChevronDown aria-hidden="true" className="h-4 w-4 transition-transform group-open:rotate-180" />
+                  </span>
+                </span>
+              </summary>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[800px]">
                   <thead className="border-y border-gray-100 bg-gray-50/80">
@@ -166,16 +169,17 @@ export default function ExamGroupedList({
                   </tbody>
                 </table>
               </div>
-            </div>
+            </details>
           ))}
         </section>
       ))}
 
       {unknown.length > 0 && (
-        <section className="overflow-hidden rounded-md border border-gray-200 bg-white">
-          <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
-            <h2 className="text-sm font-semibold text-gray-900">Uncategorized</h2>
-          </div>
+        <details className="group overflow-hidden rounded-md border border-gray-200 bg-white">
+          <summary className="flex cursor-pointer list-none items-center justify-between bg-gray-50 px-4 py-3 [&::-webkit-details-marker]:hidden">
+            <span className="text-sm font-semibold text-gray-900">Uncategorized</span>
+            <ChevronDown aria-hidden="true" className="h-4 w-4 transition-transform group-open:rotate-180" />
+          </summary>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[800px]">
               <tbody className="divide-y divide-gray-100">
@@ -191,7 +195,7 @@ export default function ExamGroupedList({
               </tbody>
             </table>
           </div>
-        </section>
+        </details>
       )}
     </div>
   );
