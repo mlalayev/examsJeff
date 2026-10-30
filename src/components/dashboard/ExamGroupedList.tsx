@@ -20,6 +20,32 @@ export type ExamListItem = {
   };
 };
 
+const ENGLISH_LEVELS = ["A1", "A2", "B1", "B1+", "B2", "C1", "C2"];
+
+export function groupCategoryExams(category: string, exams: ExamListItem[]) {
+  if (category !== "GENERAL_ENGLISH") {
+    return [{ key: category, label: getExamCategoryLabel(category), exams }];
+  }
+  const levels = new Map<string, ExamListItem[]>();
+  for (const exam of exams) {
+    const level = exam.track?.trim().toUpperCase() || "Level not set";
+    levels.set(level, [...(levels.get(level) || []), exam]);
+  }
+  return [...levels.entries()]
+    .sort(([a], [b]) => {
+      const rank = (level: string) => {
+        const index = ENGLISH_LEVELS.indexOf(level);
+        return index < 0 ? ENGLISH_LEVELS.length : index;
+      };
+      return rank(a) - rank(b) || a.localeCompare(b);
+    })
+    .map(([level, items]) => ({
+      key: `${category}-${level}`,
+      label: `General English - ${level}`,
+      exams: [...items].sort((a, b) => a.title.localeCompare(b.title, 'en', { numeric: true })),
+    }));
+}
+
 export default function ExamGroupedList({
   exams,
   renderActions,
@@ -29,10 +55,7 @@ export default function ExamGroupedList({
 }) {
   const grouped = EXAM_CATEGORY_GROUPS.map((group) => {
     const byCategory = group.categories
-      .map((category) => ({
-        category,
-        exams: exams.filter((e) => e.category === category),
-      }))
+      .flatMap((category) => groupCategoryExams(category, exams.filter((e) => e.category === category)))
       .filter((entry) => entry.exams.length > 0);
 
     return {
@@ -67,11 +90,11 @@ export default function ExamGroupedList({
             <p className="text-xs text-gray-500">{group.description}</p>
           </div>
 
-          {group.byCategory.map(({ category, exams: catExams }) => (
-            <div key={category} className="border-b border-gray-100 last:border-b-0">
-              <div className="flex items-center justify-between bg-white px-4 py-2">
+          {group.byCategory.map(({ key, label, exams: catExams }) => (
+            <div key={key} className="m-4 overflow-hidden rounded-lg border border-gray-200">
+              <div className="flex items-center justify-between bg-indigo-50/60 px-4 py-3">
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  {getExamCategoryLabel(category)}
+                  {label}
                 </h3>
                 <span className="text-xs text-gray-400">
                   {catExams.length} exam{catExams.length === 1 ? "" : "s"}

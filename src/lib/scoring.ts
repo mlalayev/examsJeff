@@ -5,27 +5,7 @@
 import { QuestionType } from "@prisma/client";
 import { extractHtmlCssAnswerKeyV1, type HtmlCssAnswerKeyV1 } from "@/lib/htmlCssAnswerKey";
 
-/**
- * Normalize text for comparison (removes punctuation, extra spaces, converts to lowercase)
- * Examples:
- * - "was" → "was"
- * - "wAs" → "was"
- * - "/was" → "was"
- * - "was." → "was"
- * - "   was" → "was"
- * - "is not" / "isn't" → "isnot"
- */
-function normalizeText(text: string): string {
-  return text
-    .trim()
-    .toLowerCase()
-    // Remove common punctuation: . , ! ? / \ - _ : ; " ' ( )
-    .replace(/[.,!?\\/\-_:;"'()]/g, "")
-    // Replace multiple spaces with single space
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
+import { textAnswersMatch } from '@/lib/answer-text';
 
 /**
  * Auto-scoring function for question types
@@ -101,32 +81,17 @@ export function scoreQuestion(qtype: QuestionType, studentAnswer: any, answerKey
     }
     case "GAP": // Legacy support - same as SHORT_TEXT
     case "SHORT_TEXT": {
-      // Normalize (trim, lower, remove punctuation); any-of answerKey.answers
-      const acceptedAnswers = answerKey?.answers || [];
-      
-      // Handle both string and Record<string, string> formats
-      let studentText = "";
-      if (typeof studentAnswer === "string") {
-        studentText = studentAnswer;
-      } else if (typeof studentAnswer === "object" && studentAnswer !== null) {
-        // Handle { '0': 'answer' } format from QOpenText
-        studentText = studentAnswer['0'] || "";
-      }
-      
-      if (!studentText) return 0;
-      const normalized = normalizeText(studentText);
-      return acceptedAnswers.some((a: string) => {
-        if (typeof a !== "string") return false;
-        return normalizeText(a) === normalized;
-      }) ? 1 : 0;
+      const acceptedAnswers = answerKey?.answers;
+      if (!Array.isArray(acceptedAnswers)) return 0;
+      const value = studentAnswer && typeof studentAnswer === 'object' && !Array.isArray(studentAnswer)
+        ? studentAnswer['0'] : studentAnswer;
+      return acceptedAnswers.some((answer: unknown) => textAnswersMatch(value, answer)) ? 1 : 0;
     }
     case "FILL_IN_BLANK": {
       const blanks = Array.isArray(answerKey) ? answerKey : answerKey?.blanks;
       if (!Array.isArray(blanks) || !blanks.length || !studentAnswer || typeof studentAnswer !== 'object') return 0;
       return blanks.every((expected: unknown, i: number) =>
-        typeof expected === 'string' && expected.trim().length > 0 &&
-        typeof studentAnswer[String(i)] === 'string' &&
-        normalizeText(studentAnswer[String(i)]) === normalizeText(expected)
+        textAnswersMatch(studentAnswer[String(i)], expected)
       ) ? 1 : 0;
     }
     case "ORDER_SENTENCE": {
@@ -159,12 +124,11 @@ export function scoreQuestion(qtype: QuestionType, studentAnswer: any, answerKey
         }
       }
       
-      if (studentAnswersFlat.length !== correctBlanks.length) return 0;
+      if (!correctBlanks.length || studentAnswersFlat.length !== correctBlanks.length) return 0;
       
       // Check each blank answer
       return studentAnswersFlat.every((v, i) => {
-        if (typeof v !== "string" || typeof correctBlanks[i] !== "string") return false;
-        return normalizeText(v) === normalizeText(correctBlanks[i]);
+        return textAnswersMatch(v, correctBlanks[i]);
       }) ? 1 : 0;
     }
     case "IMAGE_INTERACTIVE": {
@@ -272,8 +236,7 @@ const correctIds = answerKey.correctElementIds || answerKey.correctHotspotIds ||
         const gotStr = studentVal == null ? "" : String(studentVal);
         if (!gotStr) return 0;
 
-        const gotNorm = normalizeText(gotStr);
-        const ok = (spec.accepted || []).some((a) => normalizeText(String(a)) === gotNorm);
+        const ok = (spec.accepted || []).some((a) => textAnswersMatch(gotStr, a));
         if (!ok) return 0;
       }
 
@@ -378,13 +341,13 @@ export function scoreImageInteractiveQuestion(
   const inputElements = elements.filter((e: any) => e.type === "input");
   
   for (const element of inputElements) {
-    if (!element.correctAnswer) continue; // Skip inputs without correct answers
+    if (element.correctAnswer === null || element.correctAnswer === undefined || element.correctAnswer === '') continue; // Skip inputs without correct answers
     
     totalElements++;
-    const studentInput = studentAnswer.inputValues?.[element.id] || "";
+    const studentInput = studentAnswer.inputValues?.[element.id] ?? "";
     
     // Case-insensitive comparison with normalization
-    if (normalizeText(studentInput) === normalizeText(element.correctAnswer)) {
+    if (textAnswersMatch(studentInput, element.correctAnswer)) {
       totalCorrect++;
     }
   }

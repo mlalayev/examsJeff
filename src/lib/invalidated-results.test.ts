@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth-utils';
 jest.mock('@/lib/prisma', () => ({ prisma: { attempt: { findUnique: jest.fn() }, examIntegrity: { findUnique: jest.fn() }, attemptAnswer: { findMany: jest.fn() } } }));
 jest.mock('@/lib/auth-utils', () => ({ requireAuth: jest.fn() }));
+jest.mock('@/lib/teacher-exam-scope', () => ({ teacherStudentScope: jest.fn().mockResolvedValue({ categories: [] }) }));
 jest.mock('@/lib/coins', () => ({ getAttemptCoinReward: jest.fn() }));
 const db = prisma as any;
 beforeEach(() => {
@@ -26,4 +27,15 @@ test('unrelated branch staff cannot access invalidated answer keys', async () =>
   (requireAuth as jest.Mock).mockResolvedValue({ id: 'teacher', role: 'TEACHER', branchId: 'other' });
   const response = await GET({} as any, { params: Promise.resolve({ attemptId: 'a' }) });
   expect(response.status).toBe(403);
+});
+
+test.each([['2',2],[2,'2'],[' School ','school']])('result review scores short text with the shared grader', async (actual,expected) => {
+ const attempt=await db.attempt.findUnique();
+ attempt.booking.exam.sections[0].questions[0]={id:'q',qtype:'SHORT_TEXT',prompt:{text:'Question'},answerKey:{answers:[expected]}};
+ db.attempt.findUnique.mockResolvedValue(attempt);
+ db.attemptAnswer.findMany.mockImplementation(async ({where}:any)=>where.section?[]:[{questionId:'q',section:'READING',answer:actual}]);
+ const response=await GET({} as any,{params:Promise.resolve({attemptId:'a'})});
+ const body=await response.json();
+ expect(body.sections[0].questions[0].isCorrect).toBe(true);
+ expect(body.summary.totalCorrect).toBe(1);
 });

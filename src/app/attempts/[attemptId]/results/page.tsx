@@ -1,5 +1,6 @@
 "use client";
 
+import { textAnswersMatch } from '@/lib/answer-text';
 import { useEffect, useState, type MouseEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { attemptRunnerPath } from "@/lib/attempt-runner-path";
@@ -175,20 +176,6 @@ function readingPassageTextForQuestion(q: {
   return String(passage);
 }
 
-/**
- * Normalize a value for case-/punctuation-insensitive comparison.
- * Mirrors the rules used in the API/scoring lib so a field shown as green
- * here will also be counted correct on the server.
- */
-function normalizeFieldValue(text: string): string {
-  return text
-    .trim()
-    .toLowerCase()
-    .replace(/[.,!?\\/\-_:;"'()]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
 /** Returns true if the studentVal matches one of the accepted answers for a HTML_CSS field. */
 function isHtmlCssFieldCorrect(
   fieldSpec: { type?: string; accepted?: string[] } | undefined,
@@ -206,9 +193,8 @@ function isHtmlCssFieldCorrect(
   }
   const gotStr = studentVal == null ? "" : String(studentVal);
   if (!gotStr.trim()) return false;
-  const gotNorm = normalizeFieldValue(gotStr);
   const accepted = fieldSpec.accepted || [];
-  return accepted.some((a) => normalizeFieldValue(String(a)) === gotNorm);
+  return accepted.some((a) => textAnswersMatch(gotStr, a));
 }
 
 /** Saved AI writing band (DB); prefers overallBand, else average of tasks */
@@ -571,7 +557,7 @@ export default function AttemptResultsPage() {
         if (!Array.isArray(answer)) return "No answer";
         return answer.map((idx) => options?.choices?.[idx] || `Option ${idx}`).join(", ");
       case "GAP":
-        return answer || "No answer";
+        return answer === null || answer === undefined || answer === "" ? "No answer" : String(answer);
       case "ORDER_SENTENCE":
         if (!Array.isArray(answer)) return "No answer";
         return answer.join(" → ");
@@ -582,7 +568,7 @@ export default function AttemptResultsPage() {
         return JSON.stringify(answer);
       case "SHORT_TEXT":
       case "ESSAY":
-        return answer || "No answer";
+        return answer === null || answer === undefined || answer === "" ? "No answer" : String(answer);
       case "HTML_CSS":
         // Format HTML_CSS answers as field-by-field list
         if (typeof answer === "object" && answer !== null && !Array.isArray(answer)) {

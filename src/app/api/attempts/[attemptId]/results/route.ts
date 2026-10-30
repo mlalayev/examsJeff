@@ -1,3 +1,5 @@
+import { textAnswersMatch } from '@/lib/answer-text';
+import { scoreQuestion } from '@/lib/scoring';
 import { teacherStudentScope } from '@/lib/teacher-exam-scope';
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -13,20 +15,6 @@ import {
   countInlineSelectBlanks,
   getInlineSelectBlankChoices,
 } from "@/lib/inline-select-utils";
-
-/**
- * Normalize a single text value for case-/punctuation-insensitive comparison.
- * Mirrors the rules used in @/lib/scoring so the displayed correctness matches
- * the auto-grader.
- */
-function normalizeAnswerText(text: string): string {
-  return text
-    .trim()
-    .toLowerCase()
-    .replace(/[.,!?\\/\-_:;"'()]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
 
 /**
  * Per-field grading for an HTML_CSS question. Returns the number of correct
@@ -64,9 +52,8 @@ function gradeHtmlCssFields(
     }
     const gotStr = studentVal == null ? "" : String(studentVal);
     if (!gotStr.trim()) continue;
-    const gotNorm = normalizeAnswerText(gotStr);
     const accepted = spec.accepted || [];
-    const ok = accepted.some((a) => normalizeAnswerText(String(a)) === gotNorm);
+    const ok = accepted.some((a) => textAnswersMatch(gotStr, a));
     if (ok) correct += 1;
   }
   return { correct, total: names.length };
@@ -116,10 +103,8 @@ function checkAnswerCorrectness(q: any, studentAnswer: any, answerKey: any): boo
     const sorted = Array.isArray(studentAnswer) ? [...studentAnswer].sort() : [];
     const correctSorted = Array.isArray(answerKey?.indices) ? [...answerKey.indices].sort() : [];
     return JSON.stringify(sorted) === JSON.stringify(correctSorted);
-  } else if (q.qtype === "GAP") {
-    const normalized = typeof studentAnswer === "string" ? studentAnswer.trim().toLowerCase() : "";
-    const accepted = answerKey?.answers || [];
-    return accepted.some((a: string) => a.trim().toLowerCase() === normalized);
+  } else if (["GAP", "SHORT_TEXT", "FILL_IN_BLANK", "DND_GAP"].includes(q.qtype)) {
+    return scoreQuestion(q.qtype, studentAnswer, answerKey) === 1;
   } else if (q.qtype === "ORDER_SENTENCE") {
     const correctOrder = Array.isArray(answerKey?.order) ? answerKey.order : [];
     if (!Array.isArray(studentAnswer) || correctOrder.length === 0) return false;
@@ -128,53 +113,6 @@ function checkAnswerCorrectness(q: any, studentAnswer: any, answerKey: any): boo
       (val: any, idx: number) =>
         Number(val) === Number(correctOrder[idx])
     );
-  } else if (q.qtype === "DND_GAP") {
-    const correctBlanks = answerKey?.blanks || [];
-    if (studentAnswer && typeof studentAnswer === "object" && !Array.isArray(studentAnswer)) {
-      // Flatten student answers: { "0": ["on", "at"], "1": ["in"] } → ["on", "at", "in"]
-      const studentAnswersFlat: string[] = [];
-      const sentenceIndices = Object.keys(studentAnswer).sort((a, b) => parseInt(a) - parseInt(b));
-      
-      for (const sentenceIdx of sentenceIndices) {
-        const sentenceAnswers = studentAnswer[sentenceIdx];
-        if (Array.isArray(sentenceAnswers)) {
-          for (const answer of sentenceAnswers) {
-            if (answer !== undefined && answer !== null) {
-              studentAnswersFlat.push(answer);
-            } else {
-              studentAnswersFlat.push("");
-            }
-          }
-        }
-      }
-      
-      if (studentAnswersFlat.length === correctBlanks.length) {
-        return studentAnswersFlat.every((v: string, i: number) => {
-          if (typeof v !== "string" || typeof correctBlanks[i] !== "string") return false;
-          return v.trim().toLowerCase() === correctBlanks[i].trim().toLowerCase();
-        });
-      }
-    }
-    return false;
-  } else if (q.qtype === "FILL_IN_BLANK") {
-    // FILL_IN_BLANK: studentAnswer is { "0": "answer1", "1": "answer2", ... }
-    // answerKey.blanks is ["answer1", "answer2", ...]
-    const correctBlanks = answerKey?.blanks || [];
-    if (!studentAnswer || typeof studentAnswer !== "object") return false;
-    
-    // Convert student answer object to array
-    const studentAnswersArray: string[] = [];
-    for (let i = 0; i < correctBlanks.length; i++) {
-      const answer = studentAnswer[i.toString()] || "";
-      studentAnswersArray.push(answer);
-    }
-    
-    // Compare each blank (case-insensitive, trimmed)
-    if (studentAnswersArray.length !== correctBlanks.length) return false;
-    return studentAnswersArray.every((studentAns, idx) => {
-      const correctAns = correctBlanks[idx] || "";
-      return studentAns.trim().toLowerCase() === correctAns.trim().toLowerCase();
-    });
   } else if (q.qtype === "HTML_CSS") {
     // HTML_CSS: marked overall-correct only if ALL fields match.
     // Partial credit is computed separately via gradeHtmlCssFields when
@@ -600,8 +538,9 @@ export async function GET(
               displayCorrectAnswer = answerKey?.blanks || [];
             }
             // For GAP: show accepted answers
-            else if (q.qtype === "GAP") {
-              displayCorrectAnswer = answerKey?.answers?.[0] || answerKey?.answers || [];
+            else if (q.qtype === "GAP" || q.qtype === "SHORT_TEXT") {
+              displayCorrectAnswer = Array.isArray(answerKey?.answers) ? answerKey.answers.join(' / ') : '';
+              displayStudentAnswer = studentAnswer && typeof studentAnswer === 'object' ? studentAnswer['0'] ?? '' : studentAnswer;
             }
             // For FILL_IN_BLANK: show the blanks array
             else if (q.qtype === "FILL_IN_BLANK") {
@@ -687,9 +626,7 @@ export async function GET(
                   // Count correct blanks (optimized)
                   if (Array.isArray(correctBlanks) && studentAnswersFlat.length === correctBlanks.length) {
                     correctCount += studentAnswersFlat.filter((v, i) => 
-                      typeof v === "string" && 
-                      typeof correctBlanks[i] === "string" &&
-                      v.trim().toLowerCase() === correctBlanks[i].trim().toLowerCase()
+                      textAnswersMatch(v, correctBlanks[i])
                     ).length;
                   }
                 }
