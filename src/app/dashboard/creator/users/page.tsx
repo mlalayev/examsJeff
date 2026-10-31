@@ -1,5 +1,6 @@
 "use client";
 
+import StudentTeachers, {assignmentPayload, type TeacherRow} from "@/components/forms/StudentTeachers";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -32,6 +33,7 @@ let creatorUsersCache: { key: string; users: CreatorUserRow[] } | null = null;
 export default function CreatorUsersPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const [teacherRows, setTeacherRows] = useState<TeacherRow[]>([]);
   const [users, setUsers] = useState<CreatorUserRow[]>(creatorUsersCache?.users ?? []);
   const [paymentsTarget, setPaymentsTarget] = useState<CreatorUserRow | null>(null);
   const [editUserId, setEditUserId] = useState<string | null>(null);
@@ -382,6 +384,7 @@ export default function CreatorUsersPage() {
         approved: true,
       };
       if (createFormData.role === "STUDENT") {
+        payload.teacherAssignments = assignmentPayload(teacherRows);
         payload.studentProfile = {
           phoneNumber: createFormData.phoneNumber,
           dateOfBirth: createFormData.dateOfBirth,
@@ -1228,7 +1231,8 @@ export default function CreatorUsersPage() {
                   ))}
                 </select>
               </div>
-              {createFormData.role === "STUDENT" && (
+              {createFormData.role === "STUDENT" && <StudentTeachers branchId={createFormData.branchId} rows={teacherRows} onChange={setTeacherRows} />}
+          {createFormData.role === "STUDENT" && (
                 <>
                   <div className="border-t pt-4 mt-4">
                     <h4 className="text-sm font-semibold text-gray-900 mb-3">Student Information</h4>

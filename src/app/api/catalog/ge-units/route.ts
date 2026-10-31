@@ -30,6 +30,7 @@ export async function GET(req: NextRequest) {
     // Fetch exams for this level
     const exams = await prisma.exam.findMany({
       where: {
+        isHomework: false,
         category: "GENERAL_ENGLISH",
         track: level,
         isActive: true,

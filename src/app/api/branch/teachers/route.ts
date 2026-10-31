@@ -16,6 +16,9 @@ export async function GET(request: Request) {
     };
 
     // Branch scoping
+    const selectedBranch = new URL(request.url).searchParams.get("branchId");
+    if (["BRANCH_ADMIN", "BRANCH_BOSS"].includes((user as any).role) && !branchId) return NextResponse.json({error:"Forbidden"},{status:403});
+    if (selectedBranch) whereClause.branchId = selectedBranch;
     if (branchId) {
       whereClause.branchId = branchId;
     }
@@ -24,13 +27,13 @@ export async function GET(request: Request) {
       where: whereClause,
       select: {
         id: true,
-        name: true,
+        firstName: true, lastName: true,
         email: true,
       },
-      orderBy: { name: "asc" },
+      orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
     });
 
-    return NextResponse.json({ teachers });
+    return NextResponse.json({ teachers: teachers.map(t=>({...t,name:[t.firstName,t.lastName].filter(Boolean).join(" ") || t.email})) });
 
   } catch (error) {
     if (error instanceof Error && error.message.includes("Forbidden")) {

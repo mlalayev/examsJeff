@@ -58,7 +58,7 @@ export async function GET(request: Request) {
     const category = searchParams.get("category");
     const isActive = searchParams.get("isActive");
     
-    const where: any = {};
+    const where: any = { isHomework: false };
     if (category) {
       where.category = category;
     }

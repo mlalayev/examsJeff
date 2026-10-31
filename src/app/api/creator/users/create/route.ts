@@ -1,3 +1,4 @@
+import { teacherAssignmentsSchema, enrollStudent, EnrollmentError } from "@/lib/student-enrollment";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-utils";
@@ -12,6 +13,14 @@ const createUserSchema = z.object({
   role: z.enum(["STUDENT", "TEACHER", "ADMIN", "BOSS", "BRANCH_ADMIN", "BRANCH_BOSS", "CREATOR", "PARENT", "PARTNER"]),
   branchId: z.string().nullable(),
   approved: z.boolean().optional(),
+  studentProfile: z.object({
+    phoneNumber: z.string().optional(),
+    program: z.string().optional(),
+    dateOfBirth: z.string().date().nullable().optional(),
+    paymentDate: z.string().date().nullable().optional(),
+    paymentAmount: z.string().regex(/^\d+(?:\.\d{1,2})?$/).nullable().optional(),
+  }).optional(),
+  teacherAssignments: teacherAssignmentsSchema,
   childIds: z.array(z.string().min(1)).optional(),
   tags: z.array(z.string().min(1)).max(20).optional(),
 });
@@ -58,33 +67,49 @@ export async function POST(request: Request) {
     }
 
     // Create user
-    const newUser = await prisma.user.create({
-      data: {
-        firstName: validatedData.firstName,
-        lastName: validatedData.lastName,
-        email: validatedData.email,
-        passwordHash,
-        passwordEncrypted,
-        role: validatedData.role,
-        approved: true,
-        branchId: validatedData.branchId,
-        tags: validatedData.tags ?? [],
-        ...(validatedData.role === "PARENT" && {
-          childrenAsParent: {
-            create: (validatedData.childIds ?? []).map((childId) => ({ childId })),
-          },
-        }),
-      },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        role: true,
-        approved: true,
-        branchId: true,
-        createdAt: true,
-      }
+    const newUser = await prisma.$transaction(async tx => {
+      const created = await tx.user.create({
+        data: {
+          firstName: validatedData.firstName,
+          lastName: validatedData.lastName,
+          email: validatedData.email,
+          passwordHash,
+          passwordEncrypted,
+          role: validatedData.role,
+          approved: true,
+          branchId: validatedData.branchId,
+          tags: validatedData.tags ?? [],
+          ...(validatedData.role === "STUDENT" && validatedData.branchId && validatedData.studentProfile && {
+            studentProfile: { create: {
+              branchId: validatedData.branchId,
+              phoneNumber: validatedData.studentProfile.phoneNumber || null,
+              program: validatedData.studentProfile.program || null,
+              dateOfBirth: validatedData.studentProfile.dateOfBirth ? new Date(validatedData.studentProfile.dateOfBirth) : null,
+              paymentDate: validatedData.studentProfile.paymentDate ? new Date(validatedData.studentProfile.paymentDate) : null,
+              paymentAmount: validatedData.studentProfile.paymentAmount ?? null,
+              studyTypes: [...new Set(validatedData.teacherAssignments.flatMap(row => row.subjects))],
+            } },
+          }),
+          ...(validatedData.role === "PARENT" && {
+            childrenAsParent: {
+              create: (validatedData.childIds ?? []).map((childId) => ({ childId })),
+            },
+          }),
+        },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          role: true,
+          approved: true,
+          branchId: true,
+          createdAt: true,
+        }
+      });
+
+      await enrollStudent(tx, created.id, created.role, created.branchId, validatedData.teacherAssignments, validatedData.studentProfile?.paymentDate);
+      return created;
     });
 
     return NextResponse.json({ 
@@ -93,8 +118,9 @@ export async function POST(request: Request) {
     }, { status: 201 });
 
   } catch (error) {
+    if (error instanceof EnrollmentError) return NextResponse.json({error:error.message},{status:400});
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.errors[0].message }, { status: 400 });
+      return NextResponse.json({ error: error.issues[0].message }, { status: 400 });
     }
 
     console.error("Create user error:", error);

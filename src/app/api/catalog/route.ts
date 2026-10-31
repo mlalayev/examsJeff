@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
     // Get all exams with their sections and question counts
     const exams = await prisma.exam.findMany({
       where: {
+        isHomework: false,
         isActive: true,
       },
       include: {

@@ -1,3 +1,4 @@
+import { teacherAssignmentsSchema, enrollStudent, EnrollmentError } from "@/lib/student-enrollment";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth, canCreatePartnerAccount } from "@/lib/auth-utils";
@@ -12,6 +13,7 @@ const createUserSchema = z.object({
   role: z.enum(["STUDENT", "TEACHER", "ADMIN", "PARENT", "PARTNER"]),
   branchId: z.string().nullable(),
   approved: z.boolean().optional(),
+  teacherAssignments: teacherAssignmentsSchema,
   childIds: z.array(z.string().min(1)).optional(),
   tags: z.array(z.string().min(1)).max(20).optional(),
   studentProfile: z
@@ -85,51 +87,56 @@ export async function POST(request: Request) {
       }
     }
 
-    const newUser = await prisma.user.create({
-      data: {
-        firstName: validatedData.firstName,
-        lastName: validatedData.lastName,
-        email: validatedData.email,
-        passwordHash,
-        passwordEncrypted,
-        role: validatedData.role,
-        approved: validatedData.role === "PARTNER" ? true : (validatedData.approved ?? true),
-        branchId: validatedData.role === "PARTNER" ? null : validatedData.branchId,
-        tags: validatedData.tags ?? [],
-        ...(validatedData.role === "STUDENT" && validatedData.branchId && validatedData.studentProfile && {
-          studentProfile: {
-            create: {
-              branchId: validatedData.branchId,
-              phoneNumber: validatedData.studentProfile.phoneNumber || null,
-              dateOfBirth: validatedData.studentProfile.dateOfBirth ? new Date(validatedData.studentProfile.dateOfBirth) : null,
-              program: validatedData.studentProfile.program || null,
-              paymentDate: validatedData.studentProfile.paymentDate ? new Date(validatedData.studentProfile.paymentDate) : null,
-              paymentAmount: validatedData.studentProfile.paymentAmount ? parseFloat(validatedData.studentProfile.paymentAmount) : null,
-              studyTypes: validatedData.studentProfile.studyTypes ?? [],
-              lessonModes: validatedData.studentProfile.lessonModes ?? [],
-              studentKind: validatedData.studentProfile.studentKind ?? "STUDENT",
-              studyStatus: validatedData.studentProfile.studyStatus ?? "CONTINUES",
+    const newUser = await prisma.$transaction(async tx => {
+      const created = await tx.user.create({
+        data: {
+          firstName: validatedData.firstName,
+          lastName: validatedData.lastName,
+          email: validatedData.email,
+          passwordHash,
+          passwordEncrypted,
+          role: validatedData.role,
+          approved: validatedData.role === "PARTNER" ? true : (validatedData.approved ?? true),
+          branchId: validatedData.role === "PARTNER" ? null : validatedData.branchId,
+          tags: validatedData.tags ?? [],
+          ...(validatedData.role === "STUDENT" && validatedData.branchId && validatedData.studentProfile && {
+            studentProfile: {
+              create: {
+                branchId: validatedData.branchId,
+                phoneNumber: validatedData.studentProfile.phoneNumber || null,
+                dateOfBirth: validatedData.studentProfile.dateOfBirth ? new Date(validatedData.studentProfile.dateOfBirth) : null,
+                program: validatedData.studentProfile.program || null,
+                paymentDate: validatedData.studentProfile.paymentDate ? new Date(validatedData.studentProfile.paymentDate) : null,
+                paymentAmount: validatedData.studentProfile.paymentAmount ? parseFloat(validatedData.studentProfile.paymentAmount) : null,
+                studyTypes: validatedData.studentProfile.studyTypes ?? [],
+                lessonModes: validatedData.studentProfile.lessonModes ?? [],
+                studentKind: validatedData.studentProfile.studentKind ?? "STUDENT",
+                studyStatus: validatedData.studentProfile.studyStatus ?? "CONTINUES",
+              }
             }
-          }
-        }),
-        ...(validatedData.role === "PARENT" && {
-          childrenAsParent: {
-            create: (validatedData.childIds ?? []).map((childId) => ({
-              childId,
-            })),
-          },
-        }),
-      },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        role: true,
-        approved: true,
-        branchId: true,
-        createdAt: true,
-      }
+          }),
+          ...(validatedData.role === "PARENT" && {
+            childrenAsParent: {
+              create: (validatedData.childIds ?? []).map((childId) => ({
+                childId,
+              })),
+            },
+          }),
+        },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          role: true,
+          approved: true,
+          branchId: true,
+          createdAt: true,
+        }
+      });
+
+      await enrollStudent(tx, created.id, created.role, created.branchId, validatedData.teacherAssignments, validatedData.studentProfile?.paymentDate);
+      return created;
     });
 
     return NextResponse.json({ 
@@ -138,6 +145,7 @@ export async function POST(request: Request) {
     }, { status: 201 });
 
   } catch (error) {
+    if (error instanceof EnrollmentError) return NextResponse.json({error:error.message},{status:400});
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues[0].message }, { status: 400 });
     }

@@ -1,5 +1,6 @@
 "use client";
 
+import StudentTeachers, {assignmentPayload, type TeacherRow} from "@/components/forms/StudentTeachers";
 import { useEffect, useState } from "react";
 import { Users, Search, BookOpen, X, Calendar, ChevronRight, ChevronLeft, Target, FileText, CheckCircle, UserPlus, ListChecks, Check, DollarSign, Trash2, Phone, Pause, Play, Pencil } from "lucide-react";
 import { AlertModal } from "@/components/modals/AlertModal";
@@ -66,6 +67,7 @@ const studentStudyTypes = (s: { studyTypes?: string[]; program?: string | null }
   resolveStudyTypes(s.studyTypes, s.program);
 
 export default function AdminStudentsPage() {
+  const [teacherRows, setTeacherRows] = useState<TeacherRow[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
@@ -501,7 +503,7 @@ export default function AdminStudentsPage() {
         setCreateError("Phone number and date of birth are required for students");
         return;
       }
-      if (formData.studyTypes.length === 0) {
+      if (formData.studyTypes.length === 0 && !teacherRows.some(row => row.subjects.length)) {
         setCreateError("Select at least one study type for the student");
         return;
       }
@@ -533,12 +535,13 @@ export default function AdminStudentsPage() {
 
       // Add student-specific fields if role is STUDENT
       if (formData.role === "STUDENT") {
+        payload.teacherAssignments = assignmentPayload(teacherRows);
         payload.studentProfile = {
           phoneNumber: formData.phoneNumber,
           dateOfBirth: formData.dateOfBirth,
           paymentDate: formData.paymentDate || null,
           paymentAmount: formData.paymentAmount || null,
-          studyTypes: formData.studyTypes,
+          studyTypes: [...new Set([...formData.studyTypes,...teacherRows.flatMap(row=>row.subjects)])],
           lessonModes: formData.lessonModes,
           studentKind: formData.studentKind,
           studyStatus: formData.studyStatus,
@@ -1537,7 +1540,8 @@ export default function AdminStudentsPage() {
                 </div>
 
                 {/* Student-specific fields */}
-                {formData.role === "STUDENT" && (
+                {formData.role === "STUDENT" && <StudentTeachers branchId={formData.branchId} rows={teacherRows} onChange={setTeacherRows} />}
+          {formData.role === "STUDENT" && (
                   <>
                     <div className="border-t pt-4">
                       <h3 className="text-base font-semibold text-gray-900 mb-4">Student Information</h3>

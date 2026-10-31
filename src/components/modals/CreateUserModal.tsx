@@ -1,5 +1,6 @@
 "use client";
 
+import StudentTeachers, {assignmentPayload, type TeacherRow} from "@/components/forms/StudentTeachers";
 import { useState } from "react";
 import { X, UserPlus, Loader2 } from "lucide-react";
 import ToggleChips from "@/components/forms/ToggleChips";
@@ -80,6 +81,7 @@ export default function CreateUserModal({
   onClose,
   onCreated,
 }: Props) {
+  const [teacherRows, setTeacherRows] = useState<TeacherRow[]>([]);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -121,7 +123,7 @@ export default function CreateUserModal({
         setError("Phone number and date of birth are required for students");
         return;
       }
-      if (form.studyTypes.length === 0) {
+      if (form.studyTypes.length === 0 && !teacherRows.some(row => row.subjects.length)) {
         setError("Select at least one study type for the student");
         return;
       }
@@ -147,12 +149,13 @@ export default function CreateUserModal({
         approved: form.approved,
       };
       if (form.role === "STUDENT") {
+        payload.teacherAssignments = assignmentPayload(teacherRows);
         payload.studentProfile = {
           phoneNumber: form.phoneNumber,
           dateOfBirth: form.dateOfBirth,
           paymentDate: form.paymentDate || null,
           paymentAmount: form.paymentAmount || null,
-          studyTypes: form.studyTypes,
+          studyTypes: [...new Set([...form.studyTypes,...teacherRows.flatMap(row=>row.subjects)])],
           lessonModes: form.lessonModes,
           studentKind: form.studentKind,
           studyStatus: form.studyStatus,
@@ -291,7 +294,8 @@ export default function CreateUserModal({
             </Field>
           </div>
 
-          {/* Student details */}
+          {form.role === "STUDENT" && <StudentTeachers branchId={form.branchId} rows={teacherRows} onChange={setTeacherRows} />}
+                    {/* Student details */}
           {isStudent && (
             <div className="mt-5 pt-5 border-t border-gray-100">
               <h3 className="text-sm font-semibold text-gray-900 mb-3">Student details</h3>
