@@ -60,3 +60,17 @@ test('repeated listening sections survive refresh and save as distinct sections'
   expect(payload.sections.map((s:any)=>s.type)).toEqual(['LISTENING','LISTENING']);
   expect(payload.sections.map((s:any)=>s.questions[0].answerKey.answers[0])).toEqual(['school','Monday']);
 });
+
+test('SAT homework imports a single explained module through the builder and saves to the homework endpoint',async()=>{
+  const endpoint='/api/admin/homework/templates';
+  await act(async()=>root.render(<GenericExamBuilder mode="create" category="SAT" initial={{title:'SAT homework',track:'',durationMin:null,sections:[]}}
+    saveConfig={{createUrl:endpoint,updateUrl:()=>endpoint,backHref:'/homework',successRedirect:()=>'/homework',entityLabel:'Homework',extraPayload:{homeworkSubject:'SAT_MATH'}}}/>));
+  await click('Import questions from text / .txt');
+  await upload('[math module 1]\n1. What is one plus one?\nType: SHORT_TEXT\nAnswer: 2\nExplanation: One plus one equals two.');
+  await click('Save Questions');
+  const fetchMock=jest.fn().mockResolvedValue({ok:true,json:async()=>({exam:{id:'hw'}})});globalThis.fetch=fetchMock;
+  const saveButton=Array.from(host.querySelectorAll('button')).find(b=>b.textContent?.trim().startsWith('Save'));
+  expect(saveButton).toBeDefined();await act(async()=>saveButton!.click());
+  expect(fetchMock.mock.calls[0][0]).toBe(endpoint);
+  expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({homeworkSubject:'SAT_MATH',sections:[{questions:[{explanation:'One plus one equals two.'}]}]});
+});

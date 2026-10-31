@@ -31,6 +31,9 @@ import {
 } from "@/lib/speaking-answer";
 
 interface ResultsData {
+  homeworkReview?: Array<{ id: string; title: string; questions: Array<{
+    id: string; prompt: string; answer: string; correctAnswer: string | null; correct: boolean | null; explanation: string;
+  }> }>;
   speakingRecordings?: SpeakingRecordingReview[];
   attemptId: string;
   examTitle: string;
@@ -772,7 +775,23 @@ export default function AttemptResultsPage() {
 
         {data.reviewOnly && <div role="status" className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900"><strong>Invalidated attempt — review only</strong><p>The overall score and answer checks below use saved answers. This result remains invalid and does not count as an official result.</p></div>}
         {/* STUDENT: Show only a friendly message, no scores or section details */}
-        {data.role === "STUDENT" ? (
+        {data.homeworkReview ? (
+          <div className="space-y-5">
+            <h2 className="text-xl font-semibold">Homework review</h2>
+            {data.homeworkReview.map(section => <section key={section.id} className="rounded-xl border bg-white p-5">
+              <h3 className="mb-3 font-semibold">{section.title}</h3>
+              {section.questions.map((q,i) => <article key={q.id} className="space-y-2 border-t py-4">
+                <span className={q.correct === null ? "text-gray-600" : q.correct ? "text-green-700" : "text-red-700"}>
+                  {q.correct === null ? "Teacher review" : q.correct ? "Correct" : "Incorrect"} · Question {i+1}
+                </span>
+                <FormattedText text={q.prompt} />
+                <p>Your answer: {q.answer}</p>
+                {q.correctAnswer !== null && <p>Accepted answer: {q.correctAnswer}</p>}
+                {q.explanation && <div className="rounded-lg bg-indigo-50 p-3"><strong>Explanation</strong><FormattedText text={q.explanation} /></div>}
+              </article>)}
+            </section>)}
+          </div>
+        ) : data.role === "STUDENT" ? (
           <div className="flex-1 min-h-0 flex items-center justify-center py-12">
             <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-8 max-w-2xl w-full space-y-4">
               {data.coinReward && (

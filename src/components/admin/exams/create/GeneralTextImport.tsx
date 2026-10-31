@@ -2,11 +2,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { GENERAL_SECTIONS, GENERAL_TEXT_TYPES, parseGeneralText, type GeneralImportResult } from '@/lib/general-text-import';
 import { QUESTION_TYPE_LABELS } from './constants';
-import type { QuestionType, SectionType } from './types';
+import { parseHomeworkText } from '@/lib/homework-text-import';
+import type { ExamCategory, QuestionType, SectionType } from './types';
 import FormattedText from '@/components/FormattedText';
 
-export function generalImportInstructions(types: QuestionType[], sections: SectionType[]) {
-  return `Create a General English exam as plain UTF-8 questions.txt, or plain text. No Markdown fences, HTML/CSS, JSON or ZIP.
+export function generalImportInstructions(types: QuestionType[], sections: SectionType[], homeworkCategory?: ExamCategory) {
+  return `Create a ${homeworkCategory ? homeworkCategory + " homework" : "General English exam"} as plain UTF-8 questions.txt, or plain text. No Markdown fences, HTML/CSS, JSON or ZIP.
 Allowed sections: ${sections.join(', ')}. Repeat any section type as often as needed; every heading creates a separate section. Omit unwanted sections. Include all selected sections.
 Allowed question types: ${types.join(', ')}. Use only these types and write Type: explicitly on every question.
 Each section begins [section: READING] or [reading] (replace READING with its type). For separate audio tracks use [listening] again for each track.
@@ -22,7 +23,7 @@ FILL_IN_BLANK: use [input] in the question text; Answer: first blank | second bl
 DND_GAP: use ___ for blanks; Bank: word1 | word2 | distractor; Answer: word1 | word2 in blank order.
 ORDER_SENTENCE: Tokens: am | I | happy; Answer: 2, 1, 3 (one-based token positions, every token exactly once).
 ESSAY: only in WRITING; no Answer or choices. Include word count and task requirements in question text. Writing allows ESSAY and SHORT_TEXT only. Essays require separate grading, not an answer key.
-Optional Explanation: comes last in each question. Check all answer keys. No unsupported fields, image markers or embedded files; images can be added using Edit afterwards.
+${homeworkCategory ? "Required" : "Optional"} Explanation: comes last in each question. ${homeworkCategory ? "Explain the answer or give marking guidance for an essay. Keep solutions out of prompts and passages." : ""} Check all answer keys. No unsupported fields, image markers or embedded files; images can be added using Edit afterwards.
 Maximum text 200,000 characters. Use $...$ for inline math, $$...$$ for separate equations if needed.
 
 Format example (use only your selected sections/types):
@@ -41,18 +42,18 @@ Answer: B
 Explanation: The text says she travelled by bus.
 2. Anna visited on Saturday.
 Type: TF
-Answer: FALSE
+Answer: FALSE${homeworkCategory ? "\nExplanation: The passage says Sunday." : ""}
 
 [section: WRITING]
 Title: Writing task
 Duration: 30
 1. Write 100–150 words about a place you enjoy visiting. Describe it and explain why you like it.
-Type: ESSAY
+Type: ESSAY${homeworkCategory ? "\nExplanation: Describe the place and support your preference with specific details." : ""}
 `;
 }
 
-export default function GeneralTextImport({ text, onTextChange, onImport, onClose }: {
-  text: string; onTextChange: (text: string) => void; onImport: (result: GeneralImportResult) => void; onClose: () => void;
+export default function GeneralTextImport({ homeworkCategory, text, onTextChange, onImport, onClose }: {
+  homeworkCategory?: ExamCategory; text: string; onTextChange: (text: string) => void; onImport: (result: GeneralImportResult) => void; onClose: () => void;
 }) {
   const [types, setTypes] = useState<QuestionType[]>(GENERAL_TEXT_TYPES);
   const [sections, setSections] = useState<SectionType[]>(GENERAL_SECTIONS);
@@ -61,16 +62,22 @@ export default function GeneralTextImport({ text, onTextChange, onImport, onClos
   const [reading, setReading] = useState(false);
   const applied = useRef(false); const version = useRef(0);
   useEffect(() => () => { version.current++; }, []);
-  const validate = () => { const result = parseGeneralText(text, types, sections); setPreview(result); return result; };
+  const modules = homeworkCategory === 'SAT' || homeworkCategory === 'MATH';
+  const instructions = modules
+    ? `Create a ${homeworkCategory} homework as plain UTF-8 questions.txt. Include only needed modules, each on its own line: ${homeworkCategory === 'SAT' ? '[verbal module 1], [verbal module 2], ' : ''}[math module 1], [math module 2]. Number questions from 1 in each module. For multiple choice use four lines a. through d. and Answer: B. For an open question put Type: SHORT_TEXT and Answer: followed by a value (alternatives separated by |). End EVERY question with Explanation: followed by a worked solution. Keep solutions out of prompts and choices. Use $...$ for inline math and $$...$$ for display math.`
+    : generalImportInstructions(types, sections, homeworkCategory);
+  const validate = () => { const result = homeworkCategory ? parseHomeworkText(text, homeworkCategory, types, sections) : parseGeneralText(text, types, sections); setPreview(result); return result; };
   return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-    <section role="dialog" aria-modal="true" aria-label="Import General English questions" className="max-h-[90vh] w-full max-w-4xl overflow-auto rounded-xl bg-white p-5">
-      <div className="flex items-center justify-between gap-3"><h2 className="text-lg font-semibold">Import General English questions</h2><button type="button" onClick={onClose} className="rounded border px-3 py-2">Close</button></div>
-      <p className="my-3 text-sm text-slate-600">Choose sections and question types, copy the instructions to ChatGPT, then paste its text or upload questions.txt. Each heading creates a new section, even when its type repeats. Existing sections and audio stay unchanged. Upload a separate audio file in each Listening section. Save Exam saves to the server.</p>
-      <fieldset className="mb-3 rounded border p-3"><legend className="px-1 text-sm font-semibold">Sections to include</legend><div className="flex flex-wrap gap-4">{GENERAL_SECTIONS.map(type => <label key={type} className="text-sm"><input type="checkbox" checked={sections.includes(type)} onChange={e => { setSections(e.target.checked ? [...sections,type] : sections.filter(t => t !== type)); setPreview(null); }} /> {type}</label>)}</div></fieldset>
-      <fieldset className="mb-3 rounded border p-3"><legend className="px-1 text-sm font-semibold">Allowed question types</legend><div className="grid gap-2 sm:grid-cols-2">{GENERAL_TEXT_TYPES.map(type => <label key={type} className="text-sm"><input type="checkbox" checked={types.includes(type)} onChange={e => { setTypes(e.target.checked ? [...types,type] : types.filter(t => t !== type)); setPreview(null); }} /> {QUESTION_TYPE_LABELS[type]}</label>)}</div></fieldset>
+    <section role="dialog" aria-modal="true" aria-label={homeworkCategory ? "Import homework questions" : "Import General English questions"} className="max-h-[90vh] w-full max-w-4xl overflow-auto rounded-xl bg-white p-5">
+      <div className="flex items-center justify-between gap-3"><h2 className="text-lg font-semibold">{homeworkCategory ? "Import homework questions" : "Import General English questions"}</h2><button type="button" onClick={onClose} className="rounded border px-3 py-2">Close</button></div>
+      <p className="my-3 text-sm text-slate-600">{homeworkCategory
+        ? "Copy the instructions to ChatGPT. Paste its questions here or upload a .txt file, then select Save Questions. Every question needs an explanation. Students can review it after submitting the homework."
+        : "Choose sections and question types, copy the instructions to ChatGPT, then paste its text or upload questions.txt. Each heading creates a new section, even when its type repeats. Existing sections and audio stay unchanged. Upload a separate audio file in each Listening section. Save Exam saves to the server."}</p>
+      {!modules && <fieldset className="mb-3 rounded border p-3"><legend className="px-1 text-sm font-semibold">Sections to include</legend><div className="flex flex-wrap gap-4">{GENERAL_SECTIONS.map(type => <label key={type} className="text-sm"><input type="checkbox" checked={sections.includes(type)} onChange={e => { setSections(e.target.checked ? [...sections,type] : sections.filter(t => t !== type)); setPreview(null); }} /> {type}</label>)}</div></fieldset>}
+      {!modules && <fieldset className="mb-3 rounded border p-3"><legend className="px-1 text-sm font-semibold">Allowed question types</legend><div className="grid gap-2 sm:grid-cols-2">{GENERAL_TEXT_TYPES.map(type => <label key={type} className="text-sm"><input type="checkbox" checked={types.includes(type)} onChange={e => { setTypes(e.target.checked ? [...types,type] : types.filter(t => t !== type)); setPreview(null); }} /> {QUESTION_TYPE_LABELS[type]}</label>)}</div></fieldset>}
       <details className="mb-3 rounded border p-3"><summary className="cursor-pointer font-medium">ChatGPT instructions and file format</summary>
-        <button type="button" className="my-2 rounded border p-2" onClick={async () => { try { await navigator.clipboard.writeText(generalImportInstructions(types, sections)); setMessage('Instructions copied.'); } catch { setMessage('Select and copy the instructions below.'); } }}>Copy ChatGPT instructions</button>
-        <pre className="max-h-72 overflow-auto whitespace-pre-wrap text-xs">{generalImportInstructions(types, sections)}</pre>
+        <button type="button" className="my-2 rounded border p-2" onClick={async () => { try { await navigator.clipboard.writeText(instructions); setMessage('Instructions copied.'); } catch { setMessage('Select and copy the instructions below.'); } }}>Copy ChatGPT instructions</button>
+        <pre className="max-h-72 overflow-auto whitespace-pre-wrap text-xs">{instructions}</pre>
       </details>
       <label className="block text-sm">Upload UTF-8 .txt<input type="file" accept=".txt,text/plain" disabled={reading} className="my-2 block" onChange={async e => {
         const file = e.target.files?.[0]; e.target.value = ''; if (!file) return;
@@ -82,7 +89,7 @@ export default function GeneralTextImport({ text, onTextChange, onImport, onClos
         } catch (error) { if (current === version.current) setMessage((error as Error).message); }
         finally { if (current === version.current) setReading(false); }
       }} /></label>
-      <textarea aria-label="General English question text" rows={12} maxLength={200000} disabled={reading} value={text} onChange={e => { onTextChange(e.target.value); setPreview(null); applied.current = false; }} className="w-full rounded border p-3 font-mono text-sm" />
+      <textarea aria-label={homeworkCategory ? "Homework question text" : "General English question text"} rows={12} maxLength={200000} disabled={reading} value={text} onChange={e => { onTextChange(e.target.value); setPreview(null); applied.current = false; }} className="w-full rounded border p-3 font-mono text-sm" />
       <div className="my-3 flex gap-3"><button type="button" className="rounded border p-2 disabled:opacity-50" disabled={reading || !text.trim()} onClick={validate}>Validate and preview</button><button type="button" className="rounded bg-indigo-800 px-4 py-2 text-white disabled:opacity-50" disabled={reading || !text.trim()} onClick={() => {
         if (applied.current) return; const result = validate(); if (result.errors.length) return;
         try { applied.current = true; onImport(result); onTextChange(''); } catch (error) { applied.current = false; setMessage((error as Error).message); }

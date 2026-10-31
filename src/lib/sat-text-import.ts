@@ -7,7 +7,7 @@ export const importModules = (category: ModuleExamCategory) => category === 'MAT
 export type SatImportResult = { modules: Question[][]; errors: string[] };
 
 /** Strict, local-only parser. Never guesses answer keys or silently drops malformed input. */
-export function parseSatText(text: string, images: Record<string, string> = {}, category: ModuleExamCategory = 'SAT'): SatImportResult {
+export function parseSatText(text: string, images: Record<string, string> = {}, category: ModuleExamCategory = 'SAT', homework = false): SatImportResult {
   const names = importModules(category);
   const modules: Question[][] = names.map(() => []);
   const errors: string[] = [];
@@ -103,7 +103,8 @@ export function parseSatText(text: string, images: Record<string, string> = {}, 
     else current.choices[field] += '\n' + line;
   });
   finish();
-  names.forEach((name, i) => { if (!modules[i].length) errors.push(`Missing questions in [${name}].`); });
+  if (homework && !seen.size) errors.push('Add at least one module.');
+  names.forEach((name, i) => { if ((!homework || seen.has(i)) && !modules[i].length) errors.push(`Missing questions in [${name}].`); });
   return { modules, errors };
 }
 

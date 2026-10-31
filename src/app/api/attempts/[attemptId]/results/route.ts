@@ -1,5 +1,5 @@
 import { textAnswersMatch } from '@/lib/answer-text';
-import { scoreQuestion } from '@/lib/scoring';
+import { scoreQuestion, scoreImageInteractiveQuestion } from '@/lib/scoring';
 import { teacherStudentScope } from '@/lib/teacher-exam-scope';
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -172,6 +172,49 @@ export async function GET(
         { error: "Attempt not found" },
         { status: 404 }
       );
+    }
+
+    // Homework created in the dashboard is normally assigned without a booking.
+    if (user.role === "STUDENT" && (attempt.assignmentId || attempt.booking?.exam.isHomework)) {
+      if (attempt.studentId !== user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      if (attempt.status !== "SUBMITTED") return NextResponse.json({ error: "Submit the homework before reviewing answers." }, { status: 403 });
+      const blocked = await integrityBlock(attemptId);
+      if (blocked) return blocked;
+      const homework = await prisma.exam.findFirst({
+        where: { id: attempt.examId, isHomework: true },
+        include: { sections: { orderBy: { order: "asc" }, include: { questions: { orderBy: { order: "asc" } } } } },
+      });
+      if (homework) {
+        const rows = await prisma.attemptAnswer.findMany({ where: { attemptId }, select: { questionId: true, answer: true } });
+        const answers = new Map(rows.map(r => [r.questionId, r.answer]));
+        const review = homework.sections.map(section => ({
+          id: section.id, title: section.title, questions: section.questions.map(q => {
+            const legacy = attempt.sections.find(s => s.type === section.type && (s.answers as any)?.[q.id] != null);
+            const answer = answers.has(q.id) ? answers.get(q.id) : (legacy?.answers as any)?.[q.id]
+              ?? (attempt.answers as any)?.[section.id]?.[q.id] ?? (attempt.answers as any)?.[section.type]?.[q.id];
+            const manual = q.qtype === "ESSAY" || q.qtype === "SPEAKING_RECORDING";
+            const options = q.options as any;
+            const key = q.answerKey as any;
+            const display = (value: unknown): string => {
+              if (value == null || value === "") return "No answer";
+              if (Array.isArray(value)) return value.map(display).join(", ");
+              if (typeof value === "object") return Object.values(value).map(display).join(", ");
+              if (["MCQ_SINGLE","MCQ_MULTI","INLINE_SELECT"].includes(q.qtype) && typeof value === "number") {
+                return options?.choices?.[value] ?? String(value + 1);
+              }
+              return String(value);
+            };
+            return {
+              id: q.id, prompt: (q.prompt as any)?.text || (q.prompt as any)?.textWithBlanks || section.title,
+              answer: display(answer), correctAnswer: manual ? null : display(key?.answers ?? key?.index ?? key?.indices ?? key?.value ?? key?.blanks ?? key?.order ?? key),
+              correct: manual ? null : (q.qtype === "IMAGE_INTERACTIVE" ? scoreImageInteractiveQuestion(answer, key, options) : scoreQuestion(q.qtype, answer, key)) === 1,
+              explanation: typeof q.explanation === "string" ? q.explanation : (q.explanation as any)?.text || "",
+            };
+          }),
+        }));
+        return NextResponse.json({ examTitle: homework.title, examCategory: homework.category, role: "STUDENT", status: attempt.status,
+          submittedAt: attempt.submittedAt, homeworkReview: review }, { headers: { "Cache-Control": "private, no-store" } });
+      }
     }
 
     if (!attempt.booking) {

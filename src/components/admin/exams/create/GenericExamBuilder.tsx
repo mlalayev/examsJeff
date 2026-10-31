@@ -65,6 +65,7 @@ interface GenericExamBuilderProps {
 export default function GenericExamBuilder({ mode, category, examId, initial, saveConfig }: GenericExamBuilderProps) {
   const router = useRouter();
   const isEdit = mode === "edit";
+  const isHomework = saveConfig?.entityLabel === "Homework";
 
   const [step, setStep] = useState<"sections" | "questions">("sections");
   const [examTitle, setExamTitle] = useState(() => {
@@ -494,11 +495,11 @@ export default function GenericExamBuilder({ mode, category, examId, initial, sa
       />
 
       {/* Sections */}
-      {selectedCategory === 'GENERAL_ENGLISH' && <div className="mb-5 rounded-lg border bg-indigo-50 p-4">
+      {(isHomework || selectedCategory === 'GENERAL_ENGLISH') && <div className="mb-5 rounded-lg border bg-indigo-50 p-4">
         <button type="button" disabled={saving || !!editingQuestion} onClick={() => setShowGeneralImport(true)} className="rounded bg-indigo-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Import questions from text / .txt</button>
-        <p className="mt-2 text-sm text-slate-600">Reading passages, Listening, Writing, Grammar and Vocabulary. Choose question types and copy ChatGPT instructions.</p>
+        <p className="mt-2 text-sm text-slate-600">{isHomework ? 'Import homework questions with an explanation for each answer.' : 'Reading passages, Listening, Writing, Grammar and Vocabulary. Choose question types and copy ChatGPT instructions.'}</p>
       </div>}
-      {showGeneralImport && <GeneralTextImport text={generalImportText} onTextChange={setGeneralImportText} onClose={() => setShowGeneralImport(false)} onImport={result => {
+      {showGeneralImport && <GeneralTextImport homeworkCategory={isHomework ? category : undefined} text={generalImportText} onTextChange={setGeneralImportText} onClose={() => setShowGeneralImport(false)} onImport={result => {
         const next = appendGeneralImport(sections, result, crypto.randomUUID());
         setSections(next); setCurrentSection(null); setStep('sections'); setShowGeneralImport(false);
       }} />}
@@ -649,7 +650,7 @@ export default function GenericExamBuilder({ mode, category, examId, initial, sa
         onClose={() => setShowQuestionTypeModal(false)}
         onSelect={(type) => addQuestion(type)}
         importLabel="Import questions from text / .txt"
-        onImportText={selectedCategory === 'GENERAL_ENGLISH' ? () => { setShowQuestionTypeModal(false); setShowGeneralImport(true); } : undefined}
+        onImportText={isHomework || selectedCategory === 'GENERAL_ENGLISH' ? () => { setShowQuestionTypeModal(false); setShowGeneralImport(true); } : undefined}
         allowedGroups={
           currentSection && selectedCategory
             ? getGroupedQuestionTypes({
