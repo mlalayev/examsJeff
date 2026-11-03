@@ -42,6 +42,7 @@ type AttemptPayload = {
   id: string;
   examTitle: string;
   examCategory?: string;
+  isHomework?: boolean;
   status: string;
   sections: Section[];
   savedAnswers: Record<string, Record<string, any>>;
@@ -251,7 +252,11 @@ export function SatDigitalRunner({
       }
 
       setMarked(loadMarkedReviewSet(attemptId));
-      const locked = loadLockedModulesSet(attemptId);
+      const locked = json.isHomework ? new Set<string>() : loadLockedModulesSet(attemptId);
+      if (json.isHomework) {
+        localStorage.removeItem(lockedModulesStorageKey(attemptId));
+        for (const section of json.sections || []) localStorage.removeItem(satTimerKey(attemptId, section.id));
+      }
       setLockedModules(locked);
 
       // Move user to the first unlocked module (can't return to submitted modules)
@@ -338,7 +343,7 @@ export function SatDigitalRunner({
 
   useEffect(() => {
     expireHandledRef.current = null;
-    if (!currentSection || isBreak) {
+    if (data?.isHomework || !currentSection || isBreak) {
       setSecondsLeft(null);
       return;
     }
@@ -390,6 +395,7 @@ export function SatDigitalRunner({
     const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
   }, [
+    data?.isHomework,
     currentSection,
     isBreak,
     attemptId,
@@ -412,7 +418,7 @@ export function SatDigitalRunner({
     if (typeof window !== "undefined") {
       localStorage.removeItem(satTimerKey(attemptId, currentSection.id));
     }
-    setLockedModules((prev) => {
+    if (!data?.isHomework) setLockedModules((prev) => {
       const next = new Set([...prev, currentSection.id]);
       persistLockedModules(attemptId, next);
       return next;
@@ -559,17 +565,17 @@ export function SatDigitalRunner({
           </div>
 
           <div className="flex flex-col items-center">
-            {showTimer && secondsLeft !== null && !isBreak && (
+            {!data?.isHomework && showTimer && secondsLeft !== null && !isBreak && (
               <div className="text-3xl font-semibold tabular-nums tracking-tight text-slate-900">
                 {formatCountdown(secondsLeft)}
               </div>
             )}
             {isBreak && (
               <div className="text-2xl font-semibold tabular-nums text-slate-900">
-                Break — up to {currentSection?.durationMin ?? 10} min
+                {data?.isHomework ? 'Break' : `Break — up to ${currentSection?.durationMin ?? 10} min`}
               </div>
             )}
-            {!isBreak && (
+            {!data?.isHomework && !isBreak && (
               <button
                 type="button"
                 onClick={() => setShowTimer((v) => !v)}
@@ -977,7 +983,7 @@ export function SatDigitalRunner({
 
             {(currentModuleStats.unanswered.length > 0 || currentModuleStats.markedForReview.length > 0) && (
               <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                Please double-check these items before submitting. Once submitted, this module is locked.
+                Please double-check these items before submitting. {data?.isHomework ? 'You can submit when you are ready.' : 'Once submitted, this module is locked.'}
               </div>
             )}
 

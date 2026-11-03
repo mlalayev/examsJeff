@@ -79,6 +79,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ atte
       id: attempt.id,
       examTitle: exam.title,
       examCategory: exam.category,
+      isHomework: exam.isHomework,
       // Single exam-level timer (used for General English whole-test countdown)
       examDurationMin: exam.durationMin ?? null,
       startedAt: (attempt.startedAt ?? attempt.createdAt)?.toISOString() ?? null,
