@@ -14,6 +14,45 @@ const db = prisma as any;
 const context = { params: Promise.resolve({ attemptId: 'attempt' }) };
 const request = (body: unknown) => new Request('http://localhost/api/integrity', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 const event = (kind: string) => request({ action: 'event', event: { id: 'event', kind } });
+
+test.each(['PAGE_HIDDEN', 'PAGE_LEAVE'])('tablet %s invalidates without deleting saved answers', async kind => {
+  db.attempt.findUnique.mockResolvedValue({ studentId: 'student', status: 'IN_PROGRESS', integrity: { state: 'ACTIVE', monitoringMode: 'TABLET' } });
+  db.examIntegrityEvent.count.mockResolvedValue(2000);
+  const response = await POST(event(kind), context);
+  expect(await response.json()).toMatchObject({ invalidated: true });
+  expect(db.attempt.update.mock.calls[0][0].data.status).toBe('DISQUALIFIED');
+  expect(db.attempt.update.mock.calls[0][0].data).not.toHaveProperty('answers');
+});
+test('tablet fullscreen changes are evidence only', async () => {
+  db.attempt.findUnique.mockResolvedValue({ studentId: 'student', status: 'IN_PROGRESS', integrity: { state: 'ACTIVE', monitoringMode: 'TABLET' } });
+  await POST(event('FULLSCREEN_EXIT'), context);
+  expect(db.attempt.update).not.toHaveBeenCalled();
+});
+test('new tablet mode is saved only at first acceptance', async () => {
+  const start = () => new Request('http://localhost/api/integrity', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X) Safari' },
+    body: JSON.stringify({ action: 'start', accepted: true, policyVersion: 1, monitoringMode: 'TABLET', maxTouchPoints: 5 }),
+  });
+  db.attempt.findUnique.mockResolvedValue({ studentId: 'student', status: 'IN_PROGRESS', integrity: { state: 'PENDING' } });
+  expect((await POST(start(), context)).status).toBe(200);
+  expect(db.examIntegrity.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ monitoringMode: 'TABLET' }) }));
+  db.examIntegrity.update.mockClear();
+  db.attempt.findUnique.mockResolvedValue({ studentId: 'student', status: 'IN_PROGRESS', integrity: { state: 'ACTIVE', monitoringMode: 'FULLSCREEN' } });
+  expect(await (await POST(start(), context)).json()).toMatchObject({ monitoringMode: 'FULLSCREEN' });
+  expect(db.examIntegrity.update).not.toHaveBeenCalled();
+});
+test('desktop cannot request tablet mode and late tablet events are ignored', async () => {
+  db.attempt.findUnique.mockResolvedValue({ studentId: 'student', status: 'IN_PROGRESS', integrity: { state: 'PENDING' } });
+  expect((await POST(request({ action: 'start', accepted: true, policyVersion: 1, monitoringMode: 'TABLET' }), context)).status).toBe(400);
+  expect(db.examIntegrity.update).not.toHaveBeenCalled();
+  db.attempt.findUnique.mockResolvedValue({ studentId: 'student', status: 'SUBMITTED', integrity: { state: 'ACTIVE', monitoringMode: 'TABLET' } });
+  expect(await (await POST(event('PAGE_HIDDEN'), context)).json()).toMatchObject({ ignored: true });
+  expect(db.attempt.update).not.toHaveBeenCalled();
+});
+test('retry after invalidation confirms the terminal state', async () => {
+  db.attempt.findUnique.mockResolvedValue({ studentId: 'student', status: 'DISQUALIFIED', integrity: { state: 'INVALID', monitoringMode: 'TABLET' } });
+  expect(await (await POST(event('PAGE_HIDDEN'), context)).json()).toMatchObject({ ignored: true, invalidated: true });
+});
 beforeEach(() => {
   jest.resetAllMocks();
   (requireAuth as jest.Mock).mockResolvedValue({ id: 'student', role: 'STUDENT' });

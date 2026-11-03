@@ -45,8 +45,8 @@ function templateFor(className: string): ReportTemplateKind | null {
 const HW_LABELS: Record<string, string> = {
   COMPLETED: "tam",
   INCOMPLETE: "qismən",
-  NOT_DONE: "natamam",
-  ASSIGNED: "təyin edilib",
+  NOT_DONE: "yerinə yetirilməyib",
+  ASSIGNED: "təyin edilib, tamamlanması yoxlanmayıb",
 };
 
 const PERF_LABELS: Record<string, string> = {
@@ -178,18 +178,12 @@ export async function POST(request: Request) {
       const kind = templateFor(bucket.name);
       if (!kind) continue; // speaking → skip
 
-      const held = bucket.sessions.length;
-      const topics = [
-        ...new Set(
-          bucket.sessions
-            .map((s) => (s.topic ?? "").trim())
-            .filter((t) => t.length > 0)
-        ),
-      ];
-
       // Aggregate per student from records.
       type Agg = {
         name: string;
+        held: number;
+        excused: number;
+        topics: Set<string>;
         attended: number;
         lateCount: number;
         lateMinutesTotal: number;
@@ -206,6 +200,9 @@ export async function POST(request: Request) {
             perStudent.get(r.studentId) ??
             ({
               name: nameOf(r.student),
+              held: 0,
+              excused: 0,
+              topics: new Set<string>(),
               attended: 0,
               lateCount: 0,
               lateMinutesTotal: 0,
@@ -215,6 +212,11 @@ export async function POST(request: Request) {
               performances: [],
             } as Agg);
 
+          // A missing record is unknown attendance, never an absence.
+          agg.held += 1;
+          if (r.attendance === "EXCUSED") agg.excused += 1;
+          const topic = session.topic?.trim();
+          if (topic) agg.topics.add(topic);
           if (r.attendance === "PRESENT" || r.attendance === "LATE") {
             agg.attended += 1;
           }
@@ -226,7 +228,7 @@ export async function POST(request: Request) {
           if (hwKey && hwKey !== "NOT_ASSIGNED") {
             agg.hw[hwKey] = (agg.hw[hwKey] ?? 0) + 1;
           }
-          const tn = (r.teacherNote ?? r.feedback ?? "").trim();
+          const tn = (r.teacherNote?.trim() || r.feedback || "").trim();
           if (tn) agg.teacherNotes.push(tn);
           const bn = (r.behaviorNote ?? "").trim();
           if (bn) agg.behaviorNotes.push(bn);
@@ -239,19 +241,20 @@ export async function POST(request: Request) {
       const students: WeeklyReportStudent[] = [...perStudent.entries()].map(
         ([studentId, a]) => {
           const hwParts = Object.entries(a.hw).map(
-            ([k, n]) => `${n} ${HW_LABELS[k] ?? k}`
+            ([k, n]) => `${n} dərs üzrə ${HW_LABELS[k] ?? k}`
           );
           const homeworkSummary =
             hwParts.length > 0 ? hwParts.join(", ") : "tapşırıq təyin edilməyib";
           return {
             studentId,
             name: a.name,
-            lessonsHeld: held,
+            lessonsHeld: a.held,
+            lessonsExcused: a.excused,
             lessonsAttended: a.attended,
-            hadAbsence: held - a.attended > 0,
+            hadAbsence: a.held - a.attended - a.excused > 0,
             lateCount: a.lateCount,
             lateMinutesTotal: a.lateMinutesTotal,
-            topics,
+            topics: [...a.topics],
             homeworkSummary,
             teacherNotes: a.teacherNotes,
             behaviorNotes: a.behaviorNotes,

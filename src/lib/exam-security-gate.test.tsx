@@ -12,6 +12,9 @@ const responses: any[] = [];
 beforeEach(() => {
   (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
   localStorage.clear(); responses.length = 0; fullscreen = null;
+  Object.defineProperty(navigator, 'userAgent', { configurable: true, value: 'Windows Chrome' });
+  Object.defineProperty(navigator, 'maxTouchPoints', { configurable: true, value: 0 });
+  Object.defineProperty(document, 'hidden', { configurable: true, value: false });
   security = { policy: { state: 'PENDING', policyVersion: 1 }, status: 'IN_PROGRESS', hasSpeaking: false, canReview: false };
   Object.defineProperty(document, 'fullscreenElement', { configurable: true, get: () => fullscreen });
   document.documentElement.requestFullscreen = jest.fn(async () => { fullscreen = document.documentElement; document.dispatchEvent(new Event('fullscreenchange')); });
@@ -24,6 +27,82 @@ beforeEach(() => {
 });
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); jest.useRealTimers(); });
 const render = async () => { await act(async () => { root.render(<ExamSecurityGate><div>EXAM QUESTIONS</div></ExamSecurityGate>); }); };
+
+const tabletPreflight = async () => {
+  Object.defineProperty(navigator, 'userAgent', { configurable: true, value: 'Mozilla/5.0 (Macintosh; Intel Mac OS X) Safari' });
+  Object.defineProperty(navigator, 'maxTouchPoints', { configurable: true, value: 5 });
+  await render();
+  await act(async () => { host.querySelectorAll<HTMLInputElement>('input[type=checkbox]').forEach(box => box.click()); });
+};
+const hidePage = async () => {
+  await act(async () => {
+    Object.defineProperty(document, 'hidden', { configurable: true, value: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+};
+test('tablet starts without fullscreen and tab switch immediately blocks questions', async () => {
+  await tabletPreflight();
+  expect(host.textContent).not.toContain('Tam ekranı sına');
+  await clickText('imtahana başla');
+  expect(document.documentElement.requestFullscreen).not.toHaveBeenCalled();
+  expect(responses[0].monitoringMode).toBe('TABLET');
+  expect(host.textContent).toContain('EXAM QUESTIONS');
+  await hidePage();
+  expect(host.textContent).not.toContain('EXAM QUESTIONS');
+  expect(host.textContent).toContain('imtahan səhifəsindən çıxış');
+  expect(responses.some(r => r.event?.kind === 'PAGE_HIDDEN')).toBe(true);
+});
+test('tablet preflight and successful submission do not penalize tab switches', async () => {
+  await tabletPreflight(); await hidePage();
+  expect(responses).toHaveLength(0);
+  Object.defineProperty(document, 'hidden', { configurable: true, value: false });
+  await clickText('imtahana başla');
+  await act(async () => { window.dispatchEvent(new Event('exam-submitted')); });
+  await hidePage();
+  await act(async () => { window.dispatchEvent(new Event('pagehide')); });
+  expect(responses.filter(r => r.action === 'event')).toHaveLength(0);
+  expect(host.textContent).toContain('EXAM QUESTIONS');
+});
+test('tablet navigation invalidates and offline evidence is persisted', async () => {
+  await tabletPreflight(); await clickText('imtahana başla');
+  globalThis.fetch = jest.fn(async () => { throw new Error('Offline'); });
+  await act(async () => { window.dispatchEvent(new Event('pagehide')); });
+  expect(host.textContent).toContain('İmtahan nəticəsi etibarsızdır');
+  expect(localStorage.getItem('exam-security-events:attempt')).toContain('PAGE_LEAVE');
+});
+test('tablet resize, keyboard focus and fullscreen changes are not violations', async () => {
+  await tabletPreflight(); await clickText('imtahana başla');
+  await act(async () => {
+    window.dispatchEvent(new Event('resize'));
+    window.dispatchEvent(new Event('blur'));
+    document.dispatchEvent(new Event('fullscreenchange'));
+  });
+  expect(responses.filter(r => r.action === 'event')).toHaveLength(0);
+  expect(host.textContent).toContain('EXAM QUESTIONS');
+});
+test('existing fullscreen attempts retain their mode on tablets', async () => {
+  security.policy.state = 'ACTIVE'; security.policy.monitoringMode = 'FULLSCREEN';
+  await tabletPreflight();
+  expect(host.textContent).toContain('Tam ekranı sına');
+  expect(host.textContent).not.toContain('Planşetdə tam ekran tələb olunmur');
+});
+test('queued tablet exit still blocks after reload when the event cannot reach the server', async () => {
+  security.policy = { state: 'ACTIVE', policyVersion: 1, monitoringMode: 'TABLET' };
+  localStorage.setItem('exam-security-events:attempt', JSON.stringify([{ id: 'offline-exit', kind: 'PAGE_HIDDEN' }]));
+  const workingFetch = globalThis.fetch;
+  globalThis.fetch = jest.fn(async (url: any, options: any) => {
+    if (options?.method === 'POST') throw new Error('Offline');
+    return workingFetch(url, options);
+  });
+  await render();
+  expect(host.textContent).toContain('İmtahan nəticəsi etibarsızdır');
+  expect(host.textContent).not.toContain('EXAM QUESTIONS');
+});
+test('tablet in-app navigation records the exit on unmount', async () => {
+  await tabletPreflight(); await clickText('imtahana başla');
+  await act(async () => { root.render(<div>Another page</div>); });
+  expect(responses.some(r => r.event?.kind === 'PAGE_LEAVE')).toBe(true);
+});
 test('save error notice stays inside fullscreen without a native alert', async () => {
   const nativeAlert = jest.spyOn(window, 'alert').mockImplementation(() => {});
   fullscreen = document.documentElement;

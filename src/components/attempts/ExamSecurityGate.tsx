@@ -1,16 +1,19 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, usePathname } from 'next/navigation';
+import { isTabletDevice, isTerminalSecurityEvent, TABLET_LOCKDOWN_NOTICE, type MonitoringMode } from '@/lib/exam-device';
 import { LOCKDOWN_NOTICE } from '@/lib/exam-integrity-policy';
 import { ExamIntegrityReview } from './ExamIntegrityReview';
 
-type Security = { policy: { state: string; policyVersion: number } | null; status: string; hasSpeaking: boolean; canReview: boolean };
+type Security = { policy: { state: string; policyVersion: number; monitoringMode?: MonitoringMode } | null; status: string; hasSpeaking: boolean; canReview: boolean };
 type Event = { id: string; kind: string; length?: number; field?: string };
 export function ExamSecurityGate({ children }: { children: React.ReactNode }) {
   const { attemptId } = useParams<{ attemptId: string }>();
   const path = usePathname();
   const running = path.endsWith('/run');
   const [security, setSecurity] = useState<Security | null>(null);
+  const [tablet, setTablet] = useState(false);
+  const mode = useRef<MonitoringMode>('FULLSCREEN');
   const [ready, setReady] = useState(false);
   const [accepted, setAccepted] = useState(false);
   const [tested, setTested] = useState(false);
@@ -39,7 +42,7 @@ export function ExamSecurityGate({ children }: { children: React.ReactNode }) {
         if (!res.ok) break;
         const data = await res.json();
         if (data.invalidated) { setInvalid(true); active.current = false; }
-        if (data.ignored && queue.current[0]?.kind === 'FULLSCREEN_EXIT') setInvalid(false);
+        if (data.ignored && !data.invalidated && isTerminalSecurityEvent(queue.current[0]?.kind, mode.current)) setInvalid(false);
         queue.current.shift(); persist();
       }
     } catch { /* Offline events are retried, not converted into cheating. */ }
@@ -47,7 +50,7 @@ export function ExamSecurityGate({ children }: { children: React.ReactNode }) {
   }, [endpoint, persist]);
   const report = useCallback((kind: string, details: { length?: number; field?: string } = {}) => {
     const event = { id: crypto.randomUUID(), kind, ...details };
-    if (queue.current.length < 200 || kind === 'FULLSCREEN_EXIT') queue.current.push(event);
+    if (queue.current.length < 200 || isTerminalSecurityEvent(kind, mode.current)) queue.current.push(event);
     persist(); void flush();
   }, [flush, persist]);
   const load = useCallback(async () => {
@@ -57,7 +60,14 @@ export function ExamSecurityGate({ children }: { children: React.ReactNode }) {
       const data: Security = await res.json();
       // A poll started before submit may return stale IN_PROGRESS data afterwards.
       if (completed.current) return;
+      mode.current = data.policy?.state === 'PENDING'
+        ? (isTabletDevice(navigator.userAgent, navigator.maxTouchPoints) ? 'TABLET' : 'FULLSCREEN')
+        : data.policy?.monitoringMode || 'FULLSCREEN';
+      setTablet(mode.current === 'TABLET');
       setSecurity(data); setError('');
+      if (queue.current.some(e => isTerminalSecurityEvent(e.kind, mode.current))) {
+        setInvalid(true); active.current = false;
+      }
       if (data.policy?.state === 'INVALID') { setInvalid(true); active.current = false; }
       if (data.status !== 'IN_PROGRESS') active.current = false;
     } catch (e) { setError((e as Error).message); }
@@ -73,16 +83,29 @@ export function ExamSecurityGate({ children }: { children: React.ReactNode }) {
     if (!running) { active.current = false; return; }
     let exitTimer: ReturnType<typeof setTimeout> | undefined;
     const onFullscreen = () => {
-      if (!active.current || document.fullscreenElement) return;
+      if (mode.current === 'TABLET' || !active.current || document.fullscreenElement) return;
       // pagehide distinguishes normal refresh/navigation from an observed exit.
       exitTimer = setTimeout(() => {
         if (leaving.current || !active.current) return;
         active.current = false; setInvalid(true); report('FULLSCREEN_EXIT');
       }, 350);
     };
-    const onLeave = () => { leaving.current = true; if (exitTimer) clearTimeout(exitTimer); if (active.current) report('PAGE_LEAVE'); };
+    const leaveTablet = (kind: 'PAGE_HIDDEN' | 'PAGE_LEAVE') => {
+      if (!active.current) return;
+      active.current = false; setInvalid(true); report(kind);
+    };
+    const onLeave = () => {
+      leaving.current = true;
+      if (exitTimer) clearTimeout(exitTimer);
+      if (mode.current === 'TABLET') leaveTablet('PAGE_LEAVE');
+      else if (active.current) report('PAGE_LEAVE');
+    };
     const onReturn = (e: PageTransitionEvent) => { if (e.persisted) { active.current = false; leaving.current = false; setReady(false); void load(); } };
-    const onVisible = () => { if (active.current && document.hidden) report('PAGE_HIDDEN'); };
+    const onVisible = () => {
+      if (!active.current || !document.hidden) return;
+      if (mode.current === 'TABLET') leaveTablet('PAGE_HIDDEN');
+      else report('PAGE_HIDDEN');
+    };
     const onOffline = () => { if (active.current) report('OFFLINE'); };
     const onComplete = () => {
       completed.current = true;
@@ -111,6 +134,9 @@ export function ExamSecurityGate({ children }: { children: React.ReactNode }) {
     window.addEventListener('offline', onOffline);
     window.addEventListener('exam-submitted', onComplete);
     return () => {
+      // Covers in-app navigation where pagehide is not fired.
+      leaving.current = true;
+      if (mode.current === 'TABLET' && active.current) leaveTablet('PAGE_LEAVE');
       if (exitTimer) clearTimeout(exitTimer);
       document.removeEventListener('fullscreenchange', onFullscreen);
       document.removeEventListener('visibilitychange', onVisible);
@@ -153,33 +179,41 @@ export function ExamSecurityGate({ children }: { children: React.ReactNode }) {
   }
   async function start() {
     setBusy(true); setError('');
+    leaving.current = false;
     try {
       // Must run directly from the user's click, before asynchronous network work.
-      if (!document.fullscreenElement) await document.documentElement.requestFullscreen();
+      if (mode.current === 'FULLSCREEN' && !document.fullscreenElement) await document.documentElement.requestFullscreen();
       await flush();
       if (queue.current.length) throw new Error('Gözləyən hadisələr serverə çatmadı. İnterneti yoxlayıb yenidən cəhd edin.');
-      const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'start', accepted: true, policyVersion: 1 }) });
+      const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'start', accepted: true, policyVersion: 1, monitoringMode: mode.current, maxTouchPoints: navigator.maxTouchPoints || 0 }) });
       const data = await res.json(); if (!res.ok) throw new Error(data.error || 'Başlamaq mümkün olmadı');
-      if (!document.fullscreenElement) throw new Error('Davam etmək üçün tam ekranı yenidən açın.');
-      leaving.current = false; active.current = true; setReady(true);
+      if (data.monitoringMode) { mode.current = data.monitoringMode; setTablet(mode.current === 'TABLET'); }
+      if (mode.current === 'FULLSCREEN' && !document.fullscreenElement) throw new Error('Davam etmək üçün tam ekranı yenidən açın.');
+      active.current = true;
+      setSecurity(previous => previous?.policy ? { ...previous, policy: { ...previous.policy, state: 'ACTIVE', monitoringMode: mode.current } } : previous);
+      // The user may have left while the start request was in flight.
+      if (mode.current === 'TABLET' && (document.hidden || leaving.current)) {
+        active.current = false; setInvalid(true); report('PAGE_HIDDEN'); return;
+      }
+      setReady(true);
       if (security?.policy?.state === 'ACTIVE') report('RESUMED');
     } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   }
   if (!security) return <div className="p-8">{error || 'İmtahan yoxlanılır…'}{error && <button onClick={load}>Yenidən yoxla</button>}</div>;
   if (!running) return <><div className="min-w-0 lg:ml-72"><div className="mx-auto max-w-7xl pt-16 lg:pt-4"><ExamIntegrityReview attemptId={attemptId} /></div></div>{security.policy?.state === 'INVALID' && !security.canReview ? null : children}</>;
-  if (invalid || security.policy?.state === 'INVALID') return <div className="m-8 rounded-xl border border-red-300 bg-red-50 p-8"><h1 className="text-xl font-bold">İmtahan nəticəsi etibarsızdır</h1><p>Qayda pozuntusu — fullscreen-dən çıxış. Cavablar silinməyib, lakin nəticəyə hesablanmayacaq. Texniki problem olubsa müəlliminizlə əlaqə saxlayın.</p><button onClick={() => { void flush(); void load(); }}>Server vəziyyətini yenidən yoxla</button></div>;
-  if (ready) return <><div hidden={completed.current || security.status !== 'IN_PROGRESS'} className="fixed left-1/2 top-0 z-[60] -translate-x-1/2 rounded-b bg-emerald-800 px-3 py-1 text-xs text-white">Tam ekran nəzarəti aktivdir</div>{children}</>;
+  if (invalid || security.policy?.state === 'INVALID') return <div className="m-8 rounded-xl border border-red-300 bg-red-50 p-8"><h1 className="text-xl font-bold">İmtahan nəticəsi etibarsızdır</h1><p>Qayda pozuntusu — {tablet ? 'imtahan səhifəsindən çıxış' : 'fullscreen-dən çıxış'}. Cavablar silinməyib, lakin nəticəyə hesablanmayacaq. Texniki problem olubsa müəlliminizlə əlaqə saxlayın.</p><button onClick={() => { void flush(); void load(); }}>Server vəziyyətini yenidən yoxla</button></div>;
+  if (ready) return <><div hidden={completed.current || security.status !== 'IN_PROGRESS'} className="fixed left-1/2 top-0 z-[60] -translate-x-1/2 rounded-b bg-emerald-800 px-3 py-1 text-xs text-white">{tablet ? 'İmtahan səhifəsinə nəzarət aktivdir' : 'Tam ekran nəzarəti aktivdir'}</div>{children}</>;
   if (!security.policy || security.status !== 'IN_PROGRESS') return <>{children}</>;
   return <div className="mx-auto my-8 max-w-2xl space-y-4 rounded-xl border bg-white p-6 text-gray-900">
-    <h1 className="text-2xl font-semibold">İmtahandan əvvəl cihaz yoxlaması</h1><p>{LOCKDOWN_NOTICE}</p>
-    <p>Bu yoxlama mərhələsində tam ekrandan çıxmaq cəza yaratmır. İlk başlanğıcda sayğac yalnız aşağıdakı başlama düyməsindən sonra işə düşür. Başlanmış imtahana qayıdış sayğacı sıfırlamır.</p>
+    <h1 className="text-2xl font-semibold">İmtahandan əvvəl cihaz yoxlaması</h1><p>{tablet ? TABLET_LOCKDOWN_NOTICE : LOCKDOWN_NOTICE}</p>
+    <p>Bu cihaz yoxlaması mərhələsində çıxış cəza yaratmır. İlk başlanğıcda sayğac yalnız aşağıdakı başlama düyməsindən sonra işə düşür. Başlanmış imtahana qayıdış sayğacı sıfırlamır.</p>
     <p className="text-sm">Writing cavabları AI dəstəkli müəllim baxışından keçə bilər. İmtahan daxilində paste ölçüləri və yazı uzunluğunun dəyişməsi qeydə alınır; bunlar avtomatik cəza səbəbi deyil.</p>
-    <button className="rounded border p-2" onClick={testFullscreen}>{tested ? '✓ Tam ekran yoxlanıb' : 'Tam ekranı sına'}</button>{' '}
+    {!tablet && <button className="rounded border p-2" onClick={testFullscreen}>{tested ? '✓ Tam ekran yoxlanıb' : 'Tam ekranı sına'}</button>}{' '}
     <button className="rounded border p-2" onClick={testSound}>Test səsini səsləndir</button>
     <label className="block"><input type="checkbox" checked={sound} onChange={e => setSound(e.target.checked)} /> Test səsini eşitdim</label>
     {security.hasSpeaking && <><button className="rounded border p-2" disabled={micTesting} onClick={testMic}>{micTesting ? '3 saniyə danışın — test yazılır…' : 'Mikrofonu 3 saniyəlik yazı ilə yoxla'}</button>{micSample && <><audio controls src={micSample} className="mt-2" /><label className="block"><input type="checkbox" checked={mic} onChange={e => setMic(e.target.checked)} /> Öz səsimi test yazısında eşitdim</label><p className="text-xs">Test yazısı serverə göndərilmir.</p></>}</>}
     <label className="block"><input type="checkbox" checked={accepted} onChange={e => setAccepted(e.target.checked)} /> Qaydaları oxudum və qəbul edirəm</label>
     {error && <p role="alert" className="text-red-700">{error}</p>}
-    <button className="rounded bg-indigo-800 p-3 text-white disabled:opacity-50" disabled={busy || micTesting || !accepted || !tested || !sound || (security.hasSpeaking && !mic)} onClick={start}>{busy ? 'Başladılır…' : 'Qaydaları qəbul edirəm — tam ekranda başla'}</button>
+    <button className="rounded bg-indigo-800 p-3 text-white disabled:opacity-50" disabled={busy || micTesting || !accepted || (!tablet && !tested) || !sound || (security.hasSpeaking && !mic)} onClick={start}>{busy ? 'Başladılır…' : tablet ? 'Qaydaları qəbul edirəm — imtahana başla' : 'Qaydaları qəbul edirəm — tam ekranda başla'}</button>
   </div>;
 }

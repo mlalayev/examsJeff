@@ -202,6 +202,7 @@ model Attempt {
 model ExamIntegrity {
   attemptId       String   @id
   policyVersion   Int
+  monitoringMode  String   @default("FULLSCREEN")
   state           String   @default("PENDING")
   acceptedAt      DateTime?
   invalidatedAt   DateTime?

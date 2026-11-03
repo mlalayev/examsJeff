@@ -1,0 +1,1 @@
+ALTER TABLE "exam_integrity" ADD COLUMN "monitoringMode" TEXT NOT NULL DEFAULT 'FULLSCREEN';

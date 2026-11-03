@@ -4,8 +4,8 @@ import { NextResponse } from 'next/server';
 export async function integrityBlock(attemptId: string) {
   const policy = await prisma.examIntegrity.findUnique({ where: { attemptId } });
   if (!policy) return null; // Legacy and SAT/Math are unchanged.
-  if (policy.state === 'INVALID') return NextResponse.json({ error: 'Qayda pozuntusu — fullscreen-dən çıxış. Nəticə etibarsızdır.', code: 'EXAM_INVALIDATED' }, { status: 409 });
-  if (policy.state === 'PENDING') return NextResponse.json({ error: 'Tam ekran yoxlamasını və qaydaların qəbulunu tamamlayın.', code: 'EXAM_PREFLIGHT_REQUIRED' }, { status: 409 });
+  if (policy.state === 'INVALID') return NextResponse.json({ error: 'İmtahan nəzarəti qaydası pozulub. Nəticə etibarsızdır.', code: 'EXAM_INVALIDATED' }, { status: 409 });
+  if (policy.state === 'PENDING') return NextResponse.json({ error: 'Cihaz yoxlamasını və qaydaların qəbulunu tamamlayın.', code: 'EXAM_PREFLIGHT_REQUIRED' }, { status: 409 });
   return null;
 }
 

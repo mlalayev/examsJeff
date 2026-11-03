@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-utils';
 import { prisma } from '@/lib/prisma';
 import { canReviewIntegrity } from '@/lib/exam-integrity';
+import { isTabletDevice, isTerminalSecurityEvent } from '@/lib/exam-device';
 import { z } from 'zod';
 
 type Context = { params: Promise<{ attemptId: string }> };
@@ -13,7 +14,7 @@ const eventSchema = z.object({
   field: z.string().max(120).optional(),
 });
 const input = z.discriminatedUnion('action', [
-  z.object({ action: z.literal('start'), accepted: z.literal(true), policyVersion: z.literal(1) }),
+  z.object({ action: z.literal('start'), accepted: z.literal(true), policyVersion: z.literal(1), monitoringMode: z.enum(['FULLSCREEN', 'TABLET']).default('FULLSCREEN'), maxTouchPoints: z.number().int().min(0).max(100).default(0) }),
   z.object({ action: z.literal('event'), event: eventSchema }),
   z.object({ action: z.literal('review'), note: z.string().trim().min(10).max(2000) }),
 ]);
@@ -39,8 +40,8 @@ export async function GET(_request: Request, { params }: Context) {
       normalized: await prisma.attemptAnswer.findMany({ where: { attemptId }, select: { questionId: true, section: true, answer: true } }),
       sections: await prisma.attemptSection.findMany({ where: { attemptId }, select: { type: true, answers: true } }),
     } : undefined;
-    const policy = !attempt.integrity || staff ? attempt.integrity : { state: attempt.integrity.state, policyVersion: attempt.integrity.policyVersion, acceptedAt: attempt.integrity.acceptedAt, invalidatedAt: attempt.integrity.invalidatedAt };
-    return NextResponse.json({ policy, status: attempt.status, hasSpeaking: exam?.sections.some(s => s.type === 'SPEAKING'), canReview: staff, events, evidence });
+    const policy = !attempt.integrity || staff ? attempt.integrity : { state: attempt.integrity.state, policyVersion: attempt.integrity.policyVersion, monitoringMode: attempt.integrity.monitoringMode, acceptedAt: attempt.integrity.acceptedAt, invalidatedAt: attempt.integrity.invalidatedAt };
+    return NextResponse.json({ policy, status: attempt.status, hasSpeaking: exam?.sections.some(s => s.type === 'SPEAKING'), canReview: staff, events, evidence }, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (error) { return NextResponse.json({ error: 'Cannot load exam security state' }, { status: error instanceof Error && error.message === 'Unauthorized' ? 401 : 503 }); }
 }
 
@@ -67,25 +68,29 @@ export async function POST(request: Request, { params }: Context) {
       if (body.action === 'start') {
         if (policy.state === 'INVALID' || attempt.status !== 'IN_PROGRESS') return NextResponse.json({ error: 'Attempt is closed' }, { status: 409 });
         if (policy.state === 'PENDING') {
+          if (body.monitoringMode === 'TABLET' && !isTabletDevice(request.headers.get('user-agent') || '', body.maxTouchPoints)) {
+            return NextResponse.json({ error: 'Tablet monitoring is only available on tablets' }, { status: 400 });
+          }
           const now = new Date();
-          await tx.examIntegrity.update({ where: { attemptId }, data: { state: 'ACTIVE', acceptedAt: now } });
+          await tx.examIntegrity.update({ where: { attemptId }, data: { state: 'ACTIVE', acceptedAt: now, monitoringMode: body.monitoringMode } });
           await tx.attempt.update({ where: { id: attemptId }, data: { startedAt: now } });
         }
-        return NextResponse.json({ success: true });
+        return NextResponse.json({ success: true, monitoringMode: policy.state === 'PENDING' ? body.monitoringMode : policy.monitoringMode || 'FULLSCREEN' });
       }
       // Late browser events after successful submission must not disqualify a student.
-      if (policy.state !== 'ACTIVE' || attempt.status !== 'IN_PROGRESS') return NextResponse.json({ success: true, ignored: true });
+      if (policy.state !== 'ACTIVE' || attempt.status !== 'IN_PROGRESS') return NextResponse.json({ success: true, ignored: true, invalidated: policy.state === 'INVALID' });
       const { event } = body;
+      const terminal = isTerminalSecurityEvent(event.kind, policy.monitoringMode);
       const exists = await tx.examIntegrityEvent.findUnique({ where: { id: event.id } });
       if (exists) return NextResponse.json({ success: exists.attemptId === attemptId }, { status: exists.attemptId === attemptId ? 200 : 400 });
       const count = await tx.examIntegrityEvent.count({ where: { attemptId } });
-      if (count >= 2000 && event.kind !== 'FULLSCREEN_EXIT') return NextResponse.json({ success: true, capped: true });
+      if (count >= 2000 && !terminal) return NextResponse.json({ success: true, capped: true });
       await tx.examIntegrityEvent.create({ data: { id: event.id, attemptId, kind: event.kind, metadata: { length: event.length, field: event.field } } });
-      if (event.kind === 'FULLSCREEN_EXIT') {
+      if (terminal) {
         await tx.examIntegrity.update({ where: { attemptId }, data: { state: 'INVALID', invalidatedAt: new Date() } });
         await tx.attempt.update({ where: { id: attemptId }, data: { status: 'DISQUALIFIED', bandOverall: null, placementLevel: null, placementBreakdown: undefined } });
       }
-      return NextResponse.json({ success: true, invalidated: event.kind === 'FULLSCREEN_EXIT' });
+      return NextResponse.json({ success: true, invalidated: terminal });
     });
   } catch (error) {
     if (error instanceof z.ZodError) return NextResponse.json({ error: 'Invalid security event' }, { status: 400 });

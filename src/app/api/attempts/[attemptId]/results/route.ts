@@ -429,6 +429,7 @@ export async function GET(
           overallBand,
           perSection,
         },
+        generalWriting: (attempt.sections.find(s => s.type === 'WRITING')?.rubric as any)?.generalWriting ?? [],
         writingSubmission: writingSubmission ? {
           id: writingSubmission.id,
           task1Response: writingSubmission.task1Response,
@@ -640,6 +641,8 @@ export async function GET(
           let totalCount = 0;
           
           questions.forEach((q: any) => {
+            // General English essays receive a separate 0–100 assessment.
+            if (examWithSections.category === 'GENERAL_ENGLISH' && q.qtype === 'ESSAY') return;
             if (q.qtype === "DND_GAP" && q.prompt?.textWithBlanks) {
               // Optimized: directly count blanks without sentence splitting
               const totalBlanks = countDndGapBlanks(q.prompt.textWithBlanks);
@@ -692,6 +695,7 @@ export async function GET(
             : null;
 
           return {
+            id: examSection.id,
             type: examSection.type,
             title: examSection.title,
             correct: correctCount,
@@ -755,6 +759,7 @@ export async function GET(
         },
         sections: fullSections,
         speakingAi,
+        generalWriting: (attempt.sections.find(s => s.type === 'WRITING')?.rubric as any)?.generalWriting ?? [],
         writingSubmission: writingSubmission ? {
           id: writingSubmission.id,
           task1Response: writingSubmission.task1Response,
