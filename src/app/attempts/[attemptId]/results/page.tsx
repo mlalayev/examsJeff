@@ -31,6 +31,8 @@ import {
 } from "@/lib/speaking-answer";
 
 interface ResultsData {
+  writingGradingPending?: boolean;
+  writingScoreBreakdown?: { generalWritingPercent?: number; generalObjectivePercent?: number | null };
   generalWriting?: Array<{ questionId: string; sectionId: string; title: string; score: number; feedback: string }>;
 
   homeworkReview?: Array<{ id: string; title: string; questions: Array<{
@@ -62,7 +64,7 @@ interface ResultsData {
   summary: {
     totalCorrect: number;
     totalQuestions: number;
-    totalPercentage: number;
+    totalPercentage: number | null;
     overallBand?: number | null;
     perSection?: Array<{
       id?: string;
@@ -933,8 +935,8 @@ export default function AttemptResultsPage() {
                 </>
               ) : (
                 <>
-                  <div className="text-3xl font-bold text-gray-900">{data.summary.totalPercentage}%</div>
-                  {data.summary.totalPercentage >= 75 && (
+                  <div className="text-3xl font-bold text-gray-900">{data.writingGradingPending ? 'Writing yoxlanışı gözlənilir' : `${data.summary.totalPercentage ?? 0}%`}</div>
+                  {(data.summary.totalPercentage ?? 0) >= 75 && (
                     <div className="flex items-center gap-1 text-sm text-green-600 mt-1">
                       <Award className="w-4 h-4" />
                       Passed
@@ -954,7 +956,7 @@ export default function AttemptResultsPage() {
                     ? data.summary.overallBand >= 6.5
                       ? "#22c55e"
                       : "#303380"
-                    : data.summary.totalPercentage >= 75
+                    : (data.summary.totalPercentage ?? 0) >= 75
                       ? "#22c55e"
                       : "#303380",
                 width: `${
@@ -967,6 +969,12 @@ export default function AttemptResultsPage() {
           </div>
         </div>
 
+        {data.writingScoreBreakdown?.generalWritingPercent != null && !data.writingGradingPending && <p className="mb-5 rounded-lg bg-indigo-50 p-3 text-sm text-indigo-900">
+          Writing: {data.writingScoreBreakdown.generalWritingPercent.toFixed(1)}%
+          {data.writingScoreBreakdown.generalObjectivePercent != null
+            ? ` × 20% + digər suallar: ${data.writingScoreBreakdown.generalObjectivePercent.toFixed(1)}% × 80% = Overall ${data.summary.totalPercentage}%`
+            : ` — Overall ${data.summary.totalPercentage}%`}
+        </p>}
         {/* Section Results */}
         <div className="mb-6">
           <h2 className="text-lg font-medium text-gray-900 mb-4">Section Results</h2>
@@ -1134,7 +1142,7 @@ export default function AttemptResultsPage() {
         {/* AI Writing Scores (Teacher Only) — same structure as before; light visual polish only */}
         {!!data.generalWriting?.length && <section className="mb-6 rounded-xl border bg-white p-6">
           <h2 className="mb-4 text-lg font-semibold">General English — AI Writing Assessment</h2>
-          <p className="mb-4 text-sm text-gray-500">Writing scores are shown separately from the objective question total.</p>
+          <p className="mb-4 text-sm text-gray-500">Writing contributes 20% and objective questions 80% of the overall score. Writing-only tests use the writing score.</p>
           {data.generalWriting.map((assessment, index) => <article key={assessment.questionId} className="border-t py-4">
             <h3 className="font-semibold">{assessment.title} · Essay {index + 1} — {assessment.score}/100</h3>
             <p className="mt-2 whitespace-pre-wrap text-sm text-gray-700">{assessment.feedback}</p>

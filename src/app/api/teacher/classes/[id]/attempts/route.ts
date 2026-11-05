@@ -1,3 +1,4 @@
+import { computeAttemptPercentFromSections } from '@/lib/attempt-score';
 import { classExamCategories } from '@/lib/teacher-exam-scope';
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -28,7 +29,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       const autoSections = a.sections.filter((s) => s.type !== "WRITING");
       const totalRaw = autoSections.reduce((acc, s) => acc + (s.rawScore || 0), 0);
       const totalMax = autoSections.reduce((acc, s) => acc + (s.maxScore || 0), 0);
-      const percent = totalMax > 0 ? Math.round((totalRaw / totalMax) * 100) : null;
+      const percent = computeAttemptPercentFromSections(a.sections);
       const student = students.find(s=>s.id===a.studentId);
       return {
         id: a.id,

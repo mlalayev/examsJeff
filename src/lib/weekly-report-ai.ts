@@ -63,11 +63,27 @@ export function formatWeeklyReport(name: string, subject: string, period: {start
   return `${name} — ${subject}\n${date(start)} – ${date(end)}\n\nHörmətli valideyn,\n\n${body.trim()}\n\nHörmətlə,\nJEFF Colleges`;
 }
 
+export class ReportResponseError extends Error {}
+
 export async function generateWeeklyReports(
   templateKind: ReportTemplateKind,
   subjectLabel: string,
   students: WeeklyReportStudent[],
   period: {start:string;end:string}
+): Promise<WeeklyReportResult[]> {
+  try { return await generateReportBatch(templateKind, subjectLabel, students, period, false); }
+  catch (error) {
+    if (!(error instanceof ReportResponseError)) throw error;
+    return generateReportBatch(templateKind, subjectLabel, students, period, true);
+  }
+}
+
+async function generateReportBatch(
+  templateKind: ReportTemplateKind,
+  subjectLabel: string,
+  students: WeeklyReportStudent[],
+  period: {start:string;end:string},
+  retry: boolean
 ): Promise<WeeklyReportResult[]> {
   if (students.length === 0) return [];
 
@@ -96,7 +112,7 @@ export async function generateWeeklyReports(
     temperature: 0.5,
     response_format: { type: "json_object" },
     messages: [
-      { role: "system", content: SYSTEM_PROMPT },
+      { role: "system", content: SYSTEM_PROMPT + (retry ? " Əvvəlki cavab format və ya təkrar mətn yoxlamasından keçmədi. Bütün ID-ləri və dörd sahəni tam qaytar. Mətnləri fərdiləşdir, eyni faktlar olduqda yeni fakt uydurma." : "") },
       {
         role: "user",
         content: `Hər tələbə üçün bir hesabat yaz. Məlumat:\n${JSON.stringify(
@@ -106,7 +122,7 @@ export async function generateWeeklyReports(
         )}`,
       },
     ],
-  });
+  }, { timeout: 20000, maxRetries: 0 });
 
   const raw = completion.choices[0]?.message?.content ?? "{}";
   let parsed: unknown;
@@ -121,24 +137,31 @@ export async function generateWeeklyReports(
 
   const validId = new Set(students.map((s) => s.studentId));
   const byId = new Map<string, ReportBody>();
-  const bodies = new Set<string>();
+  const bodies = new Map<string, string>();
+  const useSavedFacts = new Set<string>();
   for (const item of arr) {
     if (!item || typeof item !== 'object') continue;
     const id = item.studentId;
     if (typeof id !== 'string' || !validId.has(id)) continue;
-    if (byId.has(id)) throw new Error('AI returned duplicate student reports. Please retry.');
+    if (byId.has(id)) throw new ReportResponseError('AI returned duplicate student IDs. Please retry.');
     if (['topics', 'homework', 'participation', 'notes'].every(key => typeof item[key] === 'string' && item[key].trim())) {
       const fingerprint = ['topics', 'homework', 'participation', 'notes'].map(key => String(item[key]).trim().replace(/\s+/g, ' ').toLocaleLowerCase('az')).join('\n');
-      if (bodies.has(fingerprint)) throw new Error('AI returned identical reports for different students. Please retry.');
-      bodies.add(fingerprint);
+      // Identical facts can legitimately yield the same prose. Retry for variety,
+      // then retain correctly mapped reports with each student's own attendance.
+      if (bodies.has(fingerprint) && !retry) throw new ReportResponseError('AI returned identical report bodies.');
+      const duplicateId = bodies.get(fingerprint);
+      if (duplicateId) { useSavedFacts.add(id); useSavedFacts.add(duplicateId); }
+      bodies.set(fingerprint, id);
       byId.set(id, item as ReportBody);
     }
   }
   // Never replace a saved week with an incomplete set or another student's text.
-  if (byId.size !== students.length) throw new Error('AI did not return a complete report for every student. Please retry.');
+  if (byId.size !== students.length) throw new ReportResponseError('AI did not return a complete report for every student. Please retry.');
 
   return students.map(student => {
-    const body = byId.get(student.studentId)!;
+    // A repeated AI body may mention the other student's name. Use only this
+    // student's saved facts for both colliding reports after the bounded retry.
+    const body = useSavedFacts.has(student.studentId) ? factualReportBody(student) : byId.get(student.studentId)!;
     const text = [attendanceSummary(student), body.topics.trim(), body.homework.trim(), body.participation.trim()].join('\n');
     return { studentId: student.studentId, text: formatWeeklyReport(student.name, subjectLabel, period, `${text}\n\nƏlavə qeydlər: ${body.notes.trim()}`) };
   });
@@ -148,4 +171,14 @@ type ReportBody = { studentId: string; topics: string; homework: string; partici
 function extractReports(parsed: unknown): Record<string, unknown>[] {
   if (parsed && typeof parsed === 'object' && 'reports' in parsed && Array.isArray(parsed.reports)) return parsed.reports;
   return [];
+}
+
+function factualReportBody(student: WeeklyReportStudent): ReportBody {
+  return {
+    studentId: student.studentId,
+    topics: student.topics.length ? `Dərslərdə ${student.topics.join(', ')} mövzuları işlənmişdir.` : 'Keçilmiş mövzular barədə əlavə məlumat qeyd edilməyib.',
+    homework: student.homeworkSummary ? `Ev tapşırıqları üzrə qeydlər: ${student.homeworkSummary}.` : 'Ev tapşırıqları barədə əlavə məlumat qeyd edilməyib.',
+    participation: student.performances.length ? `${student.name} üçün dərsdəki performans qeydləri: ${[...new Set(student.performances)].join(', ')}.` : 'Dərsdə iştirak fəallığı barədə əlavə məlumat qeyd edilməyib.',
+    notes: [...new Set([...student.teacherNotes, ...student.behaviorNotes])].join(' ') || 'Əlavə müşahidə və ya tövsiyə qeyd edilməyib.',
+  };
 }

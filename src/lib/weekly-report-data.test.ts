@@ -5,9 +5,9 @@ jest.mock('@/lib/prisma', () => ({ prisma: {
 jest.mock('@/lib/auth-utils', () => ({ requireTeacher: jest.fn(async () => ({ id: 'teacher' })) }));
 jest.mock('@/lib/api-helpers', () => ({ handleApiError: () => new Response('Error', { status: 500 }) }));
 jest.mock('@/lib/rate-limiter', () => ({ checkRateLimit: () => ({ limited: false }) }));
-jest.mock('@/lib/weekly-report-ai', () => ({ generateWeeklyReports: jest.fn() }));
+jest.mock('@/lib/weekly-report-ai', () => ({ ...jest.requireActual('./weekly-report-ai'), generateWeeklyReports: jest.fn() }));
 import { prisma } from './prisma';
-import { generateWeeklyReports } from './weekly-report-ai';
+import { generateWeeklyReports, ReportResponseError } from './weekly-report-ai';
 import { POST } from '@/app/api/teacher/schedule/week/reports/route';
 const db = prisma as any;
 const generate = generateWeeklyReports as jest.Mock;
@@ -44,4 +44,35 @@ test('generation failure preserves previously saved reports', async () => {
   expect((await POST(request())).status).toBe(500);
   expect(db.weeklyReport.deleteMany).not.toHaveBeenCalled();
   expect(db.weeklyReport.createMany).not.toHaveBeenCalled();
+});
+
+test.each([
+  [new ReportResponseError('Incomplete'), 502, 'REPORT_AI_RESPONSE'],
+  [Object.assign(new Error('Provider limit'), { status: 429 }), 429, 'REPORT_AI_LIMIT'],
+  [Object.assign(new Error('Timeout'), { name: 'APIConnectionTimeoutError' }), 503, 'REPORT_AI_UNAVAILABLE'],
+])('returns actionable errors and preserves saved reports', async (error, status, code) => {
+  const log = jest.spyOn(console, 'error').mockImplementation(() => {});
+  generate.mockRejectedValue(error);
+  try {
+    const response = await POST(request());
+    expect(response.status).toBe(status);
+    expect((await response.json()).code).toBe(code);
+    expect(db.weeklyReport.deleteMany).not.toHaveBeenCalled();
+  } finally { log.mockRestore(); }
+});
+
+test('limits simultaneous class generation to three', async () => {
+  db.lessonSession.findMany.mockResolvedValue(Array.from({ length: 7 }, (_, i) => ({
+    id: String(i), classId: `class${i}`, class: { name: 'Math' }, topic: 'Fractions', studentRecords: [record('PRESENT', 'COMPLETED')],
+  })));
+  let active = 0, maximum = 0;
+  generate.mockImplementation(async () => {
+    active++; maximum = Math.max(maximum, active);
+    await new Promise(resolve => setTimeout(resolve, 1));
+    active--;
+    return [{ studentId: 'student', text: 'Report' }];
+  });
+  expect((await POST(request())).status).toBe(200);
+  expect(generate).toHaveBeenCalledTimes(7);
+  expect(maximum).toBe(3);
 });

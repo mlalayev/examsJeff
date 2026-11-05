@@ -1,3 +1,4 @@
+import { autoGradeGeneralWriting } from '@/lib/auto-grade-general-writing';
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { integrityBlock } from "@/lib/exam-integrity";
@@ -10,6 +11,8 @@ import {
   isEnglishLevelId,
   type PlacementQuestionScore,
 } from "@/lib/placement";
+
+export const maxDuration = 120;
 
 type AnswersByQuestionId = Record<string, any>;
 
@@ -84,6 +87,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
       return NextResponse.json({ error: "Exam has no sections" }, { status: 404 });
     }
 
+    const autoWriting = examWithSections.category === 'GENERAL_ENGLISH' && examWithSections.sections.some(s => s.type === 'WRITING' && s.questions.some(q => q.qtype === 'ESSAY'));
+    if (attempt.status !== 'IN_PROGRESS') {
+      if (attempt.status !== 'SUBMITTED') return NextResponse.json({ error: 'Attempt is closed' }, { status: 409 });
+      const grading = autoWriting ? await autoGradeGeneralWriting(attemptId) : {};
+      return NextResponse.json({ success: true, attemptId, ...grading });
+    }
+
     // Map attempt section answers from database
     let answersByType: Record<string, AnswersByQuestionId> = {};
     
@@ -115,7 +125,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
       answersByType = { ...allAnswers };
       // Remove sectionStartTimes if present (not actual answers)
       delete answersByType.sectionStartTimes;
-    } else {
+    } else if (!usedNormalized) {
       // For DB exams, answers are in attempt.sections
     for (const as of attempt.sections) {
       if (as.answers) {
@@ -233,6 +243,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
 
     // Use transaction for atomic updates
     await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM attempts WHERE id = ${attemptId} FOR UPDATE`;
+      const latest = await tx.attempt.findUnique({ where: { id: attemptId }, include: { integrity: true } });
+      if (latest?.status !== 'IN_PROGRESS' || latest.integrity?.state === 'INVALID') throw new Error('Attempt is closed');
       // Update all attempt sections in batch
       const updatePromises = sectionUpdates.map((update) =>
         tx.attemptSection.update({
@@ -241,7 +254,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
             rawScore: update.rawScore,
             maxScore: update.maxScore,
             status: update.status,
-            rubric: update.rubric || undefined, // IELTS Listening part scores
+            rubric: autoWriting && attempt.sections.find(s => s.type === 'WRITING')?.id === update.sectionId ? { generalWritingStatus: 'PENDING', generalOverall: null } : update.rubric || undefined, // IELTS Listening part scores
           },
         })
       );
@@ -254,7 +267,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
         data: {
           status: "SUBMITTED",
           submittedAt: new Date(),
-          bandOverall: overallPercent ?? undefined,
+          bandOverall: autoWriting ? null : overallPercent ?? undefined,
           ...(placement
             ? {
                 placementLevel: placement.level,
@@ -264,10 +277,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
         },
       });
 
-      await tryAwardExamScoreReward(attemptId, tx);
+      if (!autoWriting) await tryAwardExamScoreReward(attemptId, tx);
     });
 
-    return NextResponse.json({ success: true, attemptId, resultsUrl: `/attempt/${attemptId}/results` });
+    // Answers and SUBMITTED status are committed before contacting AI.
+    const grading = autoWriting ? await autoGradeGeneralWriting(attemptId) : {};
+    return NextResponse.json({ success: true, attemptId, ...grading, resultsUrl: `/attempts/${attemptId}/results` });
+
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     const stack = error instanceof Error ? error.stack : "";

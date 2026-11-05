@@ -43,9 +43,22 @@ test.each([
  respond(reports);
  await expect(generateWeeklyReports('MATH','Math',[student],period)).rejects.toThrow();
 });
-test('does not accept an identical body for two students',async()=>{
+test('retries identical bodies once, then keeps valid reports with individual attendance',async()=>{
  respond([report,{...report,studentId:'other'}]);
- await expect(generateWeeklyReports('ENGLISH','A1',[student,{...student,studentId:'other',name:'Əli'}],period)).rejects.toThrow('identical');
+ const result = await generateWeeklyReports('ENGLISH','A1',[student,{...student,studentId:'other',name:'Əli',lessonsAttended:3,lateCount:0,teacherNotes:['Əli üçün fərdi qeyd']}],period);
+ expect(create).toHaveBeenCalledTimes(2);
+ expect(result).toHaveLength(2);
+ expect(result[0].text).toContain('Nuray bu həftə');
+ expect(result[1].text).not.toContain('Nuray');
+ expect(result[1].text).toContain('Əli üçün fərdi qeyd');
+ expect(result[1].text).toContain('Əli bu həftə keçirilən 3 dərsdən 3 dərsdə iştirak edib');
+});
+test('repairs a malformed response without losing the whole week',async()=>{
+ create.mockResolvedValueOnce({choices:[{message:{content:'invalid json'}}]});
+ respond([report]);
+ const result = await generateWeeklyReports('ENGLISH','A1',[student],period);
+ expect(result).toHaveLength(1);
+ expect(create).toHaveBeenCalledTimes(2);
 });
 test('empty input does not call AI',async()=>{
  expect(await generateWeeklyReports('ENGLISH','A1',[],period)).toEqual([]);

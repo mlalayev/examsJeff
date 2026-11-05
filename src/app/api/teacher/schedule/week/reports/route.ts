@@ -4,7 +4,7 @@ import { requireTeacher } from "@/lib/auth-utils";
 import { handleApiError } from "@/lib/api-helpers";
 import { checkRateLimit } from "@/lib/rate-limiter";
 import { RATE_LIMITS } from "@/lib/rate-limit-config";
-import { handleOpenAIError } from "@/lib/openai-client";
+import { ReportResponseError } from "@/lib/weekly-report-ai";
 import {
   generateWeeklyReports,
   type ReportTemplateKind,
@@ -13,7 +13,7 @@ import {
 import { LESSON_TYPE_LABELS } from "@/lib/schedule-validation";
 import { z } from "zod";
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 const bodySchema = z.object({
   start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "start must be YYYY-MM-DD"),
@@ -278,8 +278,10 @@ export async function POST(request: Request) {
     }[] = [];
 
     try {
+      // Bound the number of simultaneous provider requests for large schedules.
+      for (let offset = 0; offset < jobs.length; offset += 3) {
       const generated = await Promise.all(
-        jobs.map(async (job) => {
+        jobs.slice(offset, offset + 3).map(async (job) => {
           const reports = await generateWeeklyReports(
             job.kind,
             job.subject,
@@ -298,9 +300,15 @@ export async function POST(request: Request) {
           }));
         })
       );
-      results = generated.flat();
+      results.push(...generated.flat());
+      }
     } catch (aiError: any) {
-      handleOpenAIError(aiError);
+      console.error('Weekly reports generation failed', { name: aiError?.name, status: aiError?.status, code: aiError?.code });
+      if (aiError instanceof ReportResponseError) return NextResponse.json({ error: 'AI returned incomplete reports. Please try Regenerate again. Previously saved reports have been preserved.', code: 'REPORT_AI_RESPONSE' }, { status: 502 });
+      if (aiError?.status === 429) return NextResponse.json({ error: 'The AI service limit was reached. Please wait a minute and try again.', code: 'REPORT_AI_LIMIT' }, { status: 429 });
+      if (aiError?.status === 401 || aiError?.status === 403) return NextResponse.json({ error: 'The AI service could not authenticate. Please ask an administrator to check its configuration.', code: 'REPORT_AI_AUTH' }, { status: 503 });
+      if (aiError?.name === 'APIConnectionTimeoutError' || aiError?.name === 'APIConnectionError' || aiError?.status >= 500) return NextResponse.json({ error: 'The AI service is temporarily unavailable. Please try again. Previously saved reports have been preserved.', code: 'REPORT_AI_UNAVAILABLE' }, { status: 503 });
+      throw aiError;
     }
 
     results.sort(

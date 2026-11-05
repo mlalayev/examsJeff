@@ -1,4 +1,4 @@
-import { scoreGeneralWriting, writingText, writingSourceHash, type GeneralWritingAssessment } from '@/lib/general-writing-ai';
+import { gradeGeneralWritingAttempt } from '@/lib/grade-general-writing';
 import { teacherStudentScope } from '@/lib/teacher-exam-scope';
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -189,38 +189,7 @@ export async function POST(
       if (!scope.categories.includes(exam.category)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
     if (exam.category === 'GENERAL_ENGLISH') {
-      const target = attempt.sections.find(s => s.type === 'WRITING');
-      if (!target) return NextResponse.json({ error: 'Writing section not found' }, { status: 404 });
-      const questions = exam.sections.flatMap(section => section.type === 'WRITING'
-        ? section.questions.filter(q => q.qtype === 'ESSAY').map(q => ({ q, section })) : []);
-      if (!questions.length) return NextResponse.json({ error: 'No writing essays found' }, { status: 400 });
-      const normalized = await prisma.attemptAnswer.findMany({ where: { attemptId, section: 'WRITING' } });
-      const normalizedById = new Map(normalized.map(a => [a.questionId, a.answer]));
-      const stored = (target.rubric as any)?.generalWriting as GeneralWritingAssessment[] | undefined;
-      const assessments: GeneralWritingAssessment[] = [];
-      let cached = true;
-      for (const { q, section } of questions) {
-        const legacy = attempt.answers as any;
-        const sectionAnswer = attempt.sections.map(s => (s.answers as any)?.[q.id]).find(a => a !== undefined);
-        const answer = writingText(normalizedById.has(q.id) ? normalizedById.get(q.id)
-          : legacy?.[section.id]?.[q.id] ?? sectionAnswer ?? legacy?.WRITING?.[q.id]);
-        const hash = writingSourceHash(q.prompt, answer, exam.track);
-        const previous = Array.isArray(stored) ? stored.find(a => a.questionId === q.id && a.sourceHash === hash) : undefined;
-        if (previous && !force) { assessments.push(previous); continue; }
-        cached = false;
-        const result = await scoreGeneralWriting(q.prompt, answer, exam.track);
-        assessments.push({ questionId: q.id, sectionId: section.id, title: section.title, ...result, sourceHash: hash });
-      }
-      if (!cached) {
-        await prisma.$transaction(async tx => {
-          await tx.$queryRaw`SELECT id FROM attempts WHERE id = ${attemptId} FOR UPDATE`;
-          const latest = await tx.attempt.findUnique({ where: { id: attemptId }, include: { integrity: true } });
-          if (latest?.status !== 'SUBMITTED' || latest.integrity?.state === 'INVALID') throw new Error('Attempt is no longer available for grading');
-          const section = await tx.attemptSection.findUnique({ where: { id: target.id } });
-          await tx.attemptSection.update({ where: { id: target.id }, data: { rubric: { ...((section?.rubric as any) || {}), generalWriting: assessments } } });
-        });
-      }
-      return NextResponse.json({ success: true, cached, generalWriting: assessments });
+      return NextResponse.json(await gradeGeneralWritingAttempt(attemptId, force));
     }
 
     const writingAttemptSection = attempt.sections.find((s) => s.type === "WRITING");
