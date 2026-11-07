@@ -1,4 +1,5 @@
 "use client";
+import { examAnswerInputProps } from '@/lib/exam-answer-input';
 import { showExamNotice } from '@/lib/exam-notice';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -972,6 +973,7 @@ export function IeltsDigitalRunner({ attemptId, onUnauthorized, onLoadError }: P
             </p>
           )}
           <textarea
+               {...examAnswerInputProps}
             data-writing-answer
             name={question.id}
             value={typeof value === "string" ? value : ""}

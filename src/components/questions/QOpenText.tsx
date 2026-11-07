@@ -1,4 +1,5 @@
 "use client";
+import { examAnswerInputProps } from '@/lib/exam-answer-input';
 
 import { BaseQuestionProps } from "./types";
 import { QuestionImage } from "./QuestionImage";
@@ -39,6 +40,7 @@ export function QOpenText({ question, value, onChange, readOnly, onImageClick }:
               <span className="inline-block relative mx-1 align-middle">
                 <input
                   type="text"
+                  {...examAnswerInputProps}
                   value={currentValue}
                   onChange={handleChange}
                   disabled={readOnly}
@@ -73,6 +75,7 @@ export function QOpenText({ question, value, onChange, readOnly, onImageClick }:
       <QuestionImage imageUrl={imageUrl} onClick={() => imageUrl && onImageClick?.(imageUrl)} />
       <input
         type="text"
+                  {...examAnswerInputProps}
         value={currentValue}
         onChange={handleChange}
         disabled={readOnly}

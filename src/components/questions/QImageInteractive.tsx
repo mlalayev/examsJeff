@@ -1,4 +1,5 @@
 "use client";
+import { examAnswerInputProps } from '@/lib/exam-answer-input';
 
 import { BaseQuestionProps } from "./types";
 import { useState } from "react";
@@ -279,6 +280,7 @@ export function QImageInteractive({
                 {type === "input" && (
                   <input
                     type="text"
+                  {...examAnswerInputProps}
                     value={currentValue.inputValues?.[element.id] || ""}
                     onChange={(e) => handleInputChange(element, e.target.value)}
                     placeholder={element.placeholder || "Type here..."}

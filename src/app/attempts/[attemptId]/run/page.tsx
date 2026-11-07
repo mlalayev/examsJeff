@@ -1,4 +1,5 @@
 "use client";
+import { examAnswerInputProps } from '@/lib/exam-answer-input';
 import { showExamNotice } from '@/lib/exam-notice';
 
 import React, {
@@ -839,23 +840,6 @@ export default function AttemptRunnerPage() {
       }
     }
   }, [answers, data, saveSection, sectionStartTimes, accessedSections, lockedSections, attemptId]);
-  const handleEndSection = async (sectionId: string) => {
-    if (!data?.sections) return;
-    const section = data.sections.find(s => s.id === sectionId);
-    if (!section) return;
-    
-    if (
-      !confirm(
-        `Are you sure you want to end the "${section.title}" section? You won't be able to edit it after.`
-      )
-    ) {
-      return;
-    }
-
-    await saveSection(sectionId, answers[sectionId] || {});
-    setLockedSections((prev) => new Set([...prev, sectionId]));
-  };
-
   const [showSubmitModuleModal, setShowSubmitModuleModal] = useState(false);
 
   const handleSubmitModuleClick = () => {
@@ -1021,6 +1005,7 @@ export default function AttemptRunnerPage() {
                </div>
              )}
              <textarea
+               {...examAnswerInputProps}
                data-writing-answer
                name={q.id}
                value={essayText}

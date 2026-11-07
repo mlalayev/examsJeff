@@ -1,4 +1,5 @@
 "use client";
+import { examAnswerInputProps } from '@/lib/exam-answer-input';
 
 import React from "react";
 
@@ -131,6 +132,7 @@ export function QFillInBlank({
                 <input
                   key={idx}
                   type="text"
+                  {...examAnswerInputProps}
                   value={value[inputIndex.toString()] || ""}
                   onChange={(e) => handleInputChange(inputIndex, e.target.value)}
                   disabled={readOnly}

@@ -4,17 +4,18 @@ import { requireAuth } from '@/lib/auth-utils';
 import { prisma } from '@/lib/prisma';
 import { canReviewIntegrity } from '@/lib/exam-integrity';
 import { isTabletDevice, isTerminalSecurityEvent } from '@/lib/exam-device';
+import { LOCKDOWN_POLICY_VERSION } from '@/lib/exam-integrity-policy';
 import { z } from 'zod';
 
 type Context = { params: Promise<{ attemptId: string }> };
 const eventSchema = z.object({
   id: z.string().min(1).max(100),
-  kind: z.enum(['FULLSCREEN_EXIT', 'PAGE_HIDDEN', 'PAGE_LEAVE', 'RESUMED', 'OFFLINE', 'PASTE', 'WRITING_SNAPSHOT']),
+  kind: z.enum(['FULLSCREEN_EXIT', 'PAGE_HIDDEN', 'PAGE_LEAVE', 'WINDOW_BLUR', 'FOCUS_LOST', 'RESUMED', 'OFFLINE', 'PASTE', 'WRITING_SNAPSHOT']),
   length: z.number().int().min(0).max(100000).optional(),
   field: z.string().max(120).optional(),
 });
 const input = z.discriminatedUnion('action', [
-  z.object({ action: z.literal('start'), accepted: z.literal(true), policyVersion: z.literal(1), monitoringMode: z.enum(['FULLSCREEN', 'TABLET']).default('FULLSCREEN'), maxTouchPoints: z.number().int().min(0).max(100).default(0) }),
+  z.object({ action: z.literal('start'), accepted: z.literal(true), policyVersion: z.number().int().min(1).max(LOCKDOWN_POLICY_VERSION), monitoringMode: z.enum(['FULLSCREEN', 'TABLET']).default('FULLSCREEN'), maxTouchPoints: z.number().int().min(0).max(100).default(0) }),
   z.object({ action: z.literal('event'), event: eventSchema }),
   z.object({ action: z.literal('review'), note: z.string().trim().min(10).max(2000) }),
 ]);
@@ -67,20 +68,22 @@ export async function POST(request: Request, { params }: Context) {
       if (!policy) return NextResponse.json({ success: true, exempt: true });
       if (body.action === 'start') {
         if (policy.state === 'INVALID' || attempt.status !== 'IN_PROGRESS') return NextResponse.json({ error: 'Attempt is closed' }, { status: 409 });
+        if (policy.state === 'ACTIVE' && body.policyVersion !== (policy.policyVersion || 1)) return NextResponse.json({ error: 'Reload the page to use the rules for this attempt.' }, { status: 409 });
         if (policy.state === 'PENDING') {
+          if (body.policyVersion !== LOCKDOWN_POLICY_VERSION) return NextResponse.json({ error: 'Exam rules have changed. Reload the page and accept the updated rules.' }, { status: 409 });
           if (body.monitoringMode === 'TABLET' && !isTabletDevice(request.headers.get('user-agent') || '', body.maxTouchPoints)) {
             return NextResponse.json({ error: 'Tablet monitoring is only available on tablets' }, { status: 400 });
           }
           const now = new Date();
-          await tx.examIntegrity.update({ where: { attemptId }, data: { state: 'ACTIVE', acceptedAt: now, monitoringMode: body.monitoringMode } });
+          await tx.examIntegrity.update({ where: { attemptId }, data: { state: 'ACTIVE', acceptedAt: now, monitoringMode: body.monitoringMode, policyVersion: LOCKDOWN_POLICY_VERSION } });
           await tx.attempt.update({ where: { id: attemptId }, data: { startedAt: now } });
         }
-        return NextResponse.json({ success: true, monitoringMode: policy.state === 'PENDING' ? body.monitoringMode : policy.monitoringMode || 'FULLSCREEN' });
+        return NextResponse.json({ success: true, policyVersion: policy.state === 'PENDING' ? LOCKDOWN_POLICY_VERSION : policy.policyVersion, monitoringMode: policy.state === 'PENDING' ? body.monitoringMode : policy.monitoringMode || 'FULLSCREEN' });
       }
       // Late browser events after successful submission must not disqualify a student.
       if (policy.state !== 'ACTIVE' || attempt.status !== 'IN_PROGRESS') return NextResponse.json({ success: true, ignored: true, invalidated: policy.state === 'INVALID' });
       const { event } = body;
-      const terminal = isTerminalSecurityEvent(event.kind, policy.monitoringMode);
+      const terminal = isTerminalSecurityEvent(event.kind, policy.monitoringMode, policy.policyVersion);
       const exists = await tx.examIntegrityEvent.findUnique({ where: { id: event.id } });
       if (exists) return NextResponse.json({ success: exists.attemptId === attemptId }, { status: exists.attemptId === attemptId ? 200 : 400 });
       const count = await tx.examIntegrityEvent.count({ where: { attemptId } });

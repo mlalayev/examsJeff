@@ -17,7 +17,7 @@ export function ExamIntegrityReview({ attemptId }: { attemptId: string }) {
   }
   return <section className="m-4 rounded-lg border bg-amber-50 p-4 text-gray-900">
     <h2 className="font-semibold">İmtahan nəzarəti</h2>
-    <p>{data.policy.state === 'INVALID' ? `Qayda pozuntusu — ${data.policy.monitoringMode === 'TABLET' ? 'imtahan səhifəsindən çıxış' : 'fullscreen-dən çıxış'}. Nəticə etibarsızdır; cavablar saxlanılıb.` : (data.policy.monitoringMode === 'TABLET' ? 'İmtahan səhifəsindən çıxışa nəzarət aktivdir.' : 'Tam ekran qaydası bu cəhdə tətbiq olunub.')}</p>
+    <p>{data.policy.state === 'INVALID' ? `Qayda pozuntusu — ${data.policy.monitoringMode === 'TABLET' ? 'imtahan səhifəsindən çıxış' : data.policy.policyVersion >= 2 ? 'imtahan səhifəsindən və ya tam ekrandan çıxış' : 'fullscreen-dən çıxış'}. Nəticə etibarsızdır; cavablar saxlanılıb.` : (data.policy.monitoringMode === 'TABLET' ? 'İmtahan səhifəsindən çıxışa nəzarət aktivdir.' : 'Tam ekran qaydası bu cəhdə tətbiq olunub.')}</p>
     {data.canReview && <>
       {data.policy.state !== 'INVALID' && <WritingOriginalityPanel attemptId={attemptId} />}
       <details><summary>Hadisələr (server vaxtı)</summary><ul>{data.events.map((e: any) => <li key={e.id}>{new Date(e.occurredAt).toLocaleString()} — {e.kind}{e.metadata?.length != null ? ` (${e.metadata.length} simvol)` : ''}</li>)}</ul></details>

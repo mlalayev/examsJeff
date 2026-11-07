@@ -31,19 +31,19 @@ test('tablet fullscreen changes are evidence only', async () => {
 test('new tablet mode is saved only at first acceptance', async () => {
   const start = () => new Request('http://localhost/api/integrity', {
     method: 'POST', headers: { 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X) Safari' },
-    body: JSON.stringify({ action: 'start', accepted: true, policyVersion: 1, monitoringMode: 'TABLET', maxTouchPoints: 5 }),
+    body: JSON.stringify({ action: 'start', accepted: true, policyVersion: 2, monitoringMode: 'TABLET', maxTouchPoints: 5 }),
   });
   db.attempt.findUnique.mockResolvedValue({ studentId: 'student', status: 'IN_PROGRESS', integrity: { state: 'PENDING' } });
   expect((await POST(start(), context)).status).toBe(200);
   expect(db.examIntegrity.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ monitoringMode: 'TABLET' }) }));
   db.examIntegrity.update.mockClear();
-  db.attempt.findUnique.mockResolvedValue({ studentId: 'student', status: 'IN_PROGRESS', integrity: { state: 'ACTIVE', monitoringMode: 'FULLSCREEN' } });
+  db.attempt.findUnique.mockResolvedValue({ studentId: 'student', status: 'IN_PROGRESS', integrity: { state: 'ACTIVE', policyVersion: 2, monitoringMode: 'FULLSCREEN' } });
   expect(await (await POST(start(), context)).json()).toMatchObject({ monitoringMode: 'FULLSCREEN' });
   expect(db.examIntegrity.update).not.toHaveBeenCalled();
 });
 test('desktop cannot request tablet mode and late tablet events are ignored', async () => {
   db.attempt.findUnique.mockResolvedValue({ studentId: 'student', status: 'IN_PROGRESS', integrity: { state: 'PENDING' } });
-  expect((await POST(request({ action: 'start', accepted: true, policyVersion: 1, monitoringMode: 'TABLET' }), context)).status).toBe(400);
+  expect((await POST(request({ action: 'start', accepted: true, policyVersion: 2, monitoringMode: 'TABLET' }), context)).status).toBe(400);
   expect(db.examIntegrity.update).not.toHaveBeenCalled();
   db.attempt.findUnique.mockResolvedValue({ studentId: 'student', status: 'SUBMITTED', integrity: { state: 'ACTIVE', monitoringMode: 'TABLET' } });
   expect(await (await POST(event('PAGE_HIDDEN'), context)).json()).toMatchObject({ ignored: true });
@@ -65,7 +65,7 @@ test.each(['SAT', 'MATH'])('%s never gets a new policy', category => {
   process.env.EXAM_LOCKDOWN_ENABLED = 'true'; expect(requiresLockdown(category)).toBe(false); expect(newIntegrityPolicy(category)).toBeUndefined();
 });
 test.each(['IELTS', 'TOEFL', 'PLACEMENT', 'GENERAL_ENGLISH', 'KIDS'])('%s gets policy only after rollout flag', category => {
-  expect(newIntegrityPolicy(category)).toBeUndefined(); process.env.EXAM_LOCKDOWN_ENABLED = 'true'; expect(newIntegrityPolicy(category)).toEqual({ create: { policyVersion: 1 } });
+  expect(newIntegrityPolicy(category)).toBeUndefined(); process.env.EXAM_LOCKDOWN_ENABLED = 'true'; expect(newIntegrityPolicy(category)).toEqual({ create: { policyVersion: 2 } });
 });
 test('legacy attempt is not blocked or enrolled retroactively', async () => {
   db.examIntegrity.findUnique.mockResolvedValue(null);
@@ -94,6 +94,46 @@ test('late exit after submission is ignored', async () => {
   db.attempt.findUnique.mockResolvedValue({ studentId: 'student', status: 'SUBMITTED', integrity: { state: 'ACTIVE' } });
   expect((await POST(event('FULLSCREEN_EXIT'), context)).status).toBe(200); expect(db.attempt.update).not.toHaveBeenCalled();
 });
+
+test.each(['PAGE_HIDDEN', 'PAGE_LEAVE', 'FOCUS_LOST'])('v2 desktop %s invalidates on server, preserving answers', async kind => {
+  db.attempt.findUnique.mockResolvedValue({ studentId: 'student', status: 'IN_PROGRESS', integrity: { state: 'ACTIVE', policyVersion: 2, monitoringMode: 'FULLSCREEN' } });
+  const response = await POST(event(kind), context);
+  expect(await response.json()).toMatchObject({ invalidated: true });
+  expect(db.attempt.update.mock.calls[0][0].data.status).toBe('DISQUALIFIED');
+  expect(db.attempt.update.mock.calls[0][0].data).not.toHaveProperty('answers');
+});
+
+test.each(['WINDOW_BLUR', 'OFFLINE', 'PASTE'])('v2 %s stays evidence only', async kind => {
+  db.attempt.findUnique.mockResolvedValue({ studentId: 'student', status: 'IN_PROGRESS', integrity: { state: 'ACTIVE', policyVersion: 2, monitoringMode: 'FULLSCREEN' } });
+  expect(await (await POST(event(kind), context)).json()).toMatchObject({ invalidated: false });
+  expect(db.attempt.update).not.toHaveBeenCalled();
+});
+
+test.each(['PAGE_HIDDEN', 'PAGE_LEAVE', 'FOCUS_LOST'])('v2 %s arriving after successful submit is ignored', async kind => {
+  db.attempt.findUnique.mockResolvedValue({ studentId: 'student', status: 'SUBMITTED', integrity: { state: 'ACTIVE', policyVersion: 2, monitoringMode: 'FULLSCREEN' } });
+  expect(await (await POST(event(kind), context)).json()).toMatchObject({ ignored: true });
+  expect(db.attempt.update).not.toHaveBeenCalled();
+});
+
+test('new policy cannot be downgraded by a stale client', async () => {
+  db.attempt.findUnique.mockResolvedValue({ studentId: 'student', status: 'IN_PROGRESS', integrity: { state: 'PENDING', policyVersion: 2 } });
+  expect((await POST(request({ action: 'start', accepted: true, policyVersion: 1 }), context)).status).toBe(409);
+  expect(db.examIntegrity.update).not.toHaveBeenCalled();
+  db.attempt.findUnique.mockResolvedValue({ studentId: 'student', status: 'IN_PROGRESS', integrity: { state: 'ACTIVE', policyVersion: 2 } });
+  expect((await POST(request({ action: 'start', accepted: true, policyVersion: 1 }), context)).status).toBe(409);
+});
+
+test('old pending policy upgrades only on acceptance; an active policy is never upgraded', async () => {
+  db.attempt.findUnique.mockResolvedValue({ studentId: 'student', status: 'IN_PROGRESS', integrity: { state: 'PENDING', policyVersion: 1 } });
+  await POST(request({ action: 'start', accepted: true, policyVersion: 2 }), context);
+  expect(db.examIntegrity.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ policyVersion: 2 }) }));
+  db.examIntegrity.update.mockClear();
+  db.attempt.findUnique.mockResolvedValue({ studentId: 'student', status: 'IN_PROGRESS', integrity: { state: 'ACTIVE', policyVersion: 1 } });
+  expect(await (await POST(request({ action: 'start', accepted: true, policyVersion: 1 }), context)).json()).toMatchObject({ policyVersion: 1 });
+  expect(db.examIntegrity.update).not.toHaveBeenCalled();
+  await POST(event('FOCUS_LOST'), context);
+  expect(db.examIntegrity.update).not.toHaveBeenCalled();
+});
 test('event retry is idempotent', async () => {
   db.examIntegrityEvent.findUnique.mockResolvedValue({ id: 'event', attemptId: 'attempt' });
   await POST(event('FULLSCREEN_EXIT'), context); expect(db.examIntegrityEvent.create).not.toHaveBeenCalled();
@@ -103,7 +143,8 @@ test('another student cannot start or invalidate attempt', async () => {
   expect((await POST(event('FULLSCREEN_EXIT'), context)).status).toBe(403); expect(db.attempt.update).not.toHaveBeenCalled();
 });
 test('initial acceptance starts clock; resume does not reset it', async () => {
-  const start = () => request({ action: 'start', accepted: true, policyVersion: 1 });
+  const start = () => request({ action: 'start', accepted: true, policyVersion: 2 });
+  db.attempt.findUnique.mockResolvedValue({ studentId: 'student', status: 'IN_PROGRESS', integrity: { state: 'ACTIVE', policyVersion: 2 } });
   await POST(start(), context); expect(db.attempt.update).not.toHaveBeenCalled();
   db.attempt.findUnique.mockResolvedValue({ studentId: 'student', status: 'IN_PROGRESS', integrity: { state: 'PENDING' } });
   await POST(start(), context); expect(db.attempt.update).toHaveBeenCalledWith({ where: { id: 'attempt' }, data: { startedAt: expect.any(Date) } });

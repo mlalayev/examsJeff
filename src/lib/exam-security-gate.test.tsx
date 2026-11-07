@@ -4,6 +4,7 @@ import { createRoot, Root } from 'react-dom/client';
 import { ExamSecurityGate } from '@/components/attempts/ExamSecurityGate';
 import { ExamNotice } from '@/components/attempts/ExamNotice';
 import { showExamNotice } from '@/lib/exam-notice';
+import { FOCUS_LOSS_GRACE_MS } from './exam-device';
 jest.mock('next/navigation', () => ({ useParams: () => ({ attemptId: 'attempt' }), usePathname: () => '/attempts/attempt/ielts/run' }));
 jest.mock('@/components/attempts/ExamIntegrityReview', () => ({ ExamIntegrityReview: () => null }));
 let root: Root; let host: HTMLDivElement; let fullscreen: Element | null;
@@ -15,12 +16,13 @@ beforeEach(() => {
   Object.defineProperty(navigator, 'userAgent', { configurable: true, value: 'Windows Chrome' });
   Object.defineProperty(navigator, 'maxTouchPoints', { configurable: true, value: 0 });
   Object.defineProperty(document, 'hidden', { configurable: true, value: false });
+  Object.defineProperty(document, 'hasFocus', { configurable: true, value: jest.fn(() => true) });
   security = { policy: { state: 'PENDING', policyVersion: 1 }, status: 'IN_PROGRESS', hasSpeaking: false, canReview: false };
   Object.defineProperty(document, 'fullscreenElement', { configurable: true, get: () => fullscreen });
   document.documentElement.requestFullscreen = jest.fn(async () => { fullscreen = document.documentElement; document.dispatchEvent(new Event('fullscreenchange')); });
   document.exitFullscreen = jest.fn(async () => { fullscreen = null; document.dispatchEvent(new Event('fullscreenchange')); });
   globalThis.fetch = jest.fn(async (_url: any, options: any) => {
-    if (options?.method === 'POST') { const data = JSON.parse(options.body); responses.push(data); return { ok: true, json: async () => ({ success: true, invalidated: data.event?.kind === 'FULLSCREEN_EXIT' }) } as Response; }
+    if (options?.method === 'POST') { const data = JSON.parse(options.body); responses.push(data); if (data.action === 'start') security = { ...security, policy: { ...security.policy, state: 'ACTIVE', policyVersion: data.policyVersion, monitoringMode: security.policy?.monitoringMode || data.monitoringMode } }; return { ok: true, json: async () => ({ success: true, invalidated: data.event?.kind === 'FULLSCREEN_EXIT' }) } as Response; }
     return { ok: true, json: async () => security } as Response;
   });
   host = document.createElement('div'); document.body.appendChild(host); root = createRoot(host);
@@ -120,6 +122,115 @@ const preflight = async () => {
   await clickText('Tam ekranı sına');
   await act(async () => { host.querySelectorAll<HTMLInputElement>('input[type=checkbox]').forEach(box => box.click()); });
 };
+
+test('new desktop policy blocks hidden pages even while fullscreen stays active', async () => {
+  await render(); await preflight(); await clickText('tam ekranda başla');
+  expect(responses[0].policyVersion).toBe(2);
+  await hidePage();
+  expect(document.fullscreenElement).not.toBeNull();
+  expect(host.textContent).not.toContain('EXAM QUESTIONS');
+  expect(responses.some(r => r.event?.kind === 'PAGE_HIDDEN')).toBe(true);
+});
+
+test('desktop focus loss blocks without a visibility or fullscreen event', async () => {
+  jest.useFakeTimers();
+  await render(); await preflight(); await clickText('tam ekranda başla');
+  await act(async () => {
+    (document.hasFocus as jest.Mock).mockReturnValue(false);
+    window.dispatchEvent(new Event('blur'));
+    jest.advanceTimersByTime(FOCUS_LOSS_GRACE_MS + 10);
+  });
+  expect(document.hidden).toBe(false);
+  expect(document.fullscreenElement).not.toBeNull();
+  expect(responses.filter(r => r.event?.kind === 'FOCUS_LOST')).toHaveLength(1);
+  expect(host.textContent).not.toContain('EXAM QUESTIONS');
+});
+
+test('polling detects focus loss while an iframe owns focus without window blur', async () => {
+  jest.useFakeTimers();
+  await render(); await preflight(); await clickText('tam ekranda başla');
+  await act(async () => {
+    (document.hasFocus as jest.Mock).mockReturnValue(false);
+    jest.advanceTimersByTime(FOCUS_LOSS_GRACE_MS + 500);
+  });
+  expect(responses.some(r => r.event?.kind === 'FOCUS_LOST')).toBe(true);
+});
+
+test('brief focus loss and focusing an embedded question do not invalidate', async () => {
+  jest.useFakeTimers();
+  await render(); await preflight(); await clickText('tam ekranda başla');
+  await act(async () => {
+    (document.hasFocus as jest.Mock).mockReturnValue(false);
+    window.dispatchEvent(new Event('blur'));
+    jest.advanceTimersByTime(200);
+    (document.hasFocus as jest.Mock).mockReturnValue(true);
+    window.dispatchEvent(new Event('focus'));
+    // Parent window blur while focus remains inside the document/iframe.
+    window.dispatchEvent(new Event('blur'));
+    jest.advanceTimersByTime(2000);
+  });
+  expect(responses.some(r => r.event?.kind === 'FOCUS_LOST')).toBe(false);
+  expect(host.textContent).toContain('EXAM QUESTIONS');
+});
+
+test('return detects a long focus loss even if background timers never fired', async () => {
+  jest.useFakeTimers();
+  await render(); await preflight(); await clickText('tam ekranda başla');
+  await act(async () => {
+    (document.hasFocus as jest.Mock).mockReturnValue(false);
+    window.dispatchEvent(new Event('blur'));
+    jest.setSystemTime(Date.now() + 3000);
+    (document.hasFocus as jest.Mock).mockReturnValue(true);
+    window.dispatchEvent(new Event('focus'));
+  });
+  expect(responses.some(r => r.event?.kind === 'FOCUS_LOST')).toBe(true);
+});
+
+test('submit cancels pending focus checks and ignores subsequent hidden and leave events', async () => {
+  jest.useFakeTimers();
+  await render(); await preflight(); await clickText('tam ekranda başla');
+  await act(async () => {
+    (document.hasFocus as jest.Mock).mockReturnValue(false);
+    window.dispatchEvent(new Event('blur'));
+    window.dispatchEvent(new Event('exam-submitted'));
+    window.dispatchEvent(new Event('pagehide'));
+    jest.advanceTimersByTime(3000);
+  });
+  await hidePage();
+  expect(responses.some(r => ['FOCUS_LOST', 'FULLSCREEN_EXIT', 'PAGE_HIDDEN', 'PAGE_LEAVE'].includes(r.event?.kind))).toBe(false);
+  expect(host.textContent).toContain('EXAM QUESTIONS');
+});
+
+test('preflight permission focus changes and active legacy attempts are not newly penalized', async () => {
+  jest.useFakeTimers();
+  security.policy = { state: 'ACTIVE', policyVersion: 1, monitoringMode: 'FULLSCREEN' };
+  await render();
+  await act(async () => { window.dispatchEvent(new Event('blur')); jest.advanceTimersByTime(3000); });
+  expect(responses).toHaveLength(0);
+  await preflight(); await clickText('tam ekranda başla');
+  await hidePage();
+  await act(async () => {
+    (document.hasFocus as jest.Mock).mockReturnValue(false);
+    window.dispatchEvent(new Event('blur'));
+    jest.advanceTimersByTime(3000);
+  });
+  expect(responses[0].policyVersion).toBe(1);
+  expect(responses.some(r => r.event?.kind === 'FOCUS_LOST')).toBe(false);
+  expect(host.textContent).toContain('EXAM QUESTIONS');
+});
+
+test('offline desktop visibility violation survives reload with the persisted policy', async () => {
+  security.policy = { state: 'ACTIVE', policyVersion: 2, monitoringMode: 'FULLSCREEN' };
+  localStorage.setItem('exam-security-events:attempt', JSON.stringify([{ id: 'hidden-offline', kind: 'PAGE_HIDDEN' }]));
+  const workingFetch = globalThis.fetch;
+  globalThis.fetch = jest.fn(async (url: any, options: any) => {
+    if (options?.method === 'POST') throw new Error('Offline');
+    return workingFetch(url, options);
+  });
+  await render();
+  expect(host.textContent).not.toContain('EXAM QUESTIONS');
+  expect(host.textContent).toContain('İmtahan nəticəsi etibarsızdır');
+});
 test('preflight hides questions and disables start until checks and acceptance', async () => {
   await render(); expect(host.textContent).not.toContain('EXAM QUESTIONS');
   const start = Array.from(host.querySelectorAll('button')).find(b => b.textContent?.includes('tam ekranda başla'))!;
@@ -160,7 +271,8 @@ test('acknowledged submit preserves runner and ignores stale server status', asy
   expect(document.exitFullscreen).toHaveBeenCalled();
   expect(responses.some(r => r.event?.kind === 'FULLSCREEN_EXIT')).toBe(false);
 });
-test('pagehide is logged separately without cheating verdict', async () => {
+test('legacy pagehide is logged separately without cheating verdict', async () => {
+  security.policy = { state: 'ACTIVE', policyVersion: 1, monitoringMode: 'FULLSCREEN' };
   await render(); await preflight(); await clickText('tam ekranda başla'); jest.useFakeTimers();
   await act(async () => { fullscreen = null; document.dispatchEvent(new Event('fullscreenchange')); window.dispatchEvent(new Event('pagehide')); jest.advanceTimersByTime(400); });
   expect(responses.some(r => r.event?.kind === 'PAGE_LEAVE')).toBe(true); expect(responses.some(r => r.event?.kind === 'FULLSCREEN_EXIT')).toBe(false);

@@ -1,5 +1,6 @@
 "use client";
 
+import { disableAnswerAssistance } from '@/lib/exam-answer-input';
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Eye } from "lucide-react";
 import { sanitizeHtmlCssMarkup } from "@/lib/htmlCssAnswerKey";
@@ -89,6 +90,7 @@ export default function QHtmlCss({ question, value, onChange, readOnly, bare = f
         const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
         if (!iframeDoc) return 0;
 
+        disableAnswerAssistance(iframeDoc);
         applyAnswersToIframeDoc(iframeDoc, studentAnswersRef.current);
 
         const allInputs = iframeDoc.querySelectorAll("input, textarea, select");
@@ -231,7 +233,7 @@ export default function QHtmlCss({ question, value, onChange, readOnly, bare = f
 
     const fullHtml = `
       <!DOCTYPE html>
-      <html>
+      <html spellcheck="false" autocorrect="off" autocomplete="off" autocapitalize="off" writingsuggestions="false">
       <head>
         <meta charset="UTF-8">
         <style>
