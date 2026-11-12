@@ -1,5 +1,6 @@
 "use client";
 
+import UserDetailsButton from "@/components/modals/UserDetailsButton";
 import { useEffect, useState } from "react";
 import { Users, Search, BookOpen, X, ChevronRight, ChevronLeft, Target, FileText, CheckCircle, ListChecks, Check, DollarSign, Trash2, Phone, Pause, Play, Coins } from "lucide-react";
 import { AlertModal } from "@/components/modals/AlertModal";
@@ -498,13 +499,10 @@ export default function CreatorStudentsPage() {
       <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
         {loading ? (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1650px] text-sm">
+            <table className="w-full min-w-[1100px] text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Student</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Email</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Phone</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Date of birth</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Program</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Branch</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Monthly fee</th>
@@ -512,7 +510,6 @@ export default function CreatorStudentsPage() {
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Lessons</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Status</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Coins</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Joined</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Actions</th>
                 </tr>
               </thead>
@@ -525,7 +522,7 @@ export default function CreatorStudentsPage() {
                         <div className="h-4 bg-gray-200 rounded w-24 animate-pulse"></div>
                       </div>
                     </td>
-                    {Array.from({ length: 12 }).map((_, j) => (
+                    {Array.from({ length: 8 }).map((_, j) => (
                       <td key={j} className="px-3 sm:px-4 py-3">
                         <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
                       </td>
@@ -542,13 +539,10 @@ export default function CreatorStudentsPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1650px] text-sm">
+            <table className="w-full min-w-[1100px] text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700 sticky left-0 bg-gray-50 z-10 shadow-[1px_0_0_0_rgb(229,231,235)]">Student</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Email</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Phone</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Date of birth</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Program</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Branch</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Monthly fee</th>
@@ -556,7 +550,6 @@ export default function CreatorStudentsPage() {
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Lessons</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Status</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Coins</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Joined</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Actions</th>
                 </tr>
               </thead>
@@ -586,24 +579,6 @@ export default function CreatorStudentsPage() {
                             {student.name || "No name"}
                           </div>
                         </div>
-                      </td>
-                      <td className="px-3 sm:px-4 py-3 text-gray-600 whitespace-nowrap">
-                        {student.email}
-                      </td>
-                      <td className="px-3 sm:px-4 py-3 text-gray-600 whitespace-nowrap">
-                        {student.phoneNumber ? (
-                          <span className="inline-flex items-center gap-1">
-                            <Phone className="w-3 h-3 text-gray-400" />
-                            {student.phoneNumber}
-                          </span>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                      <td className="px-3 sm:px-4 py-3 text-gray-600 whitespace-nowrap">
-                        {student.dateOfBirth
-                          ? new Date(student.dateOfBirth).toLocaleDateString()
-                          : "—"}
                       </td>
                       <td className="px-3 sm:px-4 py-3 text-gray-600 whitespace-nowrap">
                         {student.program || "—"}
@@ -657,11 +632,9 @@ export default function CreatorStudentsPage() {
                           {student.coinBalance ?? 0}
                         </span>
                       </td>
-                      <td className="px-3 sm:px-4 py-3 text-gray-600 whitespace-nowrap">
-                        {new Date(student.createdAt).toLocaleDateString()}
-                      </td>
                       <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
                         <div className="flex flex-nowrap items-center gap-2">
+                          <UserDetailsButton userId={student.id} />
                           <button
                             type="button"
                             onClick={() => setCoinModalStudent(student)}

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
-import { usePathname, useRouter } from "next/navigation";
+import { useParams, usePathname, useRouter } from "next/navigation";
 import {
   Search,
   Plus,
@@ -110,13 +110,16 @@ export default function CrmPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const pathname = usePathname();
+  const params = useParams();
+  const stage = CRM_STATUS_OPTIONS.find(o => o.value === params?.stage)?.value || "ALL";
   const archiveView: ArchiveView = pathname?.includes("/archive")
     ? "archived"
     : "active";
   const [contacts, setContacts] = useState<CrmContact[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(stage);
+  useEffect(() => setStatusFilter(stage), [stage]);
   const [reasonFilter, setReasonFilter] = useState("ALL");
   const [filterYear, setFilterYear] = useState<number | "ALL">("ALL");
   const [filterMonth, setFilterMonth] = useState<number | "ALL">("ALL");
@@ -409,7 +412,7 @@ export default function CrmPage() {
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
-            {archiveView === "archived" ? "CRM Archive" : "CRM Contacts"}
+            {archiveView === "archived" ? "CRM Archive" : stage === "ALL" ? "All contacts" : statusLabel(stage)}
           </h1>
           <p className="mt-1 text-sm text-gray-600">
             {archiveView === "archived"

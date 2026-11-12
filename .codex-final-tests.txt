@@ -1,0 +1,34 @@
+PASS src/lib/speaking-recording.test.tsx
+PASS src/lib/general-import-ui.test.tsx
+  ● Console
+
+    console.error
+      Server error response: { error: 'Offline' }
+
+      436 |       } else {
+      437 |         const error = await res.json().catch(() => ({}));
+    > 438 |         console.error("Server error response:", error);
+          |                 ^
+      439 |         const entity = saveConfig?.entityLabel ?? "Exam";
+      440 |         modals.showAlert(
+      441 |           useEdit ? `Failed to Update ${entity}` : `Failed to Create ${entity}`,
+
+      at saveExam (src/components/admin/exams/create/GenericExamBuilder.tsx:438:17)
+
+PASS src/lib/staff-register-nav.test.ts
+PASS src/lib/sat-homework-timer.test.tsx
+PASS src/lib/speaking-assessment.test.ts
+PASS src/lib/teacher-exam-scope.test.ts
+PASS src/lib/general-writing-route.test.ts
+PASS src/lib/general-text-import.test.ts
+PASS src/lib/general-speaking-grade.test.ts
+PASS src/lib/auto-writing-flow.test.ts
+PASS src/lib/student-register.test.ts
+PASS src/lib/auto-writing-submit.test.ts
+PASS src/lib/general-exam-score.test.ts
+
+Test Suites: 13 passed, 13 total
+Tests:       70 passed, 70 total
+Snapshots:   0 total
+Time:        11.698 s, estimated 24 s
+Ran all test suites.

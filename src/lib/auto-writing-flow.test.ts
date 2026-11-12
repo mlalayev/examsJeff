@@ -33,10 +33,10 @@ test('student submit runs actual grading service and saves overall used by histo
 
   const response = await POST(new Request('http://localhost/submit', { method: 'POST' }), { params: Promise.resolve({ attemptId: 'a' }) });
   expect(response.status).toBe(200);
-  expect(await response.json()).toMatchObject({ writingGradingStatus: 'COMPLETED', overallPercent: 76 });
+  expect(await response.json()).toMatchObject({ writingGradingStatus: 'COMPLETED', overallPercent: 19.25 });
   expect(scoreGeneralWriting).toHaveBeenCalledWith('My town', 'My town is nice.', 'A1');
   expect(attempt.status).toBe('SUBMITTED');
-  expect(attempt.bandOverall).toBe(76);
-  expect(sections[0].rubric).toMatchObject({ generalWritingStatus: 'COMPLETED', generalOverall: 76, generalWritingPercent: 80, generalObjectivePercent: 75 });
-  expect(await loadAttemptPercent('a', db)).toBe(76);
+  expect(attempt.bandOverall).toBe(19.25);
+  expect(sections[0].rubric).toMatchObject({ generalWritingStatus: 'COMPLETED', generalOverall: 19.25, generalWritingPercent: 80, generalObjectivePercent: null });
+  expect(await loadAttemptPercent('a', db)).toBe(19.25);
 });

@@ -3,15 +3,16 @@
 import { Question } from "../../../types";
 
 interface PromptSpeakingRecordingProps {
+  generalSpeaking?: boolean;
   question: Question;
   onChange: (question: Question) => void;
 }
 
-export function PromptSpeakingRecording({ question, onChange }: PromptSpeakingRecordingProps) {
+export function PromptSpeakingRecording({ question, onChange, generalSpeaking = false }: PromptSpeakingRecordingProps) {
   return (
     <div className="space-y-3">
-      {/* Speaking Part Selection */}
-      <div>
+      {/* IELTS part selection */}
+      {!generalSpeaking && <div>
         <label className="block text-xs font-medium text-gray-600 mb-1.5">
           Speaking Part *
         </label>
@@ -29,7 +30,7 @@ export function PromptSpeakingRecording({ question, onChange }: PromptSpeakingRe
           <option value={2}>Part 2 (1min prep + 3s reading + 2min recording)</option>
           <option value={3}>Part 3 (3s reading + 1min recording)</option>
         </select>
-      </div>
+      </div>}
 
       {/* Question Text */}
       <div>
@@ -50,7 +51,7 @@ export function PromptSpeakingRecording({ question, onChange }: PromptSpeakingRe
         />
       </div>
 
-      <div className="pt-3 border-t border-gray-200 bg-blue-50 p-3 rounded-md">
+      {generalSpeaking ? <p className="rounded-lg bg-indigo-50 p-3 text-xs text-indigo-800">Students record up to 2 minutes per question. Audio and transcript are saved. Speaking is assessed separately out of 100 and does not affect overall.</p> : <div className="pt-3 border-t border-gray-200 bg-blue-50 p-3 rounded-md">
         <p className="text-xs text-blue-800 space-y-1">
           <strong>Note:</strong>
           <br />
@@ -62,7 +63,7 @@ export function PromptSpeakingRecording({ question, onChange }: PromptSpeakingRe
           <br />
           • Recording starts and stops automatically (students cannot control it)
         </p>
-      </div>
+      </div>}
     </div>
   );
 }

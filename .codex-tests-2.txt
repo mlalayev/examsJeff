@@ -1,0 +1,13 @@
+PASS src/lib/general-writing-route.test.ts
+PASS src/lib/auto-writing-flow.test.ts
+PASS src/lib/auto-writing-submit.test.ts
+PASS src/lib/student-register.test.ts
+PASS src/lib/general-exam-score.test.ts
+PASS src/lib/sat-homework-timer.test.tsx
+PASS src/lib/general-text-import.test.ts
+
+Test Suites: 7 passed, 7 total
+Tests:       39 passed, 39 total
+Snapshots:   0 total
+Time:        5.718 s
+Ran all test suites.

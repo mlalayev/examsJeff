@@ -101,3 +101,23 @@ test('Generate transcript retries using question ID, without a new microphone re
   expect(JSON.parse((fetch as jest.Mock).mock.calls[0][1].body)).toEqual({ questionId: 'q' });
   expect(updated).toHaveBeenCalledTimes(1);
 });
+
+
+test('General English waits for a click, records for up to two minutes and saves audio and transcript', async () => {
+  jest.useFakeTimers();
+  try {
+    const changed = jest.fn();
+    (fetch as jest.Mock).mockResolvedValueOnce({ ok: true, json: async () => ({ url: '/api/audio/general.mp4' }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ text: 'My town is small.' }) });
+    await act(async () => root.render(<QSpeakingRecording generalSpeaking question={{ id: 'q', prompt: { text: 'My town' } }} attemptId="general" onChange={changed}/>));
+    await act(async () => jest.advanceTimersByTime(5000));
+    expect(navigator.mediaDevices.getUserMedia).not.toHaveBeenCalled();
+    await act(async () => host.querySelector('button')!.click());
+    await act(async () => jest.advanceTimersByTime(3500));
+    expect(host.textContent).toContain('2:00');
+    const save = Array.from(host.querySelectorAll('button')).find(b => b.textContent === 'Save recording');
+    expect(save).toBeDefined();
+    await act(async () => save!.click());
+    expect(changed).toHaveBeenLastCalledWith({ text: 'My town is small.', audioUrl: '/api/audio/general.mp4' });
+  } finally { jest.useRealTimers(); }
+});

@@ -1,0 +1,40 @@
+jest.mock('@/lib/prisma', () => ({ prisma: { user: { findMany: jest.fn() }, class: { findMany: jest.fn() }, lessonSession: { findMany: jest.fn() }, weeklyReport: { findMany: jest.fn() }, exam: { findMany: jest.fn() }, attempt: { findMany: jest.fn() } } }));
+jest.mock('@/lib/auth-utils', () => ({ requireAuth: jest.fn() }));
+import { prisma } from './prisma';
+import { requireAuth } from './auth-utils';
+import { registerExamRows, registerWeek } from './student-register';
+import { GET } from '@/app/api/student-register/route';
+const db = prisma as any;
+const call = (teacher = '') => GET(new Request(`http://localhost/api/student-register?month=2026-11&teacherId=${teacher}`));
+beforeEach(() => { jest.clearAllMocks(); (requireAuth as jest.Mock).mockResolvedValue({ id: 't', role: 'TEACHER', approved: true }); });
+test('subject isolation also applies to repeated enrollments and SAT is visible in full', () => {
+  const exams = new Map([['ge', { category: 'GENERAL_ENGLISH', title: 'English' }], ['m', { category: 'MATH', title: 'Math' }], ['sat', { category: 'SAT', title: 'SAT' }]]);
+  const attempts = ['ge', 'm', 'sat'].map(examId => ({ id: examId, studentId: 's', examId, submittedAt: '2026-11-12T10:00:00Z', status: 'SUBMITTED', sections: [{ type: 'GRAMMAR', rubric: { generalScoreVersion: 2, generalOverall: 70 } }] }));
+  expect(registerExamRows('General English', 's', attempts, exams).map(a => a.id)).toEqual(['ge']);
+  expect(registerExamRows('Math', 's', attempts, exams).map(a => a.id)).toEqual(['m']);
+  expect(registerExamRows('SAT Verbal', 's', attempts, exams).map(a => a.id)).toEqual(['sat']);
+  expect(registerExamRows('SAT Math', 's', attempts, exams).map(a => a.id)).toEqual(['sat']);
+  expect(registerExamRows('General English', 'other', attempts, exams)).toEqual([]);
+  expect(registerWeek('2026-11-01')).toBe('2026-11-01');
+});
+test('teachers cannot inspect another teacher and students cannot access staff register', async () => {
+  expect((await call('other')).status).toBe(403);
+  (requireAuth as jest.Mock).mockResolvedValue({ id: 's', role: 'STUDENT', approved: true });
+  expect((await call()).status).toBe(403);
+  expect(db.user.findMany).not.toHaveBeenCalled();
+});
+test('attendance, late minutes, report and relevant exam are returned automatically for the same class', async () => {
+  const student = { id: 's', firstName: 'Student', lastName: 'One', email: 's@example.test' };
+  db.user.findMany.mockResolvedValue([{ id: 't', firstName: 'Teacher' }]);
+  db.class.findMany.mockResolvedValue([{ id: 'c', name: 'General English', classStudents: [{ studentId: 's', student }] }]);
+  db.lessonSession.findMany.mockResolvedValue([{ id: 'lesson', classId: 'c', date: new Date('2026-11-12'), timeSlot: '12:00', status: 'COMPLETED', topic: 'Food', studentRecords: [{ studentId: 's', student, attendance: 'LATE', lateMinutes: 8, performance: 'GOOD' }] }]);
+  db.weeklyReport.findMany.mockResolvedValue([{ id: 'report', classId: 'c', studentId: 's', weekStart: new Date('2026-11-08'), text: 'Individual report' }]);
+  db.exam.findMany.mockResolvedValue([{ id: 'ge', title: 'Unit exam', category: 'GENERAL_ENGLISH' }]);
+  db.attempt.findMany.mockResolvedValue([{ id: 'a', studentId: 's', examId: 'ge', submittedAt: new Date('2026-11-12'), status: 'SUBMITTED', sections: [{ type: 'WRITING', rubric: { generalScoreVersion: 2, generalOverall: 70 } }] }]);
+  const response = await call(); expect(response.status).toBe(200);
+  const data = await response.json(); expect(data.canEdit).toBe(true);
+  expect(data.rows[0].lessons[0]).toMatchObject({ attendance: 'LATE', lateMinutes: 8 });
+  expect(data.rows[0].reports[0].text).toBe('Individual report');
+  expect(data.rows[0].exams[0].score).toBe(70);
+  expect(db.class.findMany.mock.calls[0][0].where).toEqual({ teacherId: 't' });
+});

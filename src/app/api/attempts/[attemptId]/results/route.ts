@@ -383,7 +383,7 @@ export async function GET(
       // Calculate overall
       const totalCorrect = perSection.reduce((sum, s) => sum + s.correct, 0);
       const totalQuestions = perSection.reduce((sum, s) => sum + s.total, 0);
-      const hasWritingGrade = attempt.sections.some(s => !!(s.rubric as any)?.generalWritingStatus);
+      const hasWritingGrade = attempt.sections.some(s => !!((s.rubric as any)?.generalWritingStatus || (s.rubric as any)?.generalScoreVersion === 2));
       const totalPercentage = hasWritingGrade ? computeAttemptPercentFromSections(attempt.sections) : totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
 
       // Get writing submission if exists
@@ -420,6 +420,7 @@ export async function GET(
         status: attempt.status,
         role: isParent ? "PARENT" : "STUDENT",
         speakingRecordings,
+        generalSpeaking: (attempt.sections.find(s => s.type === 'SPEAKING')?.rubric as any)?.generalSpeaking ?? null,
         speakingAi: speakingAiStudent,
         coinReward,
         placementLevel: attempt.placementLevel ?? null,
@@ -431,7 +432,7 @@ export async function GET(
           overallBand,
           perSection,
         },
-        writingScoreBreakdown: (attempt.sections.find(s => (s.rubric as any)?.generalWritingStatus)?.rubric as any) ?? null,
+        writingScoreBreakdown: (attempt.sections.find(s => (s.rubric as any)?.generalWritingStatus)?.rubric as any) ?? (attempt.sections.find(s => (s.rubric as any)?.generalScoreVersion === 2)?.rubric as any) ?? null,
         writingGradingPending: hasWritingGrade && totalPercentage == null,
         generalWriting: (attempt.sections.find(s => s.type === 'WRITING')?.rubric as any)?.generalWriting ?? [],
         writingSubmission: writingSubmission ? {
@@ -712,7 +713,7 @@ export async function GET(
 
       const totalCorrect = fullSections.reduce((sum, s) => sum + s.correct, 0);
       const totalQuestions = fullSections.reduce((sum, s) => sum + s.total, 0);
-      const hasWritingGrade = attempt.sections.some(s => !!(s.rubric as any)?.generalWritingStatus);
+      const hasWritingGrade = attempt.sections.some(s => !!((s.rubric as any)?.generalWritingStatus || (s.rubric as any)?.generalScoreVersion === 2));
       const totalPercentage = hasWritingGrade ? computeAttemptPercentFromSections(attempt.sections) : totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
 
       // Get writing submission if exists
@@ -763,8 +764,9 @@ export async function GET(
           overallBand,
         },
         sections: fullSections,
+        generalSpeaking: (attempt.sections.find(s => s.type === 'SPEAKING')?.rubric as any)?.generalSpeaking ?? null,
         speakingAi,
-        writingScoreBreakdown: (attempt.sections.find(s => (s.rubric as any)?.generalWritingStatus)?.rubric as any) ?? null,
+        writingScoreBreakdown: (attempt.sections.find(s => (s.rubric as any)?.generalWritingStatus)?.rubric as any) ?? (attempt.sections.find(s => (s.rubric as any)?.generalScoreVersion === 2)?.rubric as any) ?? null,
         writingGradingPending: hasWritingGrade && totalPercentage == null,
         generalWriting: (attempt.sections.find(s => s.type === 'WRITING')?.rubric as any)?.generalWriting ?? [],
         writingSubmission: writingSubmission ? {

@@ -1,3 +1,5 @@
+import { gradeGeneralSpeaking } from '@/lib/general-speaking-grade';
+import { teacherStudentScope } from '@/lib/teacher-exam-scope';
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { integrityBlock } from "@/lib/exam-integrity";
@@ -190,7 +192,7 @@ export async function POST(
     if (!attempt) {
       return NextResponse.json({ error: "Attempt not found" }, { status: 404 });
     }
-    if (!["ADMIN", "BOSS", "CREATOR"].includes(role || "") &&
+    if (!["ADMIN", "BOSS", "CREATOR", "TEACHER"].includes(role || "") &&
         (!(user as any).branchId || (user as any).branchId !== attempt.branchId)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -212,6 +214,11 @@ export async function POST(
       return NextResponse.json({ error: "Exam not found for this attempt" }, { status: 404 });
     }
 
+    if (role === 'TEACHER') {
+      if (!(user as any).approved) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      const scope = await teacherStudentScope(user.id, attempt.studentId);
+      if (!scope.categories.includes(exam.category)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
     if (attempt.status !== "SUBMITTED") {
       return NextResponse.json({ error: "Attempt not submitted yet" }, { status: 400 });
     }
@@ -248,6 +255,7 @@ export async function POST(
       code: "TRANSCRIPTS_REQUIRED", questionIds: missing.map((q) => q.id),
     }, { status: 409 });
 
+    if (exam.category === 'GENERAL_ENGLISH') return NextResponse.json(await gradeGeneralSpeaking(attemptId, speakingAttemptSection.id, questions, mergedAnswers, exam.track, force));
     const payload = buildSpeakingPayload(questions, mergedAnswers);
     const sourceHash = createHash("sha256").update(JSON.stringify(payload)).digest("hex");
     if (existingAi?.scoredAt && !force && (existingAi as any).sourceHash === sourceHash && (existingAi as any).assessmentType === "TRANSCRIPT_ONLY") {

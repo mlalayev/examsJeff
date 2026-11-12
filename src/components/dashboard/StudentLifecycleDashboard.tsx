@@ -59,7 +59,7 @@ const META: Record<
   { title: string; subtitle: string; accent: string }
 > = {
   FINISHED: {
-    title: "Finished students",
+    title: "Alumni",
     subtitle:
       "Students who completed their course. Archive them for historical storage, or restore to active if they return.",
     accent: "#2563eb",

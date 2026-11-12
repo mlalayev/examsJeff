@@ -15,6 +15,7 @@ import { PromptHtmlCss } from "./prompts/PromptHtmlCss";
 import { PromptDefault } from "./prompts/PromptDefault";
 
 interface QuestionPromptFieldProps {
+  generalSpeaking?: boolean;
   question: Question;
   onChange: (question: Question) => void;
   uploadingImage: boolean;
@@ -23,6 +24,7 @@ interface QuestionPromptFieldProps {
 }
 
 export function QuestionPromptField({
+  generalSpeaking = false,
   question,
   onChange,
   uploadingImage,
@@ -51,7 +53,7 @@ export function QuestionPromptField({
         return <PromptInlineSelect question={question} onChange={onChange} />;
       
       case "SPEAKING_RECORDING":
-        return <PromptSpeakingRecording question={question} onChange={onChange} />;
+        return <PromptSpeakingRecording question={question} onChange={onChange} generalSpeaking={generalSpeaking} />;
       
       case "IMAGE_INTERACTIVE":
         return (

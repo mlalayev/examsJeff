@@ -1,5 +1,7 @@
 "use client";
 
+import { usePathname } from "next/navigation";
+import UserDetailsButton from "@/components/modals/UserDetailsButton";
 import { useEffect, useState } from "react";
 import { 
   Users, 
@@ -22,7 +24,7 @@ import StudentPaymentsModal from "@/components/modals/StudentPaymentsModal";
 import EditAccountModal from "@/components/modals/EditAccountModal";
 import CreateUserModal from "@/components/modals/CreateUserModal";
 
-type UserRole = "STUDENT" | "TEACHER" | "ADMIN" | "BRANCH_ADMIN" | "BRANCH_BOSS";
+type UserRole = "STUDENT" | "TEACHER" | "ADMIN" | "BRANCH_ADMIN" | "BRANCH_BOSS" | "PARENT" | "PARTNER";
 type ViewMode = "all" | "branch" | "role";
 type FilterType = "all" | UserRole;
 
@@ -44,9 +46,12 @@ type BossBranchRow = { id: string; name: string };
 let bossUsersCache: { users: BossUserRow[]; branches: BossBranchRow[]; branchMap: Record<string, string> } | null = null;
 
 export default function BossUsersPage() {
+  const pathname = usePathname();
+  const pageRole = pathname.endsWith("/parents") ? "PARENT" : pathname.endsWith("/partners") ? "PARTNER" : null;
   const [users, setUsers] = useState<BossUserRow[]>(bossUsersCache?.users ?? []);
   const [branches, setBranches] = useState<BossBranchRow[]>(bossUsersCache?.branches ?? []);
   const [branchMap, setBranchMap] = useState<Record<string, string>>(bossUsersCache?.branchMap ?? {});
+  const [loadError, setLoadError] = useState("");
   const [loading, setLoading] = useState(bossUsersCache == null);
   const [editUserId, setEditUserId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -62,13 +67,16 @@ export default function BossUsersPage() {
 
   const load = async () => {
     if (!bossUsersCache) setLoading(true);
+    setLoadError("");
+    try {
     const [uRes, bRes] = await Promise.all([
       fetch("/api/admin/users"),
       fetch("/api/admin/branches"),
     ]);
+    if (!uRes.ok || !bRes.ok) throw new Error("Could not load users. Please retry.");
     const u = await uRes.json();
     const b = await bRes.json();
-    const nextUsers: BossUserRow[] = Array.isArray(u.users) ? u.users : [];
+    const nextUsers: BossUserRow[] = Array.isArray(u.users) ? u.users.map((x: BossUserRow) => ({ ...x, name: [x.firstName, x.lastName].filter(Boolean).join(" ") || x.name || x.email })) : [];
     const nextBranches: BossBranchRow[] = Array.isArray(b.branches) ? b.branches : [];
     const nextBranchMap = Object.fromEntries(nextBranches.map((x: any) => [x.id, x.name]));
 
@@ -77,12 +85,12 @@ export default function BossUsersPage() {
     setUsers(nextUsers);
     setBranches(nextBranches);
     setBranchMap(nextBranchMap);
-    setLoading(false);
+    } catch (e) { setLoadError((e as Error).message); } finally { setLoading(false); }
   };
 
   // Filter users based on current filters
   const getFilteredUsers = () => {
-    let filtered = users;
+    let filtered = pageRole ? users.filter(u => u.role === pageRole) : users;
 
     // Search filter
     if (searchQuery) {
@@ -93,7 +101,7 @@ export default function BossUsersPage() {
     }
 
     // Role filter
-    if (roleFilter !== "all") {
+    if (!pageRole && roleFilter !== "all") {
       filtered = filtered.filter(user => user.role === roleFilter);
     }
 
@@ -178,12 +186,12 @@ export default function BossUsersPage() {
     <div className="p-8">
       {/* Minimal Header */}
       <div className="mb-12">
-        <h1 className="text-2xl font-medium text-gray-900">Users</h1>
-        <p className="text-gray-500 mt-1">Manage your team members</p>
+        <h1 className="text-2xl font-medium text-gray-900">{pageRole === "PARENT" ? "Parents" : pageRole === "PARTNER" ? "Partners" : "All users"}</h1>
+        <p className="text-gray-500 mt-1">Accounts, profiles and payments in one place.</p>
       </div>
 
       {/* Compact Stats Row */}
-      <div className="flex items-center gap-8 mb-8 text-sm">
+      <div className="flex flex-wrap items-center gap-8 mb-8 text-sm">
         <div className="flex items-center gap-2">
           <span className="text-gray-500">Total:</span>
           <span className="font-medium">{stats.total}</span>
@@ -223,7 +231,8 @@ export default function BossUsersPage() {
           />
         </div>
         <select
-          value={roleFilter}
+          disabled={!!pageRole}
+          value={pageRole || roleFilter}
           onChange={(e) => setRoleFilter(e.target.value as FilterType)}
           className="px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:border-gray-400"
         >
@@ -233,6 +242,8 @@ export default function BossUsersPage() {
           <option value="BRANCH_ADMIN">Branch Admins</option>
           <option value="BRANCH_BOSS">Branch Boss</option>
           <option value="ADMIN">Admins</option>
+          <option value="PARENT">Parents</option>
+          <option value="PARTNER">Partners</option>
         </select>
         <select
           value={selectedBranch}
@@ -256,6 +267,7 @@ export default function BossUsersPage() {
         </button>
       </div>
 
+      {loadError && <p role="alert" className="mb-4 rounded-lg bg-rose-50 p-4 text-rose-700">{loadError} <button onClick={() => void load()} className="underline">Retry</button></p>}
       {/* Simple Table */}
       <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
       {loading ? (
@@ -266,7 +278,6 @@ export default function BossUsersPage() {
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Name</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Email</th>
                   <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Role</th>
                   <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Branch</th>
                   <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Status</th>
@@ -279,7 +290,6 @@ export default function BossUsersPage() {
                     <td className="px-4 py-3 text-sm">
                       <div className="font-medium text-gray-900">{user.name || "—"}</div>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{user.email}</td>
                     <td className="px-4 py-3 text-sm">
                       <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
                         {user.role.replace('_', ' ')}
@@ -295,8 +305,9 @@ export default function BossUsersPage() {
                         {user.approved ? "Approved" : "Pending"}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm">
-                      <button
+                    <td className="px-4 py-3 text-sm space-x-3 whitespace-nowrap">
+                      <UserDetailsButton userId={user.id} />
+                          <button
                         onClick={() => setEditUserId(user.id)}
                         className="text-gray-400 hover:text-gray-600"
                         title="Edit user"

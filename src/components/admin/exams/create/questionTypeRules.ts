@@ -24,7 +24,7 @@ const QUESTION_TYPE_RESTRICTIONS: Partial<Record<SectionType, QuestionType[]>> =
  * Question types that are ONLY for specific contexts
  */
 const CONTEXT_SPECIFIC_TYPES: Partial<Record<QuestionType, (ctx: QuestionTypeContext) => boolean>> = {
-  SPEAKING_RECORDING: (ctx) => ctx.examCategory === "IELTS" && ctx.sectionType === "SPEAKING",
+  SPEAKING_RECORDING: (ctx) => ["IELTS", "GENERAL_ENGLISH"].includes(ctx.examCategory) && ctx.sectionType === "SPEAKING",
   HTML_CSS: (ctx) => ctx.examCategory === "IELTS",
 };
 
@@ -51,6 +51,7 @@ export function getAllowedQuestionTypes(context: QuestionTypeContext): QuestionT
     }
   }
   
+  if (examCategory === "GENERAL_ENGLISH" && sectionType === "SPEAKING") return ["SPEAKING_RECORDING"];
   // If section has restrictions, use those
   if (QUESTION_TYPE_RESTRICTIONS[sectionType]) {
     return QUESTION_TYPE_RESTRICTIONS[sectionType]!.filter(type => {
@@ -113,7 +114,7 @@ export function getGroupedQuestionTypes(context: QuestionTypeContext): Record<st
     "Drag and Drop": ["ORDER_SENTENCE", "DND_GAP"],
     "Interactive": ["IMAGE_INTERACTIVE"],
     "Kodlama": ["HTML_CSS"],
-    "IELTS Speaking": ["SPEAKING_RECORDING"],
+    "Speaking": ["SPEAKING_RECORDING"],
   };
   
   // Filter each group to only include allowed types

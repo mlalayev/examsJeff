@@ -1,0 +1,115 @@
+PASS src/lib/general-import-ui.test.tsx (5.887 s)
+  ● Console
+
+    console.error
+      Server error response: { error: 'Offline' }
+
+      436 |       } else {
+      437 |         const error = await res.json().catch(() => ({}));
+    > 438 |         console.error("Server error response:", error);
+          |                 ^
+      439 |         const entity = saveConfig?.entityLabel ?? "Exam";
+      440 |         modals.showAlert(
+      441 |           useEdit ? `Failed to Update ${entity}` : `Failed to Create ${entity}`,
+
+      at saveExam (src/components/admin/exams/create/GenericExamBuilder.tsx:438:17)
+
+PASS src/lib/general-text-import.test.ts
+FAIL src/lib/general-writing-route.test.ts
+  ● one essay is scored and persisted without IELTS two-task validation
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    - Expected
+    + Received
+
+      Object {
+        "data": Object {
+    -     "bandOverall": 80,
+    +     "bandOverall": 8,
+        },
+        "where": Object {
+          "id": "a",
+        },
+      },
+
+    Number of calls: 1
+
+      33 | test('one essay is scored and persisted without IELTS two-task validation', async () => {
+      34 |   expect((await call()).status).toBe(200);
+    > 35 |   expect(db.attempt.update).toHaveBeenCalledWith({ where: { id: 'a' }, data: { bandOverall: 80 } });
+         |                             ^
+      36 |   expect(scoreGeneralWriting).toHaveBeenCalledWith('Write about your town', 'My town.', 'A1');
+      37 |   expect(scoreIELTSWritingFull).not.toHaveBeenCalled();
+      38 |   expect(db.attemptSection.update.mock.calls[0][0].data.rubric).toMatchObject({ other: true, generalWriting: [{ questionId: 'q1', score: 80 }] });
+
+      at Object.<anonymous> (src/lib/general-writing-route.test.ts:35:29)
+
+  ● saved overall includes objective answers and writing at 80/20
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 56
+    Received: 15.5
+
+      60 |   db.attemptAnswer.findMany.mockResolvedValue([{ questionId: 'q1', answer: 'Essay' }, { questionId: 'r1', answer: 0 }, { questionId: 'r2', answer: 1 }]);
+      61 |   const result = await (await call()).json();
+    > 62 |   expect(result.generalOverall).toBe(56); // Objective 50% * 0.8 + writing 80% * 0.2.
+         |                                 ^
+      63 |   expect(db.attempt.update).toHaveBeenCalledWith({ where: { id: 'a' }, data: { bandOverall: 56 } });
+      64 | });
+      65 | test('unrelated subject teachers cannot grade', async () => {
+
+      at Object.<anonymous> (src/lib/general-writing-route.test.ts:62:33)
+
+FAIL src/lib/auto-writing-submit.test.ts
+  ● AI outage preserves submitted attempt with pending grade
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: ObjectContaining {"data": ObjectContaining {"rubric": {"generalOverall": null, "generalWritingStatus": "PENDING"}}}
+    Received: {"data": {"maxScore": 1, "rawScore": null, "rubric": {"generalBreakdown": [{"earned": 0, "maximum": 25, "pending": false, "points": 0, "questions": 0, "type": "GRAMMAR"}, {"earned": 0, "maximum": 25, "pending": false, "points": 0, "questions": 0, "type": "VOCABULARY"}, {"earned": 0, "maximum": 25, "pending": false, "points": 0, "questions": 0, "type": "LISTENING"}, {"earned": 0, "maximum": 15, "pending": false, "points": 0, "questions": 0, "type": "READING"}, {"earned": 0, "maximum": 10, "pending": true, "points": null, "questions": 1, "type": "WRITING"}], "generalOverall": null, "generalScoreVersion": 2, "generalWritingStatus": "PENDING"}, "status": "COMPLETED"}, "where": {"id": "w"}}
+
+    Number of calls: 1
+
+      38 |   try {
+      39 |     expect((await call()).status).toBe(200);
+    > 40 |     expect(db.attemptSection.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ rubric: { generalWritingStatus: 'PENDING', generalOverall: null } }) }));
+         |                                      ^
+      41 |   } finally { log.mockRestore(); }
+      42 | });
+      43 |
+
+      at Object.<anonymous> (src/lib/auto-writing-submit.test.ts:40:38)
+
+FAIL src/lib/auto-writing-flow.test.ts
+  ● student submit runs actual grading service and saves overall used by history
+
+    expect(received).toMatchObject(expected)
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+    -   "overallPercent": 76,
+    +   "overallPercent": 19.25,
+        "writingGradingStatus": "COMPLETED",
+      }
+
+      34 |   const response = await POST(new Request('http://localhost/submit', { method: 'POST' }), { params: Promise.resolve({ attemptId: 'a' }) });
+      35 |   expect(response.status).toBe(200);
+    > 36 |   expect(await response.json()).toMatchObject({ writingGradingStatus: 'COMPLETED', overallPercent: 76 });
+         |                                 ^
+      37 |   expect(scoreGeneralWriting).toHaveBeenCalledWith('My town', 'My town is nice.', 'A1');
+      38 |   expect(attempt.status).toBe('SUBMITTED');
+      39 |   expect(attempt.bandOverall).toBe(76);
+
+      at Object.<anonymous> (src/lib/auto-writing-flow.test.ts:36:33)
+
+PASS src/lib/sat-homework-timer.test.tsx
+
+Test Suites: 3 failed, 3 passed, 6 total
+Tests:       4 failed, 31 passed, 35 total
+Snapshots:   0 total
+Time:        19.072 s
+Ran all test suites.

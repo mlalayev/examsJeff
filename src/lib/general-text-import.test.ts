@@ -131,3 +131,14 @@ test.each(['grammar','vocabulary','reading','listening','writing'])('allows repe
   expect(result.sections).toHaveLength(2);
   expect(result.sections.map(s => s.questions.length)).toEqual([1,1]);
 });
+
+
+test('General speaking imports independent recording tasks without answers or IELTS requirements', () => {
+  const result = parseGeneralText('[SPEAKING]\nTitle: My town\n1. Describe your town.\nType: SPEAKING_RECORDING\n[SPEAKING]\n1. Tell us about a friend.\nType: SPEAKING_RECORDING');
+  expect(result.errors).toEqual([]);
+  expect(result.sections).toHaveLength(2);
+  const sections = appendGeneralImport([], result, 'speaking');
+  const payload = buildExamPayload('Oral practice', 'GENERAL_ENGLISH', '', null, sections);
+  expect(payload.sections.map(s => s.questions[0].qtype)).toEqual(['SPEAKING_RECORDING', 'SPEAKING_RECORDING']);
+  expect(parseGeneralText('[READING]\n1. Speak\nType: SPEAKING_RECORDING').errors.length).toBeGreaterThan(0);
+});

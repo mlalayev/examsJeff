@@ -140,9 +140,9 @@ export default function ExamCandidatesDashboard({
               {parentLabel ?? "Students"}
             </Link>
             <span>/</span>
-            <span className="font-medium text-gray-700">Exam candidates</span>
+            <span className="font-medium text-gray-700">Sunday examiners</span>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Exam candidates</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Sunday examiners</h1>
           <p className="mt-1 text-sm text-gray-600">
             People registered for exams only — not enrolled in regular lessons.
           </p>

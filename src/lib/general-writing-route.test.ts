@@ -32,7 +32,7 @@ beforeEach(() => {
 afterEach(() => { if (oldKey === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = oldKey; });
 test('one essay is scored and persisted without IELTS two-task validation', async () => {
   expect((await call()).status).toBe(200);
-  expect(db.attempt.update).toHaveBeenCalledWith({ where: { id: 'a' }, data: { bandOverall: 80 } });
+  expect(db.attempt.update).toHaveBeenCalledWith({ where: { id: 'a' }, data: { bandOverall: 8 } });
   expect(scoreGeneralWriting).toHaveBeenCalledWith('Write about your town', 'My town.', 'A1');
   expect(scoreIELTSWritingFull).not.toHaveBeenCalled();
   expect(db.attemptSection.update.mock.calls[0][0].data.rubric).toMatchObject({ other: true, generalWriting: [{ questionId: 'q1', score: 80 }] });
@@ -52,18 +52,23 @@ test('IELTS still requires both tasks', async () => {
   expect((await call()).status).toBe(400);
   expect(scoreGeneralWriting).not.toHaveBeenCalled();
 });
-test('saved overall includes objective answers and writing at 80/20', async () => {
+test('saved overall includes objective answers and writing using fixed 15 and 10 point budgets', async () => {
   attempt.booking.exam.sections.push({ id: 'reading', title: 'Reading', type: 'READING', questions: [
     { id: 'r1', qtype: 'MCQ_SINGLE', answerKey: { index: 0 }, maxScore: 1 },
     { id: 'r2', qtype: 'MCQ_SINGLE', answerKey: { index: 0 }, maxScore: 1 },
   ] });
   db.attemptAnswer.findMany.mockResolvedValue([{ questionId: 'q1', answer: 'Essay' }, { questionId: 'r1', answer: 0 }, { questionId: 'r2', answer: 1 }]);
   const result = await (await call()).json();
-  expect(result.generalOverall).toBe(56); // Objective 50% * 0.8 + writing 80% * 0.2.
-  expect(db.attempt.update).toHaveBeenCalledWith({ where: { id: 'a' }, data: { bandOverall: 56 } });
+  expect(result.generalOverall).toBe(15.5); // Reading 50% of 15 + writing 80% of 10; missing categories stay zero.
+  expect(db.attempt.update).toHaveBeenCalledWith({ where: { id: 'a' }, data: { bandOverall: 15.5 } });
 });
 test('unrelated subject teachers cannot grade', async () => {
   (teacherStudentScope as jest.Mock).mockResolvedValue({ categories: ['MATH'] });
   expect((await call()).status).toBe(403);
   expect(scoreGeneralWriting).not.toHaveBeenCalled();
+});
+
+test('homework keeps its existing grading instead of inheriting the full-exam category budgets', async () => {
+  attempt.booking.exam.isHomework = true;
+  expect((await (await call()).json()).generalOverall).toBe(80);
 });

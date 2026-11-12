@@ -1,6 +1,7 @@
 "use client";
 
 import StudentTeachers, {assignmentPayload, type TeacherRow} from "@/components/forms/StudentTeachers";
+import UserDetailsButton from "@/components/modals/UserDetailsButton";
 import { useEffect, useState } from "react";
 import { Users, Search, BookOpen, X, Calendar, ChevronRight, ChevronLeft, Target, FileText, CheckCircle, UserPlus, ListChecks, Check, DollarSign, Trash2, Phone, Pause, Play, Pencil } from "lucide-react";
 import { AlertModal } from "@/components/modals/AlertModal";
@@ -742,21 +743,16 @@ export default function AdminStudentsPage() {
       <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
         {loading ? (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1650px] text-sm">
+            <table className="w-full min-w-[1100px] text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Student</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Email</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Phone</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Date of birth</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Study type</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Lesson mode</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Branch</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Monthly fee</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">This month</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Lifecycle</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Status</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Joined</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Actions</th>
                 </tr>
               </thead>
@@ -769,7 +765,7 @@ export default function AdminStudentsPage() {
                         <div className="h-4 bg-gray-200 rounded w-24 animate-pulse"></div>
                       </div>
                     </td>
-                    {Array.from({ length: 12 }).map((_, j) => (
+                    {Array.from({ length: 7 }).map((_, j) => (
                       <td key={j} className="px-3 sm:px-4 py-3">
                         <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
                       </td>
@@ -786,21 +782,16 @@ export default function AdminStudentsPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1650px] text-sm">
+            <table className="w-full min-w-[1100px] text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700 sticky left-0 bg-gray-50 z-10 shadow-[1px_0_0_0_rgb(229,231,235)]">Student</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Email</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Phone</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Date of birth</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Study type</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Lesson mode</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Branch</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Monthly fee</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">This month</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Lifecycle</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Status</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Joined</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Actions</th>
                 </tr>
               </thead>
@@ -831,24 +822,6 @@ export default function AdminStudentsPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-3 sm:px-4 py-3 text-gray-600 whitespace-nowrap">
-                        {student.email}
-                      </td>
-                      <td className="px-3 sm:px-4 py-3 text-gray-600 whitespace-nowrap">
-                        {student.phoneNumber ? (
-                          <span className="inline-flex items-center gap-1">
-                            <Phone className="w-3 h-3 text-gray-400" />
-                            {student.phoneNumber}
-                          </span>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                      <td className="px-3 sm:px-4 py-3 text-gray-600 whitespace-nowrap">
-                        {student.dateOfBirth
-                          ? new Date(student.dateOfBirth).toLocaleDateString()
-                          : "—"}
-                      </td>
                       <td className="px-3 sm:px-4 py-3 text-gray-600">
                         {(() => {
                           const types = studentStudyTypes(student);
@@ -875,26 +848,6 @@ export default function AdminStudentsPage() {
                             </div>
                           );
                         })()}
-                      </td>
-                      <td className="px-3 sm:px-4 py-3 text-gray-600">
-                        {student.lessonModes && student.lessonModes.length > 0 ? (
-                          <div className="flex flex-wrap items-center gap-1 min-w-[120px]">
-                            {student.lessonModes.map((id) => {
-                              const m = LESSON_MODE_MAP[id];
-                              if (!m) return null;
-                              return (
-                                <span
-                                  key={id}
-                                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ring-1 ${m.chip}`}
-                                >
-                                  {m.label}
-                                </span>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          "—"
-                        )}
                       </td>
                       <td className="px-3 sm:px-4 py-3 text-gray-600 whitespace-nowrap">
                         {student.branch?.name || "No branch"}
@@ -943,11 +896,9 @@ export default function AdminStudentsPage() {
                           {student.approved ? "Approved" : "Pending"}
                         </span>
                       </td>
-                      <td className="px-3 sm:px-4 py-3 text-gray-600 whitespace-nowrap">
-                        {new Date(student.createdAt).toLocaleDateString()}
-                      </td>
                       <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
                         <div className="flex flex-nowrap items-center gap-2">
+                          <UserDetailsButton userId={student.id} />
                           <button
                             type="button"
                             onClick={() => setEditUserId(student.id)}

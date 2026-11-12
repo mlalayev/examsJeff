@@ -12,7 +12,7 @@ export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   SHORT_TEXT: "Short Text Answer",
   ESSAY: "Essay",
   FILL_IN_BLANK: "Fill in the Blank",
-  SPEAKING_RECORDING: "Speaking Recording (IELTS)",
+  SPEAKING_RECORDING: "Speaking Recording",
   IMAGE_INTERACTIVE: "Interactive Image Question",
   HTML_CSS: "HTML/CSS Code Question",
 };
@@ -30,7 +30,7 @@ export const ALLOWED_SECTIONS_BY_CATEGORY: Record<ExamCategory, SectionType[]> =
   IELTS: ["READING", "LISTENING", "WRITING", "SPEAKING"],
   TOEFL: ["READING", "LISTENING", "WRITING", "SPEAKING"],
   SAT: ["READING", "WRITING"],
-  GENERAL_ENGLISH: ["READING", "LISTENING", "WRITING", "GRAMMAR", "VOCABULARY"],
+  GENERAL_ENGLISH: ["READING", "LISTENING", "WRITING", "GRAMMAR", "VOCABULARY", "SPEAKING"],
   MATH: ["GRAMMAR", "VOCABULARY"],
   KIDS: ["READING", "LISTENING", "GRAMMAR", "VOCABULARY"],
   PLACEMENT: ["READING", "LISTENING", "GRAMMAR", "VOCABULARY"],
@@ -103,8 +103,8 @@ export const IELTS_SECTION_ORDER: Record<SectionType, number> = {
 
 export const sortIELTSSections = (sections: any[]): any[] => {
   return [...sections].sort((a, b) => {
-    const aOrder = IELTS_SECTION_ORDER[a.type] ?? 99;
-    const bOrder = IELTS_SECTION_ORDER[b.type] ?? 99;
+    const aOrder = IELTS_SECTION_ORDER[a.type as SectionType] ?? 99;
+    const bOrder = IELTS_SECTION_ORDER[b.type as SectionType] ?? 99;
     if (aOrder !== bOrder) return aOrder - bOrder;
     return a.order - b.order;
   });

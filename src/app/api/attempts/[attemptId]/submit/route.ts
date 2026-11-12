@@ -1,3 +1,4 @@
+import { generalExamScore, generalAnswerMap } from '@/lib/general-exam-score';
 import { autoGradeGeneralWriting } from '@/lib/auto-grade-general-writing';
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -57,6 +58,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
       select: {
         id: true,
         category: true, // For IELTS-specific scoring
+        isHomework: true,
         sections: {
           orderBy: { order: "asc" },
           select: {
@@ -129,7 +131,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
       // For DB exams, answers are in attempt.sections
     for (const as of attempt.sections) {
       if (as.answers) {
-        answersByType[as.type as string] = as.answers as AnswersByQuestionId;
+        answersByType[as.type as string] = { ...answersByType[as.type as string], ...(as.answers as AnswersByQuestionId) };
       }
       }
     }
@@ -159,7 +161,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
       const sectionAnswers = answersByType[sectionType] || {};
 
       // For writing, don't auto-score; calculate maxScore but keep raw null
-      if (!isWriting) {
+      if (!isWriting && sectionType !== 'SPEAKING') {
         for (const q of section.questions) {
           try {
             const qtype = q.qtype as QuestionType;
@@ -226,7 +228,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
       if (attemptSection) {
         sectionUpdates.push({
           sectionId: attemptSection.id,
-          rawScore: isWriting ? null : sectionRaw,
+          rawScore: isWriting || sectionType === 'SPEAKING' ? null : sectionRaw,
           maxScore: sectionMax || 0,
           status: "COMPLETED",
           rubric: sectionRubric, // IELTS Listening part scores
@@ -234,7 +236,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
       }
     }
 
-    const overallPercent = totalMax > 0 ? (totalRaw / totalMax) * 100 : null;
+    const generalScore = examWithSections.category === 'GENERAL_ENGLISH' && !examWithSections.isHomework
+      ? generalExamScore(examWithSections.sections, generalAnswerMap(attempt, examWithSections.sections,
+          Object.values(answersByType).flatMap(values => Object.entries(values).map(([questionId, answer]) => ({ questionId, answer }))))) : null;
+    const overallPercent = generalScore ? generalScore.generalOverall : totalMax > 0 ? (totalRaw / totalMax) * 100 : null;
+    // Repeated section types share the legacy attempt row: aggregate once, never overwrite.
+    const mergedUpdates = new Map<string, typeof sectionUpdates[number]>();
+    for (const update of sectionUpdates) {
+      const previous = mergedUpdates.get(update.sectionId);
+      if (previous) {
+        previous.maxScore += update.maxScore;
+        previous.rawScore = previous.rawScore == null || update.rawScore == null ? null : previous.rawScore + update.rawScore;
+      } else mergedUpdates.set(update.sectionId, { ...update });
+    }
+
 
     const isPlacement = examWithSections.category === "PLACEMENT";
     const placement = isPlacement
@@ -247,14 +262,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ att
       const latest = await tx.attempt.findUnique({ where: { id: attemptId }, include: { integrity: true } });
       if (latest?.status !== 'IN_PROGRESS' || latest.integrity?.state === 'INVALID') throw new Error('Attempt is closed');
       // Update all attempt sections in batch
-      const updatePromises = sectionUpdates.map((update) =>
+      const updatePromises = [...mergedUpdates.values()].map((update) =>
         tx.attemptSection.update({
           where: { id: update.sectionId },
           data: {
             rawScore: update.rawScore,
             maxScore: update.maxScore,
             status: update.status,
-            rubric: autoWriting && attempt.sections.find(s => s.type === 'WRITING')?.id === update.sectionId ? { generalWritingStatus: 'PENDING', generalOverall: null } : update.rubric || undefined, // IELTS Listening part scores
+            rubric: autoWriting && attempt.sections.find(s => s.type === 'WRITING')?.id === update.sectionId ? { ...generalScore, generalWritingStatus: 'PENDING', generalOverall: null } : generalScore && update.sectionId === attempt.sections[0]?.id ? generalScore : update.rubric || undefined, // IELTS Listening part scores
           },
         })
       );

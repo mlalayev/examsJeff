@@ -1,0 +1,13 @@
+PASS src/lib/speaking-recording.test.tsx
+  √ Next stops recording, sends real MP4 format, waits for durable upload; AI failure retains audio (718 ms)
+  √ upload failure blocks navigation and retains recording for retry (730 ms)
+  √ a recording recovered after reload is uploaded without recording again (682 ms)
+  √ results show an audio player and the saved transcript together (32 ms)
+  √ Generate transcript retries using question ID, without a new microphone recording (22 ms)
+  √ General English waits for a click, records for up to two minutes and saves audio and transcript (50 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       6 passed, 6 total
+Snapshots:   0 total
+Time:        3.888 s, estimated 5 s
+Ran all test suites.

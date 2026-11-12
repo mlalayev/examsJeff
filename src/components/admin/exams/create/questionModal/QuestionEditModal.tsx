@@ -126,6 +126,7 @@ export function QuestionEditModal({
 
           {/* Prompt Field */}
           <QuestionPromptField
+            generalSpeaking={examCategory === "GENERAL_ENGLISH"}
             question={question}
             onChange={onChange}
             uploadingImage={uploadingImage}

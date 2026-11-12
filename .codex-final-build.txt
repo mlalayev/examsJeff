@@ -1,0 +1,348 @@
+
+> aimentor@0.1.0 build
+> prisma generate && next build --webpack
+
+Environment variables loaded from .env
+Prisma schema loaded from prisma\schema.prisma
+┌─────────────────────────────────────────────────────────┐
+│  Update available 6.16.3 -> 8.0.0-rc.33                 │
+│                                                         │
+│  This is a major update - please follow the guide at    │
+│  https://pris.ly/d/major-version-upgrade                │
+│                                                         │
+│  Run the following to update                            │
+│    npm i --save-dev prisma@latest                       │
+│    npm i @prisma/client@latest                          │
+└─────────────────────────────────────────────────────────┘
+
+✔ Generated Prisma Client (v6.16.3) to .\node_modules\@prisma\client in 259ms
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+Tip: Need your database queries to be 1000x faster? Accelerate offers you that and more: https://pris.ly/tip-2-accelerate
+
+▲ Next.js 16.2.1 (webpack)
+- Environments: .env
+- Experiments (use with caution):
+  · optimizePackageImports
+  · serverActions
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+✓ Compiled successfully in 13.5s
+  Skipping validation of types
+  Finished TypeScript config validation in 14ms ...
+  Collecting page data using 19 workers ...
+  Generating static pages using 19 workers (0/180) ...
+  Generating static pages using 19 workers (45/180) 
+  Generating static pages using 19 workers (90/180) 
+  Generating static pages using 19 workers (135/180) 
+✓ Generating static pages using 19 workers (180/180) in 32.8s
+  Finalizing page optimization ...
+  Collecting build traces ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ƒ /api/admin/bandmap
+├ ƒ /api/admin/branches
+├ ƒ /api/admin/exams
+├ ƒ /api/admin/exams/[id]
+├ ƒ /api/admin/exams/[id]/test-attempt
+├ ƒ /api/admin/exams/seed-sat-sample
+├ ƒ /api/admin/finance/clear
+├ ƒ /api/admin/finance/seed
+├ ƒ /api/admin/homework
+├ ƒ /api/admin/homework/assign
+├ ƒ /api/admin/homework/students
+├ ƒ /api/admin/homework/templates
+├ ƒ /api/admin/homework/templates/[id]
+├ ƒ /api/admin/seed/a2-unit1
+├ ƒ /api/admin/seed/ge-demo
+├ ƒ /api/admin/seed/ielts-mock-sample-1
+├ ƒ /api/admin/seed/test
+├ ƒ /api/admin/stats
+├ ƒ /api/admin/students
+├ ƒ /api/admin/students/[id]/approve
+├ ƒ /api/admin/students/[id]/exams
+├ ƒ /api/admin/students/[id]/lesson-status
+├ ƒ /api/admin/upload
+├ ƒ /api/admin/upload/sat-zip
+├ ƒ /api/admin/users
+├ ƒ /api/admin/users/[id]
+├ ƒ /api/admin/users/[id]/approve
+├ ƒ /api/admin/users/[id]/assign-branch-admin
+├ ƒ /api/admin/users/[id]/role
+├ ƒ /api/admin/users/create
+├ ƒ /api/ai-feedback
+├ ƒ /api/ai-writing-score
+├ ƒ /api/analytics/boss/finance
+├ ƒ /api/analytics/boss/finance-enhanced
+├ ƒ /api/analytics/branch/finance
+├ ƒ /api/analytics/teacher/overview
+├ ƒ /api/assignments
+├ ƒ /api/attempt-sections/[id]
+├ ƒ /api/attempt-sections/[id]/grade
+├ ƒ /api/attempts
+├ ƒ /api/attempts/[attemptId]
+├ ƒ /api/attempts/[attemptId]/[id]/review
+├ ƒ /api/attempts/[attemptId]/[id]/section/end
+├ ƒ /api/attempts/[attemptId]/[id]/section/save
+├ ƒ /api/attempts/[attemptId]/[id]/section/start
+├ ƒ /api/attempts/[attemptId]/[id]/submit
+├ ƒ /api/attempts/[attemptId]/integrity
+├ ƒ /api/attempts/[attemptId]/results
+├ ƒ /api/attempts/[attemptId]/save
+├ ƒ /api/attempts/[attemptId]/save-bulk
+├ ƒ /api/attempts/[attemptId]/speaking/ai-score
+├ ƒ /api/attempts/[attemptId]/speaking/transcribe
+├ ƒ /api/attempts/[attemptId]/speaking/upload
+├ ƒ /api/attempts/[attemptId]/submit
+├ ƒ /api/attempts/[attemptId]/update-answer
+├ ƒ /api/attempts/[attemptId]/writing/ai-score
+├ ƒ /api/attempts/[attemptId]/writing/originality
+├ ƒ /api/attempts/[attemptId]/writing/submit
+├ ƒ /api/audio/[filename]
+├ ƒ /api/auth/[...nextauth]
+├ ƒ /api/auth/me
+├ ƒ /api/bands/import
+├ ƒ /api/bookings
+├ ƒ /api/bookings/bulk
+├ ƒ /api/boss/branches
+├ ƒ /api/boss/branches/[id]
+├ ƒ /api/boss/overview
+├ ƒ /api/boss/reports
+├ ƒ /api/boss/salary
+├ ƒ /api/boss/teachers
+├ ƒ /api/boss/teachers/[id]
+├ ƒ /api/boss/teachers/[id]/lessons
+├ ƒ /api/boss/teachers/[id]/pay
+├ ƒ /api/boss/teachers/[id]/revenue
+├ ƒ /api/boss/teachers/[id]/schedule
+├ ƒ /api/branch-admin/approvals
+├ ƒ /api/branch-admin/classes
+├ ƒ /api/branch-admin/enrollments
+├ ƒ /api/branch-admin/overview
+├ ƒ /api/branch-admin/payments
+├ ƒ /api/branch-admin/students
+├ ƒ /api/branch/students
+├ ƒ /api/branch/students/[studentId]/assign-teacher
+├ ƒ /api/branch/students/[studentId]/class-payments
+├ ƒ /api/branch/students/[studentId]/payments
+├ ƒ /api/branch/students/[studentId]/payments/mark
+├ ƒ /api/branch/students/[studentId]/profile
+├ ƒ /api/branch/teachers
+├ ƒ /api/branches
+├ ƒ /api/catalog
+├ ƒ /api/catalog/ge-levels
+├ ƒ /api/catalog/ge-units
+├ ƒ /api/classes
+├ ƒ /api/classes/[id]
+├ ƒ /api/classes/[id]/add-student
+├ ƒ /api/classes/[id]/remove-student
+├ ƒ /api/classes/[id]/roster
+├ ƒ /api/clear-cookies
+├ ƒ /api/creator/students/[id]/exams
+├ ƒ /api/creator/users
+├ ƒ /api/creator/users/[id]
+├ ƒ /api/creator/users/[id]/approve
+├ ƒ /api/creator/users/[id]/password
+├ ƒ /api/creator/users/create
+├ ƒ /api/crm/contacts
+├ ƒ /api/crm/contacts/[id]
+├ ƒ /api/cron/payment-reminders
+├ ƒ /api/cron/reminders
+├ ƒ /api/debug-session
+├ ƒ /api/exams
+├ ƒ /api/exams/[examId]
+├ ƒ /api/grading/queue
+├ ƒ /api/health/db
+├ ƒ /api/images/[filename]
+├ ƒ /api/me/assignments
+├ ƒ /api/me/password
+├ ƒ /api/notifications
+├ ƒ /api/partner/earnings
+├ ƒ /api/partner/referrals
+├ ƒ /api/referrals
+├ ƒ /api/referrals/[id]/decide
+├ ƒ /api/referrals/students-search
+├ ƒ /api/register/exam
+├ ƒ /api/setup/check
+├ ƒ /api/setup/creator
+├ ƒ /api/setup/init-branch
+├ ƒ /api/student-register
+├ ƒ /api/student/attempt/start
+├ ƒ /api/student/attempts
+├ ƒ /api/student/attendance
+├ ƒ /api/student/coin-rewards
+├ ƒ /api/student/coin-rewards/[rewardId]/redeem
+├ ƒ /api/student/coins
+├ ƒ /api/student/exams
+├ ƒ /api/student/homework
+├ ƒ /api/student/lessons
+├ ƒ /api/student/lessons/[id]
+├ ƒ /api/student/lessons/[id]/progress
+├ ƒ /api/student/overview
+├ ƒ /api/student/tricks
+├ ƒ /api/student/tricks/[id]
+├ ƒ /api/student/tricks/[id]/save
+├ ƒ /api/student/words
+├ ƒ /api/student/words/[id]
+├ ƒ /api/student/words/[id]/review
+├ ƒ /api/students/[studentId]/coins
+├ ƒ /api/teacher/attempts
+├ ƒ /api/teacher/attempts/[attemptId]
+├ ƒ /api/teacher/classes
+├ ƒ /api/teacher/classes/[id]/attempts
+├ ƒ /api/teacher/homework
+├ ƒ /api/teacher/homework/students
+├ ƒ /api/teacher/lessons
+├ ƒ /api/teacher/lessons/[lessonId]
+├ ƒ /api/teacher/lessons/[lessonId]/records
+├ ƒ /api/teacher/lessons/resolve
+├ ƒ /api/teacher/overview
+├ ƒ /api/teacher/schedule
+├ ƒ /api/teacher/schedule/classes
+├ ƒ /api/teacher/schedule/day
+├ ƒ /api/teacher/schedule/month
+├ ƒ /api/teacher/schedule/month/apply
+├ ƒ /api/teacher/schedule/month/report
+├ ƒ /api/teacher/schedule/month/summary
+├ ƒ /api/teacher/schedule/slots
+├ ƒ /api/teacher/schedule/slots/[slotId]
+├ ƒ /api/teacher/schedule/slots/[slotId]/roster
+├ ƒ /api/teacher/schedule/week/reports
+├ ƒ /api/teacher/students/[id]
+├ ƒ /api/teacher/students/[id]/attempts
+├ ƒ /api/teacher/students/[id]/attendance
+├ ƒ /api/teacher/students/[id]/feedback
+├ ƒ /api/teacher/students/search
+├ ƒ /api/test
+├ ƒ /api/tracks
+├ ƒ /api/tracks/[id]/books
+├ ƒ /api/writing-submissions
+├ ƒ /api/writing-submissions/[id]
+├ ƒ /attempts/[attemptId]/ielts/run
+├ ƒ /attempts/[attemptId]/results
+├ ƒ /attempts/[attemptId]/run
+├ ƒ /attempts/[attemptId]/sat/run
+├ ƒ /auth/error
+├ ○ /auth/login
+├ ○ /auth/register/exam
+├ ○ /dashboard
+├ ○ /dashboard/admin
+├ ○ /dashboard/admin/exams
+├ ƒ /dashboard/admin/exams/[id]
+├ ƒ /dashboard/admin/exams/[id]/edit
+├ ○ /dashboard/admin/exams/create
+├ ○ /dashboard/admin/exams/create-sat
+├ ƒ /dashboard/admin/exams/create/[category]
+├ ○ /dashboard/admin/exams/create/ielts-digital
+├ ○ /dashboard/admin/exams/create/sat-digital
+├ ○ /dashboard/admin/homework
+├ ƒ /dashboard/admin/homework/[id]/edit
+├ ○ /dashboard/admin/homework/create
+├ ƒ /dashboard/admin/homework/create/[category]
+├ ○ /dashboard/admin/seed
+├ ○ /dashboard/admin/students
+├ ○ /dashboard/admin/students/archive
+├ ○ /dashboard/admin/students/candidates
+├ ○ /dashboard/admin/students/finished
+├ ○ /dashboard/admin/students/stopped
+├ ○ /dashboard/admin/students/study-abroad
+├ ○ /dashboard/boss
+├ ○ /dashboard/boss/branches
+├ ○ /dashboard/boss/finance
+├ ○ /dashboard/boss/finance-v2
+├ ○ /dashboard/boss/payments
+├ ○ /dashboard/boss/reports
+├ ○ /dashboard/boss/salary
+├ ○ /dashboard/boss/teachers
+├ ƒ /dashboard/boss/teachers/[id]
+├ ○ /dashboard/boss/users
+├ ○ /dashboard/branch-admin
+├ ○ /dashboard/branch-admin/approvals
+├ ○ /dashboard/branch-admin/classes
+├ ○ /dashboard/branch-admin/exams
+├ ○ /dashboard/branch-admin/finance
+├ ○ /dashboard/branch-admin/payments
+├ ○ /dashboard/branch-admin/students
+├ ○ /dashboard/branch-admin/teachers
+├ ○ /dashboard/catalog
+├ ○ /dashboard/creator
+├ ○ /dashboard/creator/branches
+├ ○ /dashboard/creator/classes
+├ ○ /dashboard/creator/create-user
+├ ○ /dashboard/creator/exams
+├ ○ /dashboard/creator/finance
+├ ○ /dashboard/creator/homework
+├ ƒ /dashboard/creator/homework/[id]/edit
+├ ○ /dashboard/creator/homework/create
+├ ƒ /dashboard/creator/homework/create/[category]
+├ ○ /dashboard/creator/students
+├ ○ /dashboard/creator/students/archive
+├ ○ /dashboard/creator/students/candidates
+├ ○ /dashboard/creator/students/finished
+├ ○ /dashboard/creator/students/stopped
+├ ○ /dashboard/creator/students/study-abroad
+├ ○ /dashboard/creator/users
+├ ○ /dashboard/crm
+├ ○ /dashboard/crm/archive
+├ ○ /dashboard/crm/exam-candidates
+├ ƒ /dashboard/crm/stages/[stage]
+├ ○ /dashboard/partner
+├ ○ /dashboard/partner/earnings
+├ ○ /dashboard/partner/referrals
+├ ○ /dashboard/referrals
+├ ○ /dashboard/student
+├ ○ /dashboard/student-register
+├ ○ /dashboard/student/coins
+├ ƒ /dashboard/student/exam-preview/[examId]
+├ ○ /dashboard/student/exams
+├ ○ /dashboard/student/history
+├ ƒ /dashboard/student/homework
+├ ƒ /dashboard/student/homework/extras
+├ ƒ /dashboard/student/lessons/general
+├ ƒ /dashboard/student/lessons/ielts
+├ ƒ /dashboard/student/lessons/kids
+├ ƒ /dashboard/student/lessons/sat
+├ ƒ /dashboard/student/lessons/toefl
+├ ƒ /dashboard/student/results/[attemptId]
+├ ƒ /dashboard/student/tricks/desmos
+├ ƒ /dashboard/student/tricks/writing
+├ ƒ /dashboard/student/words/general
+├ ƒ /dashboard/student/words/ielts
+├ ƒ /dashboard/student/words/sat
+├ ○ /dashboard/subjects
+├ ○ /dashboard/teacher
+├ ƒ /dashboard/teacher/analytics/[classId]
+├ ○ /dashboard/teacher/assign-exam
+├ ƒ /dashboard/teacher/classes/[id]
+├ ○ /dashboard/teacher/exams
+├ ○ /dashboard/teacher/grading
+├ ƒ /dashboard/teacher/grading/[id]
+├ ○ /dashboard/teacher/homework
+├ ƒ /dashboard/teacher/homework/[id]/edit
+├ ○ /dashboard/teacher/homework/create
+├ ƒ /dashboard/teacher/homework/create/[category]
+├ ○ /dashboard/teacher/reports
+├ ○ /dashboard/teacher/salary
+├ ○ /dashboard/teacher/schedule
+├ ƒ /dashboard/teacher/students/[id]/attempts
+├ ƒ /dashboard/teacher/writing-review/[id]
+├ ○ /dashboard/teacher/writing-submissions
+├ ○ /dashboard/users/all
+├ ○ /dashboard/users/parents
+├ ○ /dashboard/users/partners
+├ ○ /dashboard/users/sunday-examiners
+├ ○ /pending
+├ ○ /privacy
+├ ○ /teachers
+└ ○ /terms
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

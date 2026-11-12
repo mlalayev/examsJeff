@@ -16,7 +16,9 @@ export function computeAttemptPercentFromSections(
 ): number | null {
   const grading = sections.map(s => s.rubric as { generalWritingStatus?: string; generalOverall?: number | null } | null).find(r => r?.generalWritingStatus);
   if (grading) return grading.generalWritingStatus === 'COMPLETED' ? grading.generalOverall ?? null : null;
-  const autoSections = sections.filter((s) => s.type !== SectionType.WRITING);
+  const fixed = sections.map(s => s.rubric as any).find(r => r?.generalScoreVersion === 2);
+  if (fixed) return fixed.generalOverall ?? null;
+  const autoSections = sections.filter((s) => s.type !== SectionType.WRITING && s.type !== SectionType.SPEAKING);
   const totalRaw = autoSections.reduce((acc, s) => acc + (s.rawScore ?? 0), 0);
   const totalMax = autoSections.reduce((acc, s) => acc + (s.maxScore ?? 0), 0);
 

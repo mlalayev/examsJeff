@@ -1028,6 +1028,7 @@ export default function AttemptRunnerPage() {
       case "SPEAKING_RECORDING":
         return (
           <QSpeakingRecording
+            generalSpeaking={data?.examCategory === "GENERAL_ENGLISH"}
             {...props}
             attemptId={attemptId}
             speakingPart={sectionType === "SPEAKING" ? speakingPart : undefined}

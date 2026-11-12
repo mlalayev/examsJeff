@@ -37,7 +37,7 @@ test('AI outage preserves submitted attempt with pending grade', async () => {
   (gradeGeneralWritingAttempt as jest.Mock).mockRejectedValue(new Error('Unavailable'));
   try {
     expect((await call()).status).toBe(200);
-    expect(db.attemptSection.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ rubric: { generalWritingStatus: 'PENDING', generalOverall: null } }) }));
+    expect(db.attemptSection.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ rubric: expect.objectContaining({ generalWritingStatus: 'PENDING', generalOverall: null, generalScoreVersion: 2 }) }) }));
   } finally { log.mockRestore(); }
 });
 

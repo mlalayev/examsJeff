@@ -76,8 +76,15 @@ export default async function middleware(req: NextRequest) {
     return response;
   }
 
+  if (path === "/dashboard/student-register" || path.startsWith("/dashboard/users/")) {
+    const role = (token as any).role;
+    const allowed = path === "/dashboard/student-register" ? ["TEACHER", "ADMIN", "BOSS"] : ["ADMIN", "BOSS"];
+    if (!allowed.includes(role)) return NextResponse.redirect(new URL("/auth/login?error=unauthorized", req.url));
+    if (role === "TEACHER" && !(token as any).approved) return NextResponse.redirect(new URL("/pending", req.url));
+  }
+
   // Student dashboard routes (must be approved unless elevated roles)
-  if (path.startsWith("/dashboard/student")) {
+  if (path === "/dashboard/student" || path.startsWith("/dashboard/student/")) {
     const approved = (token as any)?.approved ?? false;
     if (
       (token as any).role !== "STUDENT" &&

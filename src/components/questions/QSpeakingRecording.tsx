@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { pendingRecording, registerSpeakingRecorder } from "@/lib/speaking-persistence";
+import { pendingRecording, registerSpeakingRecorder, flushSpeakingRecordings } from "@/lib/speaking-persistence";
 import { Mic, Clock, AlertCircle, Loader2 } from "lucide-react";
 import { speakSecondsForSpeakingPart } from "@/lib/ielts-speaking-timers";
 import {
@@ -11,6 +11,7 @@ import {
 } from "@/lib/speaking-answer";
 
 interface QSpeakingRecordingProps {
+  generalSpeaking?: boolean;
   question: {
     id: string;
     prompt: {
@@ -39,6 +40,7 @@ const RECORDING_DURATIONS = {
 const PREPARATION_DURATION = 60; // Part 2 internal prep when not using parent timer
 
 export function QSpeakingRecording({
+  generalSpeaking = false,
   question,
   value,
   onChange,
@@ -53,8 +55,8 @@ export function QSpeakingRecording({
   const hasSavedAnswer = hasSpeakingAnswerContent(value);
 
   const part = speakingPart || question.prompt.part || 1;
-  const recordingDuration = RECORDING_DURATIONS[part as keyof typeof RECORDING_DURATIONS] || 30;
-  const hasPreparation = part === 2;
+  const recordingDuration = generalSpeaking ? 120 : RECORDING_DURATIONS[part as keyof typeof RECORDING_DURATIONS] || 30;
+  const hasPreparation = !generalSpeaking && part === 2;
   const useParentTimer = typeof questionSecondsLeft === "number";
   const speakCap = speakSecondsForSpeakingPart(part);
   const parentRecordingStartRef = useRef(false);
@@ -188,7 +190,7 @@ export function QSpeakingRecording({
     let cancelled = false;
 
     const run = async () => {
-      if (readOnly || hasSavedAnswer) {
+      if (readOnly || hasSavedAnswer || generalSpeaking) {
         setIsCheckingPermission(false);
         return;
       }
@@ -246,7 +248,7 @@ export function QSpeakingRecording({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- requestMicrophonePermission is stable for this flow
-  }, [readOnly, hasSavedAnswer]);
+  }, [readOnly, hasSavedAnswer, generalSpeaking]);
 
   const startPreparation = async () => {
     if (timerRef.current) {
@@ -269,7 +271,7 @@ export function QSpeakingRecording({
           clearInterval(timerRef.current);
           timerRef.current = null;
         }
-        setTimeout(() => startReading(), 500);
+        phaseTimeoutRef.current = setTimeout(() => startReading(), 500);
       }
     }, 1000);
   };
@@ -297,7 +299,7 @@ export function QSpeakingRecording({
           clearInterval(timerRef.current);
           timerRef.current = null;
         }
-        setTimeout(() => startRecording(), 500);
+        phaseTimeoutRef.current = setTimeout(() => { if (!finishingRef.current) startingRef.current = startRecording(); }, 500);
       }
     }, 1000);
   };
@@ -498,6 +500,12 @@ export function QSpeakingRecording({
 
   finishRef.current = async () => {
     finishingRef.current = true;
+    if (generalSpeaking && (status === 'reading' || status === 'preparing')) {
+      clearPhaseTimeout();
+      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+      hasStartedRef.current = false;
+      setStatus('idle');
+    }
     try {
       await recoveryRef.current;
       await startingRef.current;
@@ -522,6 +530,10 @@ export function QSpeakingRecording({
 
   const handleStart = async () => {
     if (hasStartedRef.current) return;
+    if (generalSpeaking && attemptId) {
+      try { await flushSpeakingRecordings(attemptId); }
+      catch { setError('Save the previous recording before starting this question.'); return; }
+    }
 
     // If we already have permission, skip the request
     if (!permissionGranted) {
@@ -549,7 +561,7 @@ export function QSpeakingRecording({
 
   useEffect(() => {
     // Auto-start recording flow after permission is granted
-    if (status === "idle" && !recovering && !hasSavedAnswer && !readOnly && !pendingBlobRef.current && !hasStartedRef.current && permissionGranted) {
+    if (!generalSpeaking && status === "idle" && !recovering && !hasSavedAnswer && !readOnly && !pendingBlobRef.current && !hasStartedRef.current && permissionGranted) {
       const timer = setTimeout(() => {
         void handleStart();
       }, 500);
@@ -563,7 +575,7 @@ export function QSpeakingRecording({
       };
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [permissionGranted, status, hasSavedAnswer, readOnly, recovering]); // Trigger when permission is granted
+  }, [permissionGranted, status, hasSavedAnswer, readOnly, recovering, generalSpeaking]); // Trigger when permission is granted
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -752,6 +764,7 @@ export function QSpeakingRecording({
 
     return (
       <div className="space-y-4">
+        {generalSpeaking && status === 'recording' && <button type="button" onClick={() => { void finishRef.current().catch(() => {}); }} className="rounded-lg bg-[#303380] px-4 py-2 text-sm font-medium text-white">Save recording</button>}
         <div className="rounded-lg border border-gray-200 bg-white px-5 py-4">
           {formatSpeakingPrompt(question.prompt?.text || "Speaking question")}
         </div>
@@ -819,7 +832,8 @@ export function QSpeakingRecording({
         {formatSpeakingPrompt(question.prompt?.text || "Speaking question")}
       </div>
 
-      {!error && (
+      {!error && generalSpeaking && <button type="button" disabled={recovering || readOnly} onClick={() => void handleStart()} className="inline-flex items-center gap-2 rounded-lg bg-[#303380] px-4 py-2 font-medium text-white disabled:opacity-50"><Mic size={18}/>Start recording · up to 2 minutes</button>}
+      {!error && !generalSpeaking && (
         <div className="rounded-lg border border-slate-200 bg-slate-50/90 px-5 py-4">
           <div className="flex items-center justify-center gap-2">
             <Clock className="w-5 h-5 text-slate-500 animate-pulse" />

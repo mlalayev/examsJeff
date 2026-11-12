@@ -32,7 +32,8 @@ import {
 
 interface ResultsData {
   writingGradingPending?: boolean;
-  writingScoreBreakdown?: { generalWritingPercent?: number; generalObjectivePercent?: number | null };
+  writingScoreBreakdown?: { generalBreakdown?: Array<{ type: string; maximum: number; points: number | null; questions: number }>; generalWritingPercent?: number; generalObjectivePercent?: number | null };
+  generalSpeaking?: { score: number; feedback: string; scoredAt: string };
   generalWriting?: Array<{ questionId: string; sectionId: string; title: string; score: number; feedback: string }>;
 
   homeworkReview?: Array<{ id: string; title: string; questions: Array<{
@@ -409,7 +410,7 @@ export default function AttemptResultsPage() {
       const res = await fetch(`/api/attempts/${attemptId}/speaking/ai-score`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ force: Boolean(data?.speakingAi) }),
+        body: JSON.stringify({ force: Boolean(data?.speakingAi || data?.generalSpeaking) }),
       });
       const json = await res.json();
       if (!res.ok) {
@@ -917,7 +918,7 @@ export default function AttemptResultsPage() {
                 {data.summary.overallBand != null ? "Overall Band Score" : "Overall Score"}
               </h2>
               <p className="text-sm text-gray-600">
-                {data.summary.totalCorrect} out of {data.summary.totalQuestions} questions correct
+                {data.writingScoreBreakdown?.generalBreakdown ? 'Weighted section score · out of 100' : `${data.summary.totalCorrect} out of ${data.summary.totalQuestions} questions correct`}
                 {data.summary.overallBand != null && (
                   <> · {data.summary.totalPercentage}%</>
                 )}
@@ -969,7 +970,8 @@ export default function AttemptResultsPage() {
           </div>
         </div>
 
-        {data.writingScoreBreakdown?.generalWritingPercent != null && !data.writingGradingPending && <p className="mb-5 rounded-lg bg-indigo-50 p-3 text-sm text-indigo-900">
+        {data.writingScoreBreakdown?.generalBreakdown && <div className="mb-5 grid gap-3 sm:grid-cols-5">{data.writingScoreBreakdown.generalBreakdown.map(b => <div key={b.type} className="rounded-xl border bg-white p-4"><p className="text-xs text-slate-500">{b.type}</p><strong className="text-xl">{b.points ?? 'Pending'} / {b.maximum}</strong><p className="text-xs text-slate-500">{b.questions} questions</p></div>)}</div>}
+        {!data.writingScoreBreakdown?.generalBreakdown && data.writingScoreBreakdown?.generalWritingPercent != null && !data.writingGradingPending && <p className="mb-5 rounded-lg bg-indigo-50 p-3 text-sm text-indigo-900">
           Writing: {data.writingScoreBreakdown.generalWritingPercent.toFixed(1)}%
           {data.writingScoreBreakdown.generalObjectivePercent != null
             ? ` × 20% + digər suallar: ${data.writingScoreBreakdown.generalObjectivePercent.toFixed(1)}% × 80% = Overall ${data.summary.totalPercentage}%`
@@ -982,11 +984,12 @@ export default function AttemptResultsPage() {
             <ul className="divide-y divide-gray-100">
               {(data.summary.perSection || data.sections)?.map((section, index) => {
                 const generalScores = (data.generalWriting || []).filter(a => a.sectionId === section.id);
-                const generalScore = generalScores.length ? Math.round(generalScores.reduce((sum, a) => sum + a.score, 0) / generalScores.length) : null;
+                const isGeneralSpeaking = data.examCategory === 'GENERAL_ENGLISH' && isSpeakingSectionType(section.type);
+                const generalScore = isGeneralSpeaking ? data.generalSpeaking?.score ?? null : generalScores.length ? Math.round(generalScores.reduce((sum, a) => sum + a.score, 0) / generalScores.length) : null;
                 const writingBand = getPersistedWritingBand(data.writingSubmission);
                 const showWritingAi = data.examCategory !== 'GENERAL_ENGLISH' && isWritingSectionType(section.type) && hasSavedAiWriting(data.writingSubmission);
                 const speakingBand = getPersistedSpeakingBand(data.speakingAi);
-                const showSpeakingAi = isSpeakingSectionType(section.type) && hasSavedAiSpeaking(data.speakingAi);
+                const showSpeakingAi = !isGeneralSpeaking && isSpeakingSectionType(section.type) && hasSavedAiSpeaking(data.speakingAi);
                 // IELTS band derived from raw correct/total (Listening / Reading)
                 const rawBand = section.bandScore;
                 const aiSectionBand =
@@ -1087,7 +1090,7 @@ export default function AttemptResultsPage() {
                           ) : (
                             <>
                               <span>
-                                {data.examCategory === 'GENERAL_ENGLISH' && isWritingSectionType(section.type) ? (generalScore == null ? 'Awaiting writing assessment' : 'AI writing assessment · saved') : `${section.correct} / ${section.total} correct`}
+                                {isGeneralSpeaking ? 'Separate speaking assessment · excluded from overall' : data.examCategory === 'GENERAL_ENGLISH' && isWritingSectionType(section.type) ? (generalScore == null ? 'Awaiting writing assessment' : 'AI writing assessment · saved') : `${section.correct} / ${section.total} correct`}
                                 {rawBand != null && <> · Band {rawBand.toFixed(1)}</>}
                               </span>
                               <span>•</span>
@@ -1114,7 +1117,7 @@ export default function AttemptResultsPage() {
                             {aiSectionBand.toFixed(1)}
                           </div>
                         ) : (
-                          <div className="text-xl font-semibold text-gray-900">{data.examCategory === 'GENERAL_ENGLISH' && isWritingSectionType(section.type) && generalScore == null ? 'Pending' : `${generalScore ?? section.percentage}%`}</div>
+                          <div className="text-xl font-semibold text-gray-900">{data.examCategory === 'GENERAL_ENGLISH' && (isWritingSectionType(section.type) || isGeneralSpeaking) && generalScore == null ? 'Pending' : `${generalScore ?? section.percentage}%`}</div>
                         )}
                       </div>
                       <div className="w-32">
@@ -1140,6 +1143,7 @@ export default function AttemptResultsPage() {
         </div>
 
         {/* AI Writing Scores (Teacher Only) — same structure as before; light visual polish only */}
+        {data.generalSpeaking && <section className="mb-6 rounded-xl border border-indigo-200 bg-indigo-50 p-6"><h2 className="text-lg font-semibold">Speaking · {data.generalSpeaking.score}/100</h2><p className="text-sm text-indigo-800">Separate transcript assessment — not included in overall. Pronunciation is not assessed.</p><p className="mt-3 whitespace-pre-wrap">{data.generalSpeaking.feedback}</p></section>}
         {!!data.generalWriting?.length && <section className="mb-6 rounded-xl border bg-white p-6">
           <h2 className="mb-4 text-lg font-semibold">General English — AI Writing Assessment</h2>
           <p className="mb-4 text-sm text-gray-500">Writing contributes 20% and objective questions 80% of the overall score. Writing-only tests use the writing score.</p>

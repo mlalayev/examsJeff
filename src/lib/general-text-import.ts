@@ -1,6 +1,6 @@
 import type { Section, SectionType, QuestionType, Question } from '@/components/admin/exams/create/types';
-export const GENERAL_SECTIONS: SectionType[] = ['GRAMMAR', 'VOCABULARY', 'READING', 'LISTENING', 'WRITING'];
-export const GENERAL_TEXT_TYPES: QuestionType[] = ['MCQ_SINGLE', 'MCQ_MULTI', 'TF', 'TF_NG', 'SHORT_TEXT', 'FILL_IN_BLANK', 'INLINE_SELECT', 'ORDER_SENTENCE', 'DND_GAP', 'ESSAY'];
+export const GENERAL_SECTIONS: SectionType[] = ['GRAMMAR', 'VOCABULARY', 'READING', 'LISTENING', 'WRITING', 'SPEAKING'];
+export const GENERAL_TEXT_TYPES: QuestionType[] = ['MCQ_SINGLE', 'MCQ_MULTI', 'TF', 'TF_NG', 'SHORT_TEXT', 'FILL_IN_BLANK', 'INLINE_SELECT', 'ORDER_SENTENCE', 'DND_GAP', 'ESSAY', 'SPEAKING_RECORDING'];
 export type GeneralImportResult = { sections: Section[]; errors: string[]; warnings: string[] };
 export function parseGeneralText(text: string, allowedTypes = GENERAL_TEXT_TYPES, allowedSections = GENERAL_SECTIONS): GeneralImportResult {
   const result: GeneralImportResult = { sections: [], errors: [], warnings: [] };
@@ -16,6 +16,8 @@ export function parseGeneralText(text: string, allowedTypes = GENERAL_TEXT_TYPES
     const type = f.type?.toUpperCase() as QuestionType;
     if (!GENERAL_TEXT_TYPES.includes(type) || !allowedTypes.includes(type)) fail(line, `Unsupported or unselected Type: ${f.type || '(missing)'}.`);
     if (section.type === 'WRITING' && !['ESSAY', 'SHORT_TEXT'].includes(type)) fail(line, 'Writing supports ESSAY or SHORT_TEXT.');
+    if (section.type === 'SPEAKING' && type !== 'SPEAKING_RECORDING') fail(line, 'Speaking requires SPEAKING_RECORDING.');
+    if (type === 'SPEAKING_RECORDING' && section.type !== 'SPEAKING') fail(line, 'Place recordings in SPEAKING.');
     if (type === 'ESSAY' && section.type !== 'WRITING') fail(line, 'Place ESSAY tasks in WRITING.');
     if (!q.text.trim()) fail(line, 'Question text is required.');
     if (q.number !== section.questions.length + 1) fail(line, 'Number questions consecutively from 1 in each section.');
@@ -53,7 +55,7 @@ export function parseGeneralText(text: string, allowedTypes = GENERAL_TEXT_TYPES
       const order = answer.split(',').map(v => Number(v.trim()) - 1);
       if (tokens.length < 2 || tokens.some(v => !v) || order.length !== tokens.length || new Set(order).size !== tokens.length || order.some(v => !Number.isInteger(v) || v < 0 || v >= tokens.length)) fail(line, 'Tokens: words separated by |; Answer: a permutation of token numbers, e.g. 2, 1, 3.');
       question.prompt = { text: q.text.trim(), tokens, rawText: tokens.join('\n') }; question.answerKey = { order };
-    } else if (type === 'ESSAY' && answer) fail(line, 'ESSAY has no Answer field; include requirements in the task text.');
+    } else if (['ESSAY', 'SPEAKING_RECORDING'].includes(type) && answer) fail(line, 'ESSAY and SPEAKING_RECORDING have no Answer field; include requirements in the task text.');
     if (f.tokens && type !== 'ORDER_SENTENCE') fail(line, 'Tokens is only valid for ORDER_SENTENCE.');
     if (f.bank && type !== 'DND_GAP') fail(line, 'Bank is only valid for DND_GAP.');
     section.questions.push(question); q = undefined;
@@ -66,14 +68,14 @@ export function parseGeneralText(text: string, allowedTypes = GENERAL_TEXT_TYPES
       return;
     }
     if (!line) return;
-    const heading = line.match(/^\[(?:section:\s*)?(GRAMMAR|VOCABULARY|READING|LISTENING|WRITING)\]$/i);
+    const heading = line.match(/^\[(?:section:\s*)?(GRAMMAR|VOCABULARY|READING|LISTENING|WRITING|SPEAKING)\]$/i);
     if (heading) {
       finish(); const type = heading[1].toUpperCase() as SectionType;
       if (!GENERAL_SECTIONS.includes(type) || !allowedSections.includes(type)) fail(n, `Unsupported or unselected section: ${type}.`);
       section = { id: `ge-s-${result.sections.length}`, type, title: type[0] + type.slice(1).toLowerCase(), order: result.sections.length, durationMin: 20, instruction: '', questions: [] };
       result.sections.push(section); return;
     }
-    if (!section) { fail(n, 'Start with [section: GRAMMAR], VOCABULARY, READING, LISTENING or WRITING.'); return; }
+    if (!section) { fail(n, 'Start with [section: GRAMMAR], VOCABULARY, READING, LISTENING, WRITING or SPEAKING.'); return; }
     if (line.toLowerCase() === '[passage]') {
       if (q || section.questions.length || section.type !== 'READING' || section.passage !== undefined) fail(n, 'Use one [passage] block before Reading questions.');
       passage = true; section.passage = ''; return;
@@ -108,7 +110,7 @@ export function parseGeneralText(text: string, allowedTypes = GENERAL_TEXT_TYPES
     if (!s.title.trim()) result.errors.push('Section title cannot be empty.');
     if (s.type === 'READING' && !s.passage?.trim()) result.errors.push('Reading needs a non-empty [passage] block.');
     if (s.type === 'LISTENING') result.warnings.push(`${s.order + 1}. ${s.title}: upload this section's listening audio in the section editor before publishing.`);
-    if (s.type === 'WRITING') result.warnings.push('Writing tasks are imported without automatic scoring; review grading separately.');
+    if (s.type === 'WRITING') result.warnings.push('Writing is graded automatically after submission and contributes up to 10 points.');
   }
   return result;
 }

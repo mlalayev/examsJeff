@@ -224,6 +224,27 @@ export default function TeacherSchedulePage() {
     dayClass: DayClass;
   } | null>(null);
 
+  const [linkedLesson, setLinkedLesson] = useState<string | null>(null);
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    const date = q.get("date");
+    if (q.get("lessonId") && date && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      const [year, month] = date.split("-").map(Number);
+      setCurrentYear(year); setCurrentMonth(month - 1); setLinkedLesson(q.get("lessonId"));
+    }
+  }, []);
+  useEffect(() => {
+    if (!linkedLesson || !data) return;
+    const l = data.lessons.find(l => l.id === linkedLesson);
+    if (!l) return;
+    setFeedbackCtx({ date: l.date.slice(0, 10), dayClass: {
+      key: `lesson-${l.id}`, kind: "lesson", title: l.title, timeSlot: l.timeSlot,
+      className: l.class?.name ?? null, classId: l.class?.id ?? null,
+      studentCount: l.class?._count?.classStudents ?? 0, lessonId: l.id, status: l.status,
+    } });
+    setLinkedLesson(null);
+  }, [data, linkedLesson]);
+
   const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
 
   const showToast = useCallback((message: string) => {

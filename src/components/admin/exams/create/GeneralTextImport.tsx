@@ -22,7 +22,8 @@ SHORT_TEXT: Answer: accepted answer | alternative. No choices.
 FILL_IN_BLANK: use [input] in the question text; Answer: first blank | second blank. One exact answer per blank.
 DND_GAP: use ___ for blanks; Bank: word1 | word2 | distractor; Answer: word1 | word2 in blank order.
 ORDER_SENTENCE: Tokens: am | I | happy; Answer: 2, 1, 3 (one-based token positions, every token exactly once).
-ESSAY: only in WRITING; no Answer or choices. Include word count and task requirements in question text. Writing allows ESSAY and SHORT_TEXT only. Essays require separate grading, not an answer key.
+ESSAY: only in WRITING; no Answer or choices. Include word count and task requirements in question text. Writing allows ESSAY and SHORT_TEXT only. Essays are automatically graded after submission. ${homeworkCategory ? "Homework keeps its existing grading rules." : "General English exam scoring: Grammar 25, Vocabulary 25, Listening 25 (all Listening sections combined by question count), Reading 15, Writing 10. Speaking is separate and never contributes to overall. Missing categories score zero; points are not redistributed."}
+SPEAKING_RECORDING: only in [SPEAKING]; put the oral task in question text, Type: SPEAKING_RECORDING, no Answer or choices. Students record up to 2 minutes per question; transcripts are assessed separately out of 100. Do not impose IELTS parts or band scores.
 ${homeworkCategory ? "Required" : "Optional"} Explanation: comes last in each question. ${homeworkCategory ? "Explain the answer or give marking guidance for an essay. Keep solutions out of prompts and passages." : ""} Check all answer keys. No unsupported fields, image markers or embedded files; images can be added using Edit afterwards.
 Maximum text 200,000 characters. Use $...$ for inline math, $$...$$ for separate equations if needed.
 

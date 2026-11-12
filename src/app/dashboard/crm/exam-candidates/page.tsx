@@ -2,13 +2,14 @@
 
 import { useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import ExamCandidatesDashboard from "@/components/dashboard/ExamCandidatesDashboard";
 import UnifiedLoading from "@/components/loading/UnifiedLoading";
 
 export default function CrmExamCandidatesPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const usersView = usePathname().startsWith("/dashboard/users/");
   const role = (session?.user as { role?: string } | undefined)?.role;
   const allowed = role === "ADMIN" || role === "BOSS" || role === "CREATOR";
   const studentsListHref =
@@ -33,8 +34,8 @@ export default function CrmExamCandidatesPage() {
   return (
     <ExamCandidatesDashboard
       studentsListHref={studentsListHref}
-      parentHref="/dashboard/crm"
-      parentLabel="CRM"
+      parentHref={usersView ? "/dashboard/users/all" : "/dashboard/crm"}
+      parentLabel={usersView ? "Users" : "CRM"}
     />
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { withSatBreak } from '@/lib/sat-break';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -180,8 +181,8 @@ export function SatDigitalRunner({
 
   const sortedSections = useMemo(() => {
     if (!data?.sections) return [];
-    return [...data.sections].sort((a, b) => a.order - b.order);
-  }, [data?.sections]);
+    return withSatBreak(data.sections, data.isHomework);
+  }, [data?.sections, data?.isHomework]);
 
   useEffect(() => {
     setQIndex(0);
@@ -257,10 +258,17 @@ export function SatDigitalRunner({
         localStorage.removeItem(lockedModulesStorageKey(attemptId));
         for (const section of json.sections || []) localStorage.removeItem(satTimerKey(attemptId, section.id));
       }
+      const modules = withSatBreak(json.sections || [], !!json.isHomework);
+      // Existing attempts already in Math must not be sent back to a newly inserted break.
+      const breakIndex = modules.findIndex((s: any) => isBreakSection(s));
+      if (breakIndex >= 0 && modules.slice(breakIndex + 1).some((s: any) => locked.has(s.id) || localStorage.getItem(satTimerKey(attemptId, s.id)))) {
+        locked.add(modules[breakIndex].id);
+        persistLockedModules(attemptId, locked);
+      }
       setLockedModules(locked);
 
       // Move user to the first unlocked module (can't return to submitted modules)
-      const firstUnlocked = (json.sections || []).findIndex((s: any) => !locked.has(s.id));
+      const firstUnlocked = modules.findIndex((s: any) => !locked.has(s.id));
       setModuleIndex(firstUnlocked >= 0 ? firstUnlocked : 0);
       setQIndex(0);
     } catch (e) {
@@ -343,7 +351,7 @@ export function SatDigitalRunner({
 
   useEffect(() => {
     expireHandledRef.current = null;
-    if (data?.isHomework || !currentSection || isBreak) {
+    if (data?.isHomework || !currentSection) {
       setSecondsLeft(null);
       return;
     }
@@ -355,7 +363,7 @@ export function SatDigitalRunner({
       if (raw) {
         try {
           const { endTime } = JSON.parse(raw) as { endTime: number };
-          if (endTime > Date.now()) end = endTime;
+          if (Number.isFinite(endTime) && endTime > 0) end = endTime;
         } catch {
           localStorage.removeItem(key);
         }
@@ -381,11 +389,15 @@ export function SatDigitalRunner({
         expireHandledRef.current !== sectionId
       ) {
         expireHandledRef.current = sectionId;
-        void saveSection(
+        if (!isBreak) void saveSection(
           currentSection,
           answersRef.current[currentSection.id] || {}
         );
-        setLockedModules((prev) => new Set([...prev, currentSection.id]));
+        setLockedModules((prev) => {
+          const next = new Set([...prev, currentSection.id]);
+          persistLockedModules(attemptId, next);
+          return next;
+        });
         setModuleIndex((i) =>
           i < sortedSections.length - 1 ? i + 1 : i
         );
@@ -531,7 +543,7 @@ export function SatDigitalRunner({
                   {currentSection.title}
                 </div>
                 <div className="text-xs text-slate-500">
-                  Module {moduleIndex + 1} of {sortedSections.length}
+                  Module {sortedSections.slice(0, moduleIndex + 1).filter(s => !isBreakSection(s)).length} of {sortedSections.filter(s => !isBreakSection(s)).length}
                   {isMathModule ? " · Math" : isVerbalModule ? " · Verbal" : ""}
                 </div>
               </div>
@@ -607,6 +619,7 @@ export function SatDigitalRunner({
       <main className="flex-1 min-h-0 flex flex-col px-6 pb-4">
         {isBreak && currentSection ? (
           <div className="flex-1 flex flex-col items-center justify-center max-w-lg mx-auto text-center gap-6 py-16">
+            {!data?.isHomework && <div className="rounded-3xl border border-indigo-100 bg-indigo-50 px-12 py-8 text-center shadow-sm"><p className="mb-2 text-xs font-semibold uppercase tracking-widest text-indigo-700">Next: Math Module 1</p><div role="timer" aria-label="Break time remaining" className="text-6xl font-semibold tabular-nums text-[#303380]">{formatCountdown(secondsLeft ?? 600)}</div><p className="mt-3 text-sm text-indigo-700">Your answers are saved. Take a moment to recharge.</p></div>}
             <h2 className="text-xl font-semibold text-slate-900">
               {currentSection.title}
             </h2>
@@ -617,6 +630,11 @@ export function SatDigitalRunner({
             <button
               type="button"
               onClick={() => {
+                setLockedModules(prev => {
+                  const next = new Set([...prev, currentSection!.id]);
+                  persistLockedModules(attemptId, next);
+                  return next;
+                });
                 setModuleIndex((i) => Math.min(i + 1, sortedSections.length - 1));
                 setQIndex(0);
               }}
