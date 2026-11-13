@@ -171,6 +171,12 @@ export function SatDigitalRunner({
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const [lockedModules, setLockedModules] = useState<Set<string>>(() => new Set());
   const [submitting, setSubmitting] = useState(false);
+  const [savingModule, setSavingModule] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const submitBusyRef = useRef(false);
+  const moduleBusyRef = useRef(false);
+  // Serialize this runner's saves so an older autosave cannot overtake the final save.
+  const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
   const [showSubmitExam, setShowSubmitExam] = useState(false);
   const [showQuestionNavModal, setShowQuestionNavModal] = useState(false);
   const [showSubmitModuleModal, setShowSubmitModuleModal] = useState(false);
@@ -237,9 +243,10 @@ export function SatDigitalRunner({
       if (json.savedAnswers && json.sections) {
         for (const s of json.sections) {
           const fromServer = json.savedAnswers[s.type];
-          if (fromServer) {
-            loaded[s.id] = { ...(loaded[s.id] || {}), ...fromServer };
-          }
+          const combined = { ...(fromServer || {}), ...(loaded[s.id] || {}) };
+          loaded[s.id] = Object.fromEntries(s.questions
+            .filter(q => Object.prototype.hasOwnProperty.call(combined, q.id))
+            .map(q => [q.id, combined[q.id]]));
         }
       }
 
@@ -269,7 +276,8 @@ export function SatDigitalRunner({
 
       // Move user to the first unlocked module (can't return to submitted modules)
       const firstUnlocked = modules.findIndex((s: any) => !locked.has(s.id));
-      setModuleIndex(firstUnlocked >= 0 ? firstUnlocked : 0);
+      setModuleIndex(firstUnlocked >= 0 ? firstUnlocked : Math.max(0, modules.length - 1));
+      if (modules.length > 0 && firstUnlocked < 0) setShowSubmitExam(true);
       setQIndex(0);
     } catch (e) {
       console.error(e);
@@ -293,22 +301,33 @@ export function SatDigitalRunner({
   }, [showQuestionNavModal]);
 
   const saveSection = useCallback(
-    async (section: Section, sectionAnswers: Record<string, any>) => {
-      const res = await fetch(`/api/attempts/${attemptId}/save`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sectionType: section.type,
-          answers: sectionAnswers,
-        }),
+    (section: Section, sectionAnswers: Record<string, any>) => {
+      const body = JSON.stringify({ sectionType: section.type, answers: sectionAnswers });
+      const pending = saveQueueRef.current.then(async () => {
+        const res = await fetch(`/api/attempts/${attemptId}/save`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body,
+        });
+        if (!res.ok) {
+          const json = await res.json().catch(() => ({}));
+          throw new Error(json.error || "Answers could not be saved. Please retry.");
+        }
       });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        console.warn("Save failed", j);
-      }
+      // A failed request must not poison subsequent retry attempts.
+      saveQueueRef.current = pending.catch(() => {});
+      return pending;
     },
     [attemptId]
   );
+
+  const reportSaveError = useCallback((error: unknown) => {
+    setSaveError(error instanceof Error ? error.message : "Answers could not be saved. Please retry.");
+  }, []);
+
+  useEffect(() => () => {
+    if (autosaveRef.current) clearTimeout(autosaveRef.current);
+  }, []);
 
   const persistLocal = useCallback(
     (next: Record<string, Record<string, any>>) => {
@@ -327,14 +346,14 @@ export function SatDigitalRunner({
       if (autosaveRef.current) clearTimeout(autosaveRef.current);
       if (isBreakSection(section)) return;
       autosaveRef.current = setTimeout(() => {
-        saveSection(section, answersRef.current[section.id] || {});
+        void saveSection(section, answersRef.current[section.id] || {}).catch(reportSaveError);
       }, 2000);
     },
-    [saveSection]
+    [saveSection, reportSaveError]
   );
 
   const setAnswer = (questionId: string, value: any) => {
-    if (!currentSection || lockedModules.has(currentSection.id)) return;
+    if (!currentSection || lockedModules.has(currentSection.id) || submitBusyRef.current || moduleBusyRef.current) return;
     setAnswers((prev) => {
       const next = {
         ...prev,
@@ -353,6 +372,10 @@ export function SatDigitalRunner({
     expireHandledRef.current = null;
     if (data?.isHomework || !currentSection) {
       setSecondsLeft(null);
+      return;
+    }
+    if (lockedModules.has(currentSection.id)) {
+      setSecondsLeft(0);
       return;
     }
     const dur = Math.max(1, currentSection.durationMin) * 60;
@@ -389,18 +412,19 @@ export function SatDigitalRunner({
         expireHandledRef.current !== sectionId
       ) {
         expireHandledRef.current = sectionId;
-        if (!isBreak) void saveSection(
+        if (!isBreak && !submitBusyRef.current) void saveSection(
           currentSection,
           answersRef.current[currentSection.id] || {}
-        );
+        ).catch(reportSaveError);
         setLockedModules((prev) => {
           const next = new Set([...prev, currentSection.id]);
           persistLockedModules(attemptId, next);
           return next;
         });
-        setModuleIndex((i) =>
-          i < sortedSections.length - 1 ? i + 1 : i
-        );
+        setShowSubmitModuleModal(false);
+        setShowQuestionNavModal(false);
+        if (moduleIndex === sortedSections.length - 1 && !submitBusyRef.current) setShowSubmitExam(true);
+        setModuleIndex((i) => i < sortedSections.length - 1 ? i + 1 : i);
       }
     };
     tick();
@@ -412,7 +436,10 @@ export function SatDigitalRunner({
     isBreak,
     attemptId,
     sortedSections.length,
+    moduleIndex,
+    lockedModules,
     saveSection,
+    reportSaveError,
   ]);
 
   const toggleEliminated = (qid: string, choiceIdx: number) => {
@@ -425,31 +452,44 @@ export function SatDigitalRunner({
   };
 
   const handleSubmitModule = async () => {
-    if (!currentSection || isBreak) return;
-    await saveSection(currentSection, answers[currentSection.id] || {});
-    if (typeof window !== "undefined") {
-      localStorage.removeItem(satTimerKey(attemptId, currentSection.id));
-    }
-    if (!data?.isHomework) setLockedModules((prev) => {
-      const next = new Set([...prev, currentSection.id]);
-      persistLockedModules(attemptId, next);
-      return next;
-    });
-    if (moduleIndex < sortedSections.length - 1) {
-      setModuleIndex((i) => i + 1);
-      setQIndex(0);
-    } else {
-      setShowSubmitExam(true);
+    if (!currentSection || isBreak || moduleBusyRef.current || submitBusyRef.current) return;
+    moduleBusyRef.current = true;
+    setSavingModule(true);
+    setSaveError(null);
+    if (autosaveRef.current) clearTimeout(autosaveRef.current);
+    try {
+      await saveSection(currentSection, answersRef.current[currentSection.id] || {});
+      // Keep the expired timer as well as the lock until the exam is submitted.
+      if (!data?.isHomework) setLockedModules((prev) => {
+        const next = new Set([...prev, currentSection.id]);
+        persistLockedModules(attemptId, next);
+        return next;
+      });
+      if (moduleIndex < sortedSections.length - 1) {
+        // Expiry may already have moved to the next module while saving.
+        setModuleIndex((i) => i === moduleIndex ? i + 1 : i);
+      } else {
+        setShowSubmitExam(true);
+      }
+    } catch (error) {
+      reportSaveError(error);
+    } finally {
+      moduleBusyRef.current = false;
+      setSavingModule(false);
     }
   };
 
   const handleSubmitExamConfirm = async () => {
+    if (submitBusyRef.current || moduleBusyRef.current) return;
+    submitBusyRef.current = true;
     setShowSubmitExam(false);
     setSubmitting(true);
+    setSaveError(null);
+    if (autosaveRef.current) clearTimeout(autosaveRef.current);
     try {
       for (const s of sortedSections) {
         if (isBreakSection(s)) continue;
-        await saveSection(s, answers[s.id] || {});
+        await saveSection(s, answersRef.current[s.id] || {});
       }
       const res = await fetch(`/api/attempts/${attemptId}/submit`, {
         method: "POST",
@@ -466,9 +506,9 @@ export function SatDigitalRunner({
       }
       router.replace(`/attempts/${attemptId}/results`);
     } catch (e) {
-      console.error(e);
-      alert(e instanceof Error ? e.message : "Submit failed");
+      reportSaveError(e);
     } finally {
+      submitBusyRef.current = false;
       setSubmitting(false);
     }
   };
@@ -534,6 +574,11 @@ export function SatDigitalRunner({
         annotateMode ? "selection:bg-amber-200" : ""
       }`}
     >
+      {saveError && (
+        <div role="alert" className="mx-6 mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          {saveError} Your answers are kept on this device. Check your connection and try submitting again.
+        </div>
+      )}
       <header className="shrink-0 px-6 pt-4 pb-1">
         <div className="w-full flex items-start justify-between gap-4">
           <div className="flex flex-col gap-2">
@@ -736,7 +781,7 @@ export function SatDigitalRunner({
                         <input
                           value={answers[currentSection.id]?.[currentQuestion.id] ?? ""}
                           onChange={(e) => setAnswer(currentQuestion.id, e.target.value)}
-                          disabled={lockedModules.has(currentSection.id)}
+                          disabled={lockedModules.has(currentSection.id) || savingModule || submitting}
                           placeholder="Enter your answer"
                           className="w-full px-4 py-3 border border-slate-300 rounded-lg text-base"
                         />
@@ -856,7 +901,7 @@ export function SatDigitalRunner({
                           <input
                             value={answers[currentSection.id]?.[currentQuestion.id] ?? ""}
                             onChange={(e) => setAnswer(currentQuestion.id, e.target.value)}
-                            disabled={lockedModules.has(currentSection.id)}
+                            disabled={lockedModules.has(currentSection.id) || savingModule || submitting}
                             placeholder="Enter your answer"
                             className="w-full px-4 py-3 border border-slate-300 rounded-lg text-base"
                           />
@@ -916,7 +961,7 @@ export function SatDigitalRunner({
             </button>
             {!isBreak && questions.length > 0 && (
               <>
-                {qIndex < questions.length - 1 ? (
+                {qIndex < questions.length - 1 && !(moduleIndex === sortedSections.length - 1 && lockedModules.has(currentSection!.id)) ? (
                   <button
                     type="button"
                     disabled={lockedModules.has(currentSection!.id)}
@@ -934,7 +979,8 @@ export function SatDigitalRunner({
                   <button
                     type="button"
                     disabled={
-                      lockedModules.has(currentSection!.id) || submitting
+                      submitting || savingModule ||
+                      (moduleIndex !== sortedSections.length - 1 && lockedModules.has(currentSection!.id))
                     }
                     onClick={() => {
                       if (moduleIndex === sortedSections.length - 1) {
@@ -1015,7 +1061,7 @@ export function SatDigitalRunner({
               </button>
               <button
                 type="button"
-                disabled={lockedModules.has(currentSection.id)}
+                disabled={lockedModules.has(currentSection.id) || savingModule || submitting}
                 className="px-4 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
                 onClick={() => {
                   setShowSubmitModuleModal(false);
@@ -1150,7 +1196,7 @@ export function SatDigitalRunner({
               </button>
               <button
                 type="button"
-                disabled={submitting}
+                disabled={submitting || savingModule}
                 className="px-4 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
                 onClick={() => void handleSubmitExamConfirm()}
               >

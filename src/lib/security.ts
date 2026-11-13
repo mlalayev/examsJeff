@@ -332,7 +332,7 @@ export function addSecurityHeaders(response: NextResponse): NextResponse {
   // Permissions policy
   response.headers.set(
     "Permissions-Policy",
-    "camera=(), microphone=(self), geolocation=(), interest-cohort=()"
+    "camera=(), microphone=(self), geolocation=()"
   );
 
   return response;
