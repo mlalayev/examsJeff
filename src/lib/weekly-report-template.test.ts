@@ -64,3 +64,13 @@ test('empty input does not call AI',async()=>{
  expect(await generateWeeklyReports('ENGLISH','A1',[],period)).toEqual([]);
  expect(create).not.toHaveBeenCalled();
 });
+
+
+test('daily report on Sunday keeps the exact date and does not describe a week', async () => {
+  respond([report]);
+  const [result] = await generateWeeklyReports('ENGLISH','A1',[{...student,lessonsHeld:1,lessonsAttended:1,lateCount:0}],{start:'2026-11-15',end:'2026-11-16',kind:'day'});
+  expect(result.text).toContain('Nuray — A1\n15.11.2026\n');
+  expect(result.text).toContain('bu gün keçirilən 1 dərsdən 1 dərsdə iştirak edib');
+  expect(result.text).not.toContain('bu həftə');
+  expect(create.mock.calls[0][0].messages[0].content).toContain('gündəlik hesabat');
+});

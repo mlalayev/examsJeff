@@ -1161,6 +1161,24 @@ model WeeklyReport {
   @@map("weekly_reports")
 }
 
+// Daily reports are stored separately so Sunday never overwrites a weekly report.
+model DailyReport {
+  id          String   @id @default(cuid())
+  teacherId   String
+  classId     String
+  studentId   String
+  day   DateTime @db.Date
+  subject     String
+  studentName String
+  text        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([teacherId, classId, studentId, day])
+  @@index([teacherId, day])
+  @@map("daily_reports")
+}
+
 enum CrmContactStatus {
   WRITTEN
   CONSULTATION_BOOKED

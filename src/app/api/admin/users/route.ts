@@ -40,6 +40,7 @@ export async function GET(request: Request) {
         approved: true,
         branchId: true,
         createdAt: true,
+        studentProfile: { select: { program: true, studyTypes: true, monthlyFee: true } },
         _count: {
           select: {
             classesTeaching: true,

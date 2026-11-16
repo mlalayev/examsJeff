@@ -7,7 +7,7 @@ import { CalendarDays, ChevronLeft, ChevronRight, Clock, FileText, MoreHorizonta
 type Lesson = { id: string; title: string; date: string; timeSlot: string; status: string; _count?: { studentRecords: number }; class: { name: string; _count?: { classStudents: number } } | null };
 const hasFeedback = (lesson: Lesson) => (lesson._count?.studentRecords ?? 0) > 0;
 const lessonColor = (lesson: Lesson) => hasFeedback(lesson) ? 'border-emerald-200 border-l-emerald-500 bg-emerald-50/70' : 'border-rose-200 border-l-rose-400 bg-rose-50/60';
-type Month = { reportWeeks?: string[]; year: number; month: number; lessons: Lesson[]; oddDays: unknown[]; evenDays: unknown[] };
+type Month = { reportDays?: string[]; reportWeeks?: string[]; year: number; month: number; lessons: Lesson[]; oddDays: unknown[]; evenDays: unknown[] };
 export const dayKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 export function weekDates(anchor: Date) {
   const start = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate() - anchor.getDay());
@@ -16,16 +16,18 @@ export function weekDates(anchor: Date) {
 const fmt = (d: Date, options: Intl.DateTimeFormatOptions) => d.toLocaleDateString('en-US', options);
 const action = 'inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50';
 
-export default function ScheduleWorkspace({ data, loading, error, toast, applying, clearing, onNavigate, onDay, onLesson, onSchedule, onApply, onClear, onReport }: {
+export default function ScheduleWorkspace({ data, loading, error, toast, applying, clearing, onNavigate, onDay, onLesson, onSchedule, onApply, onClear, onReport, onDailyReport }: {
   data: Month | null; loading: boolean; error: string | null; toast: string | null; applying: boolean; clearing: boolean;
   onNavigate: (date: Date) => void; onDay: (date: Date) => void; onSchedule: () => void;
   onLesson?: (date: Date, lesson: Lesson) => void;
-  onApply: () => void; onClear: () => void; onReport: (date: Date) => void;
+  onApply: () => void; onClear: () => void; onReport: (date: Date) => void; onDailyReport: (date: Date) => void;
 }) {
   const [anchor, setAnchor] = useState(() => new Date());
   const [view, setView] = useState<'week'|'month'>('week');
   const [more, setMore] = useState(false);
   const [reports, setReports] = useState(false);
+  const [reportKind, setReportKind] = useState<'week'|'day'>('week');
+  const [extraReports, setExtraReports] = useState<{days:string[];weeks:string[]}>({days:[],weeks:[]});
   const [reportDate, setReportDate] = useState(dayKey(new Date()));
   const [extra, setExtra] = useState<Lesson[]>([]);
   const [extraError, setExtraError] = useState('');
@@ -38,14 +40,14 @@ export default function ScheduleWorkspace({ data, loading, error, toast, applyin
   // Boundary weeks can include two months. Load the other month without changing the active month's actions.
   useEffect(() => {
     const controller = new AbortController();
-    setExtra([]); setExtraError('');
+    setExtra([]); setExtraError(''); setExtraReports({days:[],weeks:[]});
     const dates = view === 'week' ? days.filter(d => d.getMonth() !== anchor.getMonth() || d.getFullYear() !== anchor.getFullYear()) : [];
     if (!dates.length) { setExtraLoading(false); return () => controller.abort(); }
     setExtraLoading(true);
     const date = dates[0];
     fetch(`/api/teacher/schedule/month?year=${date.getFullYear()}&month=${date.getMonth()+1}`, { signal: controller.signal })
       .then(async r => { if (!r.ok) throw new Error('Could not load the adjoining month.'); return r.json(); })
-      .then(body => { if (!controller.signal.aborted) setExtra(body.lessons || []); })
+      .then(body => { if (!controller.signal.aborted) { setExtra(body.lessons || []); setExtraReports({days:body.reportDays || [],weeks:body.reportWeeks || []}); } })
       .catch(e => { if (!controller.signal.aborted) setExtraError(e.message); })
       .finally(() => { if (!controller.signal.aborted) setExtraLoading(false); });
     return () => controller.abort();
@@ -58,6 +60,18 @@ export default function ScheduleWorkspace({ data, loading, error, toast, applyin
   const title = view === 'month' ? fmt(anchor, {month:'long',year:'numeric'}) : `${fmt(days[0],{month:'short',day:'numeric'})} – ${fmt(days[6],{month:'short',day:'numeric',year:'numeric'})}`;
   const calendarDays = Array.from({length: new Date(anchor.getFullYear(), anchor.getMonth()+1, 0).getDate()}, (_,i) => new Date(anchor.getFullYear(),anchor.getMonth(),i+1));
   const busy = loading || extraLoading;
+  const dailyReady = new Set([...(data?.reportDays || []), ...extraReports.days]);
+  const weeklyReady = new Set([...(data?.reportWeeks || []), ...extraReports.weeks]);
+  const reportButtons = (date: Date, compact = false) => <div className="mb-3 space-y-1.5">
+    <button type="button" aria-label={`Daily reports ${dayKey(date)}`} onClick={() => onDailyReport(date)} className="flex w-full flex-wrap items-center justify-center gap-1.5 rounded-lg border border-indigo-100 bg-indigo-50 px-2 py-2 text-xs font-medium text-indigo-800 hover:bg-indigo-100">
+      <FileText size={14}/>{compact ? 'Daily' : 'Daily reports'}
+      <span aria-label={dailyReady.has(dayKey(date)) ? 'Daily reports ready' : 'Daily reports not prepared'}>{dailyReady.has(dayKey(date)) ? '✓ Done' : '✕'}</span>
+    </button>
+    {date.getDay() === 0 && <button type="button" aria-label={`Weekly reports ${dayKey(date)}`} onClick={() => onReport(date)} className="flex w-full flex-wrap items-center justify-center gap-1.5 rounded-lg bg-[#303380] px-2 py-2 text-xs font-semibold text-white hover:bg-indigo-900">
+      <FileText size={14}/>{compact ? 'Weekly' : 'Weekly reports'}
+      <span aria-label={weeklyReady.has(dayKey(date)) ? 'Reports ready' : 'Reports not prepared'}>{weeklyReady.has(dayKey(date)) ? '✓ Done' : '✕'}</span>
+    </button>}
+  </div>;
   return <>
     <header className="mb-7 flex flex-wrap items-center justify-between gap-4">
       <div><div className="mb-2 text-xs font-semibold uppercase tracking-widest text-indigo-700">Teaching workspace</div><h1 className="text-3xl font-semibold tracking-tight text-slate-900">Your schedule</h1><p className="mt-2 text-sm text-slate-500">Plan your classes. Keep every lesson in one place.</p></div>
@@ -91,11 +105,23 @@ export default function ScheduleWorkspace({ data, loading, error, toast, applyin
       {busy ? <div className="p-16 text-center text-sm text-slate-500" role="status">Loading schedule…</div> : view === 'week' ? <div className="grid grid-cols-1 divide-y divide-slate-100 sm:grid-cols-2 xl:grid-cols-7 xl:divide-x xl:divide-y-0">
         {days.map(date => { const items = forDate(date); const today = dayKey(date)===dayKey(new Date()); return <div key={dayKey(date)} className={`min-w-0 p-3 xl:min-h-[360px] ${today?'bg-indigo-100/60 ring-1 ring-inset ring-indigo-300':''}`}>
           <button onClick={()=>{navigate(date);onDay(date);}} className="mb-4 flex w-full items-center justify-between rounded-lg p-2 text-left hover:bg-slate-100"><span className="text-xs font-semibold uppercase text-slate-500">{fmt(date,{weekday:'short'})}</span><span className={`flex h-8 w-8 items-center justify-center rounded-full text-lg font-semibold ${today?'bg-[#303380] text-white':'text-slate-800'}`}>{date.getDate()}</span></button>
-          {date.getDay() === 0 && <button type="button" onClick={() => onReport(date)} className="mb-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#303380] px-3 py-3 text-xs font-semibold text-white shadow-sm hover:bg-indigo-900"><FileText size={15}/>Weekly reports <span aria-label={data?.reportWeeks?.includes(dayKey(date)) ? "Reports ready" : "Reports not prepared"} className="ml-1">{data?.reportWeeks?.includes(dayKey(date)) ? "✓ Done" : "✕"}</span></button>}
+          {reportButtons(date)}
           <div className="space-y-2">{items.map(lesson=><button key={lesson.id} onClick={()=>{if (onLesson) onLesson(date, lesson); else {navigate(date);onDay(date);}}} className={`w-full rounded-xl border border-l-[3px] p-3 text-left shadow-sm transition hover:shadow-md ${lessonColor(lesson)}`}><span className="mb-2 flex items-center gap-1 text-xs text-indigo-700"><Clock size={12}/>{lesson.timeSlot}</span><span className="block break-words text-sm font-semibold text-slate-900">{lesson.class?.name || lesson.title}</span><span className="mt-2 flex items-center gap-1 text-xs text-slate-500"><Users size={12}/>{lesson.class?._count?.classStudents || 0} students</span><span className={`mt-2 block text-xs ${hasFeedback(lesson) ? 'text-emerald-800' : 'text-rose-800'}`}>{hasFeedback(lesson) ? 'Feedback saved' : 'Feedback not saved'}</span></button>)}{!items.length && <button className="w-full rounded-xl border border-dashed p-4 text-center text-xs text-slate-400 hover:border-indigo-300 hover:text-indigo-700" onClick={()=>{navigate(date);onDay(date);}}>No lessons · Add</button>}</div>
         </div>; })}
-      </div> : <div className="overflow-x-auto"><div className="min-w-[560px] grid grid-cols-7">{['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=><div key={d} className="border-b bg-slate-50 p-3 text-center text-xs font-semibold text-slate-500">{d}</div>)}{Array.from({length:calendarDays[0].getDay()},(_,i)=><div key={`pad${i}`} className="border-b border-r bg-slate-50/50"/>)}{calendarDays.map(date=><button key={dayKey(date)} onClick={()=>{navigate(date);onDay(date);}} className={`min-h-28 border-b border-r border-slate-100 p-2 text-left align-top hover:bg-indigo-50 ${dayKey(date)===dayKey(new Date()) ? 'bg-indigo-100/60 ring-1 ring-inset ring-indigo-300' : ''}`}><span className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-sm ${dayKey(date)===dayKey(new Date())?'bg-[#303380] text-white':'text-slate-600'}`}>{date.getDate()}</span>{forDate(date).slice(0,2).map(l=><span key={l.id} className={`mt-1 block truncate rounded border p-1 text-xs text-slate-800 ${lessonColor(l)}`}>{l.timeSlot} · {l.class?.name || l.title}</span>)}{forDate(date).length>2 && <span className="text-xs text-slate-500">+{forDate(date).length-2} more</span>}</button>)}</div></div>}
+      </div> : <div className="overflow-x-auto"><div className="min-w-[560px] grid grid-cols-7">{['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=><div key={d} className="border-b bg-slate-50 p-3 text-center text-xs font-semibold text-slate-500">{d}</div>)}{Array.from({length:calendarDays[0].getDay()},(_,i)=><div key={`pad${i}`} className="border-b border-r bg-slate-50/50"/>)}{calendarDays.map(date=><div key={dayKey(date)} className={`min-h-28 border-b border-r border-slate-100 p-2 ${dayKey(date)===dayKey(new Date()) ? 'bg-indigo-100/60 ring-1 ring-inset ring-indigo-300' : ''}`}>
+        <button aria-label={`Open day ${dayKey(date)}`} onClick={()=>{navigate(date);onDay(date);}} className="mb-2 block w-full rounded-lg text-left hover:bg-indigo-50"><span className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-sm ${dayKey(date)===dayKey(new Date())?'bg-[#303380] text-white':'text-slate-600'}`}>{date.getDate()}</span></button>
+        {reportButtons(date, true)}
+        {forDate(date).slice(0,2).map(l=><button key={l.id} onClick={()=>{if(onLesson) onLesson(date,l); else {navigate(date);onDay(date);}}} className={`mt-1 block w-full truncate rounded border p-1 text-left text-xs text-slate-800 ${lessonColor(l)}`}>{l.timeSlot} · {l.class?.name || l.title}</button>)}
+        {forDate(date).length>2 && <button onClick={()=>{navigate(date);onDay(date);}} className="text-xs text-slate-500">+{forDate(date).length-2} more</button>}
+      </div>)}</div></div>}
     </section>
-    {reports && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"><section role="dialog" aria-modal="true" aria-label="Weekly reports" className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"><div className="flex items-center justify-between"><h2 className="text-lg font-semibold">Weekly reports</h2><button aria-label="Close reports" onClick={()=>setReports(false)}><X size={20}/></button></div><p className="my-3 text-sm text-slate-500">Choose any date in the week. Reports use saved attendance and feedback, Sunday through Saturday.</p><label className="block text-sm font-medium">Week containing<input type="date" value={reportDate} onChange={e=>setReportDate(e.target.value)} className="my-2 block w-full rounded-lg border p-3"/></label><button disabled={!reportDate} className="mt-3 w-full rounded-xl bg-[#303380] p-3 text-sm font-semibold text-white disabled:opacity-50" onClick={()=>{const [y,m,d]=reportDate.split('-').map(Number);onReport(weekDates(new Date(y,m-1,d))[0]);setReports(false);}}>Open weekly reports</button></section></div>}
+    {reports && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"><section role="dialog" aria-modal="true" aria-label="Choose reports" className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+      <div className="flex items-center justify-between"><h2 className="text-lg font-semibold">Reports</h2><button aria-label="Close reports" onClick={()=>setReports(false)}><X size={20}/></button></div>
+      <div className="my-4 flex rounded-lg bg-slate-100 p-1">{(['day','week'] as const).map(kind=><button key={kind} aria-pressed={reportKind===kind} className={`flex-1 rounded-md p-2 text-sm ${reportKind===kind?'bg-white font-semibold text-indigo-900 shadow-sm':'text-slate-500'}`} onClick={()=>setReportKind(kind)}>{kind==='day'?'Daily':'Weekly'}</button>)}</div>
+      <p className="my-3 text-sm text-slate-500">{reportKind==='day'?'Reports use saved attendance and feedback from the selected day.':'Choose any date in the week. Reports use saved attendance and feedback, Sunday through Saturday.'}</p>
+      <label className="block text-sm font-medium">{reportKind==='day'?'Day':'Week containing'}<input type="date" value={reportDate} onChange={e=>setReportDate(e.target.value)} className="my-2 block w-full rounded-lg border p-3"/></label>
+      <button disabled={!reportDate} className="mt-3 w-full rounded-xl bg-[#303380] p-3 text-sm font-semibold text-white disabled:opacity-50" onClick={()=>{const [y,m,d]=reportDate.split('-').map(Number);const date=new Date(y,m-1,d);if(reportKind==='day') onDailyReport(date); else onReport(weekDates(date)[0]);setReports(false);}}>Open {reportKind==='day'?'daily':'weekly'} reports</button>
+    </section></div>}
+
   </>;
 }

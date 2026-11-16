@@ -1,7 +1,10 @@
 "use client";
 
+import UserDirectoryTable, { UserDirectoryRow, DirectoryActions, DirectoryFee, DirectoryProgram } from "@/components/dashboard/UserDirectoryTable";
+
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import UserDetailsButton from "@/components/modals/UserDetailsButton";
 import {
   Users,
   Search,
@@ -256,138 +259,22 @@ export default function StudentLifecycleDashboard({
         </div>
       )}
 
-      <div className="overflow-hidden rounded-md border border-gray-200 bg-white">
-        {loading ? (
-          <div className="p-8 text-center text-sm text-gray-500">Loading…</div>
-        ) : filtered.length === 0 ? (
-          <div className="p-8 text-center text-sm text-gray-500">
-            No students in this list.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] text-sm">
-              <thead className="border-b border-gray-200 bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left font-medium text-gray-700">
-                    Student
-                  </th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-700">
-                    Contact
-                  </th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-700">
-                    Program
-                  </th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-700">
-                    Branch
-                  </th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-700">
-                    Fee
-                  </th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-700">
-                    Status date
-                  </th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-700">
-                    Joined
-                  </th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-700">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {filtered.map((student) => {
-                  const types = resolveStudyTypes(
-                    student.studyTypes,
-                    student.program
-                  );
-                  return (
-                    <tr key={student.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3">
-                        <div className="font-medium text-gray-900">
-                          {student.name || "—"}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {student.email}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-gray-600">
-                        {student.phoneNumber ? (
-                          <span className="inline-flex items-center gap-1">
-                            <Phone className="h-3 w-3 text-gray-400" />
-                            {student.phoneNumber}
-                          </span>
-                        ) : (
-                          "—"
-                        )}
-                        {student.dateOfBirth && (
-                          <div className="mt-0.5 text-xs text-gray-500">
-                            DOB:{" "}
-                            {new Date(student.dateOfBirth).toLocaleDateString()}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-1">
-                          {types.map((id) => {
-                            const t = STUDY_TYPE_MAP[id];
-                            if (!t) return null;
-                            return (
-                              <span
-                                key={id}
-                                className={`rounded-full px-2 py-0.5 text-xs font-medium ring-1 ${t.chip}`}
-                              >
-                                {t.label}
-                              </span>
-                            );
-                          })}
-                        </div>
-                        {student.lessonModes &&
-                          student.lessonModes.length > 0 && (
-                            <div className="mt-1 flex flex-wrap gap-1">
-                              {student.lessonModes.map((id) => {
-                                const m = LESSON_MODE_MAP[id];
-                                if (!m) return null;
-                                return (
-                                  <span
-                                    key={id}
-                                    className={`rounded-full px-2 py-0.5 text-xs ring-1 ${m.chip}`}
-                                  >
-                                    {m.label}
-                                  </span>
-                                );
-                              })}
-                            </div>
-                          )}
-                      </td>
-                      <td className="px-4 py-3 text-gray-600">
-                        {student.branch?.name ?? "—"}
-                      </td>
-                      <td className="px-4 py-3 text-gray-600">
-                        {student.monthlyFee != null && student.monthlyFee > 0
-                          ? `${student.monthlyFee.toFixed(2)} AZN`
-                          : "—"}
-                        {student.currentMonth && (
-                          <div className="mt-0.5 text-xs text-gray-500">
-                            This month: {student.currentMonth.status}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-600">
+      <UserDirectoryTable loading={loading} empty={filtered.length === 0} emptyMessage="No students found">
+        {filtered.map((student) => {
+          return <UserDirectoryRow key={student.id} name={student.name} email={student.email}
+            program={<DirectoryProgram program={student.program} studyTypes={student.studyTypes} lessonModes={student.lessonModes}/>} branch={student.branch?.name}
+            fee={<DirectoryFee amount={student.monthlyFee} status={student.currentMonth?.status}/>}
+            status={<><span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-medium">{bucket === "FINISHED" ? "Completed" : bucket === "ARCHIVED" ? "Archived" : "Paused"}</span><span className="text-xs text-slate-500">
                         {bucket === "STOPPED" && student.lessonsStoppedAt
                           ? new Date(
                               student.lessonsStoppedAt
                             ).toLocaleDateString()
                           : bucket === "ARCHIVED" && student.archivedAt
                           ? new Date(student.archivedAt).toLocaleDateString()
-                          : bucket === "FINISHED"
-                          ? "Completed"
-                          : "—"}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-600">
-                        {new Date(student.createdAt).toLocaleDateString()}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap items-center gap-1.5">
+                          : null}
+                      </span></>} joined={student.createdAt}
+            actions={<DirectoryActions>
+<UserDetailsButton userId={student.id} />
                           <button
                             type="button"
                             onClick={() => setEditUserId(student.id)}
@@ -442,16 +329,10 @@ export default function StudentLifecycleDashboard({
                               ? "Unarchive"
                               : "Restore"}
                           </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                        </DirectoryActions>}
+          />;
+        })}
+      </UserDirectoryTable>
 
       {editUserId && (
         <EditAccountModal

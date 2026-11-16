@@ -1,0 +1,374 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { requireTeacher } from "@/lib/auth-utils";
+import { handleApiError } from "@/lib/api-helpers";
+import { checkRateLimit } from "@/lib/rate-limiter";
+import { RATE_LIMITS } from "@/lib/rate-limit-config";
+import { ReportResponseError } from "@/lib/weekly-report-ai";
+import {
+  generateWeeklyReports,
+  type ReportTemplateKind,
+  type WeeklyReportStudent,
+} from "@/lib/weekly-report-ai";
+import { LESSON_TYPE_LABELS } from "@/lib/schedule-validation";
+import { z } from "zod";
+
+
+
+const bodySchema = z.object({
+  start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "start must be YYYY-MM-DD"),
+  end: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "end must be YYYY-MM-DD"),
+  regenerate: z.boolean().optional().default(false),
+});
+
+function toUtc(date: string) {
+  const [y, m, d] = date.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d));
+}
+
+// Map the stored class name (= LESSON_TYPE_LABELS[...]) to a report template.
+// Speaking classes intentionally return null (no reports). English-family
+// lessons (English/Kids/IELTS/TOEFL/SAT) share the English template.
+function templateFor(className: string): ReportTemplateKind | null {
+  switch (className) {
+    case LESSON_TYPE_LABELS.MATH:
+      return "MATH";
+    case LESSON_TYPE_LABELS.IT:
+      return "IT";
+    case LESSON_TYPE_LABELS.SPEAKING:
+      return null;
+    default:
+      return "ENGLISH";
+  }
+}
+
+const HW_LABELS: Record<string, string> = {
+  COMPLETED: "tam",
+  INCOMPLETE: "qismən",
+  NOT_DONE: "yerinə yetirilməyib",
+  ASSIGNED: "təyin edilib, tamamlanması yoxlanmayıb",
+};
+
+const PERF_LABELS: Record<string, string> = {
+  EXCELLENT: "əla",
+  GOOD: "yaxşı",
+  AVERAGE: "orta",
+  WEAK: "zəif",
+  DID_NOT_PARTICIPATE: "iştirak etmədi",
+};
+
+function nameOf(s: {
+  firstName: string | null;
+  lastName: string | null;
+  email: string;
+}) {
+  return (
+    [s.firstName, s.lastName].filter(Boolean).join(" ").trim() ||
+    s.email.split("@")[0]
+  );
+}
+
+// Shared daily/weekly generation. The route selects the period, never the request body.
+export async function scheduleReports(request: Request, period: "week" | "day") {
+  try {
+    const user = await requireTeacher();
+    const teacherId = (user as any).id as string;
+
+    const { start, end, regenerate } = bodySchema.parse(await request.json());
+    const startUtc = toUtc(start);
+    const endUtc = toUtc(end);
+
+    const days = period === "day" ? 1 : 7;
+    if (!Number.isFinite(startUtc.getTime()) || !Number.isFinite(endUtc.getTime()) ||
+        startUtc.toISOString().slice(0, 10) !== start || endUtc.toISOString().slice(0, 10) !== end ||
+        endUtc.getTime() - startUtc.getTime() !== days * 86400000) {
+      return NextResponse.json({ error: `Choose a valid ${days}-day report period.` }, { status: 400 });
+    }
+    // Daily and weekly caches must remain independent, including on Sundays.
+    if (!regenerate) {
+      const cached = period === "day" ? await prisma.dailyReport.findMany({
+        where: { teacherId, day: startUtc },
+        orderBy: [{ subject: "asc" }, { studentName: "asc" }],
+      }) : await prisma.weeklyReport.findMany({
+        where: { teacherId, weekStart: startUtc },
+        orderBy: [{ subject: "asc" }, { studentName: "asc" }],
+      });
+      if (cached.length > 0) {
+        return NextResponse.json({
+          reports: cached.map((r) => ({
+            classId: r.classId,
+            subject: r.subject,
+            studentId: r.studentId,
+            studentName: r.studentName,
+            text: r.text,
+          })),
+          cached: true,
+          candidates: cached.length,
+          lessonsFound: cached.length,
+          recordsFound: cached.length,
+        });
+      }
+    }
+
+    const limit = RATE_LIMITS.GENERIC_AI_SCORE;
+    const rl = checkRateLimit(
+      `weekly-report:${teacherId}`,
+      limit.maxRequests,
+      limit.windowMs
+    );
+    if (rl.limited) {
+      return NextResponse.json(
+        {
+          error: "Too many report requests",
+          hint: `Please wait ${rl.resetIn} seconds before trying again.`,
+        },
+        { status: 429 }
+      );
+    }
+
+    const lessons = await prisma.lessonSession.findMany({
+      where: {
+        teacherId,
+        status: { not: "CANCELLED" },
+        classId: { not: null },
+        date: { gte: startUtc, lt: endUtc },
+      },
+      select: {
+        id: true,
+        topic: true,
+        classId: true,
+        class: { select: { id: true, name: true } },
+        studentRecords: {
+          select: {
+            studentId: true,
+            attendance: true,
+            lateMinutes: true,
+            homeworkStatus: true,
+            performance: true,
+            feedback: true,
+            teacherNote: true,
+            behaviorNote: true,
+            student: {
+              select: { firstName: true, lastName: true, email: true },
+            },
+          },
+        },
+      },
+    });
+
+    // Group by class
+    type ClassBucket = {
+      name: string;
+      sessions: typeof lessons;
+    };
+    const buckets = new Map<string, ClassBucket>();
+    for (const l of lessons) {
+      if (!l.classId) continue;
+      const b = buckets.get(l.classId) ?? { name: l.class?.name ?? "", sessions: [] };
+      b.sessions.push(l);
+      buckets.set(l.classId, b);
+    }
+
+    const jobs: {
+      classId: string;
+      subject: string;
+      kind: ReportTemplateKind;
+      students: WeeklyReportStudent[];
+    }[] = [];
+
+    for (const [classId, bucket] of buckets) {
+      const kind = templateFor(bucket.name);
+      if (!kind) continue; // speaking → skip
+
+      // Aggregate per student from records.
+      type Agg = {
+        name: string;
+        held: number;
+        excused: number;
+        topics: Set<string>;
+        attended: number;
+        lateCount: number;
+        lateMinutesTotal: number;
+        hw: Record<string, number>;
+        teacherNotes: string[];
+        behaviorNotes: string[];
+        performances: string[];
+      };
+      const perStudent = new Map<string, Agg>();
+
+      for (const session of bucket.sessions) {
+        for (const r of session.studentRecords) {
+          const agg =
+            perStudent.get(r.studentId) ??
+            ({
+              name: nameOf(r.student),
+              held: 0,
+              excused: 0,
+              topics: new Set<string>(),
+              attended: 0,
+              lateCount: 0,
+              lateMinutesTotal: 0,
+              hw: {},
+              teacherNotes: [],
+              behaviorNotes: [],
+              performances: [],
+            } as Agg);
+
+          // A missing record is unknown attendance, never an absence.
+          agg.held += 1;
+          if (r.attendance === "EXCUSED") agg.excused += 1;
+          const topic = session.topic?.trim();
+          if (topic) agg.topics.add(topic);
+          if (r.attendance === "PRESENT" || r.attendance === "LATE") {
+            agg.attended += 1;
+          }
+          if (r.attendance === "LATE") {
+            agg.lateCount += 1;
+            agg.lateMinutesTotal += r.lateMinutes ?? 0;
+          }
+          const hwKey = r.homeworkStatus;
+          if (hwKey && hwKey !== "NOT_ASSIGNED") {
+            agg.hw[hwKey] = (agg.hw[hwKey] ?? 0) + 1;
+          }
+          const tn = (r.teacherNote?.trim() || r.feedback || "").trim();
+          if (tn) agg.teacherNotes.push(tn);
+          const bn = (r.behaviorNote ?? "").trim();
+          if (bn) agg.behaviorNotes.push(bn);
+          if (r.performance) agg.performances.push(PERF_LABELS[r.performance] ?? r.performance);
+
+          perStudent.set(r.studentId, agg);
+        }
+      }
+
+      const students: WeeklyReportStudent[] = [...perStudent.entries()].map(
+        ([studentId, a]) => {
+          const hwParts = Object.entries(a.hw).map(
+            ([k, n]) => `${n} dərs üzrə ${HW_LABELS[k] ?? k}`
+          );
+          const homeworkSummary =
+            hwParts.length > 0 ? hwParts.join(", ") : "tapşırıq təyin edilməyib";
+          return {
+            studentId,
+            name: a.name,
+            lessonsHeld: a.held,
+            lessonsExcused: a.excused,
+            lessonsAttended: a.attended,
+            hadAbsence: a.held - a.attended - a.excused > 0,
+            lateCount: a.lateCount,
+            lateMinutesTotal: a.lateMinutesTotal,
+            topics: [...a.topics],
+            homeworkSummary,
+            teacherNotes: a.teacherNotes,
+            behaviorNotes: a.behaviorNotes,
+            performances: a.performances,
+          };
+        }
+      );
+
+      if (students.length > 0) {
+        jobs.push({ classId, subject: bucket.name, kind, students });
+      }
+    }
+
+    // Generate reports for each class in parallel.
+    let results: {
+      classId: string;
+      subject: string;
+      studentId: string;
+      studentName: string;
+      text: string;
+    }[] = [];
+
+    if (jobs.length > 0 && !process.env.OPENAI_API_KEY?.trim()) {
+      return NextResponse.json(
+        { error: "OPENAI_API_KEY is not configured on this server" },
+        { status: 503 }
+      );
+    }
+
+    try {
+      // Bound the number of simultaneous provider requests for large schedules.
+      for (let offset = 0; offset < jobs.length; offset += 3) {
+      const generated = await Promise.all(
+        jobs.slice(offset, offset + 3).map(async (job) => {
+          const reports = await generateWeeklyReports(
+            job.kind,
+            job.subject,
+            job.students,
+            { start, end, ...(period === "day" ? { kind: "day" as const } : {}) }
+          );
+          const nameById = new Map(
+            job.students.map((s) => [s.studentId, s.name])
+          );
+          return reports.map((r) => ({
+            classId: job.classId,
+            subject: job.subject,
+            studentId: r.studentId,
+            studentName: nameById.get(r.studentId) ?? "",
+            text: r.text,
+          }));
+        })
+      );
+      results.push(...generated.flat());
+      }
+    } catch (aiError: any) {
+      console.error(`${period} reports generation failed`, { name: aiError?.name, status: aiError?.status, code: aiError?.code });
+      if (aiError instanceof ReportResponseError) return NextResponse.json({ error: 'AI returned incomplete reports. Please try Regenerate again. Previously saved reports have been preserved.', code: 'REPORT_AI_RESPONSE' }, { status: 502 });
+      if (aiError?.status === 429) return NextResponse.json({ error: 'The AI service limit was reached. Please wait a minute and try again.', code: 'REPORT_AI_LIMIT' }, { status: 429 });
+      if (aiError?.status === 401 || aiError?.status === 403) return NextResponse.json({ error: 'The AI service could not authenticate. Please ask an administrator to check its configuration.', code: 'REPORT_AI_AUTH' }, { status: 503 });
+      if (aiError?.name === 'APIConnectionTimeoutError' || aiError?.name === 'APIConnectionError' || aiError?.status >= 500) return NextResponse.json({ error: 'The AI service is temporarily unavailable. Please try again. Previously saved reports have been preserved.', code: 'REPORT_AI_UNAVAILABLE' }, { status: 503 });
+      throw aiError;
+    }
+
+    results.sort(
+      (a, b) =>
+        a.subject.localeCompare(b.subject) ||
+        a.studentName.localeCompare(b.studentName)
+    );
+
+    const candidates = jobs.reduce((n, j) => n + j.students.length, 0);
+    const recordsFound = lessons.reduce(
+      (n, l) => n + l.studentRecords.length,
+      0
+    );
+
+    // Replace only this teacher's chosen period, after all AI results succeed.
+    if (results.length > 0) {
+      if (period === "day") {
+        await prisma.$transaction([
+          prisma.dailyReport.deleteMany({ where: { teacherId, day: startUtc } }),
+          prisma.dailyReport.createMany({ data: results.map(r => ({ ...r, teacherId, day: startUtc })) }),
+        ]);
+      } else await prisma.$transaction([
+        prisma.weeklyReport.deleteMany({
+          where: { teacherId, weekStart: startUtc },
+        }),
+        prisma.weeklyReport.createMany({
+          data: results.map((r) => ({
+            teacherId,
+            classId: r.classId,
+            studentId: r.studentId,
+            weekStart: startUtc,
+            subject: r.subject,
+            studentName: r.studentName,
+            text: r.text,
+          })),
+        }),
+      ]);
+    }
+
+    console.log(
+      `[${period}-report] ${start}..${end} teacher=${teacherId} lessons=${lessons.length} records=${recordsFound} candidates=${candidates} generated=${results.length} regenerate=${regenerate}`
+    );
+
+    return NextResponse.json({
+      reports: results,
+      cached: false,
+      candidates,
+      lessonsFound: lessons.length,
+      recordsFound,
+    });
+  } catch (error) {
+    return handleApiError(error, `${period} reports error`);
+  }
+}

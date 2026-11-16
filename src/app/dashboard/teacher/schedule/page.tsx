@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ScheduleWorkspace from '@/components/teacher/ScheduleWorkspace';
 import QuickLessonFeedback from '@/components/teacher/QuickLessonFeedback';
 import {
@@ -175,6 +175,7 @@ type LessonSession = {
 
 type MonthData = {
   reportWeeks?: string[];
+  reportDays?: string[];
   year: number;
   month: number;
   oddDays: ScheduleSlot[];
@@ -450,14 +451,17 @@ export default function TeacherSchedulePage() {
   const [weekReports, setWeekReports] = useState<WeekReportItem[]>([]);
   const [weekReportEmptyMsg, setWeekReportEmptyMsg] = useState<string>("");
   const [weekReportCached, setWeekReportCached] = useState(false);
-  const [weekReportSunday, setWeekReportSunday] = useState<Date | null>(null);
+  const [reportAnchor, setReportAnchor] = useState<Date | null>(null);
+  const [reportKind, setReportKind] = useState<"week" | "day">("week");
+  const reportRequest = useRef(0);
 
-  const openWeekReports = useCallback(
-    async (sunday: Date, regenerate = false) => {
+  const openReports = useCallback(
+    async (sunday: Date, kind: "week" | "day", regenerate = false) => {
+    const requestId = ++reportRequest.current;
     const saturday = new Date(sunday);
-    saturday.setDate(saturday.getDate() + 6);
+    saturday.setDate(saturday.getDate() + (kind === "day" ? 0 : 6));
     const end = new Date(sunday);
-    end.setDate(end.getDate() + 7);
+    end.setDate(end.getDate() + (kind === "day" ? 1 : 7));
 
     const fmtRange = (a: Date, b: Date) => {
       const m = (d: Date) => MONTHS[d.getMonth()].slice(0, 3);
@@ -474,11 +478,14 @@ export default function TeacherSchedulePage() {
     setWeekReports([]);
     setWeekReportEmptyMsg("");
     setWeekReportCached(false);
-    setWeekReportSunday(sunday);
-    setWeekReportTitle(`Weekly reports · ${fmtRange(sunday, saturday)}`);
+    setReportAnchor(sunday);
+    setReportKind(kind);
+    setWeekReportTitle(kind === "day"
+      ? `Daily reports · ${sunday.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`
+      : `Weekly reports · ${fmtRange(sunday, saturday)}`);
 
     try {
-      const res = await fetch("/api/teacher/schedule/week/reports", {
+      const res = await fetch(`/api/teacher/schedule/${kind}/reports`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -488,11 +495,13 @@ export default function TeacherSchedulePage() {
         }),
       });
       const body = await res.json().catch(() => ({}));
+      if (reportRequest.current !== requestId) return;
       if (!res.ok) throw new Error(body.error || "Failed to generate reports");
       const list: WeekReportItem[] = body.reports ?? [];
       setWeekReports(list);
       if (list.length > 0) setData(previous => previous ? {
-        ...previous, reportWeeks: [...new Set([...(previous.reportWeeks || []), isoDay(sunday)])],
+        ...previous, [kind === "day" ? "reportDays" : "reportWeeks"]:
+          [...new Set([...(previous[kind === "day" ? "reportDays" : "reportWeeks"] || []), isoDay(sunday)])],
       } : previous);
       setWeekReportCached(Boolean(body.cached));
       if (list.length === 0) {
@@ -504,18 +513,18 @@ export default function TeacherSchedulePage() {
           );
         } else if (lessonsFound > 0) {
           setWeekReportEmptyMsg(
-            "Lessons were found for this week, but no student feedback has been saved yet. Open a day, click a class, save attendance/feedback, then try again. (Speaking lessons are excluded.)"
+            `Lessons were found for this ${kind}, but no eligible student feedback has been saved yet. Open the lesson, save attendance/feedback, then try again. (Speaking lessons are excluded.)`
           );
         } else {
           setWeekReportEmptyMsg(
-            "No lessons found for this week. Make sure the schedule is applied to this month and feedback is saved."
+            `No lessons found for this ${kind}. Make sure the schedule is applied to this month and feedback is saved.`
           );
         }
       }
     } catch (err) {
-      setWeekReportError((err as Error).message || "Failed to generate reports");
+      if (reportRequest.current === requestId) setWeekReportError((err as Error).message || "Failed to generate reports");
     } finally {
-      setWeekReportLoading(false);
+      if (reportRequest.current === requestId) setWeekReportLoading(false);
     }
   }, []);
 
@@ -651,7 +660,8 @@ export default function TeacherSchedulePage() {
           className: lesson.class?.name ?? null, classId: null, studentCount: lesson.class?._count?.classStudents || 0,
         } })}
         onSchedule={() => setSlotsModal("ODD")} onApply={applyMonth} onClear={clearMonth}
-        onReport={date => { void openWeekReports(date); }} />
+        onReport={date => { void openReports(date, "week"); }}
+        onDailyReport={date => { void openReports(date, "day"); }} />
 
       {/* Day detail modal */}
       {selectedDay !== null && !loading && data?.year === currentYear && data?.month === currentMonth + 1 && (
@@ -716,7 +726,7 @@ export default function TeacherSchedulePage() {
 
       {/* Weekly AI reports modal */}
       {weekReportOpen && (
-        <WeekReportModal
+        <WeekReportModal key={`${reportKind}-${reportAnchor?.getTime()}`}
           title={weekReportTitle}
           loading={weekReportLoading}
           error={weekReportError}
@@ -724,11 +734,11 @@ export default function TeacherSchedulePage() {
           emptyMessage={weekReportEmptyMsg}
           cached={weekReportCached}
           onRegenerate={
-            weekReportSunday
-              ? () => openWeekReports(weekReportSunday, true)
+            reportAnchor
+              ? () => openReports(reportAnchor, reportKind, true)
               : undefined
           }
-          onClose={() => setWeekReportOpen(false)}
+          onClose={() => { reportRequest.current++; setWeekReportOpen(false); }}
         />
       )}
     </div>
@@ -1426,7 +1436,7 @@ function WeekReportModal({
           ) : reports.length === 0 ? (
             <div className="px-4 py-10 text-center text-sm text-slate-500">
               {emptyMessage ||
-                "No reports generated for this week."}
+                "No reports generated for the selected period."}
             </div>
           ) : (
             reports.map((r) => (

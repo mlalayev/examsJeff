@@ -1,6 +1,9 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import UserDirectoryTable, { UserDirectoryRow, DirectoryActions, DirectoryFee } from "@/components/dashboard/UserDirectoryTable";
+import StudentExamsModal from "@/components/dashboard/StudentExamsModal";
+import { resolveStudyTypes, STUDY_TYPE_MAP } from "@/lib/study-types";
 import UserDetailsButton from "@/components/modals/UserDetailsButton";
 import { useEffect, useState } from "react";
 import { 
@@ -18,6 +21,7 @@ import {
   Trash2,
   DollarSign,
   UserPlus,
+  BookOpen,
 } from "lucide-react";
 import UnifiedLoading from "@/components/loading/UnifiedLoading";
 import StudentPaymentsModal from "@/components/modals/StudentPaymentsModal";
@@ -38,6 +42,8 @@ type BossUserRow = {
   approved?: boolean;
   branchId?: string | null;
   tags?: string[];
+  createdAt?: string;
+  studentProfile?: { program?: string | null; studyTypes?: string[]; monthlyFee?: number | string | null } | null;
 };
 
 type BossBranchRow = { id: string; name: string };
@@ -64,6 +70,7 @@ export default function BossUsersPage() {
 
   // Payments modal
   const [paymentsTarget, setPaymentsTarget] = useState<BossUserRow | null>(null);
+  const [examsTarget, setExamsTarget] = useState<BossUserRow | null>(null);
 
   const load = async () => {
     if (!bossUsersCache) setLoading(true);
@@ -71,7 +78,7 @@ export default function BossUsersPage() {
     try {
     const [uRes, bRes] = await Promise.all([
       fetch("/api/admin/users"),
-      fetch("/api/admin/branches"),
+      fetch("/api/branches"),
     ]);
     if (!uRes.ok || !bRes.ok) throw new Error("Could not load users. Please retry.");
     const u = await uRes.json();
@@ -268,82 +275,32 @@ export default function BossUsersPage() {
       </div>
 
       {loadError && <p role="alert" className="mb-4 rounded-lg bg-rose-50 p-4 text-rose-700">{loadError} <button onClick={() => void load()} className="underline">Retry</button></p>}
-      {/* Simple Table */}
-      <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
-      {loading ? (
-          <UnifiedLoading type="skeleton" variant="table" count={1} />
-        ) : (
-          <div className="overflow-x-auto pb-6">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Name</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Role</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Branch</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Status</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-700"></th>
-              </tr>
-            </thead>
-              <tbody className="divide-y divide-gray-200">
-                {filteredUsers.map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm">
-                      <div className="font-medium text-gray-900">{user.name || "—"}</div>
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                        {user.role.replace('_', ' ')}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
-                      {(user.branchId && branchMap[user.branchId]) || "—"}
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        user.approved ? "bg-green-100 text-green-800" : "bg-orange-100 text-orange-800"
-                      }`}>
-                        {user.approved ? "Approved" : "Pending"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm space-x-3 whitespace-nowrap">
-                      <UserDetailsButton userId={user.id} />
-                          <button
-                        onClick={() => setEditUserId(user.id)}
-                        className="text-gray-400 hover:text-gray-600"
-                        title="Edit user"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      {user.role === "STUDENT" && (
-                        <button
-                          onClick={() => setPaymentsTarget(user)}
-                          className="ml-3 text-emerald-600 hover:text-emerald-800"
-                          title="Manage payments"
-                        >
-                          <DollarSign className="w-4 h-4" />
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleDeleteUser(user.id, user.email)}
-                        className="ml-3 text-red-500 hover:text-red-700"
-                        title="Delete user"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-            {filteredUsers.length === 0 && (
-              <div className="text-center py-12 text-gray-500">
-                <Users className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-                <p>No users found</p>
-              </div>
-            )}
-        </div>
-      )}
-      </div>
+      <UserDirectoryTable loading={loading} empty={filteredUsers.length === 0} showFees={!pageRole} programLabel={pageRole ? "Role" : "Program / role"}>
+        {filteredUsers.map(user => <UserDirectoryRow key={user.id} name={user.name} email={user.email}
+          program={<div className="flex flex-wrap gap-1">
+            {user.role === "STUDENT" && resolveStudyTypes(user.studentProfile?.studyTypes, user.studentProfile?.program).map(id => {
+              const type = STUDY_TYPE_MAP[id];
+              return type ? <span key={id} className={`rounded-full px-2 py-0.5 text-xs font-medium ring-1 ${type.chip}`}>{type.label}</span> : null;
+            })}
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{user.role.replaceAll('_', ' ')}</span>
+          </div>}
+          branch={(user.branchId && branchMap[user.branchId]) || null}
+          fee={user.role === "STUDENT" ? <DirectoryFee amount={user.studentProfile?.monthlyFee}/> : null}
+          showFees={!pageRole}
+          status={<span className={`rounded-full px-2 py-1 text-xs font-medium ${user.approved ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>{user.approved ? "Approved" : "Pending"}</span>}
+          joined={user.createdAt}
+          actions={<DirectoryActions>
+            <UserDetailsButton userId={user.id}/>
+            <button type="button" onClick={() => setEditUserId(user.id)} className="bg-indigo-50 text-[#303380] hover:bg-indigo-100"><Edit size={14}/>Edit</button>
+            {user.role === "STUDENT" && <>
+              <button type="button" onClick={() => setPaymentsTarget(user)} className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100"><DollarSign size={14}/>Payments</button>
+              <button type="button" onClick={() => setExamsTarget(user)} className="bg-sky-50 text-sky-700 hover:bg-sky-100"><BookOpen size={14}/>Exams</button>
+            </>}
+            <button type="button" onClick={() => handleDeleteUser(user.id, user.email)} className="bg-rose-50 text-rose-700 hover:bg-rose-100"><Trash2 size={14}/>Delete</button>
+          </DirectoryActions>}
+        />)}
+      </UserDirectoryTable>
+      <StudentExamsModal open={!!examsTarget} student={examsTarget ? { id: examsTarget.id, name: examsTarget.name || null, email: examsTarget.email } : null} onClose={() => setExamsTarget(null)}/>
       <EditAccountModal
         open={!!editUserId}
         userId={editUserId}

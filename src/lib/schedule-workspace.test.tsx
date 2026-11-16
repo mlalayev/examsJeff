@@ -9,7 +9,7 @@ beforeEach(() => {
   (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
   globalThis.fetch = jest.fn().mockResolvedValue({ok:true,json:async()=>({lessons:[]})});
   host=document.createElement('div'); document.body.appendChild(host); root=createRoot(host);
-  props={ data:{year:2026,month:10,oddDays:[{}],evenDays:[],lessons:[{id:'l',title:'SAT',date:'2026-10-24T00:00:00Z',timeSlot:'10:00 - 11:00',status:'SCHEDULED',class:{name:'SAT',_count:{classStudents:2}}}]},loading:false,error:null,toast:null,applying:false,clearing:false,onNavigate:jest.fn(),onDay:jest.fn(),onSchedule:jest.fn(),onApply:jest.fn(),onClear:jest.fn(),onReport:jest.fn() };
+  props={ data:{year:2026,month:10,oddDays:[{}],evenDays:[],lessons:[{id:'l',title:'SAT',date:'2026-10-24T00:00:00Z',timeSlot:'10:00 - 11:00',status:'SCHEDULED',class:{name:'SAT',_count:{classStudents:2}}}]},loading:false,error:null,toast:null,applying:false,clearing:false,onNavigate:jest.fn(),onDay:jest.fn(),onSchedule:jest.fn(),onApply:jest.fn(),onClear:jest.fn(),onReport:jest.fn(),onDailyReport:jest.fn() };
 });
 afterEach(async()=>{await act(async()=>root.unmount());host.remove();jest.useRealTimers();globalThis.fetch=originalFetch;});
 const mount=async()=>{await act(async()=>root.render(<Workspace {...props}/>));};
@@ -73,4 +73,43 @@ test('weekly report mark reflects saved server status, including month boundary 
   props.data={...props.data,reportWeeks:['2026-10-18']};await mount();
   expect(host.querySelector('[aria-label="Reports ready"]')?.textContent).toContain('Done');
   expect(host.querySelector('[aria-label="Reports not prepared"]')).toBeNull();
+});
+
+
+test('each displayed day opens only its own daily reports; Sunday also retains weekly reports', async () => {
+  await mount();
+  expect(host.querySelectorAll('button[aria-label^="Daily reports 2026-"]')).toHaveLength(7);
+  await click('Daily reports 2026-10-18');
+  expect(dayKey(props.onDailyReport.mock.calls[0][0])).toBe('2026-10-18');
+  expect(props.onReport).not.toHaveBeenCalled();
+  await click('Weekly reports 2026-10-18');
+  expect(dayKey(props.onReport.mock.calls[0][0])).toBe('2026-10-18');
+  expect(props.onDay).not.toHaveBeenCalled();
+});
+
+test('monthly view has daily controls and independent ready markers', async () => {
+  props.data.reportDays=['2026-10-24']; props.data.reportWeeks=[];
+  await mount(); await click('month');
+  expect(host.querySelectorAll('button[aria-label^="Daily reports 2026-"]')).toHaveLength(31);
+  expect(host.querySelectorAll('button button')).toHaveLength(0);
+  expect(host.querySelectorAll('[aria-label="Daily reports ready"]')).toHaveLength(1);
+  expect(host.querySelectorAll('[aria-label="Reports ready"]')).toHaveLength(0);
+  await click('Daily reports 2026-10-24');
+  expect(dayKey(props.onDailyReport.mock.calls[0][0])).toBe('2026-10-24');
+});
+
+test('daily picker uses the selected day rather than the start of the week', async () => {
+  await mount(); await click('Reports'); await click('Daily'); await click('Open daily reports');
+  expect(dayKey(props.onDailyReport.mock.calls[0][0])).toBe('2026-10-24');
+  expect(props.onReport).not.toHaveBeenCalled();
+});
+
+test('daily saved markers include the adjoining month', async () => {
+  jest.setSystemTime(new Date(2026,9,1,12));
+  globalThis.fetch=jest.fn().mockResolvedValue({ok:true,json:async()=>({lessons:[],reportDays:['2026-09-30'],reportWeeks:[]})});
+  await mount();
+  const day=host.querySelector('button[aria-label="Daily reports 2026-09-30"]')!;
+  expect(day.textContent).toContain('Done');
+  await act(async()=> (day as HTMLButtonElement).click());
+  expect(dayKey(props.onDailyReport.mock.calls[0][0])).toBe('2026-09-30');
 });

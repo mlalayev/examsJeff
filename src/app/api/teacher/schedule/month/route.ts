@@ -27,7 +27,7 @@ export async function GET(request: Request) {
 
     const firstSunday = new Date(start);
     firstSunday.setUTCDate(firstSunday.getUTCDate() - firstSunday.getUTCDay());
-    const [slots, lessons, reports] = await Promise.all([
+    const [slots, lessons, reports, dailyReports] = await Promise.all([
       prisma.scheduleSlot.findMany({
         where: { teacherId: (user as any).id, active: true },
         include: {
@@ -63,6 +63,11 @@ export async function GET(request: Request) {
         select: { weekStart: true },
         distinct: ['weekStart'],
       }),
+      prisma.dailyReport.findMany({
+        where: { teacherId: (user as any).id, day: { gte: start, lt: end } },
+        select: { day: true },
+        distinct: ['day'],
+      }),
     ]);
 
     return NextResponse.json({
@@ -71,6 +76,7 @@ export async function GET(request: Request) {
       oddDays: slots.filter((s) => s.dayType === "ODD"),
       evenDays: slots.filter((s) => s.dayType === "EVEN"),
       lessons,
+      reportDays: dailyReports.map(r => r.day.toISOString().slice(0, 10)),
       reportWeeks: reports.map(r => r.weekStart.toISOString().slice(0, 10)),
     });
   } catch (error) {

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronRight, type LucideIcon } from "lucide-react";
-import { getActiveSubHref, type CollapsibleSubItem } from "./navUtils";
+import { getActiveSubHref, flattenNavSubs, type CollapsibleSubItem } from "./navUtils";
 
 export type CollapsibleNavSectionItem = {
   id: string;
@@ -53,6 +53,7 @@ function SubLink({
     <Link
       href={item.href}
       prefetch={false}
+      aria-current={isActive ? "page" : undefined}
       onClick={onNavigate}
       className={`flex items-center px-3 py-1.5 rounded text-sm transition-colors ${
         isActive
@@ -78,17 +79,15 @@ function SubLink({
 
 function NestedGroup({
   item,
-  exactMatch,
+  activeHref,
   onNavigate,
 }: {
   item: CollapsibleSubItem;
-  exactMatch: boolean;
+  activeHref: string | null;
   onNavigate?: () => void;
 }) {
-  const pathname = usePathname();
   const children = item.children ?? [];
-  const activeHref = getActiveSubHref(pathname, children, exactMatch);
-  const childActive = activeHref !== null;
+  const childActive = flattenNavSubs(children).some(child => child.href === activeHref);
   const [open, setOpen] = useState(true);
 
   useEffect(() => {
@@ -121,7 +120,7 @@ function NestedGroup({
               <NavItem
                 key={child.href ?? child.label}
                 item={child}
-                exactMatch={exactMatch}
+                activeHref={activeHref}
                 onNavigate={onNavigate}
               />
             ))}
@@ -134,26 +133,23 @@ function NestedGroup({
 
 function NavItem({
   item,
-  exactMatch,
+  activeHref,
   onNavigate,
 }: {
   item: CollapsibleSubItem;
-  exactMatch: boolean;
+  activeHref: string | null;
   onNavigate?: () => void;
 }) {
-  const pathname = usePathname();
-
   if (item.children?.length) {
     return (
       <NestedGroup
         item={item}
-        exactMatch={exactMatch}
+        activeHref={activeHref}
         onNavigate={onNavigate}
       />
     );
   }
 
-  const activeHref = getActiveSubHref(pathname, [item], exactMatch);
   return (
     <SubLink
       item={item}
@@ -208,7 +204,7 @@ export default function CollapsibleNavSection({
               <NavItem
                 key={sub.href ?? sub.label}
                 item={sub}
-                exactMatch={exactMatch}
+                activeHref={activeHref}
                 onNavigate={onNavigate}
               />
             ))}

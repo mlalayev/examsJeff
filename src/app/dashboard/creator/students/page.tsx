@@ -1,5 +1,7 @@
 "use client";
 
+import UserDirectoryTable, { UserDirectoryRow, DirectoryActions, DirectoryFee, DirectoryProgram } from "@/components/dashboard/UserDirectoryTable";
+
 import UserDetailsButton from "@/components/modals/UserDetailsButton";
 import { useEffect, useState } from "react";
 import { Users, Search, BookOpen, X, ChevronRight, ChevronLeft, Target, FileText, CheckCircle, ListChecks, Check, DollarSign, Trash2, Phone, Pause, Play, Coins } from "lucide-react";
@@ -25,6 +27,8 @@ interface Student {
   phoneNumber?: string | null;
   dateOfBirth?: string | null;
   program?: string | null;
+  studyTypes?: string[];
+  lessonModes?: string[];
   monthlyFee?: number | null;
   lessonsStopped?: boolean;
   lessonsStoppedAt?: string | null;
@@ -377,7 +381,7 @@ export default function CreatorStudentsPage() {
   const selectedExamData = filteredExams.find(e => e.id === selectedExamId);
 
   const filteredStudents = students.filter(student => {
-    const matchesSearch = 
+    const matchesSearch =
       student.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       student.email.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesSearch;
@@ -495,113 +499,13 @@ export default function CreatorStudentsPage() {
         </div>
       </div>
 
-      {/* Simple Table */}
-      <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
-        {loading ? (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1100px] text-sm">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Student</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Program</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Branch</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Monthly fee</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">This month</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Lessons</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Status</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Coins</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <tr key={i}>
-                    <td className="px-3 sm:px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse"></div>
-                        <div className="h-4 bg-gray-200 rounded w-24 animate-pulse"></div>
-                      </div>
-                    </td>
-                    {Array.from({ length: 8 }).map((_, j) => (
-                      <td key={j} className="px-3 sm:px-4 py-3">
-                        <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : filteredStudents.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
-            <Users className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-            <p>No students found</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1100px] text-sm">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700 sticky left-0 bg-gray-50 z-10 shadow-[1px_0_0_0_rgb(229,231,235)]">Student</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Program</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Branch</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Monthly fee</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">This month</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Lessons</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Status</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Coins</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium text-gray-700">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {filteredStudents.map((student) => {
-                  const cm = student.currentMonth;
-                  const cmStatus =
-                    cm?.status === "PAID"
-                      ? "Paid"
-                      : cm?.status === "UNPAID"
-                        ? "Unpaid"
-                        : "—";
-                  const cmBadge =
-                    cm?.status === "PAID"
-                      ? "bg-green-100 text-green-700"
-                      : cm?.status === "UNPAID"
-                        ? "bg-orange-100 text-orange-700"
-                        : "bg-gray-100 text-gray-600";
-                  return (
-                    <tr key={student.id} className="hover:bg-gray-50">
-                      <td className="px-3 sm:px-4 py-3 sticky left-0 bg-white hover:bg-gray-50 z-10 shadow-[1px_0_0_0_rgb(229,231,235)]">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-700 font-medium text-xs flex-shrink-0">
-                            {student.name?.charAt(0).toUpperCase() || student.email.charAt(0).toUpperCase()}
-                          </div>
-                          <div className="font-medium text-gray-900 whitespace-nowrap">
-                            {student.name || "No name"}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-3 sm:px-4 py-3 text-gray-600 whitespace-nowrap">
-                        {student.program || "—"}
-                      </td>
-                      <td className="px-3 sm:px-4 py-3 text-gray-600 whitespace-nowrap">
-                        {student.branch?.name || "No branch"}
-                      </td>
-                      <td className="px-3 sm:px-4 py-3 text-gray-600 whitespace-nowrap">
-                        {student.monthlyFee != null && student.monthlyFee > 0
-                          ? `${student.monthlyFee.toFixed(2)} AZN`
-                          : "—"}
-                      </td>
-                      <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${cmBadge}`}>
-                          {cmStatus}
-                        </span>
-                        {cm?.status === "PAID" && cm.amount != null && (
-                          <span className="ml-2 text-xs text-gray-500">
-                            {Number(cm.amount).toFixed(2)} AZN
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
+      <UserDirectoryTable loading={loading} empty={filteredStudents.length === 0} emptyMessage="No students found">
+        {filteredStudents.map((student) => {
+
+          return <UserDirectoryRow key={student.id} name={student.name} email={student.email}
+            program={<DirectoryProgram program={student.program} studyTypes={student.studyTypes} lessonModes={student.lessonModes}/>} branch={student.branch?.name}
+            fee={<DirectoryFee amount={student.monthlyFee} status={student.currentMonth?.status}/>}
+            status={<>
                         <span
                           className={`px-2 py-1 text-xs font-medium rounded-full ${
                             student.lessonsStopped
@@ -616,8 +520,7 @@ export default function CreatorStudentsPage() {
                             since {new Date(student.lessonsStoppedAt).toLocaleDateString()}
                           </span>
                         )}
-                      </td>
-                      <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
+
                         <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                           student.approved
                             ? "bg-green-100 text-green-700"
@@ -625,15 +528,13 @@ export default function CreatorStudentsPage() {
                         }`}>
                           {student.approved ? "Approved" : "Pending"}
                         </span>
-                      </td>
-                      <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
+
                         <span className="inline-flex items-center gap-1 text-sm font-semibold text-amber-700">
                           <Coins className="w-3.5 h-3.5" />
                           {student.coinBalance ?? 0}
                         </span>
-                      </td>
-                      <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
-                        <div className="flex flex-nowrap items-center gap-2">
+                      </>} joined={student.createdAt}
+            actions={<DirectoryActions>
                           <UserDetailsButton userId={student.id} />
                           <button
                             type="button"
@@ -732,16 +633,10 @@ export default function CreatorStudentsPage() {
                             <Trash2 className="w-3 h-3" />
                             {deleting === student.id ? "Deleting..." : "Delete"}
                           </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                        </DirectoryActions>}
+          />;
+        })}
+      </UserDirectoryTable>
 
       <StudentExamsModal
         open={!!examsModalStudent}
