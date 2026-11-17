@@ -31,7 +31,8 @@ const createUserSchema = z.object({
     .optional(),
 });
 
-// POST /api/admin/users/create — ADMIN (most roles) or leadership (PARTNER only)
+// Shared user modal: ADMIN, BOSS and CREATOR may create the roles in this schema.
+// Higher-privilege roles remain available only through creator user management.
 export async function POST(request: Request) {
   try {
     const user = await requireAuth();
@@ -39,19 +40,12 @@ export async function POST(request: Request) {
     const body = await request.json();
     const validatedData = createUserSchema.parse(body);
 
-    if (callerRole === "CREATOR") {
-      return NextResponse.json(
-        { error: "Use creator user management for this account" },
-        { status: 403 }
-      );
-    }
-
     if (validatedData.role === "PARTNER") {
       if (!canCreatePartnerAccount(callerRole)) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
-    } else if (callerRole !== "ADMIN" && callerRole !== "BOSS") {
-      return NextResponse.json({ error: "Forbidden: ADMIN or BOSS access required" }, { status: 403 });
+    } else if (!["ADMIN", "BOSS", "CREATOR"].includes(callerRole)) {
+      return NextResponse.json({ error: "Forbidden: ADMIN, BOSS or CREATOR access required" }, { status: 403 });
     }
 
     // Check if user already exists
